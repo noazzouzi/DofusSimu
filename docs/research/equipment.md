@@ -5,7 +5,9 @@
 >
 > Fichiers produits :
 > - [`data/research/characteristics-map.json`](../../data/research/characteristics-map.json) — `{effectId: {stat, sign, unit, fr, context, …}}`
->   pour **tous** les effets rencontrés sur les 3 878 équipements et 931 panoplies (+ effets de buff de combat liés à une caractéristique).
+>   pour **tous** les effets rencontrés sur les 3 878 objets équipables et 931 panoplies (+ effets de buff de combat liés à une caractéristique).
+>   NB : les 3 878 incluent 52 **compagnons** (type 169, non équipables dans les 16 emplacements) ; l'extraction
+>   `data/dofusdb/equipment.json` en contient 3 826 (sans type 169) et `item-sets.json` 521 panoplies sur 931.
 > - [`data/research/forgemagie.json`](../../data/research/forgemagie.json) — poids des runes, plafonds d'over, exos possibles
 >   (rareté / palier de coût), 81 runes de transcendance, gravures, orbes, profils de FM réalistes, lignes typiques niv. 190-200.
 >
@@ -36,15 +38,21 @@
 4. **Panoplies** : bonus du palier `n` = `effects[n−1]` (**non cumulatif**, chaque palier contient le bonus total) ;
    `n` = nombre d'objets équipés portant ce `itemSetId`. Deux anneaux identiques interdits **s'ils sont de panoplie**.
 5. **Slots** : amulette, coiffe, cape, 2 anneaux, ceinture, bottes, arme, bouclier, 1 familier/montilier/monture,
-   **6 emplacements Dofus/Trophées/Prysmaradite** (pas de doublon ; **1 seule prysmaradite** depuis la MàJ 3.3).
-   Arme à deux mains (`twoHanded`) ⇒ pas de bouclier.
+   **6 emplacements Dofus/Trophées/Prysmaradite** (pas de doublon ; **1 seule prysmaradite** — règle rappelée par la
+   MàJ 3.3 du 22/09/2025, pas introduite par elle). **Bouclier compatible avec toutes les armes** : la notion d'arme
+   à 1 ou 2 mains a été supprimée en 2.41 (2017) ; dans les données, un seul objet (Balai rudimentaire, outil de quête
+   niv. 1) a encore `twoHanded = true` → ne pas implémenter de règle « deux mains ⇒ pas de bouclier ».
 6. **Exos PA/PM/PO** : ~1 % de succès par rune, **un seul exo de chaque type compté par personnage** ; puis plafonds 12/6.
    Le fameux « exo 1 % dommages aux sorts » = **rune de transcendance Ta Do Per So** (+1 % Do. sorts, niv. 200, 100 % de
    réussite, verrouille l'objet, objet sans over ni exo) ; les stuffs THL en posent sur ~6 objets ⇒ **+6 à 7 %**.
-7. **Overmax** : une ligne ne peut dépasser **101 de poids** (valeur × poids/pt). Au niveau 200 les lignes principales sont
-   déjà à ~100 (Vita 500, stat 100, Do élém. 20) ⇒ l'over réel est marginal ; la FM utile = jet parfait + exos + transcendances.
+7. **Overmax** : une ligne ne peut dépasser **101 de poids** (valeur × poids/pt), sauf si le jet max naturel dépasse déjà
+   101. Seuls les **meilleurs** objets 200 sont déjà au plafond (Vita 500, stat 100, Do élém. 20) : sur les 514 objets
+   non-armes niv. 190-200, la ligne **médiane** est Vita 350 (poids 70), stat 60, Do élém. 12 ⇒ il reste une marge d'over
+   théorique importante (Vita → 505, stat → 101), mais coûteuse (puits) ; **PA/PM/PO ne peuvent jamais être over**
+   (+1 point ⇒ poids ≥ 102). Profils par défaut de l'optimiseur : jet parfait + exos + transcendances, over en option.
 8. **Résistances %** : plafonnées à **50 %** pour un joueur dans le calcul de dégâts (100 % pour un monstre) — code Haxe
-   Dofus 3 (`MaxResistHuman = 50`) et client D2 (`Math.min(resistPercent, 50)` si cible non-monstre).
+   Dofus 3 (`MaxResistHuman = 50`, appliqué à `% rés. élémentaire + % rés. tous éléments`) et client D2
+   (`Math.min(resistPercent, 50)` si cible non-monstre).
 9. **Conditions** (`criterions`) : grammaire `&`, `|`, parenthèses ; `CA>299` = Agilité totale > 299, `CP<12` = PA total < 12,
    `Pk<3` = « bonus de panoplie < 3 » où le nombre de bonus = Σ_panoplies max(0, n−1). Recommandation : évaluer toutes les
    conditions **sur l'état final** du stuff (valeurs brutes avant plafonds), cf. §6.
@@ -66,7 +74,8 @@
 | Parchemins / paliers | https://dofus.jeuxonline.info/actualite/46554/amelioration-systeme-caracteristiques (2.26) | Officiel |
 | Trophées | https://dofus.jeuxonline.info/article/13994/trophees | Guide |
 | Familiers (niveau = % des bonus) | https://dofus.jeuxonline.info/actualite/54999/maj-248-presentation-refonte-familiers | Officiel (2.48) |
-| MàJ 3.3 (prysmaradites : 1 max, initiative) | https://www.dofuspourlesnoobs.com/mise-a-jour-303.html (23/09/2025) | Patch notes résumées |
+| MàJ 3.3 (rappel « 1 seule prysmaradite », fusion de variantes, initiative) | https://www.dofuspourlesnoobs.com/mise-a-jour-303.html (MàJ mise en ligne le 22/09/2025) | Patch notes résumées |
+| Boucliers compatibles avec toutes les armes (fin des armes à 2 mains, 2.41) | https://dofus.jeuxonline.info/actualite/52365/devblog-refonte-boucliers (21/03/2017) | Officiel |
 | MàJ 3.5 (montures niv. 200) | https://guidactik.com/dofus/resume-de-la-mise-a-jour-3-5-de-dofus/ (03/03/2026), https://www.next-stage.fr/?p=235408 | Guides |
 | Niveaux Oméga | https://dofus.jeuxonline.info/actualite/53580/245-devblog-niveaux-omega | Officiel |
 | Forgemagie | https://www.gamosaurus.com/?p=118767 ; https://dafous.app/guides/poids-runes-fm.html (02/2026) ; https://dofus.jeuxonline.info/article/3736/forgemagie ; https://dofusbuilds.com/guides/exos-and-forgemagie (08/2026) | Guides |
@@ -89,7 +98,7 @@
 | `criterions` | Conditions d'équipement (chaîne, cf. §6) |
 | `possibleEffects[]` | `{effectId, diceNum, diceSide, value, …}` = **jet min / jet max** ; `diceSide = 0` ⇒ valeur fixe `diceNum` |
 | `effects[]` (DofusDB) | Résumé **signé** `{from, to, characteristic, category, elementId, effectId}` (`to=0` ⇒ fixe) |
-| `isLegendary`, `twoHanded`, `etheral` | Objet légendaire (sort passif), arme à 2 mains (bloque le bouclier), arme éthérée |
+| `isLegendary`, `twoHanded`, `etheral` | Objet légendaire (sort passif), arme à 2 mains (**obsolète** depuis 2.41 : `true` sur un seul objet du jeu, le Balai rudimentaire 27645 ; ne bloque pas le bouclier), arme éthérée |
 | Armes : `apCost, minRange, range, criticalHitProbability, criticalHitBonus, maxCastPerTurn, castInLine, castInDiagonal, castTestLos` | Profil de l'arme ; les lignes de dégâts sont des effets 91-100 / 2822 / 2828 (`context: "weaponLine"`) |
 
 Exemple (Coiffe du Comte Harebourg, id 14076) : `125: 451-500` (Vitalité), `118: 71-100` (Force), `124: 41-60` (Sagesse),
@@ -113,13 +122,19 @@ chaque résistance : l'id porte le signe), `753: 16-20` (Tacle), `410: 6-8` (Ret
 
 Le stuff creator DofusDB modélise exactement 16 objets : `amulet, helmet, cape, rings[2], shield, boots, belt, dofus[6], weapon, pet`
 (cf. `SLOTS_EQUIPABLE_BY_USER = 16` du protocole D2). Les objets d'apparat / costumes (types 199, 246-252, 299, 300…) n'ont pas de stats.
+DofusDB accepte aussi dans l'emplacement d'arme les pierres d'âme (type 83) et filets de capture (type 99) : sans
+statistiques (sort passif de capture / effet 722), à exclure de l'optimiseur. Les **compagnons** (type 169, 52 objets,
+condition `PZ=1`) ne sont pas des équipements du personnage.
 
 ### 2.3 Règles d'équipement (vérifiées dans le code DofusDB `wn`)
 
 - **Anneaux** : deux exemplaires du même anneau autorisés **sauf** s'il appartient à une panoplie (`typeId 9` + `itemSetId ≠ -1`).
 - **Dofus, trophées, prysmaradites** (types 23/151/217) : jamais deux fois le même objet.
-- **Prysmaradite** : **une seule** par personnage depuis la MàJ 3.3 (DofusDB ne l'applique pas, à faire nous-mêmes).
-- **Arme à deux mains** : pas de bouclier (règle standard ; champ `twoHanded`).
+- **Prysmaradite** : **une seule** par personnage (règle « rappelée » par la MàJ 3.3 du 22/09/2025, donc antérieure ;
+  DofusDB ne l'applique pas, à faire nous-mêmes).
+- **Bouclier** : compatible avec **toutes** les armes depuis la 2.41 (« La notion d'arme à 1 ou 2 mains va disparaître en
+  version 2.41, ce qui signifie que les boucliers pourront être utilisés avec toutes les armes du jeu », devblog JOL 52365).
+  Le code DofusDB (`wn`) n'a d'ailleurs aucune règle arme/bouclier. Ne pas utiliser le champ `twoHanded`.
 - **Niveau** : `item.level ≤ niveau du personnage`.
 
 ---
@@ -129,12 +144,16 @@ Le stuff creator DofusDB modélise exactement 16 objets : `amulet, helmet, cape,
 `characteristics-map.json` donne, pour chaque `effectId` : `stat` (clé canonique camelCase), `sign` (+1/−1), `unit`
 (`flat`/`percent`), `fr`, `context`, `characteristicId`, `keyword` (DofusDB), `category`, `element`,
 `runeWeightPerPoint` (poids FM), `powerRate` (brut), `oppositeEffectId`, `onItems`/`onSets` (fréquence), `template`, `note`.
+`onItems` = nombre de **lignes** portant l'effet sur les 3 878 objets (une arme peut porter 2 lignes 100 ; compagnons
+inclus) ; `onSets` = nombre de **paliers** de panoplie (sur les 931) contenant l'effet (ex. 111 : 510 paliers dans 338
+panoplies) — ce ne sont pas des nombres d'objets/panoplies distincts.
 
 Contextes : `stat` (bonus permanent d'objet/panoplie, à sommer) · `fightBuff` (n'existe qu'en combat : buffs de sorts/passifs) ·
 `weaponLine` (lignes de dégâts/vol/soin d'arme) · `spellModifier` (bonus de sort de classe, effets 281-297 : `diceNum` = id de sort,
 `value` = valeur) · `passiveSpell` (1175, `diceNum` = id de sort passif) · `statCap` (2897, plafond de caractéristique) ·
 `scroll` (606-611, « caractéristique additionnelle ») · `special` (795 arme de chasse, 700 gravure) · `ignore` (liens, titres,
-attitudes, technique monture…). Les 151 effectIds présents sur objets/panoplies sont tous couverts.
+attitudes, technique monture…). Les **150** effectIds distincts présents sur les objets et les 931 panoplies (151 annoncés
+initialement ; recompté à 150 lors de la vérification) sont tous couverts.
 
 ### 3.1 Caractéristiques d'objets (ids d'effets +/−, poids FM = `effectPowerRate`)
 
@@ -191,16 +210,16 @@ Implémentées par DofusDB (`chunk-common` module `b9bf`) — à reprendre telle
 | Stat | Formule | Source |
 |---|---|---|
 | PV | `55 + 5·(niveau−1) + Vitalité totale` (1 050 + Vita au niv. 200) | DofusDB ; https://wow.allakhazam.com/wiki/Life_%28DoFus%29 |
-| PA | `(niveau ≥ 100 ? 7 : 6) + Σ PA`, min 12 | DofusDB ; devblog 2.3.4 |
-| PM | `3 + Σ PM`, min 6 | idem |
-| PO | `Σ PO`, min 6 | DofusDB (6) vs devblog 2.3.4 (9) — **INCERTAIN** |
-| Invocations | `1 + Σ`, min 6 | DofusDB (plafond 6 : INCERTAIN côté jeu) |
+| PA | `min((niveau ≥ 100 ? 7 : 6) + Σ PA, 12)` (plafond 12) | DofusDB ; devblog 2.3.4 |
+| PM | `min(3 + Σ PM, 6)` | idem |
+| PO | `min(Σ PO, 6)` | DofusDB (6) vs devblog 2.3.4 (9) — **INCERTAIN** |
+| Invocations | `min(1 + Σ, 6)` | DofusDB (plafond 6 : INCERTAIN côté jeu) |
 | Initiative | `Σ initiative + Fo + Int + Cha + Agi` | DofusDB. MàJ 3.3 : l'initiative ne dépend plus du % de vie |
 | Prospection | `100 + ⌊Chance/10⌋ + Σ` | DofusDB |
 | Tacle, Fuite | `⌊Agilité/10⌋ + Σ` | DofusDB |
 | Esquive PA/PM, Retrait PA/PM | `⌊Sagesse/10⌋ + Σ` | DofusDB |
-| Pods | `1000 + 5·(niveau−1) + 5·Force + Σ` | DofusDB |
-| % Rés. élémentaires | `min(Σ, 50)` (joueur) | DofusDB (affichage) + code de dégâts Dofus 3/D2 |
+| Pods | `1000 + 5·(niveau−1) + 5·Force + Σ` | DofusDB (terme `5·(niveau−1)` non vérifié en jeu, sans impact combat) |
+| % Rés. élémentaires | `min(Σ, 50)` (joueur) | DofusDB (affichage) + code de dégâts Dofus 3/D2 ; en combat le plafond porte sur `% rés. élém. + % rés. tous éléments` (`HaxeFighter.GetElementMainResist`) |
 | Plafonds spéciaux | `min(…, plafond 2897)` si un objet/une panoplie porte « #1 max. #2 » (ex. Malédiction de Cire Momore : PM/PO/Invo max 4→2) | DofusDB module `56dd` |
 
 « Stat totale » d'une caractéristique primaire = `base + additionnel (parchemins) + objets/monture + bonus d'alignement +
@@ -266,7 +285,7 @@ de dégâts (stat + puissance). Le Neutre utilise la Force. Le moteur de dégât
 | `Ps` / `Pa` | Alignement (1 Bonta, 2 Brâkmar) / niveau d'alignement | 10 / 3 | |
 | `PJ`/`Pj` | Métier `id,niveau` | 24 | `PJ>24,120` |
 | `Qa`/`Qf`/`Qc`, `Qo` | Quête active / finie / …, objectif de quête | 25 / 11 | Dofus Sylvestre lié (`Qa=2488\|Qa=2489`) |
-| `PZ` | Abonné | 54 | compagnons, Crocobur 100 |
+| `PZ` | Abonné | 54 (dont 51 compagnons type 169 ; 3 vrais équipements) | compagnons, Crocobur 100 |
 | `Oa` | Points de succès | 5 | `Oa>2999` |
 | `PO` | Possède un objet (`!` = ne possède pas) | 6 | `PO!10119` |
 | `PK` | Kamas | 1 | `PK>49999` |
@@ -275,7 +294,7 @@ de dégâts (stat + puissance). Le Neutre utilise la Force. Le moteur de dégât
 | `PX` | Droits de compte (admin) | 6 | |
 | `BI` | Objet inutilisable | 14 | |
 | `Sc`, `SG`, `Sd` | Critère statique (événement), mois, jour | 7/2/3 | `Sc=968&SG=08&Sd>18` |
-| `Pm` | Carte (map id) | 5 | |
+| `Pm` | Carte (map id) — **INCERTAIN** : code absent de `ItemCriterionFactory` D2 ; valeurs = ids de carte (`Pm=181404680`) | 5 | |
 | `OS`, `Pn` | Inconnus du client D2 (ex. `OS=505` sur la panoplie Ankarton) — **INCERTAIN** | 8 / 1 | |
 
 ### 6.3 Sémantique
@@ -307,12 +326,13 @@ de dégâts (stat + puissance). Le Neutre utilise la Force. Le moteur de dégât
 | Invocations | 6 (DofusDB) | INCERTAIN ; base 1. |
 | Exos | 1 exo PA + 1 exo PM + 1 exo PO comptés par personnage | Devblog 2.3.4 ; Gamosaurus ; dofusbuilds 08/2026. Exo Invocation non limité (Gamosaurus). |
 | % Résistances (joueur) | **50 %** dans le calcul de dégâts | `MaxResistHuman = 50` / `MaxResistMonster = 100` (Haxe Dofus 3). L'affichage peut dépasser (stuff tank Gamosaurus : 56 % Terre). |
-| Érosion | 50 % | `Math.min(erosion, 50)` (code dégâts D2/Haxe) |
+| Érosion | 50 % | `if(totalErosionPercent > 50) totalErosionPercent = 50` (client D2 `DamageUtil.as` l. 2070-2072) ; non retrouvé dans les fichiers Haxe Dofus 3 en cache — supposé inchangé |
 
 Les 12 PA/6 PM sont **l'objectif standard** d'un stuff THL ; « 11 PA / 6 PM » est le compromis tank/placeur courant.
 Atteindre 12/6 sans exo impose de cumuler des sources : panoplies (+1 PA chacune au palier complet), Dofus Ocre (+1 PA),
 Dofus Vulbis (+1 PM), Volkorne (+1 PA) ou Muldo (+1 PM) en monture, trophées Turbulent (+1 PA −1 PM) / Voyageur (+1 PM),
-prysmaradites (Pryssion/Prycipithon +1 PA, Sprynt/Ratrapry +1 PM), objets à condition `CP<12|CM<6`.
+prysmaradites (Pryssion +1 PA ; Prycipithon +1 PA **−1 PM** ; Sprynt/Ratrapry +1 PM), objets à condition `CP<12|CM<6`
+(qui, eux, interdisent justement d'être à 12 PA **et** 6 PM).
 
 ---
 
@@ -320,8 +340,9 @@ prysmaradites (Pryssion/Prycipithon +1 PA, Sprynt/Ratrapry +1 PM), objets à con
 
 ### 8.1 Règles communes
 
-- 6 emplacements partagés « Dofus/Trophées » ; aucun doublon (même `id`) ; **1 prysmaradite max** (MàJ 3.3, 23/09/2025 ;
-  déjà « 1er emplacement uniquement » depuis la 2.54).
+- 6 emplacements partagés « Dofus/Trophées » ; aucun doublon (même `id`) ; **1 prysmaradite max** (règle antérieure,
+  « Rappel : Vous ne pouvez équiper qu'une seule prysmaradite » dans les notes de la MàJ 3.3 du 22/09/2025 ; « 1er
+  emplacement uniquement » depuis la 2.54 selon le chercheur initial — non revérifié).
 - Trophées (type 151, 261 objets) : 3 générations × (mineur niv. 50 / normal 100 / majeur 150) ; 1ʳᵉ génération sans malus
   (ex. Puissant majeur +40 Pui), 2ᵉ avec malus (Robuste majeur +80 Pui −12 % CC), 3ᵉ avec condition **`Pk<3`** (Vigoureux
   majeur +80 Pui, Érudit/Enragé/Cascadeur/Chanceux majeur +100 stat, Sanguinaire majeur +12 Do tous élém., Remueur +1 PA,
@@ -347,14 +368,14 @@ prysmaradites (Pryssion/Prycipithon +1 PA, Sprynt/Ratrapry +1 PM), objets à con
 | Dofus Émeraude (737) | 100 | +200 Vitalité | Vert Émeraude (8393) : fin de tour, bouclier 100 % du niveau par ennemi au contact |
 | Dofus Tacheté (7112) | 180 | +30 Rés. crit | Harmonie de Pandala (18888) (synergie Dorigami/Domakuro) |
 | Dofus Ébène (7114) | 180 | +40 Fuite | Noir Ébène (18629) : alterne mêlée/distance ⇒ +2 % do. de l'autre type (cumul 5) |
-| Dofus Cauchemar (26066) | 180 | +1000 Ini | Éternel Cauchemar (20981) |
+| Dofus du Cauchemar (26066) | 180 | +1000 Ini | Éternel Cauchemar (20981) : bouclier si désenvoûté/entravé, +100 Pui si poussée ; les deux ⇒ dommages occasionnés/subis augmentés |
 | Dofus Forgelave (19398) | 180 | +100 Rés. poussée | Forge du Volcan (10164) : boucliers sur effets subis |
 | Dofus Argenté Scintillant (20286) | 180 | +300 Vitalité | Promesse d'Argent (18672) : <20 % PV ⇒ soin 30 % + 20 % do. finaux (1×/combat) |
 | Dofoozbz (31794) | 170 | +2 Invocations | Éclosion Explosive (31607) |
 | Domakuro (23237) | 120 | +1 Invocation | Rivière d'Encre (17006) : jusqu'à +16 Dommages cumulés sur 4 tours (moins si on attaque) |
 | Dorigami (23408) | 150 | +20 Esq. PM | Tigre de Papier (17307) : bouclier 100 % niv. sur 5 premiers tours |
 | Dolmanax (13344) | 100 | +70 Fo/Int/Cha/Agi | — |
-| Dofus Cawotte (972) | 60 | +60 Sagesse | Sagesse Wabbit |
+| Dofus Cawotte (972) | 60 | +60 Sagesse | Sagesse Wabbit (8418) : tentative de retrait PA/PM subie ⇒ +25 Esq. PA ou PM 1 tour |
 | Dom de Pin (27803) | 180 | +1 PO | — |
 
 ### 8.3 Prysmaradites et objets légendaires niv. 200 (passifs, effet 1175)
@@ -366,8 +387,10 @@ Sprynt +1 PM −1 PO ; Ratrapry +1 PM −40 Tacle ; Surpryz +10 % CC −1000 Ini
 −1000 Ini ; Prynyang −2 PO +25 Do crit ; Pryximite +6 % Do armes −30 Ré pou ; Prygen +200 Vi −1 Invo ; Caraprys −1 PM +2 Invo ;
 Espryt +20 Ret PA/PM −20 Esq ; Korprys +30 Esq PA/PM −30 Ret ; Prymune +3 % toutes rés. −30 Esq ; Prytek ×3 −100 Vi +40 rés. fixes ;
 Aprybou −1000 Ini +40 rés. fixes ; Prysmaru +1000 Ini −30 Esq ; Prysantor +30 Ré crit −30 Ré pou ; Indeprys −25 Ré crit +100 Ré pou.
-La MàJ 3.3 annonce la fusion des variantes Brillante/Iridescente de 5 prysmaradites, mais les trois variantes existent encore
-dans les données DofusDB (INCERTAIN : variantes historiques conservées).
+La MàJ 3.3 a fusionné les variantes Brillante/Iridescente de **5** prysmaradites : Prygen, Telprys (→ Caraprys),
+Aprykou (→ Prynyang), Ratrapry, Surpryz — elles n'ont bien **qu'une** entrée dans les données (22010, 22018, 22004,
+22007, 22001). Les trois variantes Mate/Brillante/Iridescente de **Prytek, Pryssion et Prycipithon** n'étaient pas
+concernées et existent toujours (même ligne de stats, passif différent). Pas d'incohérence données/patch notes.
 
 | Objet (id) | Sort passif (id) | Effet (résumé du jeu) |
 |---|---|---|
@@ -427,9 +450,11 @@ dans les données DofusDB (INCERTAIN : variantes historiques conservées).
 ## 9. Familiers, montiliers, montures
 
 - **Un seul slot** pour familier (type 18), montilier (121) ou monture (331 Dragodinde, 332 Muldo, 333 Volkorne).
-- **Familiers** : depuis la refonte 2.48 (2018) ils ne meurent plus et ne se nourrissent plus en continu ; leurs bonus
-  **dépendent de leur niveau (1-100) en pourcentage** (niv. 50 ⇒ 50 % des bonus). Les valeurs DofusDB (`possibleEffects`,
-  `diceSide = 0`) sont les valeurs **maximales** (niv. 100). Exemples : Vampyrette +400 Vi +40 Fuite ; Bwak +50 Pui +25 % rés. élém. ;
+- **Familiers** : depuis la refonte 2.48 (2018) ils ne meurent plus (« ne disposeront plus de points de vie ») et gagnent
+  de l'expérience en étant nourris de ressources ; leur niveau « varie de 0 à 100 et chaque niveau débloqué augmentera
+  donc le bonus apporté par votre familier » (devblog JOL 54999). La **proportionnalité exacte** (niv. 50 ⇒ 50 % des
+  bonus, arrondi) n'est **pas** écrite dans la source : **INCERTAIN**, hypothèse linéaire `round(max × niveau/100)`.
+  Les valeurs DofusDB (`possibleEffects`, `diceSide = 0`) sont les valeurs **maximales** (niv. 100) ; niveau requis 20. Exemples : Vampyrette +400 Vi +40 Fuite ; Bwak +50 Pui +25 % rés. élém. ;
   Booftrool blanc +70 Pui +15 % CC ; Dragoune Dorée +2 PO +40 Esq. PA ; Sourisette +2 PO +2000 Ini.
 - **Montiliers** : niveau 60 requis, bonus directement au maximum. Ex. Kougnard +1 PA +2000 Ini ; Phorror +10 % CC +1 PM ;
   Sakochère +1 PA +50 Do crit ; Balafreux +1 PM +100 Do pou ; Koliphant +120 stat +15 % CC ; Siroko/Dehluge/Kompost/Brûlih +160 stat.
@@ -449,7 +474,10 @@ dans les données DofusDB (INCERTAIN : variantes historiques conservées).
 
 Friandises/bonbons (type 42) qui posent des « Goûts » (type 28) pour N combats, ex. Shigekax Melon +1 PA, Vanille +5 % CC,
 Chocolat +15 Vi/Fo/Int/Cha ; Bénédictions (type 29) +25 stat ou +5 % rés. Les plafonds 12 PA / 6 PM s'appliquent aux
-consommables (devblog 2.3.4). Règles de cumul (un seul bonbon actif ?) **INCERTAIN** → option désactivée par défaut.
+consommables (devblog 2.3.4 : la restriction concerne « les bonus apportés par les équipements et les bonus temporaires
+apportés par les consommables »). MàJ 3.3 : nouveaux consommables d'initiative de pêcheur (±100/200/500 Ini, 1 combat),
+« cumuler jusqu'à 4 » à la fois, pas deux fois le même. Règles de cumul des bonbons/bénédictions **INCERTAIN** → option
+désactivée par défaut.
 
 ---
 
@@ -464,7 +492,8 @@ Rune/Pa/Ra = ×1/×3/×10 (Vi 5/15/50, Ini et Pod 10/30/100). Le détail par eff
 
 Désaccords : Vitalité **0,2** (données ; Rune Vi = +5 pour poids 1) contre 0,25 sur dafous.app (ancienne valeur, Vi over 404) ;
 Renvoi **5** (données, JOL) contre 10 (dafous.app) ; Ré Per Mé/Di **10** (données) contre 15 (JOL). → INCERTAIN, on garde les
-données du jeu. Les lignes négatives ont un `powerRate` égal à −½ du positif (sert au calcul de « puissance » d'objet).
+données du jeu. Les lignes négatives ont en général un `powerRate` égal à −½ du positif (sert au calcul de « puissance »
+d'objet) ; exceptions : 145 −Dommages = −5 (−¼ de 20), 159 −Pods = +0,125 (signe et `characteristic` anormaux).
 
 ### 11.2 Mécanique (synthèse Gamosaurus/dafous.app)
 
@@ -473,18 +502,29 @@ données du jeu. Les lignes négatives ont un `powerRate` égal à −½ du posi
 - **Puits** = `poids perdu − poids utilisé` ; propre à l'objet, absorbe les pertes futures, sert à passer overs/exos (hors PA/PM/PO) ;
   perdu si l'objet est échangé/mis en vente.
 - **Overmax** : ligne ≤ **101 de poids** (Vitalité 505, stat 101, Sagesse 33, CC 10, Pui 50, Do élém. 20, Ré % 16), sauf si
-  le jet max naturel dépasse déjà 101 (alors pas d'over). Au niveau 190-200, d'après les 514 objets non-armes analysés,
-  la Vitalité médiane max est 350 (poids 70), les stats élémentaires 60 (max 100), la Sagesse 40 (poids 120, donc souvent
-  pas d'over possible), les Do élém. 12 (max 20-25) : `forgemagie.json → typicalLevel200Lines`.
-- **Exos** : PA/PM/PO ≈ **1 %** de succès critique par rune Ga Pa / Ga Pme / Po, le puits n'aidant pas ; un seul de chaque
-  type compté par personnage. Invocation possible et non limitée. Autres stats exo via le puits (Do, Pui, Ré %, Do Crit…).
+  le jet max naturel dépasse déjà 101 (alors pas d'over) — Gamosaurus : « Une statistique ne peut pas dépasser le poids
+  total de 101, sauf si le jet théorique de l'item le permet » (101 × 5 = 505 Vitalité). Au niveau 190-200, d'après les
+  514 objets non-armes analysés, la Vitalité médiane max est 350 (poids 70), les stats élémentaires 60 (max 100), la
+  Sagesse 40 (poids 120, donc souvent pas d'over possible), les Do élém. 12 (max 20-25) : `forgemagie.json →
+  typicalLevel200Lines` (`shareWithOvermaxRoom` = part des lignes où `(jet max + 1 incrément de rune) × poids ≤ 101` ;
+  0 pour PA/PM/PO). L'over n'est donc **pas** marginal en théorie, seulement cher.
+- **Exos** : PA/PM/PO **et Invocation** ≈ **1 %** de succès critique par rune (Ga Pa / Ga Pme / Po / Invo), sans besoin de
+  puits (Gamosaurus : « Certains Exos ne nécessitent pas de puits : les exos PA, PM, PO ou Invo », « le succès critique
+  n'a que 1% de chance ») ; un seul exo PA, un seul PM, un seul PO comptés par personnage (devblog 2.3.4 : « il ne sera
+  pas possible de cumuler plus de 1 PA, 1 PM, 1PO via des bonus de forgemagie exotique ») ; Invo non limitée. Autres
+  stats exo via le puits (Do, Pui, Ré %, Do Crit…). Le puits disparaît si l'objet est échangé, mis en vente ou déplacé
+  (inventaire de monture…).
 - **Transcendance** (81 runes, type 211, Songes Infinis) : 100 % de réussite, effet 2825 « Empêche les futures forgemagies »,
   exige un objet sans over ni exo. Paliers Ta/Pata/Rata (niv. 104/126/148 pour les stats, jusqu'à 200) : ex. Rata Vi +100,
   Rata Fo +20, Rata Pui +12, Pata Cri +2, Rata Do élém. +6, Pata Do Cri +8, Ta Ré Per élém. +2 %, et **Ta Do Per So / Ta Do Per
   Di / Ta Do Per Mé / Ta Do Per Ar / Ta Ré Per Mé / Ta Ré Per Di = +1 % (niv. 200)**. Règle de niveau rune ↔ objet INCERTAIN.
+  next-stage (03/2026) : « Votre item ne doit posséder ni over ni exo. Au maximum, il peut être à jet parfait » ; si la
+  rune porte sur une ligne existante et crée un over, la règle de densité ≤ 100 s'applique ; l'objet devient ensuite
+  « intouchable pour toute forgemagie ultérieure ». Nombre max de transcendances par stuff : non documenté (une par objet).
 - **Gravures** (type 258) : changent définitivement l'élément des dégâts neutres d'une arme, en gardant **85 %** des dégâts
-  de base (Incendie/Ouragan/Séisme/Tsunami, niv. 80) ou **50 %** (Étincelle/Courant d'air/Secousse/Crachin, niv. 20) — effet 700,
-  `value`. Seul le vol de vie est aussi converti. (dofusbuilds : `floor(dégâts × 0,85)`.)
+  de base (Incendie/Ouragan/Séisme/Tsunami, niv. 80) ou **50 %** (Étincelle/Courant d'air/Secousse/Crachin, niv. 20) — effet 700 :
+  `value` = % conservé, `diceSide` = élément cible (58 Feu, 59 Air, 60 Terre, 61 Eau ; vérifié sur les 8 gravures).
+  « Seul le vol de vie est modifié par cette gravure » (texte du jeu). (dofusbuilds : `floor(dégâts × 0,85)`.)
 - **Orbes régénérants** (type 189) : re-tirent les jets d'un objet de niveau ≤ orbe (60/120/180/200).
 
 ### 11.3 Ce que l'optimiseur doit modéliser (profils réalistes)
@@ -492,7 +532,7 @@ données du jeu. Les lignes négatives ont un `powerRate` égal à −½ du posi
 | Profil | Jets | Exos | Transcendances | Usage |
 |---|---|---|---|---|
 | `average` | moyenne `(min+max)/2` | — | — | joueur moyen |
-| `perfect` | max (`diceSide`) | — | — | défaut DofusDB/DofusBook |
+| `perfect` | max (`diceSide`) ; lignes négatives : DofusDB prend le malus **maximal** (`to`), un « vrai » jet parfait prendrait le malus minimal (`diceNum`) — option `negativeRoll: "worst"|"best"`, défaut `worst` comme DofusDB | — | — | défaut DofusDB/DofusBook |
 | `thlStandard` | max | 1 exo PA **ou** PM (anneau/amulette) | — | THL courant |
 | `thlOptimized` | max | exo PA + exo PM (2 objets) | Ta Do Per So sur ~6 autres objets (+6 % Do sorts) | THL optimisé (stuffs Gamosaurus) |
 
@@ -510,7 +550,7 @@ Alternative à l'exo PA : la Pata Vi (+75 Vi) en transcendance sur une coiffe ta
 |---|---|
 | Terre | Comte Harebourg, Brouce Boulgoure, Tréfonds ; Cœur Saignant + Brouce + 2 Torkélonia (Corne/Baguette) + Bague de Corruption + Kokulte (familier) — 12 PA/6 PM, 82 % CC, ~1 250 Force |
 | Feu | Otomaï, Séculaire ; Coiffe/Amulette/Ceinture Séculaire + Cape/Sabres d'Atcham + Cycloïde (bouclier, anneau, bottes) + Anneau de Padgref + Bisouglours — ~1 370 Int, 63 % CC |
-| Eau | Danathor, Fosse ; Danathor (coiffe, ceinture, Écu) + Sinistrofu (cape, bottes, amulette) + Anneau Volkorne + Dagoulinantes — ~1 460 Cha, 12 PA/6 PM, « Ta Do Per So pour ~6 % Do sorts » |
+| Eau | Danathor, Fosse ; Danathor (coiffe, ceinture, L'Écu de Danathor) + Sinistrofu (cape, bottes, amulette) + Anneaux Volkorne & Rtograf + Dagoulinantes + Kanigloups — 1 458 Cha, 51 % CC, 4 103 PV, 12 PA/6 PM/6 PO, exos PA/PM sur les anneaux, « Ta Do Per So » pour ~6 % Do sorts (Gamosaurus 12/2024) |
 | Air | Allister, Valet Veinard ; Couronne/Anneau/Bottes d'Allister + Cycloïde (bouclier, anneau, amulette) + Submergée (Cape de Crânonier, Sangle Oriole, Lance Horselé) + Blérodoudou — ~1 420 Agi, 67 % CC, 5 PO |
 | Tank | Anerice (cape, bouclier), Casque Dragoeuf, Baleinabottes, Pol Ouatnos, Alliance Gloursonne, Courage de Dame Jhessica — ~4 950 PV, 11 PA/6 PM, ~230 Tacle, rés. 39-56 % |
 | Sagesse/retrait | Léthaline, Ougah, Ventouse, Kralano/Annolamour, Dofus Cawotte (niv. 199 : ~1 050 Sagesse, 117/123 retrait PA/PM) |
@@ -539,6 +579,25 @@ Brouce (3), base 398 Force + parchemins 100.
 Remarque : la Baguette de Torkélonia exige `CA>299&CS>299` ; le guide affiche 300 Agi (notre calcul : 250) ⇒ la condition
 impose une source d'Agilité supplémentaire (exo/parchemin/version d'objet) : bon exemple de contrôle de conditions.
 
+### 12.3 Second vecteur de validation (stuff Eau Gamosaurus, 12/2024 — ajouté lors de la vérification)
+
+Objets (ids) : Coiffe de Danathor 13120, L'Écu de Danathor 30690, Ceinture de Danathor 13122, Cape/Amulette/Bottes du
+Sinistrofu 14085/14086/14087, Dagoulinantes 18017, Kanigloups 11950 (familier, valeurs max), Anneau Volkorne 19985,
+Anneau Rtograf 24035 ; Dofus Abyssal, Sylvestre 29136, Vulbis 6980, des Glaces, Turquoise, Ocre. Panoplies Danathor (3)
+et Sinistrofu (3) ; Fosse et Volkorne à 1 objet (aucun bonus). Base 398 Chance + parchemins 100 partout.
+Source : https://www.gamosaurus.com/jeux/dofus/dofus-unity-stuff-eau-niveau-200.
+
+| Stat | Calcul (règles §3/§5, jets max) | Guide |
+|---|---|---|
+| Chance | **1 458** (398 + 100 + 960) | 1 458 ✔ |
+| % CC | **51** | 51 ✔ |
+| PO | **6** | 6 ✔ |
+| PV | 4 100 (1 050 + 100 parchemin + 2 950) | 4 103 (≈) |
+| PA / PM | 11 / 5 | 12 / 6 → exo PA + exo PM (le guide les place sur les deux anneaux) |
+
+Ce second stuff confirme les règles de cumul (panoplies non cumulatives, palier = nombre d'objets) et la logique
+« 11/5 + 2 exos = 12/6 » des stuffs THL.
+
 ---
 
 ## 13. Comment DofusDB (et DofusBook) calculent les totaux — algorithme recommandé pour `src/stats`
@@ -548,6 +607,7 @@ DofusDB (code récupéré, cf. §1) :
 ```text
 items = [amulet, helmet, cape, ring1, ring2, shield, boots, belt, dofus×6, weapon, pet] (non nuls)
 valeurObjet(item, carac) = Σ effects[e].to || effects[e].from  pour e.characteristic == carac   // jet max signé
+                           // (pour une ligne négative « -4 à -5 », to = -5 : DofusDB prend le pire malus)
                            (ou valeur forgemagée saisie par l'utilisateur, + exos par objet)
 setCount[setId] = nb d'items avec itemSetId == setId
 bonusPano(carac) = Σ_sets  set.effects[min(n−1, len−1)] où characteristic == carac
@@ -565,12 +625,15 @@ ligne à ligne, exos/overs, parchemins, conditions signalées en rouge) — **IN
 
 **Améliorations à apporter dans DofusSimu par rapport à DofusDB** :
 1. Exos PA/PM/PO : ne compter qu'**un** exo de chaque type (DofusDB additionne sa liste d'exos).
-2. Une seule prysmaradite (MàJ 3.3) ; pas de transcendance + exo sur un même objet.
+2. Une seule prysmaradite (règle en vigueur, rappelée en 3.3) ; pas de transcendance + exo/over sur un même objet.
 3. Vérifier les conditions (§6.3) sur l'état final, valeurs brutes avant plafond.
 4. Familier : bonus × niveau/100 ; monture : niveau 200 supposé (ou paramètre).
 5. Conserver séparément les stats « plafonnées » et « brutes » (utile pour `CP<12`, et pour savoir qu'un exo est gaspillé).
 6. Passifs (effet 1175) : transmis au moteur de combat, pas sommés dans les stats.
-7. Paramètres INCERTAIN exposés : `rangeCap = 6`, `summonCap = 6`, `resistCapPlayer = 50`, `mountLevel = 200`.
+7. Paramètres INCERTAIN exposés : `rangeCap = 6`, `summonCap = 6`, `resistCapPlayer = 50`, `mountLevel = 200`,
+   `petLevel = 100` (bonus supposé linéaire), `negativeRoll = "worst"`.
+8. **Ne pas** implémenter de règle « arme à deux mains ⇒ pas de bouclier » (supprimée en 2.41) ; exclure de l'optimiseur
+   les pierres d'âme / filets (types 83, 99) et les compagnons (type 169).
 
 ---
 
@@ -579,7 +642,74 @@ ligne à ligne, exos/overs, parchemins, conditions signalées en rouge) — **IN
 - Plafond de PO (6 vs 9) et d'invocations (6 ?) dans Dofus 3.
 - Re-vérification serveur des conditions après changement d'équipement (déséquipement automatique ? ordre d'équipement ?).
 - Codes de condition `OS` et `Pn` (inconnus du client D2).
-- Loi de progression des stats de monture entre les niveaux 1 et 200 (3.5) ; arrondis des bonus de familier (niveau %).
+- Loi de progression des stats de monture entre les niveaux 1 et 200 (3.5) ; loi (linéaire ?) et arrondis des bonus de
+  familier selon son niveau 0-100.
+- Plafond « brut » ou « plafonné » utilisé par le serveur pour `CP`/`CM` (la valeur `objectsAndMountBonus` envoyée au
+  client est-elle déjà plafonnée à 12/6 ?).
 - Poids FM de Renvoi (5 vs 10) et de Ré Per Mé/Di (10 vs 15) ; taux exact d'exo PA/PM/PO ; règle de niveau des runes de transcendance.
 - Coût réel (kamas) des exos et transcendances par serveur (seulement des paliers relatifs ici).
 - Règles de cumul des consommables (bonbons/bénédictions) avec les plafonds.
+
+---
+
+## 15. Vérification (revue adverse du 2026-10-04)
+
+Revue indépendante des affirmations principales contre les sources primaires (API DofusDB live, code JS DofusDB en cache
+`.cache/equipment/ddbjs/`, client D2 décompilé `.cache/equipment/d2/`, code Haxe Dofus 3 `.cache/domath/haxe/`, pages
+guides/devblogs). Réponses live mises en cache dans `.cache/verify-equipment/`.
+
+**Vérifié, conforme :**
+- Totaux API : 872 effets, 123 caractéristiques, 21 776 objets, 931 panoplies, 266 montures ; comptes par type (1, 9, 10,
+  11, 16, 17, 82, 18, 121, 331-333, 23, 151, 217) et niveau 190-200 du tableau §2.2 identiques à l'API.
+- `characteristics-map.json` : 247/248 effets recoupés avec `/effects` live (le 205 n'existe pas dans l'API, comme noté) :
+  `characteristic`, `effectPowerRate`, `oppositeId`, gabarit `fr` identiques ; le `sign` des 108 entrées `stat` correspond à
+  `characteristicOperator` (+/−) sauf 122 (Échecs critiques, absent des objets, note ajoutée) et 183/184 (opérateur `/`,
+réductions magique/physique, absentes des objets). Couverture : les 150 ids
+  d'effets présents sur les 3 878 objets et les 931 panoplies sont tous dans la carte. `onItems`/`onSets` recalculés à
+  l'identique (ce sont des nombres de lignes/paliers, précisé en §3).
+- 15 objets tirés au hasard dans `data/dofusdb/equipment.json` identiques à l'API live (effets, niveau, type, panoplie,
+  conditions) ; Coiffe du Comte Harebourg 14076 et panoplie 270 (paliers non cumulatifs) conformes.
+- Formules du stuff creator DofusDB (modules `b9bf`, `56dd`, `1a46`, `ece7`, fonctions `bn`, `Sn`, `wn`, `In`, `vn`) relues :
+  PA/PM/PO/Invo/PV/Pods/Ini/Prospection/Tacle/Fuite/Esquive/Retrait/rés. % 50, palier de panoplie `min(n−1, len−1)`,
+  plafonds 2897 (`diceNum` = carac., `diceSide` = max ; vérifié sur la panoplie 507), anneaux de panoplie, Dofus sans doublon.
+- Coûts de caractéristiques des 19 classes (`/breeds` live) : identiques, Vitalité 1:1, Sagesse 3:1 ; 398 / 331 / 995 OK.
+- `Pk` (D2 `BonusSetItemCriterion`) = Σ max(0, n−1) : tracé du code confirmé ; 87 trophées `Pk<3` ; opérateurs stricts
+  (`ItemCriterionOperator.compare`) ; `getTotalCharac` = base + additionnel + alignement + contexte + objets/monture.
+- Plafond de résistance 50/100 (`HaxeFighter.cs` l. 13-14, 1235) et D2 (`DamageUtil.as` l. 2360).
+- Dofus (21 lignes) : ids, niveaux, stats et sorts passifs conformes à l'API ; descriptions des passifs relues.
+  Tableau §8.3 : 50 couples objet ↔ sort passif conformes ; lignes de stats des 25 prysmaradites conformes.
+- Montures (types 331-333, niv. 60, 400 Vi / +1 PM / +1 PA), montiliers et familiers cités : conformes.
+- `forgemagie.json` : 103 runes (+ Signature + chasse = 105) et 81 runes de transcendance comparées à l'API live (id, nom,
+  niveau, effet, valeur, poids = |effectPowerRate| × valeur, plafond `floor(101/poids)`) : **aucun écart**.
+  Ta Do Per So = 20613, niv. 200, effets 2812 (+1) / 2825 / 2826 / 2827.
+- Règles d'exo : devblog 2.3.4 (12 PA / 6 PM / 9 PO, « pas plus de 1 PA, 1 PM, 1 PO » en exo) et Gamosaurus (1 %, 505 Vi).
+- Vecteur Terre §12.2 recalculé indépendamment : Force 1 258, Sagesse 415, CC 82, PA 11, PM 5, PO 6 (avec 29136) : identique.
+  **Ajout** d'un second vecteur (stuff Eau, §12.3) : Chance 1 458, CC 51, PO 6 exacts.
+
+**Erreurs trouvées et corrigées :**
+1. **Arme à deux mains ⇒ pas de bouclier : FAUX** depuis la 2.41 (2017, devblog JOL 52365) ; un seul objet du jeu
+   (Balai rudimentaire) a `twoHanded = true`. Corrigé dans §0, §2.1, §2.3, §13.
+2. **Prysmaradite unique « depuis la MàJ 3.3 »** : la 3.3 (22/09/2025, pas le 23) ne fait qu'un « Rappel » d'une règle
+   existante. Corrigé (§0, §1, §2.3, §8.1).
+3. **Fusion des prysmaradites « contredite par les données » : FAUX** — les 5 fusionnées (Prygen, Telprys→Caraprys,
+   Aprykou→Prynyang, Ratrapry, Surpryz) n'ont bien qu'une entrée ; Prytek/Pryssion/Prycipithon n'étaient pas concernées.
+4. **« Over marginal au niveau 200 »** : contredit par les propres statistiques du chercheur (médianes Vi 350, stat 60,
+   Do élém. 12). Reformulé (§0, §11.2, `forgemagie.json → rules.overmax.level200Reality`).
+5. **`typicalLevel200Lines.shareWithOvermaxRoom` faux** : comptait PA/PM/PO comme over-possibles (0,98 / 0,99 / 0,88 au lieu
+   de 0) et surestimait 15 autres lignes (ex. Do Pou 0,54 → 0,21, Soins 0,43 → 0,14). Recalculé avec
+   `(jet max + incrément) × poids ≤ 101`, définition ajoutée dans `_meta`.
+6. Exo **Invocation** : taux `null` → ≈1 % sans puits (Gamosaurus), `forgemagie.json` et §11.2.
+7. Érosion 50 % attribuée au « code Haxe » : seul le client D2 est vérifié (`DamageUtil.as` l. 2070) ; corrigé §7.
+8. Familiers « niv. 50 ⇒ 50 % » : la source (devblog 2.48) dit seulement « varie de 0 à 100 et chaque niveau augmente le
+   bonus » → hypothèse linéaire marquée INCERTAIN (§9, §13, §14).
+9. Mineurs : « min 12 » → `min(…, 12)` (§3.2) ; `powerRate` négatif = −½ sauf 145/159 (§11.1) ; « Dofus du Cauchemar » ;
+   Prycipithon = +1 PA **−1 PM** (§7) ; 3 878 objets = 3 826 équipements + 52 compagnons, `PZ` 54 = 51 compagnons + 3 ;
+   `Pm` absent de la factory D2 (INCERTAIN) ; plafond de rés. appliqué à élém. + tous éléments ; lignes négatives prises au
+   pire malus par DofusDB (option `negativeRoll`) ; gravures : `diceSide` = élément cible ; effet 722 (sort temporaire)
+   documenté dans la carte ; transcendance : citation next-stage (ni over ni exo, densité ≤ 100) ; consommables
+   d'initiative 3.3 (cumul 4).
+
+**Non vérifié / reste INCERTAIN :** plafond PO 6 vs 9 et invocations 6 (aucune source primaire Dofus 3 trouvée ; le
+devblog 2011 dit 9 PO) ; poids FM Vitalité 0,2 (données, Gamosaurus 505) vs 0,25 (dafous.app 404) ; Ré Per Mé/Di 10 vs 15 ;
+`Pods` terme `5·(niveau−1)` ; comportement serveur des conditions `CP<12` (brut vs plafonné) ; paliers de coût `costTier`
+(subjectifs) ; lignes de méta Feu/Air/Tank (§12.1) non recalculées.

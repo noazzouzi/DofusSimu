@@ -1,6 +1,7 @@
 /**
  * Déplacements : cellules accessibles (BFS 4-voisins), tacle/fuite, exécution d'un chemin.
  */
+import { apMpAfterTackle, tackleRatio } from '../damage/tackle'
 import { distance, neighbors } from '../map/geometry'
 import type { Engine } from './engine'
 import type { Fighter, FightState } from './types'
@@ -8,6 +9,7 @@ import type { Fighter, FightState } from './types'
 /**
  * Proportion de PA/PM conservés en quittant le contact d'ennemis (formule Dofus 2.x / 3) :
  * pour chaque tacleur, ratio = (fuite + 2) / (2 × (tacle + 2)) ; ratios multipliés, plafonnés à 1.
+ * Formule : `tackleRatio` (src/damage/tackle.ts).
  */
 export function escapeRatio(fight: FightState, mover: Fighter, engine: Engine): number {
   if (engine.stateFlag(mover, 'cantBeTackled')) return 1
@@ -16,9 +18,7 @@ export function escapeRatio(fight: FightState, mover: Fighter, engine: Engine): 
     const e = engine.fighterAt(fight, n)
     if (!e || e.team === mover.team || !e.alive) continue
     if (e.tags.cantTackle || engine.stateFlag(e, 'cantTackle')) continue
-    const evade = Math.max(0, mover.stats.tackleEvade)
-    const block = Math.max(0, e.stats.tackleBlock)
-    ratio *= Math.min(1, (evade + 2) / (2 * (block + 2)))
+    ratio *= tackleRatio(mover.stats.tackleEvade, e.stats.tackleBlock)
   }
   return Math.max(0, Math.min(1, ratio))
 }
@@ -88,8 +88,9 @@ export function move(fight: FightState, f: Fighter, path: number[], engine: Engi
     if (distance(f.cell, next) !== 1 || !engine.isCellFree(fight, next)) break
     const ratio = escapeRatio(fight, f, engine)
     if (ratio < 1) {
-      const apLost = Math.round(f.ap * (1 - ratio))
-      const mpLost = Math.round(f.mp * (1 - ratio))
+      // PA/PM restants = arrondi .5 vers le bas de points × ratio (DoMath, formulas.md §14).
+      const apLost = f.ap - apMpAfterTackle(f.ap, ratio)
+      const mpLost = f.mp - apMpAfterTackle(f.mp, ratio)
       if (apLost || mpLost) {
         flush()
         f.ap -= apLost

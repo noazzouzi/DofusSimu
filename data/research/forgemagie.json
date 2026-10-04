@@ -13,7 +13,9 @@
    "https://dofusbuilds.com/guides/exos-and-forgemagie (08/2026)",
    "https://www.gamosaurus.com/jeux/dofus/dofus-unity-stuff-eau-niveau-200 (Ta Do Per So sur le stuff)"
   ],
-  "conventions": "weightPerPoint = poids d'un point de caractéristique (|effectPowerRate| des données du jeu). runeWeight = valeur de la rune × weightPerPoint. overmaxLineCapPoints = floor(101 / weightPerPoint) : valeur maximale d'une ligne (over ou exo) sauf si le jet max naturel de l'objet est déjà plus élevé. INCERTAIN = non confirmé par une source primaire."
+  "conventions": "weightPerPoint = poids d'un point de caractéristique (|effectPowerRate| des données du jeu). runeWeight = valeur de la rune × weightPerPoint. overmaxLineCapPoints = floor(101 / weightPerPoint) : valeur maximale d'une ligne (over ou exo) sauf si le jet max naturel de l'objet est déjà plus élevé. INCERTAIN = non confirmé par une source primaire.",
+  "typicalLevel200LinesDefinition": "Statistiques sur les 514 objets non-armes (types 1, 9, 10, 11, 16, 17, 82) de niveau 190-200 (data/dofusdb/equipment.json) : itemsWithLine = nb de lignes, min/median/maxOfMax = jet max (diceSide, ou diceNum si fixe), medianLineWeight = medianMax × weightPerPoint, shareWithOvermaxRoom = part des lignes où (jet max + plus petit incrément de rune) × weightPerPoint ≤ 101 (i.e. au moins une rune d'over passe sous le plafond de 101). Corrigé lors de la vérification du 2026-10-04 : l'ancienne valeur testait seulement jet max × poids < 101 et comptait à tort PA/PM/PO (1 PA = 100 < 101 alors que 2 PA = 200 > 101) comme over-possibles.",
+  "verification": "Vérifié le 2026-10-04 (vérification adverse) : 103 runes + 105 types 78 et 81 runes de transcendance comparés à l'API live (ids, noms, niveaux, valeurs, poids = |effectPowerRate|) sans écart ; corrections : shareWithOvermaxRoom, level200Reality, taux d'exo Invocation, préconditions de transcendance, élément cible des gravures. Voir docs/research/equipment.md §15."
  },
  "rules": {
   "outcomes": {
@@ -24,7 +26,7 @@
   },
   "puits": {
    "definition": "Reliquat de poids propre à l'objet : Reliquat = Poids perdu − Poids utilisé. Il absorbe les pertes futures et permet de passer des overs/exos (hors PA/PM/PO) avec moins de pertes.",
-   "lostWhen": "Disparaît si l'objet est échangé ou mis en vente (Gamosaurus).",
+   "lostWhen": "Disparaît si l'objet est échangé, mis en vente, placé dans l'inventaire de monture ou autre (Gamosaurus).",
    "affectsExoPaPmPo": false,
    "source": "https://www.gamosaurus.com/?p=118767 ; https://dafous.app/guides/poids-runes-fm.html"
   },
@@ -40,25 +42,26 @@
     "elementalDamage": 20,
     "resPercent": 16
    },
-   "level200Reality": "Au niveau 200, la plupart des lignes principales sont déjà à ~100 de poids (Vitalité 500, stat 100, Do élém. 20) : l'over réaliste est marginal (+1 stat, +5 Vita). Le gain de FM vient surtout du jet parfait, des exos et des transcendances.",
-   "source": "https://www.gamosaurus.com/?p=118767"
+   "level200Reality": "Seuls les meilleurs objets 200 ont déjà leurs lignes principales à ~100 de poids (Vitalité 500, stat 100, Do élém. 20). Sur les 514 objets non-armes niv. 190-200, la ligne médiane est Vitalité 350 (poids 70), stat élémentaire 60, Do élém. 12, Puissance 40 : la marge d'over théorique reste importante (jusqu'à 505 Vi / 101 stat / 20 Do élém.), mais elle coûte du puits et des runes. PA/PM/PO ne peuvent jamais être over (une seule unité = poids 100/90/51, la suivante dépasse 101). Par défaut l'optimiseur suppose jet parfait + exos + transcendances ; l'over est une option (INCERTAIN sur le coût réel).",
+   "source": "https://www.gamosaurus.com/?p=118767",
+   "sourceQuote": "Gamosaurus : « Une statistique ne peut pas dépasser le poids total de 101, sauf si le jet théorique de l'item le permet » ; Rune Vi = 5 Vitalité pour un poids de 1 ⇒ 101 × 5 = 505."
   },
   "exo": {
    "definition": "Ligne absente de l'objet de base ajoutée par forgemagie.",
    "paPmPo": {
     "criticalSuccessRate": 0.01,
-    "rateNote": "≈1 % par tentative de rune Ga Pa / Ga Pme / Po, indépendamment du puits et du niveau de métier (Gamosaurus, dafous.app) — INCERTAIN exact.",
+    "rateNote": "≈1 % de succès critique par tentative de rune Ga Pa / Ga Pme / Po (et Invo), sans besoin de puits — Gamosaurus : « Certains Exos ne nécessitent pas de puits (ou reliquat) : les exos PA, PM, PO ou Invo » / « le succès critique n'a que 1% de chance de réussite » ; dafous.app 02/2026 : « fixe à 1 % ». Dépendance au niveau de métier : INCERTAIN.",
     "countedOncePerCharacter": true,
     "note": "Un personnage ne bénéficie que d'un seul exo PA, un seul exo PM et un seul exo PO (devblog 2.3.4, Gamosaurus, dofusbuilds 08/2026). Les plafonds 12 PA / 6 PM / PO s'appliquent ensuite."
    },
-   "summons": "Exo Invocation possible, non limité par personnage (Gamosaurus) — plafond d'invocations DofusDB : 6 (INCERTAIN).",
+   "summons": "Exo Invocation : même mécanique que PA/PM/PO (≈1 % de succès critique, sans puits), non limité par personnage (Gamosaurus : « limitées à 1 par personnages (sauf pour les Invo) »). Plafond d'invocations DofusDB : 6 (INCERTAIN).",
    "otherStats": "Toute autre caractéristique forgeable peut être exo via le puits (Do, Pui, Res %, Do Crit, Do Per So…), ligne ≤ 101 de poids. Coût et faisabilité dépendent du puits (INCERTAIN).",
    "notCumulableWithTranscendance": "Une rune de transcendance exige un objet sans over ni exo, et verrouille ensuite l'objet."
   },
   "transcendance": {
    "successRate": 1.0,
    "locksItem": "Ajoute l'effet 2825 « Empêche les futures forgemagies » (et 2827 « 100 % de chances de réussite »).",
-   "preconditions": "Objet sans over ni exo (au mieux au jet parfait). Exception connue : un exo « Arme de chasse » peut coexister (Gamosaurus).",
+   "preconditions": "Objet sans over ni exo — next-stage 03/2026 : « Votre item ne doit posséder ni over ni exo. Au maximum, il peut être à jet parfait » ; si la rune s'applique à une ligne existante et crée un over, « la règle de densité inférieure ou égale à 100 s'applique ». Exception rapportée : un exo « Arme de chasse » peut coexister (Gamosaurus, non revérifié).",
    "levelRule": "Niveau de la rune 104→200 selon le palier (Ta/Pata/Rata) ; on suppose niveau de l'objet ≥ niveau de la rune — INCERTAIN.",
    "obtention": "Récompenses des Songes Infinis (aléatoire, plusieurs dizaines de millions de kamas selon serveurs, next-stage 03/2026).",
    "typicalUse": "Ta Do Per So (+1 % dommages aux sorts) sur ~6 objets du stuff ⇒ +6 à +7 % (Gamosaurus, stuffs 200).",
@@ -2318,56 +2321,104 @@
    "name": "Gravure de Tsunami",
    "level": 80,
    "keepsBaseDamagePercent": 85,
-   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers l'élément cible (effet 700 : diceSide = code élément 58 Feu / 59 Air / 60 Terre / 61 Eau, value = % des dégâts de base conservés). Texte du jeu : « Seul le vol de vie est modifié par cette gravure ».",
+   "effect700": {
+    "diceNum": 57,
+    "diceSide": 61,
+    "value": 85
+   },
+   "targetElement": "water"
   },
   {
    "itemId": 26347,
    "name": "Gravure de Séisme",
    "level": 80,
    "keepsBaseDamagePercent": 85,
-   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers l'élément cible (effet 700 : diceSide = code élément 58 Feu / 59 Air / 60 Terre / 61 Eau, value = % des dégâts de base conservés). Texte du jeu : « Seul le vol de vie est modifié par cette gravure ».",
+   "effect700": {
+    "diceNum": 57,
+    "diceSide": 60,
+    "value": 85
+   },
+   "targetElement": "earth"
   },
   {
    "itemId": 26348,
    "name": "Gravure d'Incendie",
    "level": 80,
    "keepsBaseDamagePercent": 85,
-   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers l'élément cible (effet 700 : diceSide = code élément 58 Feu / 59 Air / 60 Terre / 61 Eau, value = % des dégâts de base conservés). Texte du jeu : « Seul le vol de vie est modifié par cette gravure ».",
+   "effect700": {
+    "diceNum": 57,
+    "diceSide": 58,
+    "value": 85
+   },
+   "targetElement": "fire"
   },
   {
    "itemId": 26349,
    "name": "Gravure d'Ouragan",
    "level": 80,
    "keepsBaseDamagePercent": 85,
-   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers l'élément cible (effet 700 : diceSide = code élément 58 Feu / 59 Air / 60 Terre / 61 Eau, value = % des dégâts de base conservés). Texte du jeu : « Seul le vol de vie est modifié par cette gravure ».",
+   "effect700": {
+    "diceNum": 57,
+    "diceSide": 59,
+    "value": 85
+   },
+   "targetElement": "air"
   },
   {
    "itemId": 26353,
    "name": "Gravure d'Étincelle",
    "level": 20,
    "keepsBaseDamagePercent": 50,
-   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers l'élément cible (effet 700 : diceSide = code élément 58 Feu / 59 Air / 60 Terre / 61 Eau, value = % des dégâts de base conservés). Texte du jeu : « Seul le vol de vie est modifié par cette gravure ».",
+   "effect700": {
+    "diceNum": 57,
+    "diceSide": 58,
+    "value": 50
+   },
+   "targetElement": "fire"
   },
   {
    "itemId": 26354,
    "name": "Gravure de Courant d'Air",
    "level": 20,
    "keepsBaseDamagePercent": 50,
-   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers l'élément cible (effet 700 : diceSide = code élément 58 Feu / 59 Air / 60 Terre / 61 Eau, value = % des dégâts de base conservés). Texte du jeu : « Seul le vol de vie est modifié par cette gravure ».",
+   "effect700": {
+    "diceNum": 57,
+    "diceSide": 59,
+    "value": 50
+   },
+   "targetElement": "air"
   },
   {
    "itemId": 26355,
    "name": "Gravure de Crachin",
    "level": 20,
    "keepsBaseDamagePercent": 50,
-   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers l'élément cible (effet 700 : diceSide = code élément 58 Feu / 59 Air / 60 Terre / 61 Eau, value = % des dégâts de base conservés). Texte du jeu : « Seul le vol de vie est modifié par cette gravure ».",
+   "effect700": {
+    "diceNum": 57,
+    "diceSide": 61,
+    "value": 50
+   },
+   "targetElement": "water"
   },
   {
    "itemId": 26358,
    "name": "Gravure de Secousse",
    "level": 20,
    "keepsBaseDamagePercent": 50,
-   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers l'élément cible (effet 700 : diceSide = code élément 58 Feu / 59 Air / 60 Terre / 61 Eau, value = % des dégâts de base conservés). Texte du jeu : « Seul le vol de vie est modifié par cette gravure ».",
+   "effect700": {
+    "diceNum": 57,
+    "diceSide": 60,
+    "value": 50
+   },
+   "targetElement": "earth"
   }
  ],
  "orbs": [
@@ -2483,11 +2534,11 @@
    "effectId": 182,
    "value": 1,
    "lineWeight": 30,
-   "successRatePerTry": null,
+   "successRatePerTry": 0.01,
    "countedOncePerCharacter": false,
    "rarity": "peu commun",
    "costTier": 3,
-   "note": "Utile pour Osamodas/Sadida/invocateurs."
+   "note": "Utile pour Osamodas/Sadida/invocateurs. ≈1 % de succès critique sans puits (Gamosaurus), non limité par personnage."
   },
   {
    "id": "exoDamage",
@@ -2590,7 +2641,8 @@
    "rollPolicy": "max",
    "exos": [],
    "transcendance": 0,
-   "description": "Jets parfaits (diceSide), comme DofusDB/DofusBook par défaut."
+   "description": "Jets parfaits (diceSide), comme DofusDB/DofusBook par défaut. Lignes négatives (ex. -4 à -5 % rés.) : DofusDB prend le malus maximal (effects[].to = -5) ; option 'best' = malus minimal (diceNum). Défaut 'worst' pour reproduire DofusDB.",
+   "negativeRollPolicy": "worst"
   },
   "thlStandard": {
    "rollPolicy": "max",
@@ -2655,7 +2707,7 @@
    "medianMax": 4,
    "maxOfMax": 12,
    "medianLineWeight": 40,
-   "shareWithOvermaxRoom": 1.0
+   "shareWithOvermaxRoom": 0.98
   },
   "111": {
    "stat": "actionPoints",
@@ -2664,7 +2716,7 @@
    "medianMax": 1.0,
    "maxOfMax": 2,
    "medianLineWeight": 100.0,
-   "shareWithOvermaxRoom": 0.98
+   "shareWithOvermaxRoom": 0.0
   },
   "424": {
    "stat": "fireDamage",
@@ -2673,7 +2725,7 @@
    "medianMax": 12.0,
    "maxOfMax": 20,
    "medianLineWeight": 60.0,
-   "shareWithOvermaxRoom": 1.0
+   "shareWithOvermaxRoom": 0.93
   },
   "426": {
    "stat": "waterDamage",
@@ -2682,7 +2734,7 @@
    "medianMax": 12.0,
    "maxOfMax": 20,
    "medianLineWeight": 60.0,
-   "shareWithOvermaxRoom": 1.0
+   "shareWithOvermaxRoom": 0.9
   },
   "210": {
    "stat": "resPercentEarth",
@@ -2727,7 +2779,7 @@
    "medianMax": 20.0,
    "maxOfMax": 80,
    "medianLineWeight": 40.0,
-   "shareWithOvermaxRoom": 0.97
+   "shareWithOvermaxRoom": 0.95
   },
   "117": {
    "stat": "range",
@@ -2736,7 +2788,7 @@
    "medianMax": 1,
    "maxOfMax": 2,
    "medianLineWeight": 51,
-   "shareWithOvermaxRoom": 0.88
+   "shareWithOvermaxRoom": 0.0
   },
   "161": {
    "stat": "mpParry",
@@ -2754,7 +2806,7 @@
    "medianMax": 1,
    "maxOfMax": 2,
    "medianLineWeight": 90,
-   "shareWithOvermaxRoom": 0.99
+   "shareWithOvermaxRoom": 0.0
   },
   "118": {
    "stat": "strength",
@@ -2781,7 +2833,7 @@
    "medianMax": 12,
    "maxOfMax": 25,
    "medianLineWeight": 60,
-   "shareWithOvermaxRoom": 0.99
+   "shareWithOvermaxRoom": 0.9
   },
   "428": {
    "stat": "airDamage",
@@ -2790,7 +2842,7 @@
    "medianMax": 12,
    "maxOfMax": 25,
    "medianLineWeight": 60,
-   "shareWithOvermaxRoom": 0.99
+   "shareWithOvermaxRoom": 0.9
   },
   "213": {
    "stat": "resPercentFire",
@@ -2835,7 +2887,7 @@
    "medianMax": 20,
    "maxOfMax": 50,
    "medianLineWeight": 40,
-   "shareWithOvermaxRoom": 1.0
+   "shareWithOvermaxRoom": 0.99
   },
   "160": {
    "stat": "apParry",
@@ -2853,7 +2905,7 @@
    "medianMax": 12,
    "maxOfMax": 25,
    "medianLineWeight": 60,
-   "shareWithOvermaxRoom": 0.99
+   "shareWithOvermaxRoom": 0.89
   },
   "418": {
    "stat": "criticalDamage",
@@ -2862,7 +2914,7 @@
    "medianMax": 13.5,
    "maxOfMax": 30,
    "medianLineWeight": 67.5,
-   "shareWithOvermaxRoom": 0.87
+   "shareWithOvermaxRoom": 0.78
   },
   "414": {
    "stat": "pushDamage",
@@ -2871,7 +2923,7 @@
    "medianMax": 20,
    "maxOfMax": 60,
    "medianLineWeight": 100,
-   "shareWithOvermaxRoom": 0.54
+   "shareWithOvermaxRoom": 0.21
   },
   "182": {
    "stat": "summons",
@@ -2898,7 +2950,7 @@
    "medianMax": 40.0,
    "maxOfMax": 120,
    "medianLineWeight": 80.0,
-   "shareWithOvermaxRoom": 0.67
+   "shareWithOvermaxRoom": 0.51
   },
   "178": {
    "stat": "heals",
@@ -2907,7 +2959,7 @@
    "medianMax": 12,
    "maxOfMax": 30,
    "medianLineWeight": 120,
-   "shareWithOvermaxRoom": 0.43
+   "shareWithOvermaxRoom": 0.14
   },
   "174": {
    "stat": "initiative",
@@ -2952,7 +3004,7 @@
    "medianMax": 10,
    "maxOfMax": 15,
    "medianLineWeight": 200,
-   "shareWithOvermaxRoom": 0.13
+   "shareWithOvermaxRoom": 0.0
   },
   "2807": {
    "stat": "rangedResistancePercent",
@@ -2961,7 +3013,7 @@
    "medianMax": 5.0,
    "maxOfMax": 10,
    "medianLineWeight": 50.0,
-   "shareWithOvermaxRoom": 1.0
+   "shareWithOvermaxRoom": 0.79
   },
   "2803": {
    "stat": "meleeResistancePercent",
@@ -2970,7 +3022,7 @@
    "medianMax": 7.0,
    "maxOfMax": 10,
    "medianLineWeight": 70.0,
-   "shareWithOvermaxRoom": 1.0
+   "shareWithOvermaxRoom": 0.8
   },
   "242": {
    "stat": "resFixedAir",

@@ -1,0 +1,3619 @@
+{
+ "breedId": 17,
+ "name": "Huppermage",
+ "slug": "huppermage",
+ "dataSource": "https://api.dofusdb.fr (breeds/17, spell-variants?breedId=17, spells, spell-levels, spell-states, monsters, effects) — fichiers du jeu Dofus 3 v3.6.12.16, enregistrements mis à jour le 23/06/2026 et 07/07/2026 ; extraction 04/10/2026",
+ "gameVersion": "3.6.12.16",
+ "officialRoleRatings": {
+  "source": "https://api.dofusdb.fr/breeds/17 (breedRoles, valeurs /10) + https://api.dofusdb.fr/breed-roles",
+  "complexity": 4,
+  "ratings": {
+   "Dégâts": 7,
+   "Placement": 6,
+   "Amélioration": 6,
+   "Soins": 4,
+   "Protection": 4,
+   "Tank": 4,
+   "Entrave": 4,
+   "Invocation": 2
+  },
+  "descriptions": {
+   "Dégâts": "Occasionne d'importants dommages élémentaires et augmente les dommages subis par ses ennemis.",
+   "Placement": "Déplace ses ennemis et se déplace en exploitant les éléments.",
+   "Amélioration": "Augmente ses caractéristiques et celles de ses alliés en utilisant les éléments."
+  }
+ },
+ "roles": [
+  {
+   "role": "dps-distance-multi",
+   "element": "Feu/Air/Eau/Terre (quadra) ou bi-élément",
+   "priority": 1,
+   "description": "Dommages mono-cible à 1–8 PO (Lance-flamme, Éther, Onde Sismique, Stalagmite, variantes double frappe), zones à 4 PA (Trait Ardent, Orage, Glacier, Rafale), vols de vie de runes, finishers Surcharge Runique / Torrent Arcanique. Les combinaisons donnent +50 Puissance chacune (jusqu'à +300)."
+  },
+  {
+   "role": "entrave",
+   "element": "Feu/Air (PA), Terre/Eau (PM)",
+   "priority": 2,
+   "description": "Retrait PA : Lance-flamme −2, Ouragan −1, Carbonisation −2 ; retrait PM : Onde Sismique −2, Stalactite −2, Enlisement −3 ; retrait PO : Éther −2, Brèche −2, Assèchement vol 3 ; −60 Fuite (Ébullition), −20 Fuite/Tacle (Propagation)."
+  },
+  {
+   "role": "debuff-amplification",
+   "element": "-",
+   "priority": 2,
+   "description": "Éruption (dommages subis ×115 % 1 tour), Volcan ×104 %, Cristallisation −15 % dommages finaux, Stalagmite −4 %, Prisme Runique (anti-soin ×70 %, érosion 15 %), Supernova (durée −1)."
+  },
+  {
+   "role": "buff-allies",
+   "element": "-",
+   "priority": 3,
+   "description": "Contribution (+1 PA, +1 PM, +150 Puissance, bouclier 200 % du niveau selon les états ennemis), boosts de runes partagés (+50 caractéristique à l'allié sur la rune), Sublimation (+50 caractéristique aux attaquants), Bouclier Élémentaire (+25 % rés.)."
+  },
+  {
+   "role": "placement",
+   "element": "-",
+   "priority": 3,
+   "description": "Météore (pousse 2), Avalanche (attire 4), Lance Solaire (échange), Lame Astrale (symétrie), Déflagration (retour position), Polarité/Convection (selon l'état), Glacier/Rafale/Orage (zones), Manifestation (runes de placement)."
+  },
+  {
+   "role": "soin-secondaire",
+   "element": "-",
+   "priority": 4,
+   "description": "Runes occupées par des alliés (6 % PV max par rune), Surcharge Runique (4 % par rune sur un allié), vols de vie (Glacier, Rafale, Volcan, Brèche, runes)."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "États élémentaires (290 Feu, 291 Eau, 292 Terre, 293 Air)",
+   "description": "Posés sur les ennemis touchés par les sorts élémentaires (durée infinie). Un second élément différent déclenche une Combinaison Élémentaire qui consomme les 4 états. Mémoire de la « Dernière rune » sur le lanceur (états 701–704, passif 3502).",
+   "implementationNotes": "Stocker sur chaque combattant un ensemble d'états ; sous-sorts 32391–32394 = « si ¬X : poser X ; lancer 13671 ». 13671 évalue les 6 paires dans l'ordre Air+Feu, Terre+Eau, Terre+Air, Eau+Feu, Eau+Air, Terre+Feu ; chaque combinaison commence par retirer les 4 états, donc une seule combinaison par application. Les sorts à double frappe appellent deux fois « État X »."
+  },
+  {
+   "name": "Combinaisons Élémentaires (13702–13707)",
+   "description": "Éruption (Terre+Feu, cible ×115 % dommages subis 1 t.), Enlisement (Terre+Eau, −3 PM), Carbonisation (Feu+Air, −2 PA), Ébullition (Eau+Feu, −60 Fuite), Cristallisation (Eau+Air, −15 % dommages finaux), Assèchement (Terre+Air, vol 3 PO). Toutes : +50 Puissance au lanceur 3 tours.",
+   "implementationNotes": "maxStack 1 par sous-sort : un même type de combinaison rafraîchit au lieu de cumuler ; 6 types distincts → +300 Puissance. Retraits PA/PM esquivables (formule d'esquive standard), non désenvoûtables. Déclenche aussi Torrent Arcanique (+2 base, max 6) si la variante est équipée et les bonus du Gardien."
+  },
+  {
+   "name": "Runes (marques 2022, 2 tours)",
+   "description": "Posées sous chaque ennemi touché par un sort élémentaire ; déclenchées uniquement par Runification (vol 15/soin 6 %/+50 carac.), Manifestation (idem + placement si case libre), Surcharge Runique (10 dégâts ou 4 % soin par rune sur la cible), Répulsion Runique (poussée +1 par rune), Prisme Runique (effets de zone cercle 2).",
+   "implementationNotes": "Modéliser les runes comme des marques {cellule, élément, propriétaire, tours restants}. Le déclenchement (2023) lance le sort de rune (13665/13688/13689/13690) par l'Huppermage sur la case ; ses effets sont filtrés par les états temporaires du lanceur (296+rang, 600, 601, 602, 6957). Hypothèses : une rune par case (remplacement), rune consommée au déclenchement (INCERTAIN)."
+  },
+  {
+   "name": "Boost de runes (« Rune (boost) » 6973)",
+   "description": "Chaque rune déclenchée par Runification/Manifestation donne +50 (rang 3) dans la caractéristique de son élément au lanceur et à l'allié qui l'occupe, pendant 3 tours, cumulable.",
+   "implementationNotes": "État 6973 posé sur `C` et l'allié présent (a, zone P) puis sous-sort 3241x lancé sur la case : buff de caractéristique sur les porteurs de 6973 (zone a). Cumul illimité dans les données (maxStack non bloquant) — INCERTAIN."
+  },
+  {
+   "name": "Cycle Élémentaire / Courant Quadramental",
+   "description": "Rotation de l'état d'un ennemi (Terre→Eau→Feu→Air ou inverse) ; état de la Dernière rune si aucun ; 1 PA remboursé au premier changement par cible et par tour.",
+   "implementationNotes": "Effet 120 (rendre PA) via sous-sort 16992/32661 conditionné à ¬1930/¬7017 sur la cible ; état retiré à la fin du tour de la cible (déclencheur TE)."
+  },
+  {
+   "name": "Gardien Élémentaire (invocation 5129)",
+   "description": "Invocation maîtrisable 9 PA/5 PM ; Rayon Quadramental (dégâts dans l'élément de l'état de la cible, rune posée au nom de l'Huppermage) ; gagne Puissance/bouclier et bonus permanents avec les combinaisons.",
+   "implementationNotes": "Bonus permanents conditionnés aux états « X inactive » (3746–3751) posés à l'invocation (sort initial 24972) et retirés à la 1re application ; état 4456 limite à un bonus de combinaison par tour. PV = 110 % de l'invocateur (INCERTAIN)."
+  },
+  {
+   "name": "Torrent Arcanique (passif + sort)",
+   "description": "Si la variante est équipée, chaque combinaison donne +2 dégâts de base au sort (max +12 par élément). Réinitialisé après lancer.",
+   "implementationNotes": "Sort initial 23960 → état 3503 ; dans chaque combinaison, si *E3503 : 17275 → 14359 (293 +2, paliers 2011–2016). Après Torrent : dispel 14359/17275."
+  },
+  {
+   "name": "Supernova",
+   "description": "Dommages du meilleur puis du pire élément, chaque frappe pose l'état correspondant → combinaison garantie ; rune du pire élément ; durée des effets −1.",
+   "implementationNotes": "Implémenter les déclencheurs CDx (« le porteur inflige des dommages de l'élément x ») ou, plus simplement, déterminer meilleur/pire élément au lancer (même résultat)."
+  }
+ ],
+ "spells": [
+  {
+   "id": 13668,
+   "pairIndex": 1,
+   "variantOf": 13712,
+   "isBaseSpell": true,
+   "name": "Onde Sismique",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42470,
+   "description": "Occasionne des dommages Terre et retire des PM.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "15–17 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "20–22 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "25–28 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "Dommages Terre 25–28 (CC 30–34) sur la cible (alliés ou ennemis)",
+    "Retire 2 PM (esquivable, 1 tour, non désenvoûtable)",
+    "Pose une rune Terre sous l'ennemi (2 tours) et lui applique l'état Terre (→ Enlisement avec Eau, Éruption avec Feu, Assèchement avec Air)"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Terre » (13686, niv. 1) → cible ennemie",
+    "25 à 28 dommages Terre (CC : 30 à 34) → cible (alliée ou ennemie)",
+    "Applique l'état « Terre » (292) → cible ennemie — si cible n'a PAS l'état « Terre » (292) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Terre » (32391, niv. 1) → cible ennemie",
+    "Retire 2 PM (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "dégâts-mono",
+    "retrait-PM",
+    "génération-états"
+   ],
+   "tactic": "Sort Terre de base polyvalent à longue portée (1–8, modifiable) : 3 lancers/tour (2/cible). Pilier de l'entrave PM : sur un ennemi en état Eau il génère Enlisement (−3 PM) puis retire encore 2 PM (−5 PM tentés au total).",
+   "engineNotes": "Ordre : rune → dommages → État Terre (combinaison) → retrait PM. Dommages aussi sur les alliés (masque a,A)."
+  },
+  {
+   "id": 13712,
+   "pairIndex": 1,
+   "variantOf": 13668,
+   "isBaseSpell": false,
+   "name": "Tison",
+   "obtainedAtLevel": 100,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 43851,
+   "description": "Occasionne des dommages Feu.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "10–12 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "13–15 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "2 frappes Feu 13–15 chacune (CC 16–18), 2 lancers/tour, 1 par cible",
+    "Pose une rune Feu sous l'ennemi",
+    "Applique deux fois l'état Feu : génère une combinaison si la cible avait un autre état, puis la cible ressort en état Feu"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune de Feu » (13665, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Feu » (13687, niv. 1) → cible ennemie",
+    "13 à 15 dommages Feu (CC : 16 à 18) → cible (alliée ou ennemie)",
+    "Applique l'état « Feu » (290) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Feu » (32392, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "génération-états"
+   ],
+   "tactic": "Variante Feu d'Onde Sismique (perd le retrait PM, gagne l'élément Feu et la double application d'état). Utile pour enchaîner deux combinaisons sur la même cible dans le tour (combinaison + état prêt pour la suivante).",
+   "engineNotes": "Deux effets 99 indépendants (chaque frappe roule ses dés, CC commun au lancer). Deux lancers de 32392 : le second ré-applique Feu après consommation."
+  },
+  {
+   "id": 13669,
+   "pairIndex": 2,
+   "variantOf": 13711,
+   "isBaseSpell": true,
+   "name": "Éther",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42466,
+   "description": "Occasionne des dommages Air et retire de la Portée.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "15–17 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "20–22 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "25–28 Air"
+    }
+   ],
+   "effectsSummary": [
+    "Dommages Air 25–28 (CC 30–34), 1–7 PO modifiable, ligne de vue",
+    "−2 PO à la cible (1 tour)",
+    "Rune Air + état Air (→ Carbonisation avec Feu, Cristallisation avec Eau, Assèchement avec Terre)"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune d'Air » (13689, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Air » (13685, niv. 1) → cible ennemie",
+    "25 à 28 dommages Air (CC : 30 à 34) → cible (alliée ou ennemie)",
+    "Applique l'état « Air » (293) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Air » (32394, niv. 1) → cible ennemie",
+    "-2 Portée → cible (alliée ou ennemie) (1 tour(s))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "retrait-PO",
+    "génération-états"
+   ],
+   "tactic": "Sort Air de base, 3/tour (2/cible). Le −2 PO protège contre les ennemis à distance ; combiné à Assèchement (vol 3 PO) l'Huppermage peut retirer 5 PO.",
+   "engineNotes": "Masque a,A pour les dommages et le −PO."
+  },
+  {
+   "id": 13711,
+   "pairIndex": 2,
+   "variantOf": 13669,
+   "isBaseSpell": false,
+   "name": "Cataracte",
+   "obtainedAtLevel": 95,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 43850,
+   "description": "Occasionne des dommages Eau.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "11–13 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "14–16 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "2 frappes Eau 14–16 chacune (CC 17–19), 1–4 PO **sans ligne de vue**",
+    "Rune Eau + double application de l'état Eau"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune d'Eau » (13688, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Eau » (13673, niv. 1) → cible ennemie",
+    "14 à 16 dommages Eau (CC : 17 à 19) → cible (alliée ou ennemie)",
+    "Applique l'état « Eau » (291) → cible ennemie — si cible n'a PAS l'état « Eau » (291) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Eau » (32393, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "génération-états"
+   ],
+   "tactic": "Variante Eau courte portée sans ligne de vue, 2/tour (1/cible). Bon pour finir derrière un obstacle et préparer Enlisement/Cristallisation/Ébullition.",
+   "engineNotes": "Comme Tison (deux lignes de dommages, deux lancers d'« État Eau »)."
+  },
+  {
+   "id": 13666,
+   "pairIndex": 3,
+   "variantOf": 13709,
+   "isBaseSpell": true,
+   "name": "Lance-flamme",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42472,
+   "description": "Occasionne des dommages Feu et retire des PA.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "15–17 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "20–23 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "26–29 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "Dommages Feu 26–29 (CC 31–35), 1–6 PO modifiable",
+    "Retire 2 PA (esquivable, 1 tour, non désenvoûtable)",
+    "Rune Feu + état Feu (→ Carbonisation −2 PA avec Air)"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune de Feu » (13665, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Feu » (13687, niv. 1) → cible ennemie",
+    "26 à 29 dommages Feu (CC : 31 à 35) → cible (alliée ou ennemie)",
+    "Applique l'état « Feu » (290) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Feu » (32392, niv. 1) → cible ennemie",
+    "Retire 2 PA (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "dégâts-mono",
+    "retrait-PA",
+    "génération-états"
+   ],
+   "tactic": "Sort Feu de base et principal outil de retrait PA : sur un ennemi en état Air → Carbonisation (−2 PA) + −2 PA du sort = −4 PA tentés pour 3 PA. 3/tour (2/cible).",
+   "engineNotes": "Retrait appliqué après la combinaison."
+  },
+  {
+   "id": 13709,
+   "pairIndex": 3,
+   "variantOf": 13666,
+   "isBaseSpell": false,
+   "name": "Lances Telluriques",
+   "obtainedAtLevel": 105,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 43847,
+   "description": "Occasionne des dommages Terre.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "9–11 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "11–13 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "2 frappes Terre 11–13 chacune (CC 14–16), 1–6 PO modifiable",
+    "Rune Terre + double application de l'état Terre"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Terre » (13686, niv. 1) → cible ennemie",
+    "11 à 13 dommages Terre (CC : 14 à 16) → cible (alliée ou ennemie)",
+    "Applique l'état « Terre » (292) → cible ennemie — si cible n'a PAS l'état « Terre » (292) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Terre » (32391, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "génération-états"
+   ],
+   "tactic": "Variante Terre de Lance-flamme (perd le −2 PA). Intéressante pour un Huppermage Terre qui veut deux sorts Terre mono-cible.",
+   "engineNotes": "Deux effets 97 ; 2 lancers/tour, 1/cible."
+  },
+  {
+   "id": 13667,
+   "pairIndex": 4,
+   "variantOf": 13708,
+   "isBaseSpell": true,
+   "name": "Stalagmite",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42468,
+   "description": "Occasionne des dommages Eau et réduit les dommages finaux.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "17–19 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–25 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "29–32 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Dommages Eau 29–32 (CC 35–38), 1–4 PO sans ligne de vue",
+    "−4 % dommages finaux à la cible (1 tour)",
+    "Rune Eau + état Eau"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune d'Eau » (13688, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Eau » (13673, niv. 1) → cible ennemie",
+    "29 à 32 dommages Eau (CC : 35 à 38) → cible (alliée ou ennemie)",
+    "Applique l'état « Eau » (291) → cible ennemie — si cible n'a PAS l'état « Eau » (291) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Eau » (32393, niv. 1) → cible ennemie",
+    "-4% Dommages finaux → cible (alliée ou ennemie) (1 tour(s))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "debuff",
+    "génération-états"
+   ],
+   "tactic": "Plus gros sort de base mono-cible (29–32) mais courte portée ; 3/tour (2/cible). Le −4 % dommages finaux est un petit plus défensif.",
+   "engineNotes": "1172 −4 % dommages finaux (cumulable 1×, maxStack 1)."
+  },
+  {
+   "id": 13708,
+   "pairIndex": 4,
+   "variantOf": 13667,
+   "isBaseSpell": false,
+   "name": "Onde Céleste",
+   "obtainedAtLevel": 110,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 43848,
+   "description": "Occasionne des dommages Air.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "9–11 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "12–14 Air"
+    }
+   ],
+   "effectsSummary": [
+    "2 frappes Air 12–14 chacune (CC 15–17), 1–5 PO modifiable, ligne de vue",
+    "Rune Air + double application de l'état Air"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune d'Air » (13689, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Air » (13685, niv. 1) → cible ennemie",
+    "12 à 14 dommages Air (CC : 15 à 17) → cible (alliée ou ennemie)",
+    "Applique l'état « Air » (293) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Air » (32394, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "génération-états"
+   ],
+   "tactic": "Variante Air à 2 frappes ; 2/tour, 1/cible.",
+   "engineNotes": "Deux effets 98."
+  },
+  {
+   "id": 13670,
+   "pairIndex": 5,
+   "variantOf": 13710,
+   "isBaseSpell": true,
+   "name": "Runification",
+   "obtainedAtLevel": 5,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 4,
+   "maxStack": 6,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42482,
+   "description": "Déclenche une rune du lanceur pour voler de la vie à l'ennemi ou soigner l'allié qui l'occupe, et augmenter les caractéristiques du lanceur et de l'allié sur la rune selon l'élément de la rune.\n\nSur le lanceur : déclenche toutes ses runes occupées par une entité.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "9–9 vol Terre, 9–9 vol Feu, 9–9 vol Eau, 9–9 vol Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "12–12 vol Terre, 12–12 vol Feu, 12–12 vol Eau, 12–12 vol Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "15–15 vol Terre, 15–15 vol Feu, 15–15 vol Eau, 15–15 vol Air"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–8 PO modifiable, sans ligne de vue, 2/tour",
+    "Sur une rune : déclenche cette rune (vol de vie 15 dans l'élément à l'ennemi qui l'occupe, ou soin 6 % PV max à l'allié qui l'occupe ; +50 de la caractéristique de l'élément au lanceur et à l'allié sur la rune, 3 tours ; état de l'élément à l'ennemi)",
+    "Sur le lanceur : déclenche **toutes** ses runes occupées par une entité"
+   ],
+   "effectsSummaryRaw": [
+    "Applique l'état « Rune » (296) → lanceur (1 tour(s))",
+    "Applique l'état « Rune (rang 3) » (6971) → lanceur (1 tour(s))",
+    "le lanceur lance le sous-sort « Runes Élémentaires » (13691, niv. 1) → lanceur (s’il est dans la zone)",
+    "la cible lance sur la case ciblée le sous-sort « Runes Élémentaires » (13691, niv. 2) → lanceur",
+    "Déclenche les runes → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Retire l'état « Rune » (296) → lanceur",
+    "Retire l'état « Runification » (6968) → lanceur",
+    "Retire l'état « Rune (rang 3) » (6971) → lanceur",
+    "15 vol Terre → cible ennemie — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "15 vol Feu → cible ennemie — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "15 vol Eau → cible ennemie — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "15 vol Air → cible ennemie — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Soin : 6% des PV max → cible alliée — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Force → lanceur, alliés (dont lanceur si dans la zone) — si lanceur a l'état « Rune » (296) (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Intelligence → lanceur, alliés (dont lanceur si dans la zone) — si lanceur a l'état « Rune » (296) (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Chance → lanceur, alliés (dont lanceur si dans la zone) — si lanceur a l'état « Rune » (296) (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Agilité → lanceur, alliés (dont lanceur si dans la zone) — si lanceur a l'état « Rune » (296) (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Terre » (292) → cible ennemie — si lanceur a l'état « Rune » (296) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu » (290) → cible ennemie — si lanceur a l'état « Rune » (296) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Eau » (291) → cible ennemie — si lanceur a l'état « Rune » (296) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Air » (293) → cible ennemie — si lanceur a l'état « Rune » (296) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "runes",
+    "vol-de-vie",
+    "soin",
+    "buff",
+    "génération-états"
+   ],
+   "tactic": "Cœur du gameplay : après 2–3 sorts élémentaires sur des ennemis immobiles, Runification sur soi déclenche toutes les runes : vols de vie multiples, +50 Int/Agi/Chance/Force cumulés, et ré-application d'états (donc nouvelles combinaisons). Sur un allié posé sur une rune : soin + boost partagé.",
+   "engineNotes": "Pose sur le lanceur les états 296 « Rune » + 6971 « Rang 3 » (1 tour), déclenche (2023), puis les retire. Les vols de vie viennent des sorts de rune (13665/13688/13689/13690) lancés par l'Huppermage : caractéristiques et dommages de l'Huppermage."
+  },
+  {
+   "id": 13710,
+   "pairIndex": 5,
+   "variantOf": 13670,
+   "isBaseSpell": false,
+   "name": "Manifestation",
+   "obtainedAtLevel": 115,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 6,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 43849,
+   "description": "Déclenche une rune du lanceur pour voler de la vie à l'ennemi ou soigner l'allié qui l'occupe, et augmenter les caractéristiques du lanceur et de l'allié sur la rune selon l'élément de la rune.\n\nSi la case est ou devient libre :\n•  Terre : repousse les entités depuis la rune en zone.\n•  Feu : téléporte le lanceur sur la rune.\n•  Eau : attire les entités vers la rune en zone.\n•  Air : téléporte les entités symétriquement par rapport à la rune en zone.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "12–12 vol Terre, 12–12 vol Feu, 12–12 vol Eau, 12–12 vol Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "15–15 vol Terre, 15–15 vol Feu, 15–15 vol Eau, 15–15 vol Air"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–6 PO modifiable, sans ligne de vue, 2/tour",
+    "Déclenche la rune ciblée comme Runification (vol 15 / soin 6 % / +50 caractéristique)",
+    "Si la case de la rune est (ou devient) libre : Terre = repousse de 3 en cercle 3 ; Feu = téléporte le lanceur sur la rune ; Eau = attire de 3 vers la rune (cercle 3) ; Air = téléportation symétrique des entités du cercle 3 autour de la rune"
+   ],
+   "effectsSummaryRaw": [
+    "Applique l'état « Manifestation » (600) → lanceur (1 tour(s))",
+    "Applique l'état « Rune » (296) → lanceur (1 tour(s))",
+    "Applique l'état « Rune (rang 3) » (6971) → lanceur (1 tour(s))",
+    "Déclenche les runes → cible (alliée ou ennemie)",
+    "Retire l'état « Manifestation » (600) → lanceur",
+    "Retire l'état « Rune » (296) → lanceur",
+    "Retire l'état « Rune (rang 3) » (6971) → lanceur",
+    "15 vol Terre → cible ennemie — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "15 vol Feu → cible ennemie — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "15 vol Eau → cible ennemie — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "15 vol Air → cible ennemie — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Soin : 6% des PV max → cible alliée — si lanceur a l'état « Rune » (296) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Force → lanceur, alliés (dont lanceur si dans la zone) — si lanceur a l'état « Rune » (296) (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Intelligence → lanceur, alliés (dont lanceur si dans la zone) — si lanceur a l'état « Rune » (296) (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Chance → lanceur, alliés (dont lanceur si dans la zone) — si lanceur a l'état « Rune » (296) (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Agilité → lanceur, alliés (dont lanceur si dans la zone) — si lanceur a l'état « Rune » (296) (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Terre » (292) → cible ennemie — si lanceur a l'état « Rune » (296) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu » (290) → cible ennemie — si lanceur a l'état « Rune » (296) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Eau » (291) → cible ennemie — si lanceur a l'état « Rune » (296) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Air » (293) → cible ennemie — si lanceur a l'état « Rune » (296) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Repousse la cible de 3 case(s) → tous (alliés+ennemis) dans la zone (zone cercle taille 3 (min 1), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Téléporte le lanceur sur la case ciblée → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Attire la cible de 3 case(s) → tous (alliés+ennemis) dans la zone (zone cercle taille 3 (min 1), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Téléportation symétrique → tous (alliés+ennemis) dans la zone (zone cercle taille 3 (min 1), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "runes",
+    "placement",
+    "mobilité",
+    "vol-de-vie"
+   ],
+   "tactic": "Variante orientée placement : perd le déclenchement global sur soi mais transforme chaque rune en outil de déplacement (téléportation Feu, regroupement Eau, dispersion Terre/Air).",
+   "engineNotes": "État 600 « Manifestation » sur le lanceur pendant le lancer ; le sous-sort 32414 niv. 5 marque « Manifestation (cible) » si une entité occupe la rune, ce qui annule l'effet de placement (niv. 1–4)."
+  },
+  {
+   "id": 13672,
+   "pairIndex": 6,
+   "variantOf": 13713,
+   "isBaseSpell": true,
+   "name": "Drain Élémentaire",
+   "obtainedAtLevel": 10,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42478,
+   "description": "Vole des caractéristiques et de la vie selon l'état élémentaire sur l'ennemi ciblé.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "14–16 vol Terre, 14–16 vol Feu, 14–16 vol Eau, 14–16 vol Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "19–21 vol Terre, 19–21 vol Feu, 19–21 vol Eau, 19–21 vol Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–26 vol Terre, 23–26 vol Feu, 23–26 vol Eau, 23–26 vol Air"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–4 PO sans ligne de vue, 3/tour, 1/cible",
+    "Selon l'état de l'ennemi : Terre → vole 200 Force + vol de vie Terre 23–26 ; Feu → vole 200 Intelligence + vol Feu ; Eau → vole 200 Chance + vol Eau ; Air → vole 200 Agilité + vol Air (vols de caractéristique 3 tours) ; CC 28–31",
+    "Sans état sur la cible : aucun effet"
+   ],
+   "effectsSummaryRaw": [
+    "Vole 200 Force → cible ennemie — si cible a l'état « Terre » (292) (3 tour(s))",
+    "23 à 26 vol Terre (CC : 28 à 31) → cible ennemie — si cible a l'état « Terre » (292)",
+    "Vole 200 Intelligence → cible ennemie — si cible a l'état « Feu » (290) (3 tour(s))",
+    "23 à 26 vol Feu (CC : 28 à 31) → cible ennemie — si cible a l'état « Feu » (290)",
+    "Vole 200 Chance → cible ennemie — si cible a l'état « Eau » (291) (3 tour(s))",
+    "23 à 26 vol Eau (CC : 28 à 31) → cible ennemie — si cible a l'état « Eau » (291)",
+    "Vole 200 Agilité → cible ennemie — si cible a l'état « Air » (293) (3 tour(s))",
+    "23 à 26 vol Air (CC : 28 à 31) → cible ennemie — si cible a l'état « Air » (293)"
+   ],
+   "role": [
+    "vol-de-vie",
+    "buff",
+    "debuff"
+   ],
+   "tactic": "Exploite un état déjà posé (ne le consomme pas) : énorme gain de caractéristique (+200) dans l'élément de l'état, ce qui augmente les dommages des sorts de cet élément. À lancer en début de tour sur une cible déjà marquée.",
+   "engineNotes": "Vols 266/268/269/271 (3 tours). Ne génère ni rune ni combinaison."
+  },
+  {
+   "id": 13713,
+   "pairIndex": 6,
+   "variantOf": 13672,
+   "isBaseSpell": false,
+   "name": "Tribut",
+   "obtainedAtLevel": 120,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 43852,
+   "description": "Applique des effets sur le lanceur selon l'état élémentaire sur l'ennemi ciblé et occasionne des dommages dans le meilleur élément du lanceur :\n•  Terre : augmente les PM.\n•  Feu : applique un bouclier.\n•  Eau : augmente la Puissance.\n•  Air : augmente les PA.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "16–18 meilleur élt"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 187,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "19–21 meilleur élt"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–6 PO modifiable, LdV, 2/tour, 1/cible",
+    "Dommages du meilleur élément 19–21 (CC 23–25)",
+    "Selon l'état de l'ennemi (non consommé) : Eau → +150 Puissance ; Feu → bouclier 150 % du niveau ; Air → +1 PA ; Terre → +1 PM (lanceur, 2 tours, non cumulable)"
+   ],
+   "effectsSummaryRaw": [
+    "1 PM → lanceur (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Bouclier : 150% du niveau → lanceur (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "+150 Puissance → lanceur (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "1 PA → lanceur (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Tribut » (14354, niv. 1) → cible ennemie — si cible a l'état « Eau » (291)",
+    "le lanceur lance le sous-sort « Tribut » (14354, niv. 2) → cible ennemie — si cible a l'état « Feu » (290)",
+    "le lanceur lance le sous-sort « Tribut » (14354, niv. 3) → cible ennemie — si cible a l'état « Air » (293)",
+    "le lanceur lance le sous-sort « Tribut » (14354, niv. 4) → cible ennemie — si cible a l'état « Terre » (292)",
+    "19 à 21 dommages du meilleur élément (CC : 23 à 25) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "dégâts-mono",
+    "buff"
+   ],
+   "tactic": "Version offensive/auto-buff : +1 PA (état Air) ou +1 PM (Terre) pour 2 tours, ou bouclier (Feu ≈ 300 au niveau 200).",
+   "engineNotes": "Sous-sorts 14354 niv. 1–4 (maxStack 1). Dommages 2822 sans rune ni état."
+  },
+  {
+   "id": 13675,
+   "pairIndex": 7,
+   "variantOf": 13677,
+   "isBaseSpell": true,
+   "name": "Météore",
+   "obtainedAtLevel": 15,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 2,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 85140,
+   "description": "Repousse la cible et occasionne des dommages Terre aux ennemis.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 3,
+     "minRange": 2,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "17–19 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 3,
+     "minRange": 2,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "22–24 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 3,
+     "minRange": 2,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "27–30 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 2–7 PO modifiable, LdV, 2/tour",
+    "Repousse la cible de 2 cases (allié ou ennemi)",
+    "Dommages Terre 27–30 (CC 32–36) aux ennemis ; rune Terre + état Terre"
+   ],
+   "effectsSummaryRaw": [
+    "Repousse la cible de 2 case(s) → cible (alliée ou ennemie)",
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Terre » (13686, niv. 1) → cible ennemie",
+    "27 à 30 dommages Terre (CC : 32 à 36) → cible ennemie",
+    "Applique l'état « Terre » (292) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Terre » (32391, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "placement",
+    "génération-états"
+   ],
+   "tactic": "Poussée + dommages ; peut repousser un allié pour le sauver (sans le blesser). La poussée a lieu avant les dommages : dommages de collision possibles.",
+   "engineNotes": "Poussée 5 avant les dommages ; dommages masque A uniquement."
+  },
+  {
+   "id": 13677,
+   "pairIndex": 7,
+   "variantOf": 13675,
+   "isBaseSpell": false,
+   "name": "Avalanche",
+   "obtainedAtLevel": 125,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 85126,
+   "description": "Attire la cible et occasionne des dommages Eau aux ennemis.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "24–27 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "28–31 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–5 PO, LdV, 2/tour",
+    "Attire la cible de 4 cases",
+    "Dommages Eau 28–31 (CC 34–37) aux ennemis ; rune Eau + état Eau"
+   ],
+   "effectsSummaryRaw": [
+    "Attire la cible de 4 case(s) → cible (alliée ou ennemie)",
+    "Pose une rune (sort déclenché) « Rune d'Eau » (13688, niv. 1) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Eau » (13673, niv. 1) → cible ennemie",
+    "28 à 31 dommages Eau (CC : 34 à 37) → cible ennemie",
+    "Applique l'état « Eau » (291) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Eau » (32393, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "placement",
+    "génération-états"
+   ],
+   "tactic": "Attirance longue (4) : ramène un ennemi au contact du tank ou dans une zone ; sur un allié, le rapatrie.",
+   "engineNotes": "Attirance 6 avant les dommages."
+  },
+  {
+   "id": 13679,
+   "pairIndex": 8,
+   "variantOf": 13681,
+   "isBaseSpell": true,
+   "name": "Lame Astrale",
+   "obtainedAtLevel": 20,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 85142,
+   "description": "Téléporte le lanceur symétriquement par rapport à la cible et occasionne des dommages Air aux ennemis.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "18–20 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–26 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "29–32 Air"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–4 PO, LdV, case occupée requise, 2/tour",
+    "Téléporte le lanceur symétriquement par rapport à la cible",
+    "Dommages Air 29–32 (CC 35–38) aux ennemis ; rune Air + état Air"
+   ],
+   "effectsSummaryRaw": [
+    "Téléportation symétrique par rapport à la cible → cible (alliée ou ennemie)",
+    "Pose une rune (sort déclenché) « Rune d'Air » (13689, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Air » (13685, niv. 1) → cible ennemie",
+    "29 à 32 dommages Air (CC : 35 à 38) → cible ennemie",
+    "Applique l'état « Air » (293) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Air » (32394, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "mobilité",
+    "génération-états"
+   ],
+   "tactic": "Mobilité : passer de l'autre côté d'un ennemi (fuite de tacle sans PM, contournement). Échoue si la case symétrique est occupée.",
+   "engineNotes": "1104 (symétrie autour de la cible)."
+  },
+  {
+   "id": 13681,
+   "pairIndex": 8,
+   "variantOf": 13679,
+   "isBaseSpell": false,
+   "name": "Déflagration",
+   "obtainedAtLevel": 130,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42453,
+   "description": "Téléporte la cible et le lanceur à leur position précédente et occasionne des dommages Feu aux ennemis.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "24–27 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "27–30 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–5 PO, LdV, case occupée requise, 2/tour",
+    "Téléporte la cible et le lanceur à leur position précédente (sauf Indéplaçable, Pesanteur, Enraciné)",
+    "Dommages Feu 27–30 (CC 32–36) aux ennemis ; rune Feu + état Feu"
+   ],
+   "effectsSummaryRaw": [
+    "Téléporte à la position précédente → lanceur, alliés (dont lanceur si dans la zone), ennemis — si cible n'a PAS l'état « Indéplaçable » (97) ET si cible n'a PAS l'état « Pesanteur » (7) ET si cible n'a PAS l'état « Enraciné » (6)",
+    "Pose une rune (sort déclenché) « Rune de Feu » (13665, niv. 1) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Feu » (13687, niv. 1) → cible ennemie",
+    "27 à 30 dommages Feu (CC : 32 à 36) → cible ennemie",
+    "Applique l'état « Feu » (290) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Feu » (32392, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "placement",
+    "génération-états"
+   ],
+   "tactic": "Annule un déplacement : renvoie un ennemi qui vient d'avancer (ou de fuir), et le lanceur aussi. Contre des boss qui foncent, très fort.",
+   "engineNotes": "1100 FightRollbackPreviousPosition : il faut mémoriser la position précédente de chaque entité (dernier déplacement subi ou effectué)."
+  },
+  {
+   "id": 13722,
+   "pairIndex": 9,
+   "variantOf": 14341,
+   "isBaseSpell": true,
+   "name": "Cycle Élémentaire",
+   "obtainedAtLevel": 25,
+   "grade": 3,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 3,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 85137,
+   "description": "Change l'état élémentaire sur l'ennemi ciblé selon son état actuel dans le sens horaire :\n•  Terre →  Eau →  Feu →  Air →  Terre\n\nSur un ennemi sans état élémentaire : applique l'état élémentaire de la dernière rune posée par le lanceur.\n\nLe coût en PA du sort est remboursé au premier changement d'état sur une cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, 1–8 PO, LdV, 4/tour, 3/cible ; **1 PA remboursé** au premier changement d'état sur une cible (1×/cible/tour)",
+    "Fait tourner l'état de l'ennemi dans le sens horaire : Terre → Eau → Feu → Air → Terre",
+    "Sur un ennemi sans état : applique l'état de la Dernière rune posée"
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Cycle Élémentaire » (32397, niv. 1) → cible ennemie",
+    "le lanceur lance le sous-sort « État Élémentaire » (32669, niv. 1) → cible ennemie — si cible n'a PAS l'état « Feu » (290) ET si cible n'a PAS l'état « Eau » (291) ET si cible n'a PAS l'état « Terre » (292) ET si cible n'a PAS l'état « Air » (293)",
+    "le lanceur lance le sous-sort « Cycle Élémentaire » (16992, niv. 1) → cible ennemie — si cible n'a PAS l'état « Cycle Élémentaire (cible) » (1930) ET si cible a l'état « Feu » (290)",
+    "le lanceur lance le sous-sort « Cycle Élémentaire » (16992, niv. 1) → cible ennemie — si cible n'a PAS l'état « Cycle Élémentaire (cible) » (1930) ET si cible a l'état « Eau » (291)",
+    "le lanceur lance le sous-sort « Cycle Élémentaire » (16992, niv. 1) → cible ennemie — si cible n'a PAS l'état « Cycle Élémentaire (cible) » (1930) ET si cible a l'état « Terre » (292)",
+    "le lanceur lance le sous-sort « Cycle Élémentaire » (16992, niv. 1) → cible ennemie — si cible n'a PAS l'état « Cycle Élémentaire (cible) » (1930) ET si cible a l'état « Air » (293)",
+    "Applique l'état « Terre » (292) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Eau » (291) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu » (290) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Air » (293) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Rembourse 1 PA → lanceur (non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "génération-états",
+    "utilitaire"
+   ],
+   "tactic": "Outil de réglage gratuit : choisit l'état d'une cible pour viser la combinaison voulue au prochain sort (ex. transformer Terre en Eau pour que le sort Feu suivant génère Ébullition… ou en Feu pour viser Éruption avec un sort Terre). Pas de combinaison directe (le changement retire puis applique un seul état).",
+   "engineNotes": "32397 : retire les 4 états puis applique le suivant (conditions évaluées sur l'instantané). Le sous-sort 16992 rembourse 1 PA (120) et pose 1930 sur la cible jusqu'à la fin de son tour."
+  },
+  {
+   "id": 14341,
+   "pairIndex": 9,
+   "variantOf": 13722,
+   "isBaseSpell": false,
+   "name": "Courant Quadramental",
+   "obtainedAtLevel": 135,
+   "grade": 1,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 3,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 43844,
+   "description": "Change l'état élémentaire sur l'ennemi ciblé selon son état actuel dans le sens anti-horaire :\n•  Eau →  Terre →  Air →  Feu →  Eau\n\nSur un ennemi sans état élémentaire : applique l'état élémentaire de la dernière rune posée par le lanceur.\n\nLe coût en PA du sort est remboursé au premier changement d'état sur une cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, 1–8 PO, LdV, 4/tour, 3/cible, 1 PA remboursé au premier changement d'état par cible",
+    "Rotation anti-horaire : Eau → Terre → Air → Feu → Eau",
+    "Sur un ennemi sans état : état de la Dernière rune"
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Courant Quadramental » (32398, niv. 1) → cible ennemie",
+    "le lanceur lance le sous-sort « État Élémentaire » (32669, niv. 1) → cible ennemie — si cible n'a PAS l'état « Feu » (290) ET si cible n'a PAS l'état « Eau » (291) ET si cible n'a PAS l'état « Terre » (292) ET si cible n'a PAS l'état « Air » (293)",
+    "Applique l'état « Eau » (291) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Terre » (292) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Air » (293) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu » (290) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Courant Quadramental » (32661, niv. 1) → cible ennemie — si cible n'a PAS l'état « Courant Quadramental (cible) » (7017) ET si cible a l'état « Feu » (290)",
+    "le lanceur lance le sous-sort « Courant Quadramental » (32661, niv. 1) → cible ennemie — si cible n'a PAS l'état « Courant Quadramental (cible) » (7017) ET si cible a l'état « Eau » (291)",
+    "le lanceur lance le sous-sort « Courant Quadramental » (32661, niv. 1) → cible ennemie — si cible n'a PAS l'état « Courant Quadramental (cible) » (7017) ET si cible a l'état « Terre » (292)",
+    "le lanceur lance le sous-sort « Courant Quadramental » (32661, niv. 1) → cible ennemie — si cible n'a PAS l'état « Courant Quadramental (cible) » (7017) ET si cible a l'état « Air » (293)",
+    "Rembourse 1 PA → lanceur (non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "génération-états",
+    "utilitaire"
+   ],
+   "tactic": "Même rôle que Cycle Élémentaire dans l'autre sens : les deux sorts ne sont pas cumulables (même paire) ; le choix dépend des deux éléments joués (on veut 1 rotation pour atteindre l'état désiré).",
+   "engineNotes": "32398 / 32661 (état 7017)."
+  },
+  {
+   "id": 13723,
+   "pairIndex": 10,
+   "variantOf": 13726,
+   "isBaseSpell": true,
+   "name": "Lance Solaire",
+   "obtainedAtLevel": 30,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 85144,
+   "description": "Échange de position avec la cible et occasionne des dommages Feu aux ennemis.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "18–20 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–26 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 164,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "29–32 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–4 PO, LdV, 2/tour",
+    "Échange de position avec la cible (alliée ou ennemie)",
+    "Dommages Feu 29–32 (CC 35–38) aux ennemis ; rune Feu + état Feu"
+   ],
+   "effectsSummaryRaw": [
+    "Échange de positions (lanceur ↔ cible) → cible (alliée ou ennemie)",
+    "Pose une rune (sort déclenché) « Rune de Feu » (13665, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Feu » (13687, niv. 1) → cible ennemie",
+    "29 à 32 dommages Feu (CC : 35 à 38) → cible ennemie",
+    "Applique l'état « Feu » (290) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Feu » (32392, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "placement"
+   ],
+   "tactic": "Transposition : sauver un allié encerclé ou placer un ennemi sur une case précise (sur une rune, dans une zone).",
+   "engineNotes": "Effet 8 (échange) ; impossible si l'une des entités est en Pesanteur/Indéplaçable/Enraciné."
+  },
+  {
+   "id": 13726,
+   "pairIndex": 10,
+   "variantOf": 13723,
+   "isBaseSpell": false,
+   "name": "Comète",
+   "obtainedAtLevel": 140,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42539,
+   "description": "Applique des effets selon la position du lanceur par rapport à la cible et occasionne des dommages Air aux ennemis :\n• Éloigne le lanceur de la cible s'il est en mêlée.\n• Téléporte le lanceur jusqu'à la cible s'il est à distance.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "27–30 Air"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–6 PO en ligne, sans LdV, case occupée requise, 2/tour",
+    "Si le lanceur est au contact : il recule de 3 cases ; sinon il se téléporte au contact de la cible (ligne)",
+    "Dommages Air 27–30 (CC 32–36) aux ennemis ; rune Air + état Air"
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Comète » (32706, niv. 1) → cible (alliée ou ennemie)",
+    "Le lanceur recule de 3 case(s) (s’éloigne de la cible) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Téléporte le lanceur sur la case ciblée → tous (alliés+ennemis) dans la zone — si lanceur n'a PAS l'état « Pesanteur » (7) (zone ligne depuis le lanceur taille 1 (min 63), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Pose une rune (sort déclenché) « Rune d'Air » (13689, niv. 1) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Air » (13685, niv. 1) → cible ennemie",
+    "27 à 30 dommages Air (CC : 32 à 36) → cible ennemie",
+    "Applique l'état « Air » (293) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Air » (32394, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "mobilité"
+   ],
+   "tactic": "Mobilité bidirectionnelle : engage (téléport au contact) ou désengage (recul 3) selon la situation.",
+   "engineNotes": "Sous-sort 32706 : état 7027 si le lanceur est dans la croix Q1 autour de la cible ; 1041 recul ou 4 téléportation (zone l1,63 stopAtTarget)."
+  },
+  {
+   "id": 13721,
+   "pairIndex": 11,
+   "variantOf": 13715,
+   "isBaseSpell": true,
+   "name": "Déluge",
+   "obtainedAtLevel": 35,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 81350,
+   "description": "Rapproche le lanceur vers la cible et occasionne des dommages Eau aux ennemis.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "17–19 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "22–24 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "27–30 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–5 PO, LdV, 2/tour",
+    "Le lanceur avance de 4 cases vers la cible",
+    "Dommages Eau 27–30 (CC 32–36) aux ennemis ; rune Eau + état Eau"
+   ],
+   "effectsSummaryRaw": [
+    "Le lanceur avance de 4 case(s) vers la cible → cible (alliée ou ennemie)",
+    "Pose une rune (sort déclenché) « Rune d'Eau » (13688, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Eau » (13673, niv. 1) → cible ennemie",
+    "27 à 30 dommages Eau (CC : 32 à 36) → cible ennemie",
+    "Applique l'état « Eau » (291) → cible ennemie — si cible n'a PAS l'état « Eau » (291) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Eau » (32393, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "mobilité"
+   ],
+   "tactic": "Rapprochement offensif (pour passer à portée des sorts à 1–4 PO).",
+   "engineNotes": "1042 avant les dommages."
+  },
+  {
+   "id": 13715,
+   "pairIndex": 11,
+   "variantOf": 13721,
+   "isBaseSpell": false,
+   "name": "Astéroïde",
+   "obtainedAtLevel": 145,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42528,
+   "description": "Éloigne le lanceur de la cible et occasionne des dommages Terre aux ennemis.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "25–28 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–8 PO modifiable, LdV, 2/tour",
+    "Le lanceur recule de 2 cases",
+    "Dommages Terre 25–28 (CC 30–34) aux ennemis ; rune Terre + état Terre"
+   ],
+   "effectsSummaryRaw": [
+    "Le lanceur recule de 2 case(s) (s’éloigne de la cible) → cible (alliée ou ennemie)",
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Terre » (13686, niv. 1) → cible ennemie",
+    "25 à 28 dommages Terre (CC : 30 à 34) → cible ennemie",
+    "Applique l'état « Terre » (292) → cible ennemie — si cible n'a PAS l'état « Terre » (292) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Terre » (32391, niv. 1) → cible ennemie"
+   ],
+   "role": [
+    "dégâts-mono",
+    "mobilité"
+   ],
+   "tactic": "Désengagement + dommages à longue portée : idéal pour l'Huppermage Terre/Air qui joue à distance.",
+   "engineNotes": "1041 avant les dommages."
+  },
+  {
+   "id": 13683,
+   "pairIndex": 12,
+   "variantOf": 13728,
+   "isBaseSpell": true,
+   "name": "Traversée",
+   "obtainedAtLevel": 40,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 2,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "HS!7",
+   "spellLevelId": 42476,
+   "description": "Téléporte le lanceur sur la case ciblée et occasionne des dommages selon l'état élémentaire sur les ennemis en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 3,
+     "minRange": 2,
+     "range": 5,
+     "critChance": 20,
+     "cooldown": 2,
+     "damageBrief": "19–21 Terre, 19–21 Feu, 19–21 Eau, 19–21 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 3,
+     "minRange": 2,
+     "range": 5,
+     "critChance": 20,
+     "cooldown": 2,
+     "damageBrief": "24–27 Terre, 24–27 Feu, 24–27 Eau, 24–27 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 3,
+     "minRange": 2,
+     "range": 5,
+     "critChance": 20,
+     "cooldown": 2,
+     "damageBrief": "30–33 Terre, 30–33 Feu, 30–33 Eau, 30–33 Air"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 2–5 PO en ligne, sans LdV, case libre requise, relance 2 tours, CC 20 %, interdit en Pesanteur",
+    "Téléporte le lanceur sur la case ciblée",
+    "Dommages 30–33 (CC 36–40) à chaque ennemi traversé, **dans l'élément de son état** (Terre/Feu/Eau/Air) ; ennemis sans état : rien"
+   ],
+   "effectsSummaryRaw": [
+    "Téléporte le lanceur sur la case ciblée → cible (alliée ou ennemie)",
+    "30 à 33 dommages Terre (CC : 36 à 40) → ennemis dans la zone — si cible a l'état « Terre » (292) (zone ligne depuis le lanceur taille 1 (min 63))",
+    "30 à 33 dommages Feu (CC : 36 à 40) → ennemis dans la zone — si cible a l'état « Feu » (290) (zone ligne depuis le lanceur taille 1 (min 63))",
+    "30 à 33 dommages Eau (CC : 36 à 40) → ennemis dans la zone — si cible a l'état « Eau » (291) (zone ligne depuis le lanceur taille 1 (min 63))",
+    "30 à 33 dommages Air (CC : 36 à 40) → ennemis dans la zone — si cible a l'état « Air » (293) (zone ligne depuis le lanceur taille 1 (min 63))"
+   ],
+   "role": [
+    "dégâts-zone",
+    "mobilité"
+   ],
+   "tactic": "Téléportation + frappe des ennemis alignés porteurs d'un état (ne consomme pas l'état et ne pose pas de rune).",
+   "engineNotes": "Zone l1,63 + stopAtTarget = toutes les cases entre le lanceur (exclu) et la case ciblée (incluse), calculée sur la position de départ (instantané)."
+  },
+  {
+   "id": 13728,
+   "pairIndex": 12,
+   "variantOf": 13683,
+   "isBaseSpell": false,
+   "name": "Répulsion Runique",
+   "obtainedAtLevel": 150,
+   "grade": 1,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42541,
+   "description": "Repousse les cibles en zone.\nDéclenche également toutes les runes du lanceur pour repousser de nouveau les cibles pour chaque rune déclenchée.\n\nLa poussée pour chaque rune est plus faible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, sur soi, 1/tour",
+    "Repousse de 2 cases les entités adjacentes (croix)",
+    "Déclenche toutes les runes du lanceur : chaque rune déclenchée repousse à nouveau de 1 case ces mêmes entités"
+   ],
+   "effectsSummaryRaw": [
+    "Repousse la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone croix sans centre taille 1 (min 1))",
+    "Applique l'état « Répulsion Runique » (602) → lanceur, alliés (dont lanceur si dans la zone), ennemis (zone croix sans centre taille 1 (min 1), 1 tour(s))",
+    "le lanceur lance le sous-sort « Répulsion Runique » (23972, niv. 1) → lanceur",
+    "Déclenche les runes → tous (alliés+ennemis) dans la zone (zone tout le terrain (vivants), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Repousse la cible de 1 case(s) → tous (alliés+ennemis) dans la zone (zone croix sans centre taille 1 (min 1), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "placement",
+    "runes"
+   ],
+   "tactic": "Dégagement d'urgence au corps-à-corps : poussée 2 + 1 par rune présente sur la carte (dommages de poussée importants contre un mur).",
+   "engineNotes": "État 602 sur les entités poussées ; chaque rune (via 23972 niv. 2) repousse de 1 les porteurs de 602. Consomme les runes (INCERTAIN)."
+  },
+  {
+   "id": 13701,
+   "pairIndex": 13,
+   "variantOf": 13697,
+   "isBaseSpell": true,
+   "name": "Contribution",
+   "obtainedAtLevel": 45,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42511,
+   "description": "Pose une rune et applique des effets sur l'allié ciblé selon les états élémentaires sur tous les ennemis :\n•  Terre : augmente les PM.\n•  Feu : applique un bouclier.\n•  Eau : augmente la Puissance.\n•  Air : augmente les PA.\n\nConsomme tous les états élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 179,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–7 PO, LdV, relance 2, cumul 2",
+    "Sur l'allié ciblé (ou soi) selon les états présents sur **tous** les ennemis : Eau → +150 Puissance ; Feu → bouclier 200 % du niveau ; Air → **+1 PA** ; Terre → **+1 PM** (2 tours)",
+    "Pose sous chaque ennemi en état une rune de son élément, puis **consomme tous les états élémentaires** de la carte"
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Runes Élémentaires » (32402, niv. 1) → cible alliée",
+    "le lanceur lance le sous-sort « Contribution » (23971, niv. 1) → cible alliée",
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → tous (alliés+ennemis) dans la zone (zone tout le terrain (vivants), 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "1 PM → cible alliée — si cible a l'état « Contribution » (361) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Bouclier : 200% du niveau → cible alliée — si cible a l'état « Contribution » (361) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "+150 Puissance → cible alliée — si cible a l'état « Contribution » (361) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "1 PA → cible alliée — si cible a l'état « Contribution » (361) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "buff",
+    "bouclier",
+    "runes"
+   ],
+   "tactic": "Buff de groupe très fort : avec 4 états différents répartis sur les ennemis, l'allié reçoit +1 PA, +1 PM, +150 Puissance et 400 de bouclier (niveau 200). À lancer sur le DPS principal avant son tour ; coûte cependant tous les états (plus de combinaisons possibles).",
+   "engineNotes": "L'allié reçoit l'état 361 pendant le sous-sort ; les bonus sont conditionnés à `E361` (zone a). Chaque élément compte une seule fois, quel que soit le nombre d'ennemis."
+  },
+  {
+   "id": 13697,
+   "pairIndex": 13,
+   "variantOf": 13701,
+   "isBaseSpell": false,
+   "name": "Empreinte",
+   "obtainedAtLevel": 155,
+   "grade": 1,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42496,
+   "description": "Consomme l'état élémentaire sur l'ennemi ciblé pour poser une rune dans l'élément de l'état.\n\nSur le lanceur : applique les effets sur tous les ennemis.\n\nSinon : pose une rune dans l'élément de la dernière rune posée par le lanceur.\n\nL'utilisation du sort sur une case libre n'est possible qu'une seule fois par tour.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, 0–6 PO, LdV, 2/tour, 1/cible",
+    "Sur un ennemi en état : consomme l'état et pose une rune de cet élément sous lui",
+    "Sur le lanceur : fait de même sur **tous** les ennemis",
+    "Sinon (ennemi sans état ou case libre, 1×/tour sur case libre) : pose une rune de l'élément de la Dernière rune"
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Empreinte » (32401, niv. 1) → lanceur (s’il est dans la zone)",
+    "le lanceur lance le sous-sort « Empreinte » (32401, niv. 2) → cible ennemie — si cible a l'état « Eau » (291)",
+    "le lanceur lance le sous-sort « Empreinte » (32401, niv. 2) → cible ennemie — si cible a l'état « Feu » (290)",
+    "le lanceur lance le sous-sort « Empreinte » (32401, niv. 2) → cible ennemie — si cible a l'état « Terre » (292)",
+    "le lanceur lance le sous-sort « Empreinte » (32401, niv. 2) → cible ennemie — si cible a l'état « Air » (293)",
+    "la cible lance sur la case ciblée le sous-sort « Empreinte » (32401, niv. 3) → lanceur",
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → tous (alliés+ennemis) dans la zone (zone tout le terrain (vivants), 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "runes",
+    "utilitaire"
+   ],
+   "tactic": "Fabrique des runes à bas coût (1 PA) pour alimenter Runification/Surcharge Runique ; mais consomme les états (réduit les combinaisons).",
+   "engineNotes": "798 « cible visible nécessaire » activé 1 tour après un usage sur case libre (limite 1×/tour)."
+  },
+  {
+   "id": 13680,
+   "pairIndex": 14,
+   "variantOf": 13717,
+   "isBaseSpell": true,
+   "name": "Trait Ardent",
+   "obtainedAtLevel": 50,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 42456,
+   "description": "Repousse les cibles et occasionne des dommages Feu aux ennemis en zone.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "21–23 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "28–31 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 184,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "33–37 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, 1–6 PO modifiable, en ligne, LdV, 1/tour, CC 20 %",
+    "Zone barre perpendiculaire (T2, 5 cases) : repousse de 1 case",
+    "Dommages Feu 33–37 (CC 40–44) aux ennemis de la zone ; rune Feu + état Feu à chacun"
+   ],
+   "effectsSummaryRaw": [
+    "Repousse la cible de 1 case(s) → tous (alliés+ennemis) dans la zone (zone ligne perpendiculaire (barre en T) taille 2, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Trait Ardent » (32395, niv. 1) → tous (alliés+ennemis) dans la zone (zone ligne perpendiculaire (barre en T) taille 2)",
+    "Pose une rune (sort déclenché) « Rune de Feu » (13665, niv. 1) → ennemis dans la zone (zone ligne perpendiculaire (barre en T) taille 2, 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Feu » (13687, niv. 1) → ennemis dans la zone (zone ligne perpendiculaire (barre en T) taille 2)",
+    "33 à 37 dommages Feu (CC : 40 à 44) → ennemis dans la zone (zone ligne perpendiculaire (barre en T) taille 2)",
+    "Applique l'état « Feu » (290) → ennemis dans la zone (zone ligne perpendiculaire (barre en T) taille 2, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Feu » (32392, niv. 1) → ennemis dans la zone (zone ligne perpendiculaire (barre en T) taille 2)"
+   ],
+   "role": [
+    "dégâts-zone",
+    "génération-états"
+   ],
+   "tactic": "Principal sort de zone Feu ; pose des états/runes sur jusqu'à 5 ennemis (prépare Runification sur soi).",
+   "engineNotes": "Poussée via sous-sort 32395 sur chaque cible de la zone."
+  },
+  {
+   "id": 13717,
+   "pairIndex": 14,
+   "variantOf": 13680,
+   "isBaseSpell": false,
+   "name": "Stalactite",
+   "obtainedAtLevel": 160,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42530,
+   "description": "Occasionne des dommages Eau et retire des PM.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–25 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–4 PO sans LdV, 3/tour, 1/cible",
+    "Dommages Eau 23–25 (CC 28–30)",
+    "Retire 2 PM (esquivable, 1 tour) ; rune Eau + état Eau"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune d'Eau » (13688, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Eau » (13673, niv. 1) → cible ennemie",
+    "23 à 25 dommages Eau (CC : 28 à 30) → cible (alliée ou ennemie)",
+    "Applique l'état « Eau » (291) → cible ennemie — si cible n'a PAS l'état « Eau » (291) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Eau » (32393, niv. 1) → cible ennemie",
+    "Retire 2 PM (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "dégâts-mono",
+    "retrait-PM"
+   ],
+   "tactic": "Retrait PM à 2 PA, 3 cibles différentes par tour : excellent pour immobiliser plusieurs monstres (ou −2 PM + Enlisement −3 PM sur une cible en Terre).",
+   "engineNotes": "Masque a,A."
+  },
+  {
+   "id": 13676,
+   "pairIndex": 15,
+   "variantOf": 13718,
+   "isBaseSpell": true,
+   "name": "Glacier",
+   "obtainedAtLevel": 55,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 42460,
+   "description": "Attire les cibles vers le centre et vole de la vie dans l'élément Eau aux ennemis en zone.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "21–24 vol Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "28–32 vol Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "32–36 vol Eau"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, sur soi, cercle 3 (hors lanceur), 1/tour, CC 20 %",
+    "Attire de 2 cases vers le lanceur les entités du cercle (alliés hors lanceur et ennemis)",
+    "Vol de vie Eau 32–36 (CC 38–43) aux ennemis de la zone ; runes Eau + états Eau"
+   ],
+   "effectsSummaryRaw": [
+    "Attire la cible de 2 case(s) → tous sauf le lanceur dans la zone (zone cercle taille 3 (min 1))",
+    "Pose une rune (sort déclenché) « Rune d'Eau » (13688, niv. 1) → tous (alliés+ennemis) dans la zone (zone cercle taille 3 (min 1), 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Eau » (13673, niv. 1) → ennemis dans la zone (zone cercle taille 3 (min 1))",
+    "32 à 36 vol Eau (CC : 38 à 43) → ennemis dans la zone (zone cercle taille 3 (min 1))",
+    "Applique l'état « Eau » (291) → ennemis dans la zone — si cible n'a PAS l'état « Eau » (291) (zone cercle taille 3 (min 1), durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Eau » (32393, niv. 1) → ennemis dans la zone (zone cercle taille 3 (min 1))"
+   ],
+   "role": [
+    "dégâts-zone",
+    "vol-de-vie",
+    "placement"
+   ],
+   "tactic": "Regroupe les ennemis autour de soi (utile avant une zone d'allié) en se soignant ; dangereux pour un mage fragile.",
+   "engineNotes": "Zone C3 min 1 ; attirance avant les vols."
+  },
+  {
+   "id": 13718,
+   "pairIndex": 15,
+   "variantOf": 13676,
+   "isBaseSpell": false,
+   "name": "Volcan",
+   "obtainedAtLevel": 165,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42531,
+   "description": "Vole de la vie dans l'élément Feu et augmente les dommages subis par la cible.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "17–19 vol Feu"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–6 PO modifiable, en ligne, sans LdV, 3/tour, 1/cible",
+    "Vol de vie Feu 17–19 (CC 20–23)",
+    "Dommages subis ×104 % pendant 1 tour (1 cumul) ; rune Feu + état Feu"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune de Feu » (13665, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Feu » (13687, niv. 1) → cible ennemie",
+    "17 à 19 vol Feu (CC : 20 à 23) → cible (alliée ou ennemie)",
+    "Applique l'état « Feu » (290) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Feu » (32392, niv. 1) → cible ennemie",
+    "Dommages subis x104% → cible (alliée ou ennemie) (actif 1 tour(s), déclencheur : quand la cible subit des dommages)"
+   ],
+   "role": [
+    "vol-de-vie",
+    "debuff"
+   ],
+   "tactic": "Petit vol de vie + amplification légère des dommages subis par la cible pour le reste du groupe.",
+   "engineNotes": "1163 avec déclencheur D, actif 1 tour."
+  },
+  {
+   "id": 13678,
+   "pairIndex": 16,
+   "variantOf": 13725,
+   "isBaseSpell": true,
+   "name": "Rafale",
+   "obtainedAtLevel": 60,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 76876,
+   "description": "Téléporte les cibles symétriquement par rapport au centre et vole de la vie dans l'élément Air aux ennemis en zone.\nN'affecte pas directement le lanceur.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "21–24 vol Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "26–30 vol Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "29–33 vol Air"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, 0–4 PO, LdV, 1/tour, CC 20 % ; n'affecte pas directement le lanceur",
+    "Téléportation symétrique des entités du cercle 2 par rapport au centre",
+    "Vol de vie Air 29–33 (CC 35–40) aux ennemis du cercle ; runes Air + états Air"
+   ],
+   "effectsSummaryRaw": [
+    "Téléportation symétrique → tous sauf le lanceur dans la zone (zone cercle taille 2)",
+    "Pose une rune (sort déclenché) « Rune d'Air » (13689, niv. 1) → ennemis dans la zone (zone cercle taille 2, 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Air » (13685, niv. 1) → ennemis dans la zone (zone cercle taille 2)",
+    "29 à 33 vol Air (CC : 35 à 40) → ennemis dans la zone (zone cercle taille 2)",
+    "Applique l'état « Air » (293) → ennemis dans la zone (zone cercle taille 2, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Air » (32394, niv. 1) → ennemis dans la zone (zone cercle taille 2)"
+   ],
+   "role": [
+    "dégâts-zone",
+    "vol-de-vie",
+    "placement"
+   ],
+   "tactic": "Zone Air avec réorganisation (inverse les positions autour du centre).",
+   "engineNotes": "1106 (symétrie autour du point d'impact) sur alliés hors lanceur et ennemis."
+  },
+  {
+   "id": 13725,
+   "pairIndex": 16,
+   "variantOf": 13678,
+   "isBaseSpell": false,
+   "name": "Brèche",
+   "obtainedAtLevel": 170,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42538,
+   "description": "Vole de la vie dans l'élément Terre et retire de la Portée.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "16–18 vol Terre"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–5 PO modifiable, sans LdV, 3/tour, 1/cible",
+    "Vol de vie Terre 16–18 (CC 19–22) ; −2 PO (1 tour)",
+    "Rune Terre + état Terre"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Terre » (13686, niv. 1) → cible ennemie",
+    "16 à 18 vol Terre (CC : 19 à 22) → cible (alliée ou ennemie)",
+    "Applique l'état « Terre » (292) → cible ennemie — si cible n'a PAS l'état « Terre » (292) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Terre » (32391, niv. 1) → cible ennemie",
+    "-2 Portée → cible (alliée ou ennemie) (1 tour(s))"
+   ],
+   "role": [
+    "vol-de-vie",
+    "retrait-PO"
+   ],
+   "tactic": "Petit sort Terre à 2 PA pour compléter les PA et poser un état.",
+   "engineNotes": ""
+  },
+  {
+   "id": 13674,
+   "pairIndex": 17,
+   "variantOf": 13714,
+   "isBaseSpell": true,
+   "name": "Orage",
+   "obtainedAtLevel": 65,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 42464,
+   "description": "Repousse les cibles depuis le centre et occasionne des dommages Terre aux ennemis en zone.\nN'affecte pas le lanceur.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "24–27 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 132,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "29–32 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 199,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "32–36 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, 0–6 PO modifiable, LdV, 1/tour, CC 20 % ; n'affecte pas le lanceur",
+    "Zone croix 1 (5 cases) : dommages Terre 32–36 (CC 38–43) aux ennemis ; runes Terre + états Terre",
+    "Repousse de 1 case depuis le centre les entités des 4 cases adjacentes"
+   ],
+   "effectsSummaryRaw": [
+    "Repousse la cible de 1 case(s) → tous sauf le lanceur dans la zone (zone croix sans centre taille 1)",
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → tous (alliés+ennemis) dans la zone (zone croix taille 1, 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune de Terre » (13686, niv. 1) → ennemis dans la zone (zone croix taille 1)",
+    "32 à 36 dommages Terre (CC : 38 à 43) → ennemis dans la zone (zone croix taille 1)",
+    "Applique l'état « Terre » (292) → ennemis dans la zone — si cible n'a PAS l'état « Terre » (292) (zone croix taille 1, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Terre » (32391, niv. 1) → ennemis dans la zone (zone croix taille 1)"
+   ],
+   "role": [
+    "dégâts-zone",
+    "placement"
+   ],
+   "tactic": "Zone Terre (croix) ; la poussée éloigne les entités autour du centre.",
+   "engineNotes": "Poussée Q1 autour du centre, alliés hors lanceur et ennemis."
+  },
+  {
+   "id": 13714,
+   "pairIndex": 17,
+   "variantOf": 13674,
+   "isBaseSpell": false,
+   "name": "Ouragan",
+   "obtainedAtLevel": 175,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42527,
+   "description": "Occasionne des dommages Air et retire des PA.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "21–23 Air"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–6 PO, sans LdV, 3/tour, 1/cible",
+    "Dommages Air 21–23 (CC 25–28)",
+    "Retire 1 PA (esquivable, 1 tour) ; rune Air + état Air"
+   ],
+   "effectsSummaryRaw": [
+    "Pose une rune (sort déclenché) « Rune d'Air » (13689, niv. 1) → cible (alliée ou ennemie) (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rune d'Air » (13685, niv. 1) → cible ennemie",
+    "21 à 23 dommages Air (CC : 25 à 28) → cible (alliée ou ennemie)",
+    "Applique l'état « Air » (293) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort «  État Air » (32394, niv. 1) → cible ennemie",
+    "Retire 1 PA (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "dégâts-mono",
+    "retrait-PA"
+   ],
+   "tactic": "Retrait PA à 2 PA sur 3 cibles ; combiné à Lance-flamme/Carbonisation, entrave PA solide.",
+   "engineNotes": "Masque a,A."
+  },
+  {
+   "id": 13682,
+   "pairIndex": 18,
+   "variantOf": 13720,
+   "isBaseSpell": true,
+   "name": "Bouclier Élémentaire",
+   "obtainedAtLevel": 70,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 5,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42483,
+   "description": "Augmente les résistances de l'allié ciblé et lui applique l'état Bouclier Élémentaire :\n• Applique un état élémentaire sur l'attaquant selon l'élément de l'attaque subie par la cible.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–6 PO, LdV, relance 3, cumul 5",
+    "Allié : +25 % résistances (toutes) pendant 2 tours + état Bouclier Élémentaire",
+    "Chaque fois que l'allié subit des dommages d'un élément : −5 % de résistance dans cet élément (2 t.) et l'attaquant reçoit l'état de cet élément (→ combinaisons sur l'attaquant)"
+   ],
+   "effectsSummaryRaw": [
+    "25% Résistance → cible alliée (2 tour(s))",
+    "Applique l'état « Bouclier Élémentaire » (3645) → cible alliée (2 tour(s))",
+    "-5% Résistance Neutre → cible alliée (2 tour(s), actif 2 tour(s), déclencheur : dommages Neutre subis)",
+    "-5% Résistance Terre → cible alliée (2 tour(s), actif 2 tour(s), déclencheur : dommages Terre subis)",
+    "-5% Résistance Feu → cible alliée (2 tour(s), actif 2 tour(s), déclencheur : dommages Feu subis)",
+    "-5% Résistance Eau → cible alliée (2 tour(s), actif 2 tour(s), déclencheur : dommages Eau subis)",
+    "-5% Résistance Air → cible alliée (2 tour(s), actif 2 tour(s), déclencheur : dommages Air subis)",
+    "Retire les effets du sort « Bouclier Élémentaire » (13682) → cible alliée (délai 2 t.)",
+    "le lanceur lance le sous-sort « Bouclier Élémentaire » (13698, niv. 1) → cible alliée (actif 2 tour(s), déclencheur : dommages Feu subis)",
+    "le lanceur lance le sous-sort « Bouclier Élémentaire » (13698, niv. 2) → cible alliée (actif 2 tour(s), déclencheur : dommages Eau subis)",
+    "le lanceur lance le sous-sort « Bouclier Élémentaire » (13698, niv. 3) → cible alliée (actif 2 tour(s), déclencheur : dommages Terre subis)",
+    "le lanceur lance le sous-sort « Bouclier Élémentaire » (13698, niv. 4) → cible alliée (actif 2 tour(s), déclencheur : dommages Air subis)",
+    "Retire les effets du sort « Bouclier Élémentaire » (25488) → cible alliée (actif 2 tour(s), déclencheur : quand l'état « Bouclier Élémentaire » (3645) est retiré, non désenvoûtable)",
+    "Retire les effets du sort « Bouclier Élémentaire » (13682) → cible alliée (actif 2 tour(s), déclencheur : quand l'état « Bouclier Élémentaire » (3645) est retiré, non désenvoûtable)",
+    "la cible lance sur la case ciblée le sous-sort « Bouclier Élémentaire » (25488, niv. 1) → lanceur",
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → cible (alliée ou ennemie) (2 tour(s), actif 2 tour(s))",
+    "Applique l'état « Terre » (292) → cible (alliée ou ennemie) (durée infinie, actif 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu » (290) → cible (alliée ou ennemie) (durée infinie, actif 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Eau » (291) → cible (alliée ou ennemie) (durée infinie, actif 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Air » (293) → cible (alliée ou ennemie) (durée infinie, actif 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "protection",
+    "génération-états"
+   ],
+   "tactic": "Protection d'un allié ciblé par le boss (+25 % rés. qui s'érode à chaque coup). Les attaquants se voient poser des états : l'Huppermage n'a plus qu'à frapper dans un autre élément pour générer une combinaison.",
+   "engineNotes": "Effets 215–219 déclenchés (DA/DE/DF/DW/DN), sous-sort 13698 niv. 1–4 sur l'attaquant (masque A,o). Retrait des effets au retrait de l'état 3645."
+  },
+  {
+   "id": 13720,
+   "pairIndex": 18,
+   "variantOf": 13682,
+   "isBaseSpell": false,
+   "name": "Gardien Élémentaire",
+   "obtainedAtLevel": 180,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42533,
+   "description": "Invoque un Gardien Élémentaire maîtrisable qui peut occasionner des dommages, poser des runes et changer des états élémentaires.\n\nLorsqu'une combinaison élémentaire est générée par le lanceur, le Gardien gagne des effets selon la combinaison.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–4 PO, LdV, case libre, relance 4",
+    "Invoque le Gardien Élémentaire (monstre 5129) : 9 PA, 5 PM, sorts Rayon Quadramental (24–28 Neutre ou élément de l'état de la cible + rune), Cycle/Courant du Gardien",
+    "Le Gardien gagne +200 Puissance et 200 bouclier (3 t.) à chaque combinaison générée par l'Huppermage, et un bonus permanent par type de combinaison (+3 PA, +3 PM, +15 % dommages finaux, ×85 % dommages subis, +30 Tacle, +3 PO)"
+   ],
+   "effectsSummaryRaw": [
+    "Invoque « Gardien Élémentaire » (monstre 5129, grade 1) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Élaboration Quadramentale » (26187, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "invocation",
+    "dégâts-mono",
+    "runes"
+   ],
+   "tactic": "Invocation offensive qui grossit avec les combinaisons ; pose des runes comptées pour l'Huppermage. Remplace Bouclier Élémentaire (protection) : à prendre en PvM quand aucun allié n'a besoin de résistances.",
+   "engineNotes": "Voir §2.4. Rayon Quadramental fait lancer les runes par l'invocateur (2794 vers h,P)."
+  },
+  {
+   "id": 13696,
+   "pairIndex": 19,
+   "variantOf": 13716,
+   "isBaseSpell": true,
+   "name": "Polarité",
+   "obtainedAtLevel": 75,
+   "grade": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42494,
+   "description": "Consomme l'état élémentaire sur l'ennemi ciblé pour appliquer des effets selon son état élémentaire :\n•  Terre : repousse la cible.\n•  Feu : échange de position avec la cible.\n•  Eau : attire la cible.\n•  Air : téléporte le lanceur symétriquement par rapport à la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, 1–4 PO sans LdV, 2/tour",
+    "Consomme l'état de l'ennemi ciblé : Terre → le repousse de 3 ; Feu → échange de position ; Eau → l'attire de 3 ; Air → le lanceur se téléporte symétriquement par rapport à lui"
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « État Élémentaire » (32415, niv. 1) → cible ennemie",
+    "Repousse la cible de 3 case(s) → cible ennemie — si cible a l'état « Terre » (292)",
+    "Échange de positions (lanceur ↔ cible) → cible ennemie — si cible a l'état « Feu » (290)",
+    "Attire la cible de 3 case(s) → cible ennemie — si cible a l'état « Eau » (291)",
+    "Téléportation symétrique → lanceur — si cible a l'état « Air » (293) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Polarité » (13699, niv. 1) → cible ennemie — si cible a l'état « Air » (293)"
+   ],
+   "role": [
+    "placement",
+    "utilitaire"
+   ],
+   "tactic": "Placement à 1 PA dont l'effet est choisi par l'état de la cible (que l'on peut régler avec Cycle Élémentaire).",
+   "engineNotes": "32415 (retrait des états) est exécuté en premier, mais les conditions E<état> des effets suivants sont évaluées sur l'instantané initial."
+  },
+  {
+   "id": 13716,
+   "pairIndex": 19,
+   "variantOf": 13696,
+   "isBaseSpell": false,
+   "name": "Convection",
+   "obtainedAtLevel": 185,
+   "grade": 1,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 1,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42529,
+   "description": "Consomme l'état élémentaire sur l'ennemi ciblé pour appliquer des effets selon son état élémentaire :\n•  Terre : éloigne le lanceur de la cible.\n•  Feu : téléporte la cible et le lanceur à leur position précédente.\n•  Eau : rapproche le lanceur vers la cible.\n•  Air : téléporte la cible symétriquement par rapport au lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, 1–4 PO sans LdV, 2/tour, 1er lancer possible au tour 2",
+    "Consomme l'état : Terre → le lanceur recule de 3 ; Feu → la cible et le lanceur reviennent à leur position précédente ; Eau → le lanceur avance de 3 ; Air → la cible est téléportée symétriquement par rapport au lanceur"
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « État Élémentaire » (32415, niv. 1) → cible ennemie",
+    "Le lanceur recule de 3 case(s) (s’éloigne de la cible) → cible ennemie — si cible a l'état « Terre » (292)",
+    "Téléporte à la position précédente → lanceur, ennemis — si cible a l'état « Feu » (290) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Le lanceur avance de 3 case(s) vers la cible → cible ennemie — si cible a l'état « Eau » (291)",
+    "Téléportation symétrique par rapport au lanceur → cible ennemie — si cible a l'état « Air » (293)",
+    "le lanceur lance le sous-sort « Convection » (32400, niv. 1) → cible ennemie — si cible a l'état « Feu » (290)"
+   ],
+   "role": [
+    "placement",
+    "mobilité"
+   ],
+   "tactic": "Version « auto-placement » de Polarité.",
+   "engineNotes": "initialCooldown 1."
+  },
+  {
+   "id": 13724,
+   "pairIndex": 20,
+   "variantOf": 13684,
+   "isBaseSpell": true,
+   "name": "Surcharge Runique",
+   "obtainedAtLevel": 80,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 85354,
+   "description": "Déclenche toutes les runes du lanceur pour occasionner des dommages à l'ennemi ou soigner l'allié ciblé pour chaque rune déclenchée dans l'élément des runes.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "7–7 Eau, 7–7 Feu, 7–7 Air, 7–7 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "10–10 Eau, 10–10 Feu, 10–10 Air, 10–10 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 0–6 PO, LdV, cible requise, 1/tour",
+    "Déclenche **toutes** les runes du lanceur : chaque rune inflige 10 dommages de son élément à l'ennemi ciblé (où qu'il soit), ou soigne de 4 % PV max l'allié ciblé"
+   ],
+   "effectsSummaryRaw": [
+    "Applique l'état « Surcharge Runique (rang 2) » (6980) → cible (alliée ou ennemie) (1 tour(s))",
+    "Applique l'état « Surcharge Runique » (601) → lanceur (1 tour(s))",
+    "Déclenche les runes → tous (alliés+ennemis) dans la zone (zone tout le terrain (vivants))",
+    "Retire l'état « Surcharge Runique » (601) → lanceur (zone tout le terrain (vivants))",
+    "Retire l'état « Surcharge Runique (rang 2) » (6980) → cible (alliée ou ennemie)",
+    "10 dommages Eau → cible ennemie (info-bulle uniquement (comportement réel géré côté serveur))",
+    "10 dommages Feu → cible ennemie (info-bulle uniquement (comportement réel géré côté serveur))",
+    "10 dommages Air → cible ennemie (info-bulle uniquement (comportement réel géré côté serveur))",
+    "10 dommages Terre → cible ennemie (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Soin : 4% des PV max → cible alliée (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "soin",
+    "runes"
+   ],
+   "tactic": "Finisher de runes : avec 6–10 runes actives (zones Trait Ardent/Orage/Glacier…), 60–100 dommages de base multi-éléments sur une cible unique ; ou soin d'urgence (4 % × runes).",
+   "engineNotes": "Pose 6980 sur la cible et 601 sur le lanceur, 2023 sur toute la carte. Chaque rune = un lancer séparé (multiplicateurs appliqués par ligne)."
+  },
+  {
+   "id": 13684,
+   "pairIndex": 20,
+   "variantOf": 13724,
+   "isBaseSpell": false,
+   "name": "Sublimation",
+   "obtainedAtLevel": 190,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42428,
+   "description": "Applique les états Pesanteur et Sublimation sur l'ennemi ciblé :\n• Augmente les caractéristiques de l'attaquant et applique un état sur la cible selon l'élément de l'attaque qu'elle subit (cumulable 4 fois).\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–6 PO, LdV, relance 2",
+    "Ennemi : états Pesanteur (pas d'échange de place) et Sublimation pendant 1 tour",
+    "Chaque fois qu'il subit des dommages d'un élément : l'attaquant (et alliés) gagne +50 dans la caractéristique de l'élément (2 tours) et la cible reçoit l'état de l'élément (combinaisons) — cumulable 4 fois"
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Sublimation » (32671, niv. 1) → cible ennemie",
+    "Applique l'état « Pesanteur » (7) → cible ennemie (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Sublimation » (6967) → cible ennemie (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "-50 Force → cible (alliée ou ennemie) (1 tour(s), actif 1 tour(s), déclencheur : dommages Terre subis, info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Force → cible (alliée ou ennemie) (2 tour(s), actif 1 tour(s), déclencheur : dommages Terre subis, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Terre » (292) → cible (alliée ou ennemie) (durée infinie, actif 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "-50 Intelligence → cible (alliée ou ennemie) (1 tour(s), actif 1 tour(s), déclencheur : dommages Feu subis, info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Intelligence → cible (alliée ou ennemie) (2 tour(s), actif 1 tour(s), déclencheur : dommages Feu subis, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu » (290) → cible (alliée ou ennemie) (durée infinie, actif 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "-50 Chance → cible (alliée ou ennemie) (1 tour(s), actif 1 tour(s), déclencheur : dommages Eau subis, info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Chance → cible (alliée ou ennemie) (2 tour(s), actif 1 tour(s), déclencheur : dommages Eau subis, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Eau » (291) → cible (alliée ou ennemie) (durée infinie, actif 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "-50 Agilité → cible (alliée ou ennemie) (1 tour(s), actif 1 tour(s), déclencheur : dommages Air subis, info-bulle uniquement (comportement réel géré côté serveur))",
+    "50 Agilité → cible (alliée ou ennemie) (2 tour(s), actif 1 tour(s), déclencheur : dommages Air subis, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Air » (293) → cible (alliée ou ennemie) (durée infinie, actif 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "buff",
+    "debuff",
+    "génération-états"
+   ],
+   "tactic": "Transforme le boss en générateur de buffs pour toute l'équipe : chaque allié qui le frappe gagne +50 dans son élément (jusqu'à 4 cumuls), et l'Huppermage obtient des combinaisons via les attaques alliées.",
+   "engineNotes": "Déclencheurs DE/DF/DW/DA (1 tour) sur la cible ; 118/119/123/126 vers `a,O` (l'attaquant)."
+  },
+  {
+   "id": 13695,
+   "pairIndex": 21,
+   "variantOf": 13719,
+   "isBaseSpell": true,
+   "name": "Propagation",
+   "obtainedAtLevel": 85,
+   "grade": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42492,
+   "description": "Applique des effets et propage les états sur les ennemis en zone selon l'état élémentaire de l'ennemi ciblé :\n•  Terre : réduit les Résistances Poussée.\n•  Feu : retire des Critiques.\n•  Eau : retire de la Fuite.\n•  Air : retire du Tacle.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, 1–8 PO modifiable, LdV, 2/tour, 1/cible",
+    "Selon l'état de l'ennemi ciblé (non consommé), sur les ennemis en cercle 3 : Terre → −40 Résistances Poussée ; Feu → −15 % Critique ; Eau → −20 Fuite ; Air → −20 Tacle (1 tour)",
+    "Propage l'état de la cible à tous les ennemis du cercle 3 (→ combinaisons en chaîne sur ceux qui portent un autre état)"
+   ],
+   "effectsSummaryRaw": [
+    "-40 Résistances Poussée → ennemis dans la zone — si cible a l'état « Terre » (292) (zone cercle taille 3, 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Terre » (292) → ennemis dans la zone — si cible n'a PAS l'état « Terre » (292) (zone cercle taille 3, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "-15% Critique → ennemis dans la zone — si cible a l'état « Feu » (290) (zone cercle taille 3, 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu » (290) → ennemis dans la zone — si cible n'a PAS l'état « Feu » (290) (zone cercle taille 3, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "-20 Fuite → ennemis dans la zone — si cible a l'état « Eau » (291) (zone cercle taille 3, 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Eau » (291) → ennemis dans la zone — si cible n'a PAS l'état « Eau » (291) (zone cercle taille 3, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "-20 Tacle → ennemis dans la zone — si cible a l'état « Air » (293) (zone cercle taille 3, 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Air » (293) → ennemis dans la zone — si cible n'a PAS l'état « Air » (293) (zone cercle taille 3, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Propagation » (13694, niv. 5) → cible ennemie — si cible a l'état « Feu » (290)",
+    "le lanceur lance le sous-sort « Propagation » (13694, niv. 6) → cible ennemie — si cible a l'état « Eau » (291)",
+    "le lanceur lance le sous-sort « Propagation » (13694, niv. 7) → cible ennemie — si cible a l'état « Terre » (292)",
+    "le lanceur lance le sous-sort « Propagation » (13694, niv. 8) → cible ennemie — si cible a l'état « Air » (293)"
+   ],
+   "role": [
+    "debuff",
+    "génération-états",
+    "utilitaire"
+   ],
+   "tactic": "Multiplicateur de combinaisons en PvM de groupe : un seul état bien placé se propage à 5–6 monstres agglutinés.",
+   "engineNotes": "Sous-sorts 13694 niv. 5–8 ; propagation via « État X » (zone C3 min 1)."
+  },
+  {
+   "id": 13719,
+   "pairIndex": 21,
+   "variantOf": 13695,
+   "isBaseSpell": false,
+   "name": "Prisme Runique",
+   "obtainedAtLevel": 195,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42532,
+   "description": "Déclenche une rune du lanceur pour appliquer des effets et un état élémentaire sur les ennemis en zone selon son élément :\n•  Terre : réduit la durée des effets sur les cibles.\n•  Feu : réduit les soins reçus par les cibles.\n•  Eau : érode les cibles.\n•  Air : soigne les attaquants des cibles.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–6 PO modifiable, LdV, 1/tour",
+    "Déclenche la rune ciblée : effets en cercle 2 autour d'elle selon son élément — Terre : durée des effets −1 ; Feu : soins reçus ×70 % (2 t.) ; Eau : 15 % d'érosion (2 t.) ; Air : les attaquants des cibles sont soignés de 15 % des dommages (2 t.) ; + état de l'élément aux ennemis"
+   ],
+   "effectsSummaryRaw": [
+    "Applique l'état « Prisme Élémentaire » (6957) → lanceur (1 tour(s))",
+    "Déclenche les runes → cible (alliée ou ennemie)",
+    "Durée des effets : -1 → ennemis dans la zone (zone cercle taille 2, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Terre » (292) → ennemis dans la zone (zone cercle taille 2, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Soins reçus x70% → ennemis dans la zone (zone cercle taille 2, actif 2 tour(s), déclencheur : quand la cible est soignée, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu » (290) → ennemis dans la zone (zone cercle taille 2, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "15% Érosion → ennemis dans la zone (zone cercle taille 2, 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Eau » (291) → ennemis dans la zone (zone cercle taille 2, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Soigne l'attaquant de 15% des dommages qu'il inflige à la cible → ennemis dans la zone (zone cercle taille 2, actif 2 tour(s), déclencheur : quand la cible subit des dommages, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Air » (293) → ennemis dans la zone (zone cercle taille 2, durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Retire l'état « Prisme Élémentaire » (6957) → lanceur"
+   ],
+   "role": [
+    "debuff",
+    "runes",
+    "génération-états"
+   ],
+   "tactic": "Debuff de zone (anti-soin, érosion, désenvoûtement partiel) à partir d'une rune.",
+   "engineNotes": "État 6957 sur le lanceur ; le sort de rune lance 13733 niv. 1–4."
+  },
+  {
+   "id": 32033,
+   "pairIndex": 22,
+   "variantOf": 14342,
+   "isBaseSpell": true,
+   "name": "Supernova",
+   "obtainedAtLevel": 90,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 84793,
+   "description": "Réduit la durée des effets sur la cible et occasionne des dommages dans les meilleurs et pires éléments du lanceur aux ennemis.\nPose une rune du pire élément.\n\nPeut générer des Combinaisons Élémentaires.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "15–17 meilleur élt"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "19–21 meilleur élt"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 0–6 PO modifiable, LdV, 2/tour, 1/cible",
+    "Durée des effets −1 sur la cible",
+    "Dommages du **meilleur** élément 19–21 (CC 23–25) puis du **pire** élément 9–11 (CC 12–14)",
+    "Applique l'état du meilleur élément puis celui du pire (→ **combinaison garantie** si les deux diffèrent) et pose une rune du pire élément"
+   ],
+   "effectsSummaryRaw": [
+    "Durée des effets : -1 → cible (alliée ou ennemie)",
+    "Pose une rune (sort déclenché) « Rune de Terre » (13690, niv. 1) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "la cible lance (sur elle-même) le sous-sort « Supernova » (32034, niv. 1) → lanceur",
+    "19 à 21 dommages du meilleur élément (CC : 23 à 25) → cible ennemie",
+    "le lanceur lance le sous-sort « Supernova » (32034, niv. 6) → cible ennemie",
+    "9 à 11 dommages du pire élément (CC : 12 à 14) → cible ennemie",
+    "Applique l'état « Supernova (rune) » (6675) → lanceur (1 tour(s))",
+    "Retire l'état « Supernova (rune) » (6675) → lanceur",
+    "Applique l'état « Terre » (292) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu » (290) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Eau » (291) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Air » (293) → cible ennemie (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "génération-états",
+    "debuff"
+   ],
+   "tactic": "Générateur de combinaison autonome (un seul sort suffit), plus un petit désenvoûtement. Excellent pour un Huppermage mono/bi-élément qui veut quand même ses combinaisons.",
+   "engineNotes": "Déclencheurs CDE/CDF/CDW/CDA posés sur le lanceur pour connaître l'élément réel des dommages 2822/2832 ; voir COLLAPSE 32034."
+  },
+  {
+   "id": 14342,
+   "pairIndex": 22,
+   "variantOf": 32033,
+   "isBaseSpell": false,
+   "name": "Torrent Arcanique",
+   "obtainedAtLevel": 200,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 1,
+   "maxStack": 6,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 43845,
+   "description": "Occasionne des dommages Air, Terre, Feu et Eau aux ennemis en zone.\nLes dommages du sort sont augmentés pour chaque combinaison élémentaire générée par le lanceur.\n\nLes effets sont réinitialisés après utilisation du sort.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 2,
+     "damageBrief": "2–2 Air, 2–2 Terre, 2–2 Feu, 2–2 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–8 PO en ligne, LdV, relance 2, 1 lancer global/tour",
+    "Cercle 2 : dommages Air 2, Terre 2, Feu 2 et Eau 2 (CC 4) aux ennemis",
+    "+2 dégâts de base à chacune des 4 lignes par combinaison générée par le lanceur depuis le dernier Torrent (max 6 → 14 par élément, CC 16), remis à zéro après le lancer"
+   ],
+   "effectsSummaryRaw": [
+    "2 dommages Air (CC : 4) → ennemis dans la zone (zone cercle taille 2)",
+    "2 dommages Terre (CC : 4) → ennemis dans la zone (zone cercle taille 2)",
+    "2 dommages Feu (CC : 4) → ennemis dans la zone (zone cercle taille 2)",
+    "2 dommages Eau (CC : 4) → ennemis dans la zone (zone cercle taille 2)",
+    "Retire les effets du sort « Torrent Arcanique » (14359) → lanceur",
+    "Retire les effets du sort « Torrent Arcanique » (17275) → lanceur",
+    "Torrent Arcanique : +2 dégâts de base → lanceur (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-zone"
+   ],
+   "tactic": "Finisher multi-élément : après 6 combinaisons, 4 × 14 de base en zone (chaque ligne profite de sa caractéristique). Remplace Supernova : à prendre si le groupe génère beaucoup de combinaisons (Huppermage quadra).",
+   "engineNotes": "Les +2 viennent de 14359 (effet 293, maxStack 6) ; Torrent retire 14359/17275 après les dommages. Gamosaurus 2.70 annonçait une relance 3 : la donnée actuelle (DofusDB) est 2."
+  }
+ ],
+ "variantChoices": {
+  "pvm-dps-quadra": {
+   "label": "PvM — DPS multi-élément (Huppermage « quadra »), rôle principal recommandé",
+   "chosen": [
+    13668,
+    13669,
+    13666,
+    13667,
+    13670,
+    13672,
+    13675,
+    13679,
+    13722,
+    13723,
+    13721,
+    13683,
+    13701,
+    13680,
+    13718,
+    13725,
+    13674,
+    13720,
+    13696,
+    13724,
+    13695,
+    14342
+   ],
+   "rationale": "Les 4 sorts de base (4 éléments + entrave PA/PM/PO), Runification (déclenchement global), Drain Élémentaire (+200 carac.), zones Trait Ardent (Feu) et Orage (Terre), Volcan et Brèche (compléments à 2 PA, ×104 % / −2 PO), Surcharge Runique (finisher de runes), Propagation (combinaisons en chaîne), Gardien (dégâts additionnels), Torrent Arcanique (finisher qui profite des nombreuses combinaisons)."
+  },
+  "pvm-entrave-support": {
+   "label": "PvM — entrave + soutien (Huppermage Feu/Eau/Air, groupe avec un autre gros DPS)",
+   "chosen": [
+    13668,
+    13669,
+    13666,
+    13667,
+    13670,
+    13713,
+    13677,
+    13681,
+    13722,
+    13723,
+    13721,
+    13683,
+    13701,
+    13717,
+    13718,
+    13725,
+    13714,
+    13682,
+    13696,
+    13684,
+    13719,
+    32033
+   ],
+   "rationale": "Retraits PA/PM maximaux (Lance-flamme, Ouragan, Onde Sismique, Stalactite), Volcan ×104 %, Sublimation (+50 carac. aux attaquants), Prisme Runique (anti-soin/érosion), Bouclier Élémentaire, Contribution (+PA/+PM au DPS), Supernova (combinaison garantie), Tribut (+1 PA/PM perso), Avalanche/Déflagration (contrôle des positions)."
+  }
+ },
+ "rotations": [
+  {
+   "name": "Ouverture mono-cible (quadra, 12 PA)",
+   "ap": 12,
+   "mp": 6,
+   "sequence": [
+    "Lance-flamme (3 PA) sur le boss : Feu, −2 PA, rune Feu, état Feu",
+    "Éther (3 PA) : Air → Carbonisation (+50 Puissance, −2 PA) ; rune Air (remplace la rune Feu sur la case — hypothèse)",
+    "Stalagmite (3 PA) : Eau, −4 % dommages finaux → état Eau (pas de combinaison : états consommés)",
+    "Onde Sismique (3 PA) : Terre → Enlisement (−3 PM, +50 Puissance) puis −2 PM",
+    "(PA restants éventuels) Cycle Élémentaire (1 PA remboursé)"
+   ],
+   "notes": "≈ 4 sorts de base + 2 combinaisons (+100 Puissance, −4 PA, −5 PM tentés). Remplacer un sort par Runification sur soi (2 PA) si au moins 2 ennemis sont restés sur leurs runes."
+  },
+  {
+   "name": "Tour « runes » en zone (12 PA)",
+   "ap": 12,
+   "mp": 6,
+   "sequence": [
+    "Trait Ardent (4 PA) sur un paquet : runes Feu + états Feu sur 2–5 ennemis",
+    "Orage (4 PA) sur le même paquet (après la poussée) : Terre → Éruption (×115 %) sur chaque ennemi touché, runes Terre",
+    "Runification sur soi (2 PA) : vol 15 Terre/Feu par ennemi resté sur sa rune, +50 Force/+50 Intelligence (cumulables), ré-applique des états",
+    "Propagation (1 PA) + Cycle Élémentaire (1 PA remboursé) pour générer une combinaison de plus"
+   ],
+   "notes": "Les combinaisons Éruption préparent le tour des alliés (×1,15 pendant 1 tour). L'IA doit vérifier que les ennemis n'ont pas été déplacés hors de leurs runes par la poussée d'Orage (poussée 1 autour du centre)."
+  },
+  {
+   "name": "Finisher (variante Torrent Arcanique)",
+   "ap": 12,
+   "mp": 6,
+   "sequence": [
+    "Générer 2–3 combinaisons (sorts de base alternés, Supernova non disponible si Torrent est choisi) au tour N",
+    "Tour N+1 : Torrent Arcanique (3 PA) avec 4–6 paliers (+8 à +12 base par élément) + sorts de base"
+   ],
+   "notes": "Torrent : 1 lancer global par tour, relance 2."
+  },
+  {
+   "name": "Soutien (12 PA)",
+   "ap": 12,
+   "mp": 6,
+   "sequence": [
+    "Sublimation (2 PA) sur le boss",
+    "Lance-flamme (3) + Stalactite (2) : entrave",
+    "Contribution (2 PA) sur le DPS allié (avec 3–4 états présents sur les ennemis) : +1 PA, +1 PM, +150 Puissance, bouclier",
+    "Bouclier Élémentaire (2 PA) sur le tank, Cycle (1, remboursé)"
+   ],
+   "notes": "Contribution consomme tous les états : la lancer en fin de tour après avoir profité des combinaisons."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "Iop / Crâ / Sram / Roublard (gros DPS)",
+   "why": "Éruption (×115 % dommages subis 1 tour) et Volcan (×104 %) juste avant leur tour ; Contribution (+1 PA, +1 PM, +150 Puissance) sur le DPS ; Sublimation leur donne +50 carac. par frappe."
+  },
+  {
+   "with": "Enutrof / Sram / Xélor (entrave)",
+   "why": "Les retraits PA/PM de l'Huppermage (Carbonisation −2 PA, Enlisement −3 PM, Lance-flamme, Stalactite) s'additionnent pour verrouiller un boss ; Propagation −20 Fuite/Tacle aide les retraits et le tacle."
+  },
+  {
+   "with": "Pandawa / Ouginak / Forgelance (placement/regroupement)",
+   "why": "Monstres regroupés = zones Trait Ardent/Orage/Glacier sur plusieurs cibles, puis Propagation d'un état à tout le paquet et Runification sur soi (vols multiples)."
+  },
+  {
+   "with": "Féca / Eniripsa (protection/soin)",
+   "why": "L'Huppermage est un mage à moyenne portée sans gros sort de protection personnelle ; les runes occupées par des alliés soignent (6 %), mais un vrai soigneur reste nécessaire."
+  },
+  {
+   "with": "Autre Huppermage",
+   "why": "Les états élémentaires sont communs (ids 290–293) : un Huppermage peut générer des combinaisons sur les états posés par un autre (INCERTAIN : les états ne portent pas de propriétaire dans les données)."
+  }
+ ],
+ "strengths": [
+  "Dommages multi-éléments (contourne les résistances : choix de l'élément le plus faible de la cible).",
+  "Entrave PA/PM/PO polyvalente et peu coûteuse (sorts à 2–3 PA, retraits additionnels via combinaisons).",
+  "Amplification de dégâts de groupe (Éruption ×115 %, Volcan ×104 %, Sublimation, Contribution).",
+  "Mobilité et placement riches (Lame Astrale, Comète, Traversée, Manifestation Feu, Lance Solaire).",
+  "Auto-soin via vols de vie et runes ; boosts cumulables (+50 par rune, +50 Puissance par combinaison)."
+ ],
+ "weaknesses": [
+  "Complexité : la valeur réelle dépend de l'ordre des éléments et des positions des runes (IA exigeante).",
+  "Peu de protection personnelle (pas de bouclier fort sur soi en dehors de Tribut/Contribution) ; portée moyenne (souvent 1–6).",
+  "Les monstres déplacés quittent leurs runes (les poussées alliées réduisent Runification).",
+  "Beaucoup de sorts limités à 2 lancers/tour et 1–2 par cible : en mono-cible prolongé, il faut tourner entre de nombreux sorts.",
+  "Les stuffs multi-éléments sont moins optimisés que les stuffs mono-élément (dommages de base plus faibles par élément)."
+ ],
+ "summons": [
+  {
+   "monsterId": 5129,
+   "name": "Gardien Élémentaire",
+   "spell": 13720,
+   "stats": "9 PA, 5 PM, 15 % rés. partout, 300 Force/Int/Chance/Agi, 150 Sagesse, bonusCharacteristics.lifePoints 110 (% des PV de l'invocateur, INCERTAIN), characRatios brut [[0,500],[10,37.5],[11,0],[12,18.75],[13,37.5],[14,37.5],[15,37.5],[19,1],[23,1],[25,0.125]]",
+   "spells": "Rayon Quadramental 13734 (3 PA, 1–5 PO ligne, 1/cible, 24–28 Neutre ou élément de l'état, CC 15 %, 29–34), Cycle Élémentaire du Gardien 30788 et Courant Quadramental du Gardien 32670 (3 PA, 1–5 PO, 2/cible), sort initial 24972 (états « inactive »)",
+   "ai": "Invocation maîtrisable : jouée par le joueur/IA du groupe. Priorités : Rayon Quadramental sur un ennemi en état (dégâts dans cet élément + rune), sinon Cycle pour préparer une combinaison."
+  }
+ ],
+ "states": [
+  {
+   "id": 290,
+   "name": "Feu"
+  },
+  {
+   "id": 291,
+   "name": "Eau"
+  },
+  {
+   "id": 292,
+   "name": "Terre"
+  },
+  {
+   "id": 293,
+   "name": "Air"
+  },
+  {
+   "id": 296,
+   "name": "Rune (lanceur pendant Runification/Manifestation)"
+  },
+  {
+   "id": 6969,
+   "name": "Rune (rang 1)"
+  },
+  {
+   "id": 6970,
+   "name": "Rune (rang 2)"
+  },
+  {
+   "id": 6971,
+   "name": "Rune (rang 3)"
+  },
+  {
+   "id": 6973,
+   "name": "Rune (boost)"
+  },
+  {
+   "id": 600,
+   "name": "Manifestation"
+  },
+  {
+   "id": 6972,
+   "name": "Manifestation (cible)"
+  },
+  {
+   "id": 601,
+   "name": "Surcharge Runique (lanceur)"
+  },
+  {
+   "id": 295,
+   "name": "Surcharge Runique (rang 1, cible)"
+  },
+  {
+   "id": 6980,
+   "name": "Surcharge Runique (rang 2, cible)"
+  },
+  {
+   "id": 602,
+   "name": "Répulsion Runique"
+  },
+  {
+   "id": 6957,
+   "name": "Prisme Élémentaire"
+  },
+  {
+   "id": 6968,
+   "name": "Runification"
+  },
+  {
+   "id": 3502,
+   "name": "Dernière rune (passif)"
+  },
+  {
+   "id": 701,
+   "name": "Dernière rune : Feu"
+  },
+  {
+   "id": 702,
+   "name": "Dernière rune : Eau"
+  },
+  {
+   "id": 703,
+   "name": "Dernière rune : Terre"
+  },
+  {
+   "id": 704,
+   "name": "Dernière rune : Air"
+  },
+  {
+   "id": 3503,
+   "name": "Torrent Arcanique (passif)"
+  },
+  {
+   "id": 2011,
+   "name": "Torrent Arcanique I (…2016 VI)"
+  },
+  {
+   "id": 1930,
+   "name": "Cycle Élémentaire (cible)"
+  },
+  {
+   "id": 7017,
+   "name": "Courant Quadramental (cible)"
+  },
+  {
+   "id": 3645,
+   "name": "Bouclier Élémentaire"
+  },
+  {
+   "id": 361,
+   "name": "Contribution"
+  },
+  {
+   "id": 6956,
+   "name": "Empreinte"
+  },
+  {
+   "id": 6967,
+   "name": "Sublimation"
+  },
+  {
+   "id": 7,
+   "name": "Pesanteur"
+  },
+  {
+   "id": 7027,
+   "name": "Comète (mêlée)"
+  },
+  {
+   "id": 6671,
+   "name": "Supernova (Terre)"
+  },
+  {
+   "id": 6672,
+   "name": "Supernova (Feu)"
+  },
+  {
+   "id": 6673,
+   "name": "Supernova (Eau)"
+  },
+  {
+   "id": 6674,
+   "name": "Supernova (Air)"
+  },
+  {
+   "id": 6675,
+   "name": "Supernova (rune)"
+  },
+  {
+   "id": 3746,
+   "name": "Carbonisation inactive (Gardien)"
+  },
+  {
+   "id": 3747,
+   "name": "Enlisement inactif"
+  },
+  {
+   "id": 3748,
+   "name": "Cristallisation inactive"
+  },
+  {
+   "id": 3749,
+   "name": "Éruption inactive"
+  },
+  {
+   "id": 3750,
+   "name": "Ébullition inactive"
+  },
+  {
+   "id": 3751,
+   "name": "Assèchement inactif"
+  },
+  {
+   "id": 4456,
+   "name": "Combinaison générée (Gardien, 1 tour)"
+  }
+ ],
+ "openQuestions": [
+  "Rune déclenchée : consommée ou non ? (hypothèse : consommée).",
+  "Deux runes sur la même case : remplacement (hypothèse) ou coexistence ?",
+  "Runification ciblée sur une rune inoccupée : le lanceur reçoit-il le boost de caractéristique ? (données : oui, masque C).",
+  "Cumul du boost « Rune (boost) » : illimité dans la durée de 3 tours ? (aucune limite visible).",
+  "Les états élémentaires posés par un autre Huppermage (même ids) déclenchent-ils les combinaisons du second ? (probable).",
+  "PV et caractéristiques exacts du Gardien Élémentaire au niveau 200 (bonusCharacteristics/characRatios).",
+  "Signification exacte des déclencheurs CDE/CDF/CDW/CDA (déduits : « inflige des dommages de l'élément »)."
+ ]
+}

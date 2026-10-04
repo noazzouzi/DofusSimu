@@ -184,6 +184,9 @@ Entités bloquantes : `hasEntity(x,y,true)` = une entité « obstacle » qui n'e
 Tous les combattants vivants (joueurs, monstres, **invocations**, y compris statiques, bombes, tourelles…) bloquent la LdV ;
 seul le combattant dont c'est le tour est rendu transparent (`CurrentPlayedFighterManager` : `setCanSeeThrough(true)`
 sur le combattant actif). Les marques (glyphes, pièges, portails, runes) ne bloquent pas.
+Détail du code (2ᵉ vérification) : `LosDetector.getCell` teste l'entité sur `line[j−1]` pour `j ≥ 1`, donc sur tous les
+points sauf le dernier (la cible), et `pointLos` sur tous les points. La transparence du combattant actif sert à ce que
+sa propre case ne bloque pas. Pour un moteur serveur, il suffit d'exclure la case du lanceur.
 
 Conséquences importantes :
 - en **diagonale parfaite**, seules les cases de la diagonale sont testées : on voit « entre » deux obstacles qui se touchent
@@ -232,7 +235,8 @@ si castTestLos → filtrer par la LdV (§3)
 autour** du lanceur, et non 4 (D2:[Cross.as](https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/jerakine/types/zones/Cross.as)
 `getCells` : `addCell(x + r, y - r)`…). C'est cohérent avec les données DofusDB : *Esprit Félin* (Écaflip, 12847),
 *Cabriole* (Zobal, 13395) et *Cri de l'Ours* (Osamodas, 31132) sont `castInLine && castInDiagonal` avec une PO de 0 à 1.
-Le seul sort de classe « diagonale seule » est *Espingole* (Roublard, 13440, PO 1–6). Les zones `Cross` et `Lozenge`
+Le seul sort de classe « diagonale seule » est *Espingole* (Roublard, 13440 ; PO 1–6 / 1–7 / 1–8 selon le grade 1 / 2 / 3,
+revérifié en direct sur les 141 niveaux `castInDiagonal && !castInLine`). Les zones `Cross` et `Lozenge`
 n'ajoutent **que les cases marchables** (`addCell` → `pointMov`) : un trou ou un obstacle n'est jamais ciblable
 (D2:[Lozenge.as](https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/jerakine/types/zones/Lozenge.as)).
 
@@ -257,8 +261,12 @@ En Dofus 3 (DofusDB), états requis/interdits sont encodés dans **`statesCriter
 concernés (requête DofusDB, cache `.cache/mechanics/dofusdb/states_criterion.json` ; total revérifié en direct :
 2 416 sur 34 697 niveaux de sorts). Critère **exactement égal** à : `HS!7` (pas en *Pesanteur*) ×503, `HS!1` ×54,
 `HS=3` (*Porteur* requis : sorts de lancer du Pandawa) ×30. Le terme **apparaît** (seul ou combiné) dans :
-`HS!7` ×624 niveaux (354 sorts), `HS!1` ×54, `HS=3` ×42 (24 sorts). Opérateurs rencontrés : `&` ×594, `|` ×113,
-parenthèses ×13 ; seules les formes `HS=` et `HS!` existent.
+`HS!7` ×624 niveaux (354 sorts), `HS!1` ×54, `HS=3` ×42 (24 sorts). Opérateurs rencontrés (nombre d'**occurrences**) :
+`&` ×594 (dans 407 niveaux), `|` ×113 (94 niveaux), parenthèses ×13 (13 niveaux) ; seules les formes `HS=` et `HS!` existent.
+**Équivalent D3 de `statesAuthorized`** : la tautologie `HS=3|HS!3` (5 niveaux, sorts de monstres, ex. *Gigarâle* 31981)
+signifie « lançable avec ou sans l'état ». Pour l'exception `preventsSpellCast` ci-dessus, il faut donc considérer qu'un
+sort « requiert/autorise » l'état X dès que son critère contient le terme `HS=X`, et pas seulement quand il vaut
+exactement `HS=X` (déduit du client D2, où `statesRequired` **ou** `statesAuthorized` lève l'interdiction).
 Puis, côté cible (D3port:`DamageComputation`) : `needFreeCell` ⇒ pas de combattant vivant sur la case ; `needTakenCell` ⇒
 un combattant vivant ; `needVisibleEntity` ⇒ combattant vivant et non invisible. `needFreeTrapCell` ⇒ pas de piège
 (déduit du nom du champ ; ce test n'est pas dans le portage).
@@ -372,11 +380,18 @@ et pour les PM il remplace la borne haute par `0,90 − 0,10 × i`. Les deux ém
 Retenir la forme Alterya/Otomai :
 
 ```
-pour i = 0 .. n−1 (chaque point est tiré séparément) :
-   P_i = 0.5 × (Retrait_lanceur / Esquive_cible) × (PA_actuels_cible − i) / PA_max_cible
-   P_i = clamp(P_i, 0.10, 0.90)        ; Retrait et Esquive valent au minimum 1
-   si rand() < P_i : 1 point retiré
+k = 0                                   // points DÉJÀ retirés avec succès
+pour i = 0 .. n−1, tant que k < PA_actuels_cible (chaque point est tiré séparément) :
+   P = 0.5 × (Retrait_lanceur / Esquive_cible) × (PA_actuels_cible − k) / PA_max_cible
+   P = clamp(P, 0.10, 0.90)             ; Retrait et Esquive valent au minimum 1
+   si rand() < P : k = k + 1            // un échec ne fait PAS baisser la probabilité suivante
+retirés = k
 ```
+
+⚠ **Correction (2ᵉ vérification)** : la version précédente utilisait `PA_actuels − i` (indice de la tentative). C'est
+faux : l'émulateur Otomai (`RollApDodge` : `for (i < apStolen && value < Ap.Total) if (RollApLose(source, value)) value++`)
+et Giny passent le nombre de points **déjà retirés**, et Alterya le confirme : après un 1ᵉʳ PA retiré (42 %), le 2ᵉ
+tente à 6/10 → 36 % ; s'il a été esquivé, le 2ᵉ reste à 42 % (« 15 % les deux, 34 % aucun, 51 % un seul »).
 
 - Retrait PA/PM et Esquive PA/PM = `floor(Sagesse/10)` + bonus (Alterya ; DofusDB `apReduction` 82, `mpReduction` 83,
   `DodgeApLostProbability` 27, `DodgeMpLostProbability` 28).
@@ -401,14 +416,27 @@ pour i = 0 .. n−1 (chaque point est tiré séparément) :
   (**INCERTAIN**).
 - **Construction de la timeline** au début du combat :
   1. trier chaque équipe par initiative décroissante ;
-  2. l'équipe dont le **meilleur** combattant a la plus haute initiative commence (égalité : aléatoire, **INCERTAIN**) ;
+  2. choix de l'équipe qui commence — **INCERTAIN (corrigé lors de la 2ᵉ vérification)** : aucune source officielle ne
+     tranche, et les émulateurs divergent. *Stump 2.62* fait commencer l'équipe dont le **meilleur** combattant a la plus
+     haute initiative (`redFighters.First() > blueFighters.First()`) ; les forks *Stump 2.71* (Daymortel/Stump-2.71,
+     Mixi59/Stump, AlpaGit/Ether : `TimeLine.OrderLine`) comparent la **moyenne** d'initiative de chaque équipe
+     (`redAvgInit >= blueAvgInit`, égalité au profit des challengers). tofus dit seulement que l'initiative « sert à
+     déterminer qui du groupe allié ou ennemi commence ». Le moteur doit rendre la règle paramétrable ; défaut proposé :
+     **moyenne d'équipe** (implémentation la plus récente) ;
   3. alterner A1, B1, A2, B2… ; quand une équipe est épuisée, les combattants restants de l'autre jouent à la suite.
 - L'ordre est **figé** pour tout le combat. Un mort garde sa place (le serveur envoie `turnsList` + `deadTurnsList`, D2
   `FightTurnListStep`) : son « tour » est sauté mais déclenche quand même le décompte de ses buffs (D2:FightBattleFrame,
-  `GameFightTurnEndMessage` d'un mort ⇒ `decrementDuration`).
+  `GameFightTurnEndMessage` d'un mort ⇒ `decrementDuration`). Corroboré par l'émulateur Stump 2.71
+  (`TimeLine.SelectNextFighter` saute les morts, les range dans `PassedActors`, puis `Fight.cs` appelle
+  `DecrementAllCastedBuffsDuration()` pour eux). ⚠ Seuls les buffs **non dissipables par la mort** survivent au décès
+  de leur lanceur : voir §9.1. Cas des **invocations mortes** : le client réaffecte leurs buffs restants au combattant
+  **suivant** dans la timeline (D2:BuffManager `reaffectBuffs` / `getNextFighter`), ce qui suggère qu'une invocation
+  morte ne garde pas sa place (**INCERTAIN**).
 - **Invocations** : insérées dans la timeline **juste après leur invocateur** ; si plusieurs sont invoquées, la dernière
   invoquée joue la première après l'invocateur (règle historique documentée pour Dofus 1.29 sur
-  [dofux.org](https://www.dofux.org/articles-197-Les-combats.dx) ; **INCERTAIN** pour Dofus 3 — à vérifier en jeu).
+  [dofux.org](https://www.dofux.org/articles-197-Les-combats.dx) ; même comportement dans l'émulateur Stump 2.71 :
+  `TimeLine.InsertFighter(invoc, IndexOf(invocateur) + 1)` pour les invocations et les bombes ; **INCERTAIN** pour
+  Dofus 3 — à vérifier en jeu).
   Une invocation créée pendant le tour de son invocateur joue donc dans le même tour de jeu.
   Depuis la 2.58, le joueur peut contrôler ses invocations via *Maîtrise des invocations*
   ([JOL](https://dofus.jeuxonline.info/article/14922/comment-obtenir-sort-maitrise-invocations-dofus-258)) — pour le
@@ -438,19 +466,33 @@ pour i = 0 .. n−1 (chaque point est tiré séparément) :
   pénalise donc pas ce tour-là. Le moteur doit mémoriser, pour chaque buff, le combattant actif au moment de sa création
   (code client ; le serveur est supposé identique puisque le client affiche ces durées).
 - Durées ≥ 63 ou −1000 : jamais décomptées (permanent / tant que la condition dure ; ex. états *Porteur*/*Porté*).
-  Durée 0 : effet instantané.
+  Durée 0 : effet instantané. Précision (2ᵉ vérification) : une durée **négative** autre que −1000 (ex. −1) n'est pas
+  décomptée non plus. `BasicBuff.incrementDuration` ne la modifie que si `durée + delta > 0` ou `durée > 0`, et un buff
+  reste actif tant que `durée != 0`.
 - Les marques (glyphes, pièges, murs, portails) ont aussi une durée (celle de l'effet de pose, −1 = permanente,
   D3port:`Mark.Duration/DecrementDuration`) ; nous supposons le même décompte au début du tour de leur lanceur
   (**INCERTAIN** : l'appelant n'est pas dans le portage ; c'est le comportement observé des glyphes Féca « 2 tours »).
 - Effets à **retardement** (`delay > 0`) : décomptés au tour du lanceur et déclenchés quand le délai atteint 0
   (**INCERTAIN** sur l'instant exact : début du tour du lanceur).
-- Si le lanceur meurt, ses buffs continuent d'être décomptés à son tour « fantôme » (cf. §8).
+- **Mort d'un combattant** (corrigé lors de la 2ᵉ vérification : l'ancienne règle « ses buffs continuent d'être décomptés
+  à son tour fantôme » était incomplète). Source : D2:`FightDeathStep` → `BuffManager.dispell(mort, dying=true)`, puis
+  `removeLinkedBuff(mort, dying=true)`, puis `reaffectBuffs(mort)` ; filtre `BasicBuff.canBeDispell`. Le champ
+  `dispellable` de chaque effet (DofusDB `effects[].dispellable`) vaut 1 DISPELLABLE, 2 DISPELLABLE_BY_DEATH,
+  3 DISPELLABLE_BY_STRONG_DISPEL ou 4 REALLY_NOT_DISPELLABLE (D2 `FightDispellableEnum`).
+  1. Les buffs **portés par** le mort sont retirés s'ils valent 1 ou 2.
+  2. Les buffs **lancés par** le mort (`source`), sur **toutes** les cibles, sont retirés s'ils valent 1 ou 2.
+  3. Les buffs restants (3 ou 4) lancés par un **personnage ou monstre** mort restent décomptés à son tour fantôme (§8).
+     S'il s'agit d'une **invocation**, ils sont rattachés à son invocateur (si ce n'est pas le combattant actif) ou au
+     combattant suivant de la timeline (`reaffectBuffs`, sans décompte ce tour-ci si l'invocation était en train de jouer).
+  L'émulateur Stump ne retire que les buffs **portés par** le mort (`OnDead` → `RemoveAndDispellAllBuffs`). Nous suivons
+  le client officiel, qui reflète ce que le serveur envoie.
 
 ### 9.2 Ordre recommandé pour le moteur
 
 Début du tour de X :
 1. `roundNumber` : si X est le premier de la timeline, nouveau tour de jeu (vagues, horloges de boss…) ;
-2. décompte des durées des effets lancés par X (retrait des expirés, y compris marques de X) ;
+2. décompte des durées des effets dont X est l'`aliveSource` (§9.1 : en général lancés par X ; retrait des expirés,
+   y compris les marques de X) ;
 3. effets déclenchés « début de tour » (`triggers` contenant `TB`) portés par X : poisons, soins périodiques… (dans
    l'ordre d'application) ;
 4. glyphes « début de tour » sur la case de X (dans l'ordre de pose) ;
@@ -475,10 +517,15 @@ dans le dossier dédié aux effets.
 
 - **Érosion** [moyenne pour la base, élevée pour le plafond] : chaque perte de PV par dommages retire aussi
   `floor(dommages × érosion%)` PV **maximum** (non soignables). Base **10 %** pour tous les combattants (consensus
-  communautaire : forums officiels « L'Érosion faut-il en parler ? » / JVC, résumé moteur de recherche ; non lu dans le
-  code), + bonus des sorts/équipements, **plafonnée à 50 %** (D3port:`DamageReceiver.GetPermanentDamage` :
+  communautaire : forums officiels « L'Érosion faut-il en parler ? » / JVC. **Confirmé lors de la 2ᵉ vérification par le
+  code DoMath** : le simulateur de pièges borne la stat `erosion` à `{ min: 10, max: 50, default: 10 }`
+  (`.cache/domath/pretty.main.e2dd4684.js`, l. 24496), + bonus des sorts/équipements, **plafonnée à 50 %** (D3port:`DamageReceiver.GetPermanentDamage` :
   `min(PermanentDamagePercent, 50)` ; idem émulateur Giny). L'érosion ne peut pas tuer : `min(érosion, PV − 1)`.
   Caractéristique DofusDB `permanentDamagePercent` (75). Ex. 1 000 dommages à 10 % ⇒ PV max −100.
+  **INCERTAIN** : la base de calcul en présence d'un bouclier. DoMath applique l'érosion aux dommages **totaux**, part
+  absorbée par le bouclier comprise (`maxHealth -= floor(realValue × erosion/100)`, où `realValue` est la valeur
+  **avant** absorption par le bouclier, l. 56191). Le portage D3 la calcule sur la `DamageRange` de sortie, sans qu'on voie clairement la séparation
+  bouclier/PV.
 - **Résistances % élémentaires** : plafond **50 % pour un personnage joueur**, 100 % pour un monstre
   (D3port:`HaxeFighter.GetElementMainResist` : `MaxResistHuman = 50`, `MaxResistMonster = 100` ; confirmé par
   [dofuspourlesnoobs — Les dommages](https://www.dofuspourlesnoobs.com/les-dommages.html)). Le plafond s'applique à
@@ -526,10 +573,10 @@ Un état peut être neutralisé par un effet « désactiver l'état » (D3port:`
 | id | État | Effets | Conséquences moteur |
 |---|---|---|---|
 | 1 | Saoul | 9 | pas d'arme |
-| 3 | Porteur | 9, 8, 4 | porte un allié/ennemi ; seuls les sorts exigeant l'état (`HS=3`) sont lançables ; non portable |
+| 3 | Porteur | 9, 8, 4 | porte un allié/ennemi ; seuls les sorts dont le critère contient `HS=3` (exigé, ou autorisé via `HS=3\|HS!3`) sont lançables ; non portable |
 | 6 | Enraciné | 0, 1, 2, 17, 18 | ni poussé/attiré, ni taclé, ne tacle pas, pas de portail, pas d'échange de place |
 | 7 | Pesanteur | 18 | pas d'échange de place ; les sorts de mobilité ont `HS!7` ⇒ interdits |
-| 8 | Porté | – | sur la case du porteur ; ne tacle pas, n'est pas taclé ; peut quitter le porteur en se déplaçant (D2:FightReachableCellsMaker) |
+| 8 | Porté | – | sur la case du porteur ; ne tacle pas, n'est pas taclé ; exclu des zones sauf formes `a`/`A` ; libéré par téléportation ou par poussée du porteur (§16). Se libérer en marchant : **INCERTAIN** (FightReachableCellsMaker montre seulement que le **porteur** ignore le porté quand il bouge) |
 | 18 / 19 | Gelé / Fissuré | 9, 8 | ni sort ni arme |
 | 41 | Silencieux | 8 | aucun sort |
 | 42 | Affaibli | 9 | pas d'arme |
@@ -563,7 +610,8 @@ associé (D3port:`Mark`).
   ([Breakflip — refonte Féca](https://www.breakflip.com/?p=127283)).
 - **Pièges** : invisibles pour l'équipe adverse ; se déclenchent dès qu'un combattant (de n'importe quelle équipe)
   **entre** dans une cellule du piège — marche, poussée, téléportation, lancer — puis disparaissent ; ils **arrêtent la
-  poussée** (`StopDrag` pour TRAP et WALL) et le déplacement. Les réseaux de pièges (Sram) se résolvent en chaîne : voir
+  poussée** (`StopDrag` pour TRAP et WALL) et le déplacement. Le combattant poussé s'arrête **sur** la case du piège ou
+  du mur (`GetDragCellDest` renvoie cette case avec `StopReason = ActiveObject`), et non devant. Les réseaux de pièges (Sram) se résolvent en chaîne : voir
   le simulateur de pièges DoMath et `DamageCalculator.ExecuteMarks` (récursivité ≤ 10).
 - **Murs** (Roublard) : `ExecuteWallDamage` quand on traverse/entre ; arrêtent la poussée.
 - **Portails** : §16.
@@ -596,7 +644,8 @@ associé (D3port:`Mark`).
   `k = 0` pour la cible et `k = 1, 2…` pour chaque combattant percuté derrière elle. La **même force** sert pour tous ;
   seul le diviseur `2^k` change. Correction lors de la vérification : la force n'est **pas** diminuée par combattant. Dans
   `GetCollateralTargets`, le compteur `force--` ne sert qu'à **limiter le nombre** de combattants percutés : on en touche
-  au plus `force`, en chaîne contiguë dans la direction de la poussée. `ApplyCollisionDamageOnTarget` reçoit ensuite
+  au plus `force`, en chaîne contiguë dans la direction de la poussée. Ce `force` est la valeur après le ×2 diagonal, car
+  `ApplyCollisionDamage` double `RemainingForce` avant l'appel. `ApplyCollisionDamageOnTarget` reçoit ensuite
   `collisionData.RemainingForce` inchangé pour chacun. Force restante = distance non parcourue (en pas diagonaux pour
   une poussée diagonale), puis ×2 si la direction est diagonale. Dommages nuls si le lanceur est *Pacifiste* ; niveau de
   l'invocateur pour une invocation ; réductions normales ensuite (voir formules) ; immunité via l'état-effet 26
@@ -629,7 +678,9 @@ associé (D3port:`Mark`).
 - **Ciblage d'un porté** : un combattant dans l'état *Porté* (8) est exclu des cibles des zones de sort, sauf pour les
   formes de zone `a`/`A` (D3port:`FightContext.GetFightersFromZone` : `!fighter.HasState(8) || shape == 'a'`). DofusDB
   expose aussi `zoneDescr.includeCarried` (sémantique exacte **INCERTAINE**).
-- Un porteur ou un porté (état 3 chez l'un des deux) ne peut pas **échanger de place** (`HaxeFighter.CanSwitchPosition`).
+- Pas d'**échange de place** si l'un des deux combattants est **porteur** (état 3) : `HaxeFighter.CanSwitchPosition`
+  teste `HasState(3)` sur les deux. L'état *Porté* (8) n'y est pas testé ; téléporter un porté le libère d'abord
+  (`TeleportFighter`).
 
 ### Portails [Confiance : élevée]
 
@@ -726,6 +777,8 @@ Voir aussi les mentions INCERTAIN ci-dessus. Principales :
 7. Plafonds 12 PA / 6 PM / 9 PO toujours en vigueur en Dofus 3 (aucune annonce contraire trouvée).
 8. Vortex : vague 2 au tour 6 (JOL 2016) ou 7 (DPLN 2024) ; arrivée anticipée d'une vague dans le Vortex.
 9. Durées des buffs créés hors du tour de leur lanceur (`aliveSource`) : comportement serveur supposé identique au client.
+10. Équipe qui commence : meilleur combattant ou moyenne d'initiative de l'équipe (les émulateurs divergent, §8).
+11. Place d'une invocation morte dans la timeline (buffs réaffectés au combattant suivant, §8/§9.1).
 
 ## 22. Vérification (relecture contradictoire, 2026-10-04)
 
@@ -798,3 +851,59 @@ de l'auteur.
 
 **Signalé hors périmètre (non modifié)** : `src/map/los.ts` teste les deux cases latérales lors d'un passage exact par
 un coin. Il est donc plus restrictif que le client sur ≈ 28 % des paires de cases (§3.1). À aligner sur le DDA.
+
+## 23. Seconde vérification (contre-relecture indépendante, 2026-10-04)
+
+Méthode : scripts Python indépendants (pas ceux de l'auteur ni du 1ᵉʳ vérificateur), relecture du code client D2 en
+cache, du portage D3 BubbleBot, du bundle DoMath et des émulateurs Otomai, Giny et Stump (GitHub), contrôles en direct
+sur l'API DofusDB et pages sources rechargées.
+
+**Revérifié sans changement**
+- Géométrie : les 560 cellules (`MapPoint.init`, formules Haxe, `isInMap` sur toute la grille), offsets des 8 directions
+  par parité, 10 exemples de cellules (y compris px/py), 8 distances et 8 lignes de vue du JSON : 0 écart. DDA symétrique
+  sur les 313 040 paires. Le DDA est identique à ma propre réimplémentation de `_createCellsListForCells` (Kohana,
+  conditions corrigées) : 0 différence, et 86 640 paires passent par un coin. `src/map/los.ts` teste bien les deux cases
+  latérales (écart confirmé).
+- Portée (`FightSpellCastFrame` l. 810–860, `Cross.as`, `Lozenge.as`), règle de visibilité (`LosDetector`,
+  `DataMapProvider`), tacle (`TackleUtil`, `FightTurnFrame.drawPath`, DoMath, devblog JOL : formule, seuils
+  `PM·(F+2)−2` et `2T+2`, exemple 4/7/5), relances (`SpellManager.cooldown`, `SpellCastInFightManager.nextTurn`),
+  ordre de `canCastThisSpell`, poussée et collisions (`PushUtils` : `ceil(n/2)`, `IsPathBlocked`, `StopDrag`, ×2,
+  `4·2^k`), portage, portails (`PortalUtils`, `GetPortalBonus`, `getTargetThroughPortal`), invisibilité, marques
+  (`ExecuteMarks`, récursivité < 10), `StateEffectId`, `DataEnum` (6/8/56/76/95/96).
+- API DofusDB en direct : 18 états du tableau (noms, `effectsIds`, drapeaux) ; `statesCriterion` (2 416 / 34 697,
+  `HS!7` 503 exact / 624 contenant / 354 sorts, `HS=3` 30 / 42 / 24), 12 critères tirés au hasard identiques au cache ;
+  `globalCooldown > 0` = 166 ; Féca 0 ×33, 15 ×23, 10 ×5 ; caractéristiques 0–143 citées ; Ikargn 3834 (grades,
+  `characRatios`, drapeaux) ; carte 143393281 (222 / 262 / 76, cases rouges et bleues) ; *Esprit Félin*, *Cabriole*,
+  *Cri de l'Ours*, *Espingole*.
+- Pages : JOL critiques 2.29 (formule additive, plancher 1 %, Agilité retirée), Millenium 2.11 (fin des échecs
+  critiques), JOL 2.3.4 (12 PA / 6 PM / 9 PO, 1/1/1 en exotique), JOL bases du combat (6 PA, +1 au niveau 100, 3 PM),
+  tofus, Alterya, dofuspourlesnoobs (résistances 50 %), guides Vortex (JOL tour 6 / DPLN tour 7), guidactik 3.5
+  (publié le 03/03/2026). Les URL citées répondent avec le bon titre.
+
+**Corrigé**
+1. §7 : le pseudo-code du retrait PA/PM utilisait `PA_actuels − i` (indice de tentative). Il faut `PA_actuels − k`, où
+   `k` est le nombre de points **déjà retirés** ; on s'arrête quand `k` atteint les PA actuels (Otomai `RollApDodge`,
+   Giny, exemple multi-PA d'Alterya).
+2. §9.1 / §8 : à la mort d'un combattant, le client retire ses buffs dissipables (1) et « dissipables par la mort » (2),
+   qu'ils soient **portés par** lui ou **lancés par** lui sur n'importe quelle cible (`FightDeathStep`,
+   `removeLinkedBuff`). Seuls les buffs 3/4 continuent d'être décomptés au tour fantôme. Ceux d'une invocation morte
+   sont réaffectés à son invocateur ou au combattant suivant (`reaffectBuffs`). Une durée négative autre que −1000
+   n'est jamais décomptée.
+3. §8 : la règle « l'équipe du meilleur combattant commence » était présentée comme sûre. Les émulateurs divergent
+   (Stump 2.62 : meilleur combattant ; forks Stump 2.71 : moyenne d'équipe) : passée en **INCERTAIN** et paramétrable,
+   défaut « moyenne ». Insertion des invocations juste après l'invocateur corroborée par Stump (`InsertFighter`).
+4. §4.3 / §12 : la forme `HS=3|HS!3` (équivalent D3 de `statesAuthorized`) existe. Les comptes d'opérateurs sont des
+   occurrences (`&` 594 dans 407 niveaux, `|` 113 dans 94, parenthèses 13).
+5. §12 : la ligne *Porté* (8) affirmait encore « peut quitter le porteur en se déplaçant ». Elle contredisait §16 :
+   alignée (INCERTAIN). §16 : l'échange de place n'est bloqué que par l'état *Porteur* (3), testé sur les deux
+   combattants.
+6. §10 : la base d'érosion de 10 % et le plafond de 50 % sont confirmés par le code DoMath (`erosion: {min 10, max 50}`).
+   Ajouté en INCERTAIN : DoMath érode aussi la part absorbée par le bouclier.
+7. Précisions : *Espingole* PO 1–6/7/8 selon le grade ; un poussé s'arrête **sur** la case du piège ou du mur ; le nombre
+   maximal de percutés utilise la force après le ×2 diagonal ; détail `line[j−1]` de `LosDetector`.
+8. JSON : `lineAlgorithm.name` (« supercover » était trompeur), champ DofusDB `roleplayMonstersMovementBlocked`, contrôle
+   en direct de la carte Vortex, règle de dénivelé du « nouveau système de déplacement » (`pointMov`,
+   `TOLERANCE_ELEVATION = 11`, sans effet sur la carte Vortex), bloc `_meta.verification.secondPass`.
+
+**Signalé hors périmètre (non modifié)** : `src/map/los.ts` (cases latérales aux coins, §3.1). De plus,
+`hasLineOfSight` n'y vérifie pas le drapeau `los` de la **case cible**, alors que le client l'exige.

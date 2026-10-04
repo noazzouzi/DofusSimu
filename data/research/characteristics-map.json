@@ -333,7 +333,7 @@
   "characteristicId": 39,
   "keyword": "criticalMiss",
   "category": "misc",
-  "note": "Malus historique (augmente les échecs critiques) ; plus présent sur les objets.",
+  "note": "Malus historique (augmente les échecs critiques) ; plus présent sur les objets. Les données live ont characteristicOperator '-' et bonusType -1 (effet défavorable au porteur) ; sign = +1 ici signifie « ajoute à la carac. criticalMiss ».",
   "onItems": 0,
   "onSets": 0,
   "template": "#1{{~1~2 à }}#2 Échecs Critiques"
@@ -1035,7 +1035,7 @@
   "onItems": 492,
   "onSets": 180,
   "template": "#1{{~1~2 à }}#2% Résistance Terre",
-  "note": "Résistance % : plafonnée à 50 % pour un joueur dans le calcul de dégâts (100 % pour un monstre)."
+  "note": "Résistance % : plafonnée à 50 % pour un joueur dans le calcul de dégâts (100 % pour un monstre) ; en combat le plafond s'applique à % rés. de l'élément + % rés. tous éléments (effet 1076, carac. 101) — HaxeFighter.GetElementMainResist."
  },
  "211": {
   "stat": "resPercentWater",
@@ -1053,7 +1053,7 @@
   "onItems": 499,
   "onSets": 165,
   "template": "#1{{~1~2 à }}#2% Résistance Eau",
-  "note": "idem 210"
+  "note": "Résistance % : plafonnée à 50 % pour un joueur dans le calcul de dégâts (100 % pour un monstre) ; en combat le plafond s'applique à % rés. de l'élément + % rés. tous éléments (effet 1076, carac. 101) — HaxeFighter.GetElementMainResist."
  },
  "212": {
   "stat": "resPercentAir",
@@ -1071,7 +1071,7 @@
   "onItems": 501,
   "onSets": 163,
   "template": "#1{{~1~2 à }}#2% Résistance Air",
-  "note": "idem 210"
+  "note": "Résistance % : plafonnée à 50 % pour un joueur dans le calcul de dégâts (100 % pour un monstre) ; en combat le plafond s'applique à % rés. de l'élément + % rés. tous éléments (effet 1076, carac. 101) — HaxeFighter.GetElementMainResist."
  },
  "213": {
   "stat": "resPercentFire",
@@ -1089,7 +1089,7 @@
   "onItems": 492,
   "onSets": 171,
   "template": "#1{{~1~2 à }}#2% Résistance Feu",
-  "note": "idem 210"
+  "note": "Résistance % : plafonnée à 50 % pour un joueur dans le calcul de dégâts (100 % pour un monstre) ; en combat le plafond s'applique à % rés. de l'élément + % rés. tous éléments (effet 1076, carac. 101) — HaxeFighter.GetElementMainResist."
  },
  "214": {
   "stat": "resPercentNeutral",
@@ -1107,7 +1107,7 @@
   "onItems": 323,
   "onSets": 110,
   "template": "#1{{~1~2 à }}#2% Résistance Neutre",
-  "note": "idem 210"
+  "note": "Résistance % : plafonnée à 50 % pour un joueur dans le calcul de dégâts (100 % pour un monstre) ; en combat le plafond s'applique à % rés. de l'élément + % rés. tous éléments (effet 1076, carac. 101) — HaxeFighter.GetElementMainResist."
  },
  "215": {
   "stat": "resPercentEarth",
@@ -2158,7 +2158,7 @@
   "unit": "percent",
   "fr": "Change l'élément de frappe (gravure)",
   "context": "special",
-  "params": "value = % des dégâts de base conservés (85 gravures niv.80, 50 gravures niv.20)",
+  "params": "diceNum = 57, diceSide = élément cible (58 Feu, 59 Air, 60 Terre, 61 Eau), value = % des dégâts de base conservés (85 gravures niv. 80, 50 gravures niv. 20) — vérifié sur les 8 gravures (type 258).",
   "onItems": 0,
   "onSets": 0,
   "template": "Change l'élément de frappe"
@@ -2181,7 +2181,9 @@
   "context": "ignore",
   "onItems": 7,
   "onSets": 6,
-  "template": "Ajouter un sort temporaire"
+  "template": "Ajouter un sort temporaire",
+  "params": "diceSide = niveau du sort (INCERTAIN), value = spellId du sort temporaire (ex. 10139 Terreur tentaculaire, 10169 Camouflage des catacombres, 12404 Assasindic, 2056 Pelle Fantomatique du Dopeul)",
+  "note": "Ajoute un sort temporaire (pas une caractéristique). Présent sur 4 objets de quête/événement (Ménologium béni 29133, Dofus Verdoyant 29135, Attrape-Cauchemar 21878, Épée Nécronyx 19482), sur la Panoplie du Vampyre maudit (466, tous paliers) et les filets de capture (type 99). Ignoré par l'agrégateur ; à transmettre au moteur de combat si l'on simule ces objets. Ajouté lors de la vérification du 2026-10-04."
  },
  "724": {
   "stat": null,
@@ -2382,7 +2384,8 @@
   "element": "all",
   "onItems": 0,
   "onSets": 0,
-  "template": "#1{{~1~2 à }}#2% Résistance"
+  "template": "#1{{~1~2 à }}#2% Résistance",
+  "note": "Buff de combat ; s'ajoute à chaque % rés. élémentaire AVANT le plafond de 50 % (joueur) / 100 % (monstre)."
  },
  "1077": {
   "stat": "resPercentAll",
@@ -3280,7 +3283,7 @@
   "unit": "flat",
   "fr": "Plafond de caractéristique (#1 max. #2)",
   "context": "statCap",
-  "params": "diceNum = characteristicId plafonné, diceSide = valeur max (logique DofusDB stuff creator, module 56dd)",
+  "params": "diceNum = characteristicId plafonné, diceSide = valeur max du TOTAL (base comprise) — logique DofusDB stuff creator module 56dd : min(total, plafond). Ex. Malédiction de Cire Momore (panoplie 507) : PM(23)/PO(19)/Invo(26) max 4 (2 obj.), 3 (3-5 obj.), 2 (6 obj.).",
   "onItems": 0,
   "onSets": 15,
   "template": "#1 max. #2"

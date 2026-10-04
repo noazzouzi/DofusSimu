@@ -1,7 +1,7 @@
 {
  "_meta": {
   "title": "Grammaire des zones (zoneDescr), masques de cible (targetMask), declencheurs (triggers) et criteres d'etat",
-  "generatedAt": "2026-10-04T18:38:16Z",
+  "generatedAt": "2026-10-04T19:31:22Z",
   "generator": ".cache/effects/build_grammar.py",
   "sources": [
    "OTOMAI = https://github.com/OtomAICLIP/otomai (libs/Bubble.DamageCalculation: SpellZone.cs, SpellManager.cs, TargetManagement.cs, HaxeBuff.cs, DamageCalculator.cs) - copie locale .cache/domath/haxe/",
@@ -40,7 +40,7 @@
    "forcedDirection": "direction imposee (rare, L)",
    "includeCarried": "inclut l'entite portee (P, C, Q)",
    "onlyAffectIfInSightLine": "n'affecte que les cases en ligne de vue du centre (C)",
-   "cellIds": "liste explicite (remplie pour 'a'/'A' = toutes les cases)"
+   "cellIds": "liste explicite (remplie pour 'a'/'A' = toutes les cases, et pour ';' = liste de cases fixe)"
   },
   "dofus2RawZoneString": {
    "syntax": "<forme><p0>[,<p1>[,<p2>[,<p3>[,<p4>]]]] ex: 'C2', 'X1,0', 'L3,10,4', 'l1,63,0,0,1'",
@@ -58,7 +58,7 @@
     "F,V": "distance directionnelle (profondeur selon la direction lanceur->impact)",
     "A,a,I,;": "0"
    },
-   "appliesTo": "Degats, vols de vie et soins dont la valeur est calculee (pas les splash 1223/2020/2973, pas les boucliers), et pas aux cibles ajoutees hors zone (C, O, K).",
+   "appliesTo": "Degats, vols de vie et soins dont la valeur est calculee (pas les splash 1123/1223/2020/2973, pas les boucliers: ActionIdHelper.AllowAoeMalus), et pas aux cibles ajoutees hors zone (C, O, K).",
    "referencePoint": "case d'impact du sort (fightContext.TargetedCell) vs position de la cible avant le sort.",
    "example": "Couperet (Iop) L3 pas 10% x4: cible sur l'impact 100%, 2e case 90%, 3e 80%, 4e 70%.",
    "sources": [
@@ -78,15 +78,15 @@
     },
     "efficiencyDistance": "aucune degressivite (rayon 0)",
     "notes": "",
-    "corpusCount": 11839,
+    "corpusCount": 12349,
     "examples": [
-     "Attraction ailée (5015)",
-     "Terre mythe (5017)",
-     "Tirs optiques (5018)",
-     "Superfidie (5019)"
+     "Heure du temps (4999)",
+     "Glyphe téléporteur (5002)",
+     "Vortexiphan (5006)",
+     "Attraction ailée (5015)"
     ],
     "observedParams(param1,param2,step,maxTicks)": {
-     "(1, 0, 10, 4)": 11839
+     "(1, 0, 10, 4)": 12349
     },
     "sources": [
      "D2CLIENT SpellZoneManager.getZone",
@@ -103,7 +103,7 @@
     },
     "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille - minRadius",
     "notes": "C63 = toute la carte (pas de degressivite car radius > 50).",
-    "corpusCount": 1288,
+    "corpusCount": 1389,
     "examples": [
      "Attraction ailée (5015)",
      "Cercle de feu (5016)",
@@ -111,14 +111,14 @@
      "Transfusion (12738)"
     ],
     "observedParams(param1,param2,step,maxTicks)": {
-     "(2, 0, 10, 4)": 320,
-     "(2, 1, 10, 4)": 246,
-     "(3, 0, 10, 4)": 156,
-     "(63, 0, 0, 0)": 151,
+     "(2, 0, 10, 4)": 329,
+     "(2, 1, 10, 4)": 260,
+     "(3, 0, 10, 4)": 161,
+     "(63, 0, 0, 0)": 152,
      "(3, 1, 10, 4)": 101,
      "(0, 0, 10, 4)": 79,
-     "(2, 1, 0, 0)": 35,
-     "(63, 1, 10, 4)": 27
+     "(7, 1, 0, 0)": 42,
+     "(2, 1, 0, 0)": 37
     },
     "sources": [
      "D2CLIENT SpellZoneManager.getZone",
@@ -163,7 +163,7 @@
     },
     "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille - minRadius",
     "notes": "",
-    "corpusCount": 505,
+    "corpusCount": 506,
     "examples": [
      "Furie (12723)",
      "Douleur Cuisante (12730)",
@@ -195,7 +195,7 @@
     },
     "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille - minRadius",
     "notes": "Q2,2 = uniquement les 4 cases a distance 2.",
-    "corpusCount": 276,
+    "corpusCount": 280,
     "examples": [
      "Afflux (12729)",
      "Aversion (12749)",
@@ -203,14 +203,14 @@
      "Couronne d'Épines (12761)"
     ],
     "observedParams(param1,param2,step,maxTicks)": {
-     "(1, 0, 10, 4)": 110,
+     "(1, 0, 10, 4)": 112,
      "(1, 1, 10, 4)": 45,
      "(2, 2, 10, 4)": 19,
      "(1, 0, 0, 4)": 15,
      "(3, 0, 10, 4)": 13,
      "(1, 0, 0, 0)": 9,
      "(3, 3, 10, 4)": 9,
-     "(3, 1, 10, 4)": 7
+     "(63, 0, 10, 4)": 8
     },
     "sources": [
      "D2CLIENT SpellZoneManager.getZone",
@@ -346,7 +346,7 @@
     },
     "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille depuis la case d'impact - minRadius",
     "notes": "",
-    "corpusCount": 97,
+    "corpusCount": 98,
     "examples": [
      "Fulgurance (12724)",
      "Brancard (12811)",
@@ -354,7 +354,7 @@
      "Griffe Joueuse (12849)"
     ],
     "observedParams(param1,param2,step,maxTicks)": {
-     "(1, 63, 0, 0)": 73,
+     "(1, 63, 0, 0)": 74,
      "(2, 0, 10, 4)": 7,
      "(1, 63, 10, 4)": 6,
      "(0, 63, 0, 0)": 6,
@@ -570,15 +570,15 @@
     },
     "efficiencyDistance": "aucune",
     "notes": "",
-    "corpusCount": 727,
+    "corpusCount": 811,
     "examples": [
+     "Heure du temps (4999)",
      "Petit poison (5021)",
      "Décollage (5032)",
-     "Heurage (5066)",
-     "Perfusion (12758)"
+     "Heurage (5066)"
     ],
     "observedParams(param1,param2,step,maxTicks)": {
-     "(1, 0, 10, 4)": 727
+     "(1, 0, 10, 4)": 811
     },
     "sources": [
      "D2CLIENT SpellZoneManager.getZone",
@@ -594,7 +594,7 @@
     },
     "efficiencyDistance": "aucune",
     "notes": "",
-    "corpusCount": 344,
+    "corpusCount": 447,
     "examples": [
      "Dessèchement (13284)",
      "Sables du Temps (13292)",
@@ -602,7 +602,7 @@
      "Retraite Anticipée (13349)"
     ],
     "observedParams(param1,param2,step,maxTicks)": {
-     "(1, 0, 10, 4)": 344
+     "(1, 0, 10, 4)": 447
     },
     "sources": [
      "D2CLIENT SpellZoneManager.getZone",
@@ -702,27 +702,32 @@
    ";": {
     "charCode": 59,
     "name_fr": "Liste de cellules",
-    "cells": "Liste explicite de cellIds (rawZone ';c1,c2,...').",
+    "cells": "Liste explicite de cellIds (zoneDescr.cellIds; rawZone ';c1,c2,...').",
     "params": {},
     "efficiencyDistance": "aucune",
-    "notes": "",
-    "corpusCount": 0,
-    "examples": [],
-    "observedParams(param1,param2,step,maxTicks)": {},
+    "notes": "Observe (verification 2026-10-04): Vortexiphan (5006) invoque l'Auroraire 3833 via 181 sur une liste de cases fixe.",
+    "corpusCount": 25,
+    "examples": [
+     "Vortexiphan (5006)",
+     "Décalage horaire (4996)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 25
+    },
     "sources": [
      "D2CLIENT SpellZoneManager.getZone",
      "OTOMAI Tools/SpellZone.cs"
-    ],
-    "uncertain": "Non observe."
+    ]
    }
   },
   "flagsObserved": {
-   "includeCarried@P": 11839,
-   "cellIds@a": 727,
-   "isStopAtTarget@l": 86,
+   "cellIds@a": 811,
+   "includeCarried@P": 12349,
+   "cellIds@;": 25,
+   "isStopAtTarget@l": 87,
    "includeCarried@C": 49,
-   "cellIds@A": 344,
-   "onlyAffectIfInSightLine@C": 16,
+   "cellIds@A": 447,
+   "onlyAffectIfInSightLine@C": 60,
    "includeCarried@Q": 3,
    "forcedDirection@L": 4
   }
@@ -734,7 +739,7 @@
    "2. Inclusion: la cible doit correspondre a AU MOINS UN jeton d'inclusion (a, g, A, c, C, h/H, l/L, d/D, m/M, i/I, j/J, s/S). Cas du lanceur: inclus seulement si 'c', 'C' ou 'a' (jamais 'g').",
    "3. Exclusions/conditions (lettres *bBeEfFzZKoOPpTWuUvVrRQq + PB/pb/PR/pr): TOUTES doivent etre vraies (ET), sauf les groupes B#, F#, Z# du meme type qui sont des OU (au moins un).",
    "4. Si aucun masque: toutes les entites de la zone.",
-   "5. Les cibles sont calculees AVANT l'execution des effets du sort (instantane), sauf masques U/u/T/W/V/v recalcules au moment de l'effet."
+   "5. Les cibles sont calculees AVANT l'execution des effets du sort (instantane), sauf pour les effets portant un jeton U, u, T ou W (recalcules au moment de l'effet). OTOMAI teste aussi 'V'/'v' mais par egalite exacte de jeton (Masks.Contains(\"V\")): les jetons reels V#/v# (V50, *v50...) ne declenchent donc PAS de recalcul dans OTOMAI (INCERTAIN pour le jeu). [verification 2026-10-04]"
   ],
   "inclusion": {
    "a": "Allies (meme equipe que le lanceur) - inclut le LANCEUR s'il est dans la zone.",
@@ -785,7 +790,8 @@
    "PB": "INCERTAIN (deduit des descriptions Cra): la cible possede du bouclier.",
    "pb": "INCERTAIN: la cible n'a pas de bouclier.",
    "PR": "INCERTAIN: condition 'PR' (Forgelance, Disque de Sigel) - probablement 'porte/porteur' ou 'portee'.",
-   "pr": "INCERTAIN: negation de PR."
+   "pr": "INCERTAIN: negation de PR.",
+   "*h": "Condition LANCEUR: le lanceur est un personnage joueur non invoque (Potion Magique / Grande Rasade du Pandawa: 'C,*h,e3536'). OTOMAI evalue 'h' comme toujours vrai en condition (EvaluateExclusionByMaskCharacter) - INCERTAIN. [ajout verification 2026-10-04]"
   },
   "orGroups": [
    "B",
@@ -798,38 +804,39 @@
    "K": "entite portee ajoutee"
   },
   "corpusCounts": {
-   "A": 7634,
-   "a": 6861,
-   "C": 4638,
-   "F#": 3485,
-   "E#": 2195,
-   "*E#": 1884,
-   "e#": 1444,
-   "*e#": 1090,
-   "f#": 1023,
-   "P": 1009,
-   "g": 829,
-   "c": 267,
-   "*F#": 145,
+   "A": 7749,
+   "a": 7036,
+   "C": 5040,
+   "F#": 3636,
+   "E#": 2267,
+   "*E#": 2090,
+   "e#": 1563,
+   "P": 1204,
+   "*e#": 1161,
+   "f#": 1052,
+   "g": 874,
+   "c": 296,
+   "h": 201,
+   "*F#": 159,
    "j": 139,
-   "b#": 120,
-   "h": 104,
-   "T": 91,
-   "l": 72,
+   "l": 132,
+   "b#": 123,
+   "m": 99,
+   "T": 93,
    "J": 63,
-   "m": 55,
+   "O": 58,
    "R": 55,
    "M": 54,
-   "O": 51,
-   "U": 49,
+   "L": 52,
+   "U": 51,
    "r": 41,
-   "L": 40,
-   "p": 33,
+   "p": 35,
    "K": 29,
+   "o": 24,
    "H": 19,
+   "d": 19,
+   "B#": 18,
    "D": 17,
-   "d": 17,
-   "B#": 16,
    "v#": 14,
    "V#": 14,
    "I": 14,
@@ -839,35 +846,45 @@
    "PB": 11,
    "*V#": 10,
    "s": 9,
-   "o": 8,
-   "u": 3,
+   "u": 4,
    "x": 2,
    "*q": 2,
+   "*h": 2,
    "pr": 1,
    "*PR": 1,
    "PR": 1,
    "*pr": 1
   },
   "examples": {
-   "A": [
-    "Attraction ailée [A]",
-    "Cercle de feu [A]",
-    "Terre mythe [A]"
+   "L": [
+    "Heure du temps [L]",
+    "Petit poison [L]",
+    "Concentration [L,M,l,m,c]"
    ],
    "C": [
-    "Attraction ailée [C]",
-    "Bouclier absorbant [C]",
-    "Mise en situation [C]"
-   ],
-   "L": [
-    "Petit poison [L]",
-    "Concentration [L,M,l,m,c]",
-    "Obsolescence [l,m,L,M]"
+    "Heure du temps [C]",
+    "Glyphe téléporteur [C]",
+    "Vortexiphan [C]"
    ],
    "a": [
-    "Envolupté [a]",
-    "En temps et en heure [a,A,F3833]",
-    "Contamination zombie [a,E74]"
+    "Heure du temps [a,A]",
+    "Vortexiphan [a,A]",
+    "Envolupté [a]"
+   ],
+   "A": [
+    "Heure du temps [a,A]",
+    "Vortexiphan [a,A]",
+    "Attraction ailée [A]"
+   ],
+   "c": [
+    "Glyphe téléporteur [c,E234]",
+    "Pénitence [c]",
+    "Ribote [c]"
+   ],
+   "E#": [
+    "Glyphe téléporteur [c,E234]",
+    "Contamination zombie [a,E74]",
+    "Picole [C,E3531]"
    ],
    "F#": [
     "En temps et en heure [a,A,F3833]",
@@ -878,11 +895,6 @@
     "En temps et en heure [a,A,T]",
     "Gelure [a,A,T]",
     "Téléportation [a,A,T]"
-   ],
-   "E#": [
-    "Contamination zombie [a,E74]",
-    "Picole [C,E3531]",
-    "Gueule de Bois [C,E498]"
    ],
    "g": [
     "Heurage [g,F3833,*E236]",
@@ -899,20 +911,20 @@
     "Assaut [a,A,*e7]",
     "Attirance [a,A,*e5380]"
    ],
+   "f#": [
+    "Vortexiphan [a,f3833,f3839,f3838,f3837,f3834,f3836,f3835,e945]",
+    "Bouclier Féca [g,b1,f7864,f7865,f5903,f5910,f7841]",
+    "Mot de Solidarité [a,P,f7372,f7373,f7374,f7375]"
+   ],
+   "e#": [
+    "Vortexiphan [a,f3833,f3839,f3838,f3837,f3834,f3836,f3835,e945]",
+    "Berserk [C,e1803]",
+    "Pile ou Face [C,e5452,e5464]"
+   ],
    "P": [
     "Sacrifice [a,P,F434,F5192]",
     "Fluctuation [a,P,F434,F5192]",
     "Ivresse [h,P]"
-   ],
-   "e#": [
-    "Berserk [C,e1803]",
-    "Pile ou Face [C,e5452,e5464]",
-    "Topkaj [C,e5464,e5448]"
-   ],
-   "c": [
-    "Pénitence [c]",
-    "Ribote [c]",
-    "Liqueur [c]"
    ],
    "h": [
     "Ivresse [h,P]",
@@ -960,11 +972,6 @@
     "Bouclier Féca [g,b1,f7864,f7865,f5903,f5910,f7841]",
     "Transhumance [g,b1]",
     "Mise en Garde [g,b1]"
-   ],
-   "f#": [
-    "Bouclier Féca [g,b1,f7864,f7865,f5903,f5910,f7841]",
-    "Mot de Solidarité [a,P,f7372,f7373,f7374,f7375]",
-    "Paradoxe [g,A,f3958,e7]"
    ],
    "l": [
     "Concentration [L,M,l,m,c]",
@@ -1044,18 +1051,24 @@
     "Flèche Perforante [A,PB]",
     "Flèche d'Abolition [a,A,PB,*e7120,*e7121]"
    ],
+   "o": [
+    "Heure du temps [A,o,*e6490]",
+    "Bouclier Élémentaire [A,o]",
+    "Balise de Survie [h,P,o,e3,e6,e7,e8,e97,*e3,*e6,*e7,*e8,*e97]"
+   ],
    "B#": [
     "Pâturage [a,B1]",
     "Refuge [a,B1]",
     "Verglas [a,B1]"
    ],
-   "o": [
-    "Bouclier Élémentaire [A,o]"
-   ],
    "*F#": [
     "Poinçon [C,*F7139]",
-    "Aiguillage [a,A,*e7,*e6,*e97,*F5836,*F5832,*F5835,*F5833,*F5837,*F5831]",
-    "Court-circuit [a,*F5836]"
+    "Féerie [C,*F7372]",
+    "Folie [C,*F7376]"
+   ],
+   "*h": [
+    "Potion Magique [C,*h,e3536]",
+    "Grande Rasade [C,*h,e3536]"
    ],
    "u": [
     "Boîte à Outils [j,P,u]",
@@ -1084,33 +1097,33 @@
  "triggers": {
   "syntax": "Liste separee par '|' (OU). 'I' seul = instantane. Autre valeur => l'effet devient un BUFF declencheur pose sur la cible du masque (le 'porteur'), actif pendant effectTriggerDuration tours (63 = tout le combat), et rejoue l'effet quand l'evenement survient.",
   "bearerVsSource": "Codes sans prefixe C: evenement SUBI par le porteur. Codes prefixes C (CC, CI, CH, CD*, CAPA...): evenement CAUSE par le porteur (OTOMAI ShouldBeTriggeredOnCaster).",
-  "triggeredEffectTarget": "Quand un buff se declenche, l'effet s'applique au porteur; pour 792/793 (TargetExecuteSpell) et K/KWW/KWS/PO/CH la 'cible' est l'entite affectee par l'evenement. Le masque O designe l'entite declencheuse (ex: attaquant).",
+  "triggeredEffectTarget": "Quand un buff se declenche, l'effet s'applique au porteur; pour 792/793 (TargetExecuteSpell) et les codes K/KWW/KWS/PO/CH/CDBA/CDBE/CC/PST/PDT la 'cible' est l'entite affectee par l'evenement (OTOMAI DamageCalculator.TriggerEffectsOnBuffs). Le masque O designe l'entite declencheuse (ex: attaquant). Pour 1017/1018/1019/2017 la 'source' est l'entite declencheuse.",
   "limits": "Pour les effets de lancement de sort (792, 1160, ...), value = nombre max de declenchements du buff (999 = illimite). Un buff ne se declenche pas sur un evenement issu de lui-meme (IsTriggeredByParent) sauf spell.canAlwaysTriggerSpells.",
   "codes": {
    "I": {
     "meaning": "Instantane: l'effet s'applique au lancer (pas de buff declencheur).",
     "confidence": "certain",
-    "corpusCount": 14936,
+    "corpusCount": 15618,
     "examples": [
-     "Attraction ailée [effet 6, triggers=I, masque=A]",
-     "Cercle de feu [effet 269, triggers=I, masque=A]",
-     "Terre mythe [effet 271, triggers=I, masque=A]"
+     "Heure du temps [effet 950, triggers=I, masque=a,A]",
+     "Glyphe téléporteur [effet 140, triggers=I, masque=c,E234]",
+     "Vortexiphan [effet 792, triggers=I, masque=C]"
     ]
    },
    "TB": {
     "meaning": "Debut du tour du PORTEUR (poisons 'de debut de tour', effets periodiques).",
     "confidence": "certain",
-    "corpusCount": 124,
+    "corpusCount": 175,
     "examples": [
-     "Petit poison [effet 96, triggers=TB, masque=L]",
-     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
-     "Distillation [effet 3793, triggers=TB, masque=g,A]"
+     "Heure du temps [effet 1160, triggers=TB, masque=L]",
+     "Glyphe téléporteur [effet 792, triggers=TB, masque=C]",
+     "Vortexiphan [effet 792, triggers=TB, masque=C]"
     ]
    },
    "TE": {
     "meaning": "Fin du tour du PORTEUR.",
     "confidence": "certain",
-    "corpusCount": 207,
+    "corpusCount": 219,
     "examples": [
      "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
      "Libation [effet 792, triggers=TE, masque=C]",
@@ -1120,11 +1133,11 @@
    "D": {
     "meaning": "Le porteur subit des dommages (hors dommages de collision).",
     "confidence": "certain",
-    "corpusCount": 174,
+    "corpusCount": 196,
     "examples": [
-     "Tirs optiques [effet 1163, triggers=D, masque=A]",
-     "Plumière [effet 1163, triggers=D, masque=A]",
-     "Feinterception [effet 786, triggers=D, masque=A]"
+     "Heure du temps [effet 792, triggers=D, masque=C]",
+     "Glyphe téléporteur [effet 1163, triggers=D, masque=c,E225]",
+     "Tirs optiques [effet 1163, triggers=D, masque=A]"
     ]
    },
    "DN": {
@@ -1174,9 +1187,11 @@
    "DBA": {
     "meaning": "Dommages subis d'un ALLIE (du porteur).",
     "confidence": "certain",
-    "corpusCount": 1,
+    "corpusCount": 7,
     "examples": [
-     "Arbre de Vie [effet 786, triggers=DBA, masque=C]"
+     "Bambouseraie [effet 1163, triggers=DBA, masque=C]",
+     "Trésor d'Enutrof [effet 786, triggers=DBA, masque=C]",
+     "Vestige [effet 1017, triggers=DBA|XDBA, masque=C]"
     ]
    },
    "DBE": {
@@ -1230,8 +1245,9 @@
    "DS": {
     "meaning": "Dommages de SORT subis (non issus d'un autre declenchement).",
     "confidence": "certain",
-    "corpusCount": 2,
+    "corpusCount": 6,
     "examples": [
+     "Oscillation [effet 792, triggers=DS|XDS, masque=C]",
      "Dispersion [effet 792, triggers=DS|XDS, masque=C]"
     ]
    },
@@ -1261,36 +1277,37 @@
    "DTB": {
     "meaning": "Dommages subis en debut de tour (poisons TB) - observe avec D|DTE pour 'tout type de dommages'.",
     "confidence": "probable",
-    "corpusCount": 6,
+    "corpusCount": 8,
     "examples": [
      "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
      "Ataraxie [effet 1163, triggers=D|DTE|DTB|DV|PD, masque=a,e583]",
-     "Mandragore [effet 1160, triggers=DTB|DTE|DI, masque=A]"
+     "Féerie [effet 141, triggers=D|DV|DTE|DTB|PD, masque=C]"
     ]
    },
    "DTE": {
     "meaning": "Dommages subis en fin de tour (poisons TE).",
     "confidence": "probable",
-    "corpusCount": 6,
+    "corpusCount": 8,
     "examples": [
      "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
      "Ataraxie [effet 1163, triggers=D|DTE|DTB|DV|PD, masque=a,e583]",
-     "Mandragore [effet 1160, triggers=DTB|DTE|DI, masque=A]"
+     "Féerie [effet 141, triggers=D|DV|DTE|DTB|PD, masque=C]"
     ]
    },
    "DV": {
     "meaning": "Dommages 'de vie' (perte de PV en % / sacrifice?) - liste 'tout type de dommages'.",
     "confidence": "incertain",
-    "corpusCount": 5,
+    "corpusCount": 7,
     "examples": [
      "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
-     "Ataraxie [effet 1163, triggers=D|DTE|DTB|DV|PD, masque=a,e583]"
+     "Ataraxie [effet 1163, triggers=D|DTE|DTB|DV|PD, masque=a,e583]",
+     "Féerie [effet 141, triggers=D|DV|DTE|DTB|PD, masque=C]"
     ]
    },
    "PD": {
     "meaning": "Le porteur subit des dommages de POUSSEE (collision).",
     "confidence": "certain",
-    "corpusCount": 28,
+    "corpusCount": 30,
     "examples": [
      "Décollage [effet 1160, triggers=PD, masque=A]",
      "Neutralisation [effet 1080, triggers=PD, masque=A]",
@@ -1452,11 +1469,11 @@
    "X": {
     "meaning": "MORT du porteur (effet joue meme si le porteur est mort).",
     "confidence": "certain",
-    "corpusCount": 33,
+    "corpusCount": 56,
     "examples": [
+     "Glyphe téléporteur [effet 792, triggers=X, masque=C]",
      "Boîte à Outils [effet 792, triggers=X, masque=C]",
-     "Poudre [effet 792, triggers=X, masque=a,P,F3112,F3113,F3114,F5161]",
-     "Proie [effet 1160, triggers=X, masque=A]"
+     "Poudre [effet 792, triggers=X, masque=a,P,F3112,F3113,F3114,F5161]"
     ]
    },
    "K": {
@@ -1493,17 +1510,17 @@
    "EON#": {
     "meaning": "Le porteur GAGNE l'etat #.",
     "confidence": "certain",
-    "corpusCount": 37,
+    "corpusCount": 54,
     "examples": [
      "Ataraxie [effet 3793, triggers=D|DTE|DTB|PD|DV|EON583, masque=a,e583]",
      "Transfiguration [effet 1172, triggers=EON98, masque=A,*E98]",
-     "Sablier de Xélor [effet 1160, triggers=EON6129, masque=a,A]"
+     "Bambouseraie [effet 1017, triggers=EON8, masque=C]"
     ]
    },
    "EOFF#": {
     "meaning": "Le porteur PERD l'etat #.",
     "confidence": "certain",
-    "corpusCount": 39,
+    "corpusCount": 58,
     "examples": [
      "Bouclier Élémentaire [effet 406, triggers=EOFF3645, masque=a]",
      "Rituel de Jashin [effet 792, triggers=EOFF5241, masque=C]",
@@ -1561,11 +1578,11 @@
    "CI": {
     "meaning": "Le porteur INVOQUE.",
     "confidence": "certain",
-    "corpusCount": 3,
+    "corpusCount": 5,
     "examples": [
+     "Vortexiphan [effet 792, triggers=CI, masque=C]",
      "Faille [effet 1160, triggers=CI, masque=C]",
-     "Boîte à Outils [effet 792, triggers=CI, masque=C]",
-     "Pacte Bestial [effet 792, triggers=CI, masque=C]"
+     "Boîte à Outils [effet 792, triggers=CI, masque=C]"
     ]
    },
    "CH": {
@@ -1719,10 +1736,18 @@
      "Toupet [effet 1160, triggers=PO|CPD, masque=A]"
     ]
    },
+   "CT": {
+    "meaning": "Le porteur TACLE un ennemi (l'ennemi perd des PA/PM en quittant son contact). Seul cas (verification 2026-10-04): Grimace (13427, sort de depart du Masque Grimacant, invocation Zobal) - description du sort 13424: 'Lorsqu'un ennemi se fait tacler par le Masque, lui et son invocateur gagnent du bouclier'. Absent d'OTOMAI/D2CLIENT.",
+    "confidence": "probable",
+    "corpusCount": 1,
+    "examples": [
+     "Grimace [effet 792, triggers=CT, masque=C]"
+    ]
+   },
    "CPT": {
     "meaning": "Une entite traverse un portail (Entraide/Vestige Eliotrope: 'lorsqu'une entite traverse un portail').",
     "confidence": "probable",
-    "corpusCount": 3,
+    "corpusCount": 5,
     "examples": [
      "Entraide [effet 1160, triggers=CPT, masque=C]",
      "Vestige [effet 1109, triggers=CPT, masque=a]"
@@ -1756,17 +1781,17 @@
    }
   },
   "corpusCounts": {
-   "I": 14936,
-   "TE": 207,
-   "D": 174,
-   "TB": 124,
+   "I": 15618,
+   "TE": 219,
+   "D": 196,
+   "TB": 175,
+   "EOFF#": 58,
+   "X": 56,
+   "EON#": 54,
    "H": 53,
+   "XD": 50,
    "DM": 48,
-   "XD": 43,
-   "EOFF#": 39,
-   "EON#": 37,
-   "X": 33,
-   "PD": 28,
+   "PD": 30,
    "DBE": 23,
    "M": 14,
    "TP": 14,
@@ -1774,26 +1799,29 @@
    "CCMPARR": 13,
    "DIS": 12,
    "MS": 11,
+   "DTB": 8,
+   "DTE": 8,
    "DT": 8,
    "MA": 8,
    "XPD": 8,
    "CMPARR": 8,
+   "DV": 7,
    "XDM": 7,
    "CC": 7,
    "DE": 7,
    "DF": 7,
    "DW": 7,
    "DA": 7,
-   "DTB": 6,
-   "DTE": 6,
+   "DBA": 7,
    "PT": 6,
-   "DV": 5,
+   "DS": 6,
+   "XDS": 6,
+   "CI": 5,
    "MPA": 5,
+   "CPT": 5,
    "CMPAS": 4,
    "P": 4,
    "K": 4,
-   "CI": 3,
-   "CPT": 3,
    "V": 2,
    "VA": 2,
    "VM": 2,
@@ -1801,22 +1829,21 @@
    "LPU": 2,
    "XDTB": 2,
    "DN": 2,
+   "XDBA": 2,
    "R": 2,
    "APA": 2,
-   "DS": 2,
-   "XDS": 2,
    "CS": 2,
    "CH": 2,
    "PO": 1,
    "CPD": 1,
+   "CT": 1,
    "CAPAS": 1,
    "DI": 1,
    "CDE": 1,
    "CDF": 1,
    "CDW": 1,
    "CDA": 1,
-   "XDR": 1,
-   "DBA": 1
+   "XDR": 1
   },
   "unmappedCodes": [],
   "sources": [
@@ -1852,7 +1879,7 @@
  },
  "dispellable": {
   "1": "dissipable (desenvoutement, 1075 / 406...)",
-  "2": "dissipable uniquement a la mort",
+  "2": "retire a la mort (et aussi par un desenvoutement 'fort': BasicBuff.canBeDispell renvoie dying || forceUndispellable)",
   "3": "dissipable uniquement par desenvoutement 'fort'",
   "4": "jamais",
   "source": "D2CLIENT FightDispellableEnum + BasicBuff.canBeDispell"
@@ -1861,7 +1888,7 @@
   "rule": "Les durees (duration) et delais (delay) des buffs sont decrementes au DEBUT du tour de leur source (aliveSource = lanceur, ou entite declencheuse pour un buff issu d'un declenchement 'D...'). Un buff 'duration 1' pose sur un ennemi dure donc jusqu'au debut du prochain tour du lanceur (il couvre le tour de l'ennemi).",
   "infinite": "duration -1 (stocke -1000) ou >= 63: jamais decremente.",
   "delay": "delay N: l'effet est stocke et ne s'applique qu'apres N decrements (au debut du N-ieme prochain tour du lanceur).",
-  "turnStartBonus": "OTOMAI: un buff avec trigger TB pose pendant le tour du lanceur gagne +1 tour de TurnDuration pour ne pas expirer avant son premier declenchement.",
+  "turnStartBonus": "OTOMAI (HaxeBuff ctor): un buff avec trigger TB et TurnDuration (= duration + delay) > 0 pose pendant le tour du lanceur gagne +1 TurnDuration. ATTENTION [verification 2026-10-04]: ce +1 compense le decompte propre au serveur OTOMAI (absent de la lib); NE PAS le cumuler avec la regle D2CLIENT ci-dessus (decompte au debut du tour de la source), sinon un poison TB se declencherait une fois de trop. En Dofus 3 les poisons ont duration 0 et effectTriggerDuration N (TurnDuration OTOMAI = 0 => pas de bonus).",
   "sources": [
    "D2CLIENT BuffManager.decrementDuration/incrementDuration (INCREMENT_MODE_SOURCE)",
    "D2CLIENT FightBattleFrame (GameFightTurnStartMessage)",

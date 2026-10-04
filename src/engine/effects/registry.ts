@@ -30,6 +30,11 @@ export interface EffectContext {
   indirect: boolean
   /** Profondeur de récursion (sorts lançant des sorts). */
   depth: number
+  /**
+   * Événement ayant déclenché l'effet (buff réactif) : `source` = entité déclenchante, qui est la « source »
+   * des effets 1017/2017/1019 (docs/research/effects.md §2.5, vérification).
+   */
+  trigger?: { type: string; source?: Fighter; element?: number; amount?: number; melee?: boolean }
 }
 
 export type EffectHandler = (ctx: EffectContext) => void

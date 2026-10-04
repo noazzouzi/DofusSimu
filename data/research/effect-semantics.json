@@ -1,19 +1,19 @@
 {
  "_meta": {
   "title": "DofusSimu - catalogue semantique des effets de sorts (Dofus 3 / DofusDB)",
-  "generatedAt": "2026-10-04T18:44:58Z",
+  "generatedAt": "2026-10-04T19:31:49Z",
   "generator": ".cache/effects/build_semantics.py (+ semantics_table.py)",
   "corpus": {
-   "description": "Tous les spell-levels des 19 classes (breeds -> spell-variants -> spells -> spell-levels), des monstres du donjon Oeil de Vortex (3834-3839), puis recursivement les sous-sorts references par les effets de lancement de sort / glyphe / piege / rune et les sorts des invocations.",
-   "spells": 1729,
-   "spellLevels": 3754,
-   "effectIds": 212,
+   "description": "Tous les spell-levels des 19 classes (breeds -> spell-variants -> spells -> spell-levels), des monstres du donjon Oeil de Vortex (3834-3839 + Auroraire 3833; sorts + sort de depart grades[].startingSpellId = id de spell-level), puis recursivement les sous-sorts references par les effets de lancement de sort / glyphe / piege / rune et les sorts des invocations.",
+   "spells": 1838,
+   "spellLevels": 3987,
+   "effectIds": 218,
    "source": "https://api.dofusdb.fr (services breeds, spell-variants, spells, spell-levels, effects, spell-states, monsters, characteristics)"
   },
   "fieldConventions": {
    "diceNum": "#1 dans les templates. Valeur min / quantite / id de sort / id de monstre selon l'effet.",
    "diceSide": "#2. Valeur max (0 => valeur fixe = diceNum) / grade du sous-sort ou de l'invocation.",
-   "value": "#3. Id d'etat (950/951), id de sort (406), limite de declenchements (lancements de sort), couleur (marques), reduction (265).",
+   "value": "#3. Id d'etat (950/951/952), id de sort (406), limite de declenchements (lancements de sort), couleur (marques), reduction (265), % de soin (786), bonus de base des portails (1181).",
    "duration": "Duree du buff en tours, decomptee au DEBUT du tour du lanceur (aliveSource). -1 = infini (stocke -1000). 0 = instantane.",
    "delay": "Nombre de tours (du lanceur) avant application; l'effet est stocke comme buff 'differe' puis applique au debut du tour du lanceur quand delay atteint 0.",
    "effectTriggerDuration": "Duree (tours) pendant laquelle un effet DECLENCHE (triggers != 'I') reste a l'ecoute; 63 = tout le combat. 'duration' est alors la duree de l'effet produit.",
@@ -22,9 +22,9 @@
    "zoneDescr": "Zone structuree (shape=code ASCII, param1, param2, damageDecreaseStepPercent, maxDamageDecreaseApplyCount...). Voir zone-and-mask-grammar.json#zone.",
    "random": "Poids aleatoire (en %, ex 50 / 4.55). >0 => effet tire au sort; un seul groupe est execute.",
    "group": "Groupe aleatoire: les effets de meme groupe (>0) sont tires ensemble; group 0 => chaque effet aleatoire forme son propre groupe.",
-   "dispellable": "1 = dissipable (desenvoutement), 2 = dissipable seulement a la mort, 3 = dissipable seulement par desenvoutement fort, 4 = jamais (FightDispellableEnum).",
+   "dispellable": "1 = dissipable (desenvoutement), 2 = retire a la mort (et par desenvoutement fort), 3 = dissipable seulement par desenvoutement fort, 4 = jamais (FightDispellableEnum, BasicBuff.canBeDispell).",
    "effectElement": "Element de l'effet cote donnees (-1 aucun, 0 neutre, 1 terre, 2 feu, 3 eau, 4 air, 5 'meilleur/multi').",
-   "order": "Ordre d'execution des effets dans le sort (les cibles sont calculees AVANT l'execution, sauf masques U/u/T/W/V/v recalcules)."
+   "order": "Ordre d'execution des effets dans le sort (les cibles sont calculees AVANT l'execution, sauf effets portant un jeton U/u/T/W recalcules; V#/v# ne sont pas recalcules dans OTOMAI)."
   },
   "kinds": {
    "damage": "Perte de PV (elementaire ou basee sur PV).",
@@ -48,7 +48,8 @@
    "visual": "Sans effet de gameplay.",
    "noop": "Effet vide."
   },
-  "enginePriority": "P0 = utilise par le donjon Vortex ou tres frequent (>=60 occurrences); P1 = utilise par un sort de classe; P2 = rare (sous-sorts/invocations).",
+  "enginePriority": "P0 = utilise par le donjon Vortex (monstres 3833-3839, sorts de depart inclus) ou tres frequent (>=60 occurrences); P1 = utilise par un sort de classe; P2 = rare (sous-sorts/invocations).",
+  "verification": "Relecture adversariale 2026-10-04: corpus re-crawle (sorts de depart), 6 effectId ajoutes (140, 295, 780, 784, 1018, 1123), notes corrigees (1013/1016, 1017/1018/1019/2017). Voir docs/research/effects.md section 14.",
   "examplesFormat": "examples[].raw = champs bruts DofusDB de l'effet; zone = notation compacte (forme+param1[,param2][options])."
  },
  "effects": {
@@ -83,14 +84,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 113,
+    "total": 126,
     "byScope": {
      "breed": 75,
      "monster": 0,
-     "sub": 20,
+     "sub": 33,
      "summon": 18
     },
-    "distinctSpells": 49,
+    "distinctSpells": 51,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -112,18 +113,20 @@
      "invocation:Chaton Enragé",
      "invocation:Crapipaud",
      "invocation:Foreuse",
+     "invocation:Lanterne du Berger",
      "invocation:Scarafoudre",
      "invocation:Sulfénix",
      "invocation:Ventritofu",
+     "monstre:Auroraire",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 87,
+     "I": 100,
      "TE": 1
     },
     "targetMasks": {
      "a,A": 44,
-     "a,A,*e7": 12,
+     "a,A,*e7": 13,
      "C": 10,
      "g,A,*e7": 5,
      "a,*e7": 3,
@@ -131,25 +134,49 @@
     },
     "zones": {
      "P1": 66,
-     "l1,63[deg=0%x0;stopAtTarget]": 10,
+     ";1": 12,
+     "l1,63[deg=0%x0;stopAtTarget]": 11,
      "L1[forcedDirection]": 4,
      "L1": 3,
-     "Q1": 2,
-     "a1": 1
+     "Q1": 2
     },
     "durations": {
-     "0": 88
+     "0": 101
     },
     "delays": {
-     "0": 87,
+     "0": 100,
      "1": 1
     },
     "dispellable": {
-     "1": 84,
-     "2": 4
+     "1": 85,
+     "2": 16
     }
    },
    "examples": [
+    {
+     "spell": "Décalage horaire",
+     "spellId": 4996,
+     "grade": 1,
+     "origin": "sub:4999",
+     "rootOrigin": "monster:3833:Auroraire:starting",
+     "raw": {
+      "effectId": 4,
+      "order": 25,
+      "diceNum": 10,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,*E231,*e6490",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": ";1"
+    },
     {
      "spell": "Heurage",
      "spellId": 5067,
@@ -221,30 +248,6 @@
       "effectElement": -1
      },
      "zone": "P1"
-    },
-    {
-     "spell": "Renfort",
-     "spellId": 13020,
-     "grade": 3,
-     "origin": "breed:1:Féca",
-     "rootOrigin": "breed:1:Féca",
-     "raw": {
-      "effectId": 4,
-      "order": 1,
-      "diceNum": 6,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -283,14 +286,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 480,
+    "total": 481,
     "byScope": {
      "breed": 399,
      "monster": 2,
-     "sub": 55,
+     "sub": 56,
      "summon": 24
     },
-    "distinctSpells": 130,
+    "distinctSpells": 131,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -317,10 +320,10 @@
      "invocation:Tofu",
      "invocation:Ventritofu",
      "monstre:Brabuzar",
-     "monstre:Méjaire"
+     "monstre:Ikargn"
     ],
     "triggers": {
-     "I": 278,
+     "I": 279,
      "DM": 3,
      "TE": 3
     },
@@ -341,18 +344,42 @@
      "a1": 7
     },
     "durations": {
-     "0": 282,
+     "0": 283,
      "2": 2
     },
     "delays": {
-     "0": 284
+     "0": 285
     },
     "dispellable": {
-     "1": 279,
+     "1": 280,
      "3": 5
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5012,
+     "grade": 1,
+     "origin": "sub:5002",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 5,
+      "order": 1,
+      "diceNum": 2,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,E56,f3835",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "X2,1"
+    },
     {
      "spell": "Envolupté",
      "spellId": 5024,
@@ -417,30 +444,6 @@
       "delay": 0,
       "effectTriggerDuration": 0,
       "targetMask": "a,A",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Épouvante",
-     "spellId": 12783,
-     "grade": 3,
-     "origin": "breed:12:Pandawa",
-     "rootOrigin": "breed:12:Pandawa",
-     "raw": {
-      "effectId": 5,
-      "order": 1,
-      "diceNum": 2,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A,*E3531",
       "triggers": "I",
       "random": 0,
       "group": 0,
@@ -686,14 +689,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 117,
+    "total": 119,
     "byScope": {
      "breed": 75,
      "monster": 1,
-     "sub": 23,
-     "summon": 18
+     "sub": 24,
+     "summon": 19
     },
-    "distinctSpells": 52,
+    "distinctSpells": 54,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -712,6 +715,7 @@
      "Steamer",
      "Xélor",
      "Zobal",
+     "invocation:Balise de Survie",
      "invocation:Chalutier",
      "invocation:Chaton Affectueux",
      "invocation:Dragoune",
@@ -719,11 +723,10 @@
      "invocation:Fée Stimulante",
      "invocation:Gobgob Facétieux",
      "invocation:La Bloqueuse",
-     "invocation:Épée Dansante",
-     "monstre:Méjaire"
+     "invocation:Épée Dansante"
     ],
     "triggers": {
-     "I": 91,
+     "I": 93,
      "D": 1,
      "XD": 1
     },
@@ -732,29 +735,53 @@
      "a": 11,
      "g,A": 9,
      "a,A,*e7": 4,
-     "a,e6,e7,*e6,*e7,e97,*e97": 3,
-     "g,A,*e5317": 3
+     "h,P": 4,
+     "a,e6,e7,*e6,*e7,e97,*e97": 3
     },
     "zones": {
-     "P1": 77,
+     "P1": 79,
      "a1": 7,
      "l2": 3,
      "C63[deg=0%x0;LoS]": 3,
      "L2": 2
     },
     "durations": {
-     "0": 92
+     "0": 94
     },
     "delays": {
-     "0": 89,
+     "0": 91,
      "2": 3
     },
     "dispellable": {
-     "1": 88,
+     "1": 90,
      "2": 4
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5011,
+     "grade": 1,
+     "origin": "sub:5012",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 8,
+      "order": 0,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "L",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
     {
      "spell": "Envolupté",
      "spellId": 5024,
@@ -826,30 +853,6 @@
       "effectElement": -1
      },
      "zone": "P1"
-    },
-    {
-     "spell": "Double",
-     "spellId": 12915,
-     "grade": 3,
-     "origin": "breed:4:Sram",
-     "rootOrigin": "breed:4:Sram",
-     "raw": {
-      "effectId": 8,
-      "order": 3,
-      "diceNum": 0,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 0,
-      "delay": 2,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -886,40 +889,43 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 8,
+    "total": 10,
     "byScope": {
      "breed": 5,
      "monster": 0,
-     "sub": 1,
+     "sub": 3,
      "summon": 2
     },
-    "distinctSpells": 5,
+    "distinctSpells": 7,
     "usedByVortexDungeon": false,
     "classes": [
      "Pandawa",
+     "invocation:Bambou",
      "invocation:Pandawasta",
      "invocation:Roublabot"
     ],
     "triggers": {
-     "I": 8
+     "I": 10
     },
     "targetMasks": {
      "g,A,*e3": 5,
+     "l,P,o,e63,e97,e1,e3,e8,*e3,*e8": 2,
      "a,P,F5844,F5843,*e3": 1,
      "A,e4005,*e3": 1,
      "a,P,F3112,F3113,F3114,F5161,F5162,F5163,*e3": 1
     },
     "zones": {
-     "P1": 8
+     "P1": 8,
+     "C1,1": 2
     },
     "durations": {
-     "0": 8
+     "0": 10
     },
     "delays": {
-     "0": 8
+     "0": 10
     },
     "dispellable": {
-     "1": 8
+     "1": 10
     }
    },
    "examples": [
@@ -2790,14 +2796,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 687,
+    "total": 689,
     "byScope": {
      "breed": 536,
      "monster": 5,
-     "sub": 108,
+     "sub": 110,
      "summon": 38
     },
-    "distinctSpells": 139,
+    "distinctSpells": 140,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -2823,11 +2829,11 @@
      "invocation:Crapipaud",
      "invocation:Crapipou",
      "invocation:Crocoléreux",
-     "invocation:Gardien Élémentaire",
-     "invocation:La Sacrifiée"
+     "invocation:Fiole Alchimique",
+     "invocation:Gardien Élémentaire"
     ],
     "triggers": {
-     "I": 345,
+     "I": 347,
      "TB": 20,
      "TE": 2
     },
@@ -2841,21 +2847,21 @@
     },
     "zones": {
      "P1": 215,
-     "C2,1": 29,
+     "C2,1": 31,
      "X1": 18,
      "l1,63[deg=0%x0;stopAtTarget]": 15,
      "C2": 13,
      "G1": 11
     },
     "durations": {
-     "0": 367
+     "0": 369
     },
     "delays": {
-     "0": 365,
+     "0": 367,
      "2": 2
     },
     "dispellable": {
-     "1": 361,
+     "1": 363,
      "2": 6
     }
    },
@@ -2993,14 +2999,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 691,
+    "total": 693,
     "byScope": {
      "breed": 578,
      "monster": 4,
-     "sub": 83,
+     "sub": 85,
      "summon": 26
     },
-    "distinctSpells": 146,
+    "distinctSpells": 147,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -3025,12 +3031,12 @@
      "invocation:Bouflourd",
      "invocation:Bouftou",
      "invocation:Craquolosse",
+     "invocation:Fiole Alchimique",
      "invocation:Gardien Élémentaire",
-     "invocation:La Surpuissante",
-     "invocation:Lapino"
+     "invocation:La Surpuissante"
     ],
     "triggers": {
-     "I": 359,
+     "I": 361,
      "TB": 4
     },
     "targetMasks": {
@@ -3050,13 +3056,13 @@
      "*2[deg=0%x0]": 10
     },
     "durations": {
-     "0": 363
+     "0": 365
     },
     "delays": {
-     "0": 363
+     "0": 365
     },
     "dispellable": {
-     "1": 360,
+     "1": 362,
      "2": 2,
      "3": 1
     }
@@ -3195,14 +3201,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 659,
+    "total": 661,
     "byScope": {
      "breed": 536,
      "monster": 2,
-     "sub": 94,
-     "summon": 27
+     "sub": 95,
+     "summon": 28
     },
-    "distinctSpells": 156,
+    "distinctSpells": 157,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -3224,15 +3230,15 @@
      "Steamer",
      "Xélor",
      "Zobal",
+     "invocation:Fiole Alchimique",
      "invocation:Gardien Élémentaire",
      "invocation:La Folle",
      "invocation:Lapino",
      "invocation:Scarafoudre",
-     "invocation:Tofu",
-     "invocation:Ventritofu"
+     "invocation:Synchro"
     ],
     "triggers": {
-     "I": 322,
+     "I": 324,
      "TE": 25,
      "TB": 11,
      "PD": 1,
@@ -3248,21 +3254,21 @@
     },
     "zones": {
      "P1": 192,
+     "C2,1": 21,
      "X1": 20,
-     "C2,1": 19,
      "l1,63[deg=0%x0;stopAtTarget]": 10,
      "X1[deg=0%x0]": 9,
      "C2": 9
     },
     "durations": {
-     "0": 359
+     "0": 361
     },
     "delays": {
-     "0": 356,
+     "0": 358,
      "1": 3
     },
     "dispellable": {
-     "1": 347,
+     "1": 349,
      "2": 11,
      "3": 1
     }
@@ -3401,14 +3407,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 731,
+    "total": 733,
     "byScope": {
      "breed": 582,
      "monster": 6,
-     "sub": 116,
+     "sub": 118,
      "summon": 27
     },
-    "distinctSpells": 151,
+    "distinctSpells": 152,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -3432,13 +3438,13 @@
      "Zobal",
      "invocation:Dragonnet",
      "invocation:Dragoune",
+     "invocation:Fiole Alchimique",
      "invocation:Gardien Élémentaire",
      "invocation:La Gonflable",
-     "invocation:Lapino",
-     "invocation:Sulfénix"
+     "invocation:Lapino"
     ],
     "triggers": {
-     "I": 370,
+     "I": 372,
      "TE": 13
     },
     "targetMasks": {
@@ -3452,21 +3458,21 @@
     "zones": {
      "P1": 178,
      "C2": 40,
-     "C2,1": 33,
+     "C2,1": 35,
      "X1": 17,
      "C63,1[deg=0%x0]": 12,
      "C3,1": 10
     },
     "durations": {
-     "0": 383
+     "0": 385
     },
     "delays": {
-     "0": 374,
+     "0": 376,
      "3": 8,
      "2": 1
     },
     "dispellable": {
-     "1": 366,
+     "1": 368,
      "2": 11,
      "3": 6
     }
@@ -3605,14 +3611,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 30,
+    "total": 32,
     "byScope": {
      "breed": 4,
      "monster": 4,
-     "sub": 1,
+     "sub": 3,
      "summon": 21
     },
-    "distinctSpells": 12,
+    "distinctSpells": 13,
     "usedByVortexDungeon": true,
     "classes": [
      "Pandawa",
@@ -3626,29 +3632,29 @@
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 17
+     "I": 19
     },
     "targetMasks": {
-     "A": 8,
+     "A": 9,
      "a,A,*e4175,*e4176,*e4177,*e4178": 3,
      "a,A,F50000": 2,
      "a,A": 1,
-     "A,e290,e291,e292,e293": 1,
-     "a": 1
+     "a,e92": 1,
+     "A,e290,e291,e292,e293": 1
     },
     "zones": {
      "P1": 15,
-     "C2,1": 1,
+     "C2,1": 3,
      "C2": 1
     },
     "durations": {
-     "0": 17
+     "0": 19
     },
     "delays": {
-     "0": 17
+     "0": 19
     },
     "dispellable": {
-     "1": 17
+     "1": 19
     }
    },
    "examples": [
@@ -3971,14 +3977,14 @@
     "oppositeId": 168
    },
    "usage": {
-    "total": 102,
+    "total": 107,
     "byScope": {
      "breed": 55,
-     "monster": 1,
-     "sub": 45,
-     "summon": 1
+     "monster": 2,
+     "sub": 47,
+     "summon": 3
     },
-    "distinctSpells": 59,
+    "distinctSpells": 63,
     "usedByVortexDungeon": true,
     "classes": [
      "Ecaflip",
@@ -3991,11 +3997,14 @@
      "Steamer",
      "Xélor",
      "Zobal",
+     "invocation:Bathyscaphe",
+     "invocation:Cadran de Xélor",
      "invocation:Fée Stimulante",
+     "monstre:Ikargn",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 94,
+     "I": 99,
      "DBE": 1,
      "K": 1
     },
@@ -4008,30 +4017,79 @@
      "a,E361": 4
     },
     "zones": {
-     "P1": 74,
+     "P1": 75,
      "C3": 8,
-     "a1": 6,
+     "a1": 7,
      "X1": 5,
-     "C3,1": 3
+     "C3,1": 3,
+     "C4,1[deg=0%x0]": 2
     },
     "durations": {
-     "1": 61,
-     "2": 19,
+     "1": 62,
+     "2": 21,
+     "-1": 9,
      "3": 8,
-     "-1": 7,
      "0": 1
     },
     "delays": {
-     "0": 87,
+     "0": 92,
      "1": 9
     },
     "dispellable": {
-     "1": 48,
-     "2": 33,
-     "3": 15
+     "1": 50,
+     "2": 35,
+     "3": 16
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 111,
+      "order": 12,
+      "diceNum": 4,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E228",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 111,
+      "order": 8,
+      "diceNum": 4,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E228",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "a1"
+    },
     {
      "spell": "En temps et en heure",
      "spellId": 5062,
@@ -4079,54 +4137,6 @@
       "effectElement": -1
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Roulette",
-     "spellId": 12840,
-     "grade": 3,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 111,
-      "order": 1,
-      "diceNum": 2,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A",
-      "triggers": "I",
-      "random": 4.550000190734863,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "a1"
-    },
-    {
-     "spell": "Pile ou Face",
-     "spellId": 12841,
-     "grade": 3,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 111,
-      "order": 3,
-      "diceNum": 1,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "c",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 3,
-      "effectElement": -1
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -4169,48 +4179,53 @@
     "oppositeId": 145
    },
    "usage": {
-    "total": 22,
+    "total": 28,
     "byScope": {
      "breed": 22,
      "monster": 0,
-     "sub": 0,
+     "sub": 6,
      "summon": 0
     },
-    "distinctSpells": 5,
+    "distinctSpells": 7,
     "usedByVortexDungeon": false,
     "classes": [
      "Ecaflip",
      "Iop",
      "Osamodas",
      "Sram",
-     "Zobal"
+     "Zobal",
+     "invocation:Harponneuse"
     ],
     "triggers": {
-     "I": 13
+     "I": 19
     },
     "targetMasks": {
      "C,a": 4,
      "a,A": 3,
      "C": 3,
+     "l,m,P,*E134": 3,
+     "l,m,P,*E135": 3,
      "g,C": 3
     },
     "zones": {
+     "C7,1[deg=0%x0;LoS]": 6,
      "P1": 4,
      "a1": 3,
      "X3": 3,
      "X1": 3
     },
     "durations": {
+     "1": 9,
      "2": 6,
-     "1": 3,
      "4": 3,
      "3": 1
     },
     "delays": {
-     "0": 13
+     "0": 19
     },
     "dispellable": {
-     "1": 13
+     "1": 13,
+     "2": 6
     }
    },
    "examples": [
@@ -4351,14 +4366,14 @@
     "oppositeId": 171
    },
    "usage": {
-    "total": 45,
+    "total": 50,
     "byScope": {
      "breed": 34,
-     "monster": 0,
-     "sub": 11,
+     "monster": 1,
+     "sub": 15,
      "summon": 0
     },
-    "distinctSpells": 19,
+    "distinctSpells": 22,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -4366,42 +4381,93 @@
      "Osamodas",
      "Sacrieur",
      "Steamer",
+     "invocation:Harponneuse",
+     "monstre:Ikargn",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 32,
+     "I": 37,
      "CC": 1
     },
     "targetMasks": {
      "C": 21,
      "a,A": 5,
+     "l,m,P,*E135": 3,
      "g,C": 3,
-     "g,*E221,f3835": 1,
-     "A": 1,
-     "a": 1
+     "c,E221": 1,
+     "a,A,F3835,*E221": 1
     },
     "zones": {
-     "P1": 27,
-     "a1": 4,
+     "P1": 28,
+     "a1": 5,
+     "C7,1[deg=0%x0;LoS]": 3,
      "C2": 2
     },
     "durations": {
+     "1": 16,
      "3": 13,
-     "1": 13,
-     "-1": 4,
+     "-1": 6,
      "2": 3
     },
     "delays": {
-     "0": 32,
+     "0": 37,
      "1": 1
     },
     "dispellable": {
      "1": 22,
-     "3": 8,
-     "2": 3
+     "3": 9,
+     "2": 7
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 115,
+      "order": 4,
+      "diceNum": 10,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E221",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 115,
+      "order": 0,
+      "diceNum": 10,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E221",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Heurage",
      "spellId": 5065,
@@ -4449,54 +4515,6 @@
       "effectElement": -1
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Pile ou Face",
-     "spellId": 12841,
-     "grade": 3,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 115,
-      "order": 1,
-      "diceNum": 2,
-      "diceSide": 0,
-      "value": 0,
-      "duration": -1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 3,
-      "effectElement": -1
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Yams",
-     "spellId": 29680,
-     "grade": 3,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 115,
-      "order": 1,
-      "diceNum": 3,
-      "diceSide": 18,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -4733,14 +4751,14 @@
     "oppositeId": 116
    },
    "usage": {
-    "total": 49,
+    "total": 52,
     "byScope": {
      "breed": 35,
      "monster": 0,
-     "sub": 6,
-     "summon": 8
+     "sub": 8,
+     "summon": 9
     },
-    "distinctSpells": 15,
+    "distinctSpells": 17,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
@@ -4751,14 +4769,16 @@
      "Pandawa",
      "Steamer",
      "Zobal",
+     "invocation:Balise de Survie",
      "invocation:Crapipou",
+     "invocation:Foreuse",
      "invocation:La Fourbe"
     ],
     "triggers": {
-     "I": 37
+     "I": 40
     },
     "targetMasks": {
-     "a": 11,
+     "a": 12,
      "C": 6,
      "g,b9": 5,
      "a,A": 4,
@@ -4766,24 +4786,25 @@
      "C,a,*e5282": 3
     },
     "zones": {
-     "P1": 26,
+     "P1": 27,
      "C2,1": 5,
      "a1": 3,
      "X1": 2,
+     "C7,1[deg=0%x0;LoS]": 2,
      "C2": 1
     },
     "durations": {
-     "2": 20,
-     "1": 15,
+     "2": 21,
+     "1": 17,
      "-1": 2
     },
     "delays": {
-     "0": 37
+     "0": 40
     },
     "dispellable": {
-     "1": 32,
-     "3": 3,
-     "2": 2
+     "1": 33,
+     "2": 4,
+     "3": 3
     }
    },
    "examples": [
@@ -4924,24 +4945,25 @@
     "oppositeId": 157
    },
    "usage": {
-    "total": 34,
+    "total": 36,
     "byScope": {
      "breed": 12,
-     "monster": 0,
-     "sub": 22,
+     "monster": 1,
+     "sub": 23,
      "summon": 0
     },
-    "distinctSpells": 18,
+    "distinctSpells": 20,
     "usedByVortexDungeon": true,
     "classes": [
      "Ecaflip",
      "Eniripsa",
      "Féca",
      "Huppermage",
+     "monstre:Ikargn",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 33,
+     "I": 35,
      "DE": 1
     },
     "targetMasks": {
@@ -4950,28 +4972,77 @@
      "a,A": 4,
      "C,a,E6973": 3,
      "a": 2,
-     "g,*E229,f3835": 1
+     "c,E229": 1
     },
     "zones": {
-     "P1": 25,
-     "a1": 7,
+     "P1": 26,
+     "a1": 8,
      "A1": 2
     },
     "durations": {
      "3": 21,
      "1": 9,
-     "2": 3,
-     "-1": 1
+     "-1": 3,
+     "2": 3
     },
     "delays": {
-     "0": 34
+     "0": 36
     },
     "dispellable": {
      "1": 19,
-     "2": 15
+     "2": 16,
+     "3": 1
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 118,
+      "order": 13,
+      "diceNum": 400,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E229",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": 1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 118,
+      "order": 9,
+      "diceNum": 400,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E229",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": 1
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Heurage",
      "spellId": 5065,
@@ -5019,54 +5090,6 @@
       "effectElement": 1
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Runification",
-     "spellId": 13670,
-     "grade": 3,
-     "origin": "breed:17:Huppermage",
-     "rootOrigin": "breed:17:Huppermage",
-     "raw": {
-      "effectId": 118,
-      "order": 13,
-      "diceNum": 50,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C,a,*E296",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 1
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Manifestation",
-     "spellId": 13710,
-     "grade": 2,
-     "origin": "breed:17:Huppermage",
-     "rootOrigin": "breed:17:Huppermage",
-     "raw": {
-      "effectId": 118,
-      "order": 12,
-      "diceNum": 50,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C,a,*E296",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 1
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -5109,14 +5132,14 @@
     "oppositeId": 154
    },
    "usage": {
-    "total": 36,
+    "total": 38,
     "byScope": {
      "breed": 12,
-     "monster": 0,
-     "sub": 22,
+     "monster": 1,
+     "sub": 23,
      "summon": 2
     },
-    "distinctSpells": 19,
+    "distinctSpells": 21,
     "usedByVortexDungeon": true,
     "classes": [
      "Ecaflip",
@@ -5124,10 +5147,11 @@
      "Féca",
      "Huppermage",
      "invocation:Pandawasta",
+     "monstre:Ikargn",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 35,
+     "I": 37,
      "DA": 1
     },
     "targetMasks": {
@@ -5136,29 +5160,78 @@
      "a,A": 4,
      "C,a,E6973": 3,
      "a": 2,
-     "g,*E232,f3835": 1
+     "c,E232": 1
     },
     "zones": {
-     "P1": 27,
-     "a1": 7,
+     "P1": 28,
+     "a1": 8,
      "A1": 2
     },
     "durations": {
      "3": 21,
      "1": 9,
+     "-1": 3,
      "2": 3,
-     "4": 2,
-     "-1": 1
+     "4": 2
     },
     "delays": {
-     "0": 36
+     "0": 38
     },
     "dispellable": {
      "1": 21,
-     "2": 15
+     "2": 16,
+     "3": 1
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 119,
+      "order": 16,
+      "diceNum": 400,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E232",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": 4
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 119,
+      "order": 12,
+      "diceNum": 400,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E232",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": 4
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Heurage",
      "spellId": 5065,
@@ -5206,54 +5279,6 @@
       "effectElement": 4
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Runification",
-     "spellId": 13670,
-     "grade": 3,
-     "origin": "breed:17:Huppermage",
-     "rootOrigin": "breed:17:Huppermage",
-     "raw": {
-      "effectId": 119,
-      "order": 16,
-      "diceNum": 50,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C,a,*E296",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 4
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Manifestation",
-     "spellId": 13710,
-     "grade": 2,
-     "origin": "breed:17:Huppermage",
-     "rootOrigin": "breed:17:Huppermage",
-     "raw": {
-      "effectId": 119,
-      "order": 15,
-      "diceNum": 50,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C,a,*E296",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 4
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -5297,14 +5322,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 83,
+    "total": 86,
     "byScope": {
      "breed": 54,
      "monster": 0,
      "sub": 29,
-     "summon": 0
+     "summon": 3
     },
-    "distinctSpells": 27,
+    "distinctSpells": 30,
     "usedByVortexDungeon": false,
     "classes": [
      "Ecaflip",
@@ -5313,33 +5338,36 @@
      "Huppermage",
      "Pandawa",
      "Roublard",
-     "Steamer"
+     "Steamer",
+     "invocation:Bambou",
+     "invocation:Tonneau de l'Ivrogne",
+     "invocation:Tonneau de l'Éméché"
     ],
     "triggers": {
-     "I": 65
+     "I": 68
     },
     "targetMasks": {
      "C": 38,
      "C,E498": 3,
+     "h,P": 3,
      "c": 3,
      "C,*E3522": 1,
-     "C,*E3523": 1,
-     "C,*e4185,*E4247": 1
+     "C,*E3523": 1
     },
     "zones": {
-     "P1": 65
+     "P1": 68
     },
     "durations": {
-     "0": 64,
+     "0": 67,
      "1": 1
     },
     "delays": {
-     "0": 65
+     "0": 68
     },
     "dispellable": {
-     "3": 45,
+     "3": 47,
      "1": 17,
-     "2": 3
+     "2": 4
     }
    },
    "examples": [
@@ -5474,24 +5502,25 @@
     "oppositeId": 152
    },
    "usage": {
-    "total": 34,
+    "total": 36,
     "byScope": {
      "breed": 12,
-     "monster": 0,
-     "sub": 22,
+     "monster": 1,
+     "sub": 23,
      "summon": 0
     },
-    "distinctSpells": 18,
+    "distinctSpells": 20,
     "usedByVortexDungeon": true,
     "classes": [
      "Ecaflip",
      "Eniripsa",
      "Féca",
      "Huppermage",
+     "monstre:Ikargn",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 33,
+     "I": 35,
      "DW": 1
     },
     "targetMasks": {
@@ -5500,28 +5529,77 @@
      "a,A": 4,
      "C,a,E6973": 3,
      "a": 2,
-     "g,*E226,f3835": 1
+     "c,E226": 1
     },
     "zones": {
-     "P1": 25,
-     "a1": 7,
+     "P1": 26,
+     "a1": 8,
      "A1": 2
     },
     "durations": {
      "3": 21,
      "1": 9,
-     "2": 3,
-     "-1": 1
+     "-1": 3,
+     "2": 3
     },
     "delays": {
-     "0": 34
+     "0": 36
     },
     "dispellable": {
      "1": 19,
-     "2": 15
+     "2": 16,
+     "3": 1
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 123,
+      "order": 10,
+      "diceNum": 400,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E226",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": 3
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 123,
+      "order": 6,
+      "diceNum": 400,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E226",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": 3
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Heurage",
      "spellId": 5065,
@@ -5569,54 +5647,6 @@
       "effectElement": 3
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Runification",
-     "spellId": 13670,
-     "grade": 3,
-     "origin": "breed:17:Huppermage",
-     "rootOrigin": "breed:17:Huppermage",
-     "raw": {
-      "effectId": 123,
-      "order": 15,
-      "diceNum": 50,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C,a,*E296",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 3
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Manifestation",
-     "spellId": 13710,
-     "grade": 2,
-     "origin": "breed:17:Huppermage",
-     "rootOrigin": "breed:17:Huppermage",
-     "raw": {
-      "effectId": 123,
-      "order": 14,
-      "diceNum": 50,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C,a,*E296",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 3
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -5756,24 +5786,25 @@
     "oppositeId": 155
    },
    "usage": {
-    "total": 34,
+    "total": 36,
     "byScope": {
      "breed": 12,
-     "monster": 0,
-     "sub": 22,
+     "monster": 1,
+     "sub": 23,
      "summon": 0
     },
-    "distinctSpells": 18,
+    "distinctSpells": 20,
     "usedByVortexDungeon": true,
     "classes": [
      "Ecaflip",
      "Eniripsa",
      "Féca",
      "Huppermage",
+     "monstre:Ikargn",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 33,
+     "I": 35,
      "DF": 1
     },
     "targetMasks": {
@@ -5782,28 +5813,77 @@
      "a,A": 4,
      "C,a,E6973": 3,
      "a": 2,
-     "g,*E223,f3835": 1
+     "c,E223": 1
     },
     "zones": {
-     "P1": 25,
-     "a1": 7,
+     "P1": 26,
+     "a1": 8,
      "A1": 2
     },
     "durations": {
      "3": 21,
      "1": 9,
-     "2": 3,
-     "-1": 1
+     "-1": 3,
+     "2": 3
     },
     "delays": {
-     "0": 34
+     "0": 36
     },
     "dispellable": {
      "1": 19,
-     "2": 15
+     "2": 16,
+     "3": 1
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 126,
+      "order": 7,
+      "diceNum": 400,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E223",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": 2
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 126,
+      "order": 3,
+      "diceNum": 400,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E223",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": 2
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Heurage",
      "spellId": 5065,
@@ -5851,54 +5931,6 @@
       "effectElement": 2
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Runification",
-     "spellId": 13670,
-     "grade": 3,
-     "origin": "breed:17:Huppermage",
-     "rootOrigin": "breed:17:Huppermage",
-     "raw": {
-      "effectId": 126,
-      "order": 14,
-      "diceNum": 50,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C,a,*E296",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 2
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Manifestation",
-     "spellId": 13710,
-     "grade": 2,
-     "origin": "breed:17:Huppermage",
-     "rootOrigin": "breed:17:Huppermage",
-     "raw": {
-      "effectId": 126,
-      "order": 13,
-      "diceNum": 50,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C,a,*E296",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 2
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -5941,14 +5973,14 @@
     "oppositeId": 169
    },
    "usage": {
-    "total": 192,
+    "total": 200,
     "byScope": {
      "breed": 136,
-     "monster": 1,
-     "sub": 39,
-     "summon": 16
+     "monster": 2,
+     "sub": 43,
+     "summon": 19
     },
-    "distinctSpells": 71,
+    "distinctSpells": 77,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -5970,15 +6002,15 @@
      "Xélor",
      "Zobal",
      "invocation:Chaton Enragé",
+     "invocation:Complice",
      "invocation:Crapipaud",
      "invocation:Fée Vivifiante",
+     "invocation:Gardienne",
      "invocation:La Bloqueuse",
-     "invocation:La Surpuissante",
-     "invocation:Lapino",
-     "invocation:Pandawasta"
+     "invocation:La Surpuissante"
     ],
     "triggers": {
-     "I": 150,
+     "I": 158,
      "DR": 4,
      "DIS": 3,
      "DBE": 2,
@@ -5987,7 +6019,7 @@
      "CH": 1
     },
     "targetMasks": {
-     "a": 46,
+     "a": 47,
      "C": 41,
      "a,A": 25,
      "a,E361": 4,
@@ -5995,33 +6027,81 @@
      "A": 3
     },
     "zones": {
-     "P1": 132,
-     "a1": 11,
+     "P1": 135,
+     "a1": 13,
      "X1": 11,
+     "C7,1[deg=0%x0;LoS]": 3,
      "C3": 2,
-     "C2": 2,
-     "A1": 1
+     "C2": 2
     },
     "durations": {
-     "1": 96,
-     "2": 45,
-     "-1": 9,
+     "1": 101,
+     "2": 46,
+     "-1": 11,
      "3": 6,
      "4": 2,
      "0": 1
     },
     "delays": {
-     "0": 153,
+     "0": 161,
      "2": 3,
      "1": 3
     },
     "dispellable": {
-     "1": 108,
-     "2": 26,
-     "3": 25
+     "1": 111,
+     "2": 30,
+     "3": 26
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 128,
+      "order": 8,
+      "diceNum": 2,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E224",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 128,
+      "order": 4,
+      "diceNum": 2,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E224",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Bouclier absorbant",
      "spellId": 5026,
@@ -6069,54 +6149,6 @@
       "effectElement": -1
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Roulette",
-     "spellId": 12840,
-     "grade": 3,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 128,
-      "order": 2,
-      "diceNum": 2,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A",
-      "triggers": "I",
-      "random": 4.550000190734863,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "a1"
-    },
-    {
-     "spell": "Pile ou Face",
-     "spellId": 12841,
-     "grade": 3,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 128,
-      "order": 5,
-      "diceNum": 1,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "c",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 3,
-      "effectElement": -1
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -6159,14 +6191,14 @@
     "oppositeId": 186
    },
    "usage": {
-    "total": 202,
+    "total": 215,
     "byScope": {
      "breed": 107,
      "monster": 1,
-     "sub": 85,
-     "summon": 9
+     "sub": 95,
+     "summon": 12
     },
-    "distinctSpells": 71,
+    "distinctSpells": 78,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -6185,12 +6217,17 @@
      "Sram",
      "Steamer",
      "Zobal",
+     "invocation:Chaton Enragé",
      "invocation:Dragonnet",
+     "invocation:Foreuse",
      "invocation:Fée Galvanisante",
-     "monstre:Buboxor"
+     "invocation:Pelle de Fortune",
+     "invocation:Tonneau de l'Éméché",
+     "monstre:Buboxor",
+     "monstre:Ikargn"
     ],
     "triggers": {
-     "I": 163,
+     "I": 176,
      "DIS": 3,
      "DM": 3,
      "CCMPARR": 2,
@@ -6200,36 +6237,60 @@
     "targetMasks": {
      "C": 65,
      "a": 28,
-     "h,P": 6,
+     "h,P": 9,
      "a,P,F5129": 6,
      "a,A": 5,
      "a,f5836,f5832,f5835,f5833,f5837,f5831": 5
     },
     "zones": {
-     "P1": 135,
-     "a1": 14,
+     "P1": 139,
+     "a1": 16,
      "C2": 7,
      "X1": 6,
      "G1": 6,
-     "V1": 2
+     "C7,1[deg=0%x0;LoS]": 4
     },
     "durations": {
-     "2": 66,
-     "1": 59,
+     "2": 68,
+     "1": 67,
      "3": 36,
-     "-1": 9
+     "-1": 12
     },
     "delays": {
-     "0": 160,
+     "0": 173,
      "1": 10
     },
     "dispellable": {
-     "1": 112,
-     "2": 51,
-     "3": 7
+     "1": 116,
+     "2": 59,
+     "3": 8
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5011,
+     "grade": 1,
+     "origin": "sub:5012",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 138,
+      "order": 3,
+      "diceNum": 200,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "L,*F3837",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": 5
+     },
+     "zone": "P1"
+    },
     {
      "spell": "Bouclier absorbant",
      "spellId": 5026,
@@ -6301,30 +6362,6 @@
       "effectElement": 5
      },
      "zone": "P1"
-    },
-    {
-     "spell": "Griffe Invocatrice",
-     "spellId": 12856,
-     "grade": 3,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 138,
-      "order": 1,
-      "diceNum": 90,
-      "diceSide": 0,
-      "value": 0,
-      "duration": -1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "h,P",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 2,
-      "effectElement": 5
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -6334,6 +6371,129 @@
     "direct": false,
     "boostable": false,
     "aoe_efficiency": false,
+    "buff": true
+   },
+   "enginePriority": "P0"
+  },
+  "140": {
+   "effectId": 140,
+   "actionId": "CharacterPassNextTurn",
+   "name_fr": "Tour annulé",
+   "template_fr": "Tour annulé",
+   "kind": "special",
+   "subkind": "skip_turn",
+   "element": null,
+   "params": {
+    "duration": "duration (tours; -1 = permanent)"
+   },
+   "notes": "'Tour annule' (CharacterPassNextTurn, caracteristique 100 'passTurn'): tant que le buff est actif, la cible passe automatiquement son tour. Vortex: 'Action !' (5060) => le Vortex passe 1 tour apres le deverrouillage; 'Glyphe teleporteur' (5002) => un monstre en etat 'Meme heure' (234) passe ses tours indefiniment (et devient Invulnerable).",
+   "uncertain": "Moment du saut (debut du tour de la cible) et decompte (au tour du lanceur, cf. regle des durees) non confirmes par du code client: INCERTAIN.",
+   "sources": [
+    "PYDOFUS3 CharacterPassNextTurn = 140",
+    "api.dofusdb.fr/effects/140 (characteristic 100 passTurn)",
+    "OTOMAI Tools/ActionConstants.cs (effet de type stat)",
+    "DATA"
+   ],
+   "dofusdb": {
+    "category": 0,
+    "characteristic": 100,
+    "characteristicName": "PasseSonTour",
+    "characteristicOperator": "",
+    "elementId": -1,
+    "boost": true,
+    "active": true,
+    "useDice": false,
+    "isInPercent": false,
+    "effectPriority": 0,
+    "oppositeId": 0
+   },
+   "usage": {
+    "total": 2,
+    "byScope": {
+     "breed": 0,
+     "monster": 1,
+     "sub": 1,
+     "summon": 0
+    },
+    "distinctSpells": 2,
+    "usedByVortexDungeon": true,
+    "classes": [
+     "monstre:Ikargn",
+     "monstre:Vortex"
+    ],
+    "triggers": {
+     "I": 2
+    },
+    "targetMasks": {
+     "c,E234": 1,
+     "c,*e236": 1
+    },
+    "zones": {
+     "P1": 2
+    },
+    "durations": {
+     "-1": 1,
+     "1": 1
+    },
+    "delays": {
+     "0": 2
+    },
+    "dispellable": {
+     "3": 2
+    }
+   },
+   "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 140,
+      "order": 2,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E234",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Action !",
+     "spellId": 5060,
+     "grade": 1,
+     "origin": "sub:5006",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 140,
+      "order": 5,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,*e236",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    }
+   ],
+   "flags": {
+    "direct": false,
     "buff": true
    },
    "enginePriority": "P0"
@@ -6366,15 +6526,15 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 135,
+    "total": 176,
     "byScope": {
      "breed": 31,
      "monster": 0,
-     "sub": 72,
-     "summon": 32
+     "sub": 70,
+     "summon": 75
     },
-    "distinctSpells": 63,
-    "usedByVortexDungeon": false,
+    "distinctSpells": 92,
+    "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
      "Eniripsa",
@@ -6386,26 +6546,33 @@
      "Sacrieur",
      "Sadida",
      "Sram",
-     "Xélor",
+     "invocation:Arbre",
+     "invocation:Balise de Survie",
+     "invocation:Bambou",
+     "invocation:Barricade",
+     "invocation:Bastion",
+     "invocation:Bathyscaphe",
+     "invocation:Cadran de Xélor",
+     "invocation:Chalutier",
+     "invocation:Complice",
      "invocation:Feu Accablant",
      "invocation:Feu Décourageant",
      "invocation:Feu Déprimant",
      "invocation:Feu de Déclin",
-     "invocation:Fée Galvanisante",
-     "invocation:Fée Stimulante",
-     "invocation:Fée Vivifiante",
-     "invocation:Fée de Jouvence",
-     "invocation:Gobgob Facétieux",
-     "invocation:Gobgob Glouton",
-     "invocation:La Sacrifiée",
-     "invocation:Mégabombe"
+     "invocation:Foreuse",
+     "invocation:Fée Galvanisante"
     ],
     "triggers": {
-     "I": 123,
-     "TE": 4
+     "I": 159,
+     "TE": 7,
+     "D": 2,
+     "DV": 2,
+     "DTE": 2,
+     "DTB": 2,
+     "PD": 2
     },
     "targetMasks": {
-     "C": 56,
+     "C": 74,
      "a,F5897,F5898,F5895,F5896,F5899,F7934": 8,
      "a,P,F7371": 8,
      "a,U": 5,
@@ -6413,28 +6580,52 @@
      "a,A": 4
     },
     "zones": {
-     "P1": 117,
-     "a1": 4,
+     "P1": 138,
+     "A1": 21,
+     "a1": 5,
      "C63[deg=0%x0]": 3,
-     "A1": 2,
      "C2": 1
     },
     "durations": {
-     "0": 127
+     "0": 168
     },
     "delays": {
-     "0": 103,
-     "2": 10,
-     "3": 8,
-     "1": 6
+     "0": 130,
+     "1": 14,
+     "2": 14,
+     "3": 10
     },
     "dispellable": {
-     "1": 94,
-     "3": 27,
-     "2": 6
+     "1": 117,
+     "3": 44,
+     "2": 7
     }
    },
    "examples": [
+    {
+     "spell": "Action !",
+     "spellId": 5060,
+     "grade": 1,
+     "origin": "sub:5006",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 141,
+      "order": 3,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "g,f3833,*e236",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Double",
      "spellId": 12915,
@@ -6506,30 +6697,6 @@
       "effectElement": -1
      },
      "zone": "P1"
-    },
-    {
-     "spell": "Cortège Sauvage",
-     "spellId": 31119,
-     "grade": 3,
-     "origin": "breed:2:Osamodas",
-     "rootOrigin": "breed:2:Osamodas",
-     "raw": {
-      "effectId": 141,
-      "order": 6,
-      "diceNum": 0,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 2,
-      "targetMask": "j,P",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 3,
-      "effectElement": -1
-     },
-     "zone": "a1"
     }
    ],
    "flags": {
@@ -6751,47 +6918,51 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 40,
+    "total": 44,
     "byScope": {
      "breed": 0,
      "monster": 0,
-     "sub": 39,
-     "summon": 1
+     "sub": 34,
+     "summon": 10
     },
-    "distinctSpells": 17,
+    "distinctSpells": 18,
     "usedByVortexDungeon": false,
     "classes": [
      "Eniripsa",
      "Roublard",
      "Sadida",
      "Steamer",
-     "Xélor",
-     "invocation:Lapino"
+     "invocation:Arbre",
+     "invocation:La Sacrifiée",
+     "invocation:Lapino",
+     "invocation:Synchro"
     ],
     "triggers": {
-     "I": 40
+     "I": 44
     },
     "targetMasks": {
      "a,P,F7371": 8,
+     "C": 5,
      "a,F5831": 2,
      "a,F5832": 2,
      "a,F5833": 2,
-     "a,F5835": 2,
-     "a,F5836": 2
+     "a,F5835": 2
     },
     "zones": {
-     "P1": 40
+     "P1": 44
     },
     "durations": {
-     "-1": 31,
+     "-1": 35,
      "1": 8,
      "2": 1
     },
     "delays": {
-     "0": 40
+     "0": 40,
+     "1": 2,
+     "2": 2
     },
     "dispellable": {
-     "3": 27,
+     "3": 31,
      "2": 13
     }
    },
@@ -6824,8 +6995,8 @@
      "spell": "Fin des Temps",
      "spellId": 13270,
      "grade": 3,
-     "origin": "sub:13279",
-     "rootOrigin": "breed:5:Xélor",
+     "origin": "summon:3958:Synchro",
+     "rootOrigin": "summon:3958:Synchro",
      "raw": {
       "effectId": 149,
       "order": 29,
@@ -6845,21 +7016,21 @@
      "zone": "P1"
     },
     {
-     "spell": "Mot Stimulant",
-     "spellId": 25761,
+     "spell": "Préparation Poupesque",
+     "spellId": 13541,
      "grade": 2,
-     "origin": "sub:25742",
-     "rootOrigin": "breed:7:Eniripsa",
+     "origin": "summon:5898:La Sacrifiée",
+     "rootOrigin": "summon:5898:La Sacrifiée",
      "raw": {
       "effectId": 149,
-      "order": 0,
+      "order": 3,
       "diceNum": 0,
       "diceSide": 0,
-      "value": 2177,
-      "duration": 1,
-      "delay": 0,
+      "value": 2551,
+      "duration": -1,
+      "delay": 1,
       "effectTriggerDuration": 0,
-      "targetMask": "a,P,F7371",
+      "targetMask": "C",
       "triggers": "I",
       "random": 0,
       "group": 0,
@@ -6869,10 +7040,10 @@
      "zone": "P1"
     },
     {
-     "spell": "Mot de Jouvence",
-     "spellId": 25762,
+     "spell": "Mot Stimulant",
+     "spellId": 25761,
      "grade": 2,
-     "origin": "sub:25743",
+     "origin": "sub:25742",
      "rootOrigin": "breed:7:Eniripsa",
      "raw": {
       "effectId": 149,
@@ -8304,14 +8475,14 @@
     "oppositeId": 128
    },
    "usage": {
-    "total": 34,
+    "total": 37,
     "byScope": {
      "breed": 17,
-     "monster": 0,
-     "sub": 12,
+     "monster": 2,
+     "sub": 13,
      "summon": 5
     },
-    "distinctSpells": 17,
+    "distinctSpells": 19,
     "usedByVortexDungeon": true,
     "classes": [
      "Ecaflip",
@@ -8321,13 +8492,14 @@
      "Pandawa",
      "invocation:Gobgob Glouton",
      "invocation:Mégabombe",
-     "monstre:Ikargn"
+     "monstre:Ikargn",
+     "monstre:Vortex"
     ],
     "triggers": {
-     "I": 32
+     "I": 35
     },
     "targetMasks": {
-     "C": 12,
+     "C": 14,
      "g,A": 6,
      "a,A": 4,
      "A": 4,
@@ -8335,28 +8507,52 @@
      "A,g": 2
     },
     "zones": {
-     "P1": 22,
+     "P1": 25,
      "C3": 5,
      "C3,1": 3,
      "C63": 2
     },
     "durations": {
      "1": 25,
-     "-1": 4,
+     "-1": 7,
      "0": 2,
      "2": 1
     },
     "delays": {
-     "0": 28,
+     "0": 31,
      "1": 4
     },
     "dispellable": {
      "2": 15,
-     "1": 9,
-     "3": 8
+     "1": 10,
+     "3": 10
     }
    },
    "examples": [
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5006,
+     "grade": 4,
+     "origin": "monster:3835:Vortex:starting",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 169,
+      "order": 8,
+      "diceNum": 100,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
     {
      "spell": "Attraction ailée",
      "spellId": 5013,
@@ -8428,30 +8624,6 @@
       "effectElement": -1
      },
      "zone": "P1"
-    },
-    {
-     "spell": "Odorat",
-     "spellId": 12854,
-     "grade": 2,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 169,
-      "order": 3,
-      "diceNum": 2,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 1,
-      "delay": 1,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "C3"
     }
    ],
    "flags": {
@@ -8972,15 +9144,15 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 212,
+    "total": 218,
     "byScope": {
      "breed": 194,
-     "monster": 0,
-     "sub": 15,
+     "monster": 2,
+     "sub": 19,
      "summon": 3
     },
-    "distinctSpells": 91,
-    "usedByVortexDungeon": false,
+    "distinctSpells": 94,
+    "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
      "Ecaflip",
@@ -8999,14 +9171,17 @@
      "Steamer",
      "Xélor",
      "Zobal",
+     "invocation:La Sacrifiée",
      "invocation:La Surpuissante",
-     "invocation:Tréant"
+     "invocation:Tréant",
+     "monstre:Vortex"
     ],
     "triggers": {
-     "I": 186
+     "I": 190,
+     "EOFF#": 2
     },
     "targetMasks": {
-     "a,A": 165,
+     "a,A": 169,
      "a,A,*E600": 4,
      "a,A,*E3360": 4,
      "a,A,*E3589": 3,
@@ -9014,25 +9189,52 @@
      "a,A,*e4105": 2
     },
     "zones": {
-     "P1": 116,
+     "P1": 120,
      "C0": 62,
      "T1": 3,
      "Q1": 3,
-     "C2,1": 1,
-     "R2,1": 1
+     ";1": 1,
+     "C63,2": 1
     },
     "durations": {
-     "0": 185,
+     "0": 191,
      "1": 1
     },
     "delays": {
-     "0": 186
+     "0": 192
     },
     "dispellable": {
-     "1": 186
+     "1": 188,
+     "3": 2,
+     "2": 2
     }
    },
    "examples": [
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5006,
+     "grade": 4,
+     "origin": "monster:3835:Vortex:starting",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 181,
+      "order": 2,
+      "diceNum": 3833,
+      "diceSide": 6,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "C63,2",
+     "summonName": "Auroraire"
+    },
     {
      "spell": "Épée Vorace",
      "spellId": 12744,
@@ -9107,31 +9309,6 @@
      },
      "zone": "P1",
      "summonName": "Chaton Enragé"
-    },
-    {
-     "spell": "Barricade",
-     "spellId": 12979,
-     "grade": 3,
-     "origin": "breed:1:Féca",
-     "rootOrigin": "breed:1:Féca",
-     "raw": {
-      "effectId": 181,
-      "order": 3,
-      "diceNum": 7864,
-      "diceSide": 1,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1",
-     "summonName": "Barricade"
     }
    ],
    "flags": {
@@ -9476,14 +9653,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 33,
+    "total": 34,
     "byScope": {
      "breed": 22,
      "monster": 0,
      "sub": 7,
-     "summon": 4
+     "summon": 5
     },
-    "distinctSpells": 12,
+    "distinctSpells": 13,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
@@ -9492,29 +9669,30 @@
      "Sadida",
      "Steamer",
      "invocation:Coffre Animé",
-     "invocation:Gardienne"
+     "invocation:Gardienne",
+     "invocation:Lanterne du Berger"
     ],
     "triggers": {
-     "I": 23
+     "I": 24
     },
     "targetMasks": {
-     "A": 23
+     "A": 24
     },
     "zones": {
-     "C2": 10,
+     "C2": 11,
      "C3": 7,
      "C3,1": 4,
      "C63[deg=0%x0;LoS]": 1,
      "P1": 1
     },
     "durations": {
-     "0": 23
+     "0": 24
     },
     "delays": {
-     "0": 23
+     "0": 24
     },
     "dispellable": {
-     "1": 23
+     "1": 24
     }
    },
    "examples": [
@@ -12117,37 +12295,43 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 5,
+    "total": 7,
     "byScope": {
      "breed": 2,
      "monster": 0,
-     "sub": 3,
+     "sub": 5,
      "summon": 0
     },
-    "distinctSpells": 3,
+    "distinctSpells": 5,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
-     "Forgelance"
+     "Forgelance",
+     "invocation:Bambou",
+     "invocation:Lance Immortelle",
+     "invocation:Pandawasta"
     ],
     "triggers": {
-     "I": 5
+     "I": 7
     },
     "targetMasks": {
-     "C": 5
+     "C": 5,
+     "l,P,o,e63,e97,e1,e3,e8,*e3,*e8": 2
     },
     "zones": {
-     "P1": 5
+     "P1": 5,
+     "C1,1": 2
     },
     "durations": {
-     "-1": 3,
+     "-1": 5,
      "1": 2
     },
     "delays": {
-     "0": 5
+     "0": 7
     },
     "dispellable": {
      "3": 3,
+     "1": 2,
      "2": 2
     }
    },
@@ -12177,6 +12361,30 @@
      "zone": "P1"
     },
     {
+     "spell": "Bambouseraie",
+     "spellId": 12831,
+     "grade": 1,
+     "origin": "sub:12825",
+     "rootOrigin": "summon:5846:Bambou",
+     "raw": {
+      "effectId": 289,
+      "order": 2,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "l,P,o,e63,e97,e1,e3,e8,*e3,*e8",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "C1,1"
+    },
+    {
      "spell": "Désarmé",
      "spellId": 23286,
      "grade": 1,
@@ -12201,28 +12409,28 @@
      "zone": "P1"
     },
     {
-     "spell": "Lance Immortelle",
-     "spellId": 24591,
+     "spell": "Wastafari",
+     "spellId": 24095,
      "grade": 1,
-     "origin": "sub:23286",
-     "rootOrigin": "breed:20:Forgelance",
+     "origin": "sub:24094",
+     "rootOrigin": "summon:5845:Pandawasta",
      "raw": {
       "effectId": 289,
-      "order": 31,
-      "diceNum": 23735,
+      "order": 2,
+      "diceNum": 0,
       "diceSide": 0,
       "value": 1,
       "duration": -1,
       "delay": 0,
       "effectTriggerDuration": 0,
-      "targetMask": "C",
+      "targetMask": "l,P,o,e63,e97,e1,e3,e8,*e3,*e8",
       "triggers": "I",
       "random": 0,
       "group": 0,
-      "dispellable": 2,
+      "dispellable": 1,
       "effectElement": -1
      },
-     "zone": "P1"
+     "zone": "C1,1"
     }
    ],
    "flags": {
@@ -12560,7 +12768,8 @@
      "Sadida",
      "Sram",
      "Steamer",
-     "Xélor"
+     "Xélor",
+     "invocation:Tréant"
     ],
     "triggers": {
      "I": 247,
@@ -12706,6 +12915,131 @@
    },
    "enginePriority": "P0"
   },
+  "295": {
+   "effectId": 295,
+   "actionId": "DeboostSpellRangeMin",
+   "name_fr": "#1 : -#3 Portée minimale",
+   "template_fr": "#1 : -#3 Portée minimale",
+   "kind": "spell_modifier",
+   "subkind": "deboost",
+   "element": null,
+   "params": {
+    "spellId": "diceNum (0 = tous les sorts concernes par le sort source, cf. notes)",
+    "value": "value (#3)",
+    "duration": "duration (-1 = permanent jusqu'a dissipation)"
+   },
+   "notes": "Modificateur de sort (SpellModifier) porte par le lanceur: -value portee MINIMALE du sort diceNum (Grimace du Masque Grimacant sur Mascarade 13404; Ardeur Estivale).",
+   "uncertain": null,
+   "sources": [
+    "OTOMAI ActionIdHelper.GetSpellModificationIdFromActionId",
+    "PYDOFUS3 DeboostSpellRangeMin = 295",
+    "api.dofusdb.fr/effects/295"
+   ],
+   "dofusdb": {
+    "category": 3,
+    "characteristic": 0,
+    "characteristicName": null,
+    "characteristicOperator": "+",
+    "elementId": -1,
+    "boost": true,
+    "active": true,
+    "useDice": false,
+    "isInPercent": false,
+    "effectPriority": 101900,
+    "oppositeId": 0
+   },
+   "usage": {
+    "total": 2,
+    "byScope": {
+     "breed": 0,
+     "monster": 0,
+     "sub": 1,
+     "summon": 1
+    },
+    "distinctSpells": 2,
+    "usedByVortexDungeon": false,
+    "classes": [
+     "invocation:La Surpuissante",
+     "invocation:Masque Grimaçant"
+    ],
+    "triggers": {
+     "I": 2
+    },
+    "targetMasks": {
+     "C,l,P": 1,
+     "C,*E2130": 1
+    },
+    "zones": {
+     "A1": 1,
+     "P1": 1
+    },
+    "durations": {
+     "-1": 2
+    },
+    "delays": {
+     "0": 2
+    },
+    "dispellable": {
+     "2": 1,
+     "3": 1
+    }
+   },
+   "examples": [
+    {
+     "spell": "Ardeur Estivale",
+     "spellId": 28653,
+     "grade": 2,
+     "origin": "sub:25517",
+     "rootOrigin": "summon:5899:La Surpuissante",
+     "raw": {
+      "effectId": 295,
+      "order": 2,
+      "diceNum": 14381,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C,*E2130",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Grimace",
+     "spellId": 13427,
+     "grade": 1,
+     "origin": "summon:5152:Masque Grimaçant",
+     "rootOrigin": "summon:5152:Masque Grimaçant",
+     "raw": {
+      "effectId": 295,
+      "order": 4,
+      "diceNum": 13404,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C,l,P",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "A1"
+    }
+   ],
+   "flags": {
+    "direct": false,
+    "buff": true
+   },
+   "enginePriority": "P2"
+  },
   "296": {
    "effectId": 296,
    "actionId": "DeboostSpellApCost",
@@ -12738,37 +13072,41 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 10,
+    "total": 14,
     "byScope": {
      "breed": 6,
      "monster": 0,
-     "sub": 4,
+     "sub": 8,
      "summon": 0
     },
-    "distinctSpells": 2,
+    "distinctSpells": 3,
     "usedByVortexDungeon": false,
     "classes": [
      "Ecaflip",
-     "Pandawa"
+     "Pandawa",
+     "invocation:Explobombe"
     ],
     "triggers": {
-     "I": 7
+     "I": 11
     },
     "targetMasks": {
-     "C": 7
+     "C": 7,
+     "h,P": 4
     },
     "zones": {
-     "P1": 7
+     "P1": 7,
+     "a1": 4
     },
     "durations": {
-     "-1": 4,
+     "-1": 8,
      "1": 3
     },
     "delays": {
-     "0": 7
+     "0": 11
     },
     "dispellable": {
-     "3": 7
+     "3": 7,
+     "2": 4
     }
    },
    "examples": [
@@ -12795,6 +13133,30 @@
       "effectElement": -1
      },
      "zone": "P1"
+    },
+    {
+     "spell": "Allumage",
+     "spellId": 20509,
+     "grade": 4,
+     "origin": "sub:13468",
+     "rootOrigin": "summon:3112:Explobombe",
+     "raw": {
+      "effectId": 296,
+      "order": 0,
+      "diceNum": 13491,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "h,P",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "a1"
     },
     {
      "spell": "Tromperie",
@@ -12859,35 +13221,38 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 3,
+    "total": 5,
     "byScope": {
      "breed": 0,
      "monster": 0,
-     "sub": 3,
+     "sub": 5,
      "summon": 0
     },
-    "distinctSpells": 1,
+    "distinctSpells": 3,
     "usedByVortexDungeon": false,
     "classes": [
-     "Pandawa"
+     "Pandawa",
+     "invocation:Pandawasta",
+     "invocation:Roublabot"
     ],
     "triggers": {
-     "I": 3
+     "I": 5
     },
     "targetMasks": {
-     "C,*E3583": 3
+     "C,*E3583": 3,
+     "C": 2
     },
     "zones": {
-     "P1": 3
+     "P1": 5
     },
     "durations": {
-     "-1": 3
+     "-1": 5
     },
     "delays": {
-     "0": 3
+     "0": 5
     },
     "dispellable": {
-     "2": 3
+     "2": 5
     }
    },
    "examples": [
@@ -12907,6 +13272,54 @@
       "delay": 0,
       "effectTriggerDuration": 0,
       "targetMask": "C,*E3583",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Révérence Alcoolisée",
+     "spellId": 30781,
+     "grade": 1,
+     "origin": "sub:24094",
+     "rootOrigin": "summon:5845:Pandawasta",
+     "raw": {
+      "effectId": 297,
+      "order": 2,
+      "diceNum": 12779,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Pincettes",
+     "spellId": 30972,
+     "grade": 1,
+     "origin": "sub:13454",
+     "rootOrigin": "summon:3120:Roublabot",
+     "raw": {
+      "effectId": 297,
+      "order": 2,
+      "diceNum": 30938,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
       "triggers": "I",
       "random": 0,
       "group": 0,
@@ -12954,37 +13367,39 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 4,
+    "total": 6,
     "byScope": {
      "breed": 0,
      "monster": 0,
-     "sub": 4,
+     "sub": 6,
      "summon": 0
     },
-    "distinctSpells": 2,
+    "distinctSpells": 4,
     "usedByVortexDungeon": false,
     "classes": [
      "Forgelance",
-     "Pandawa"
+     "Pandawa",
+     "invocation:Pandawasta",
+     "invocation:Roublabot"
     ],
     "triggers": {
-     "I": 4
+     "I": 6
     },
     "targetMasks": {
      "C,*E3583": 3,
-     "C": 1
+     "C": 3
     },
     "zones": {
-     "P1": 4
+     "P1": 6
     },
     "durations": {
-     "-1": 4
+     "-1": 6
     },
     "delays": {
-     "0": 4
+     "0": 6
     },
     "dispellable": {
-     "2": 3,
+     "2": 5,
      "3": 1
     }
    },
@@ -13036,6 +13451,54 @@
       "effectElement": -1
      },
      "zone": "P1"
+    },
+    {
+     "spell": "Révérence Alcoolisée",
+     "spellId": 30781,
+     "grade": 1,
+     "origin": "sub:24094",
+     "rootOrigin": "summon:5845:Pandawasta",
+     "raw": {
+      "effectId": 299,
+      "order": 1,
+      "diceNum": 12779,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Pincettes",
+     "spellId": 30972,
+     "grade": 1,
+     "origin": "sub:13454",
+     "rootOrigin": "summon:3120:Roublabot",
+     "raw": {
+      "effectId": 299,
+      "order": 1,
+      "diceNum": 30938,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
     }
    ],
    "flags": {
@@ -13076,44 +13539,69 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 13,
+    "total": 17,
     "byScope": {
      "breed": 0,
      "monster": 0,
-     "sub": 13,
+     "sub": 17,
      "summon": 0
     },
-    "distinctSpells": 1,
+    "distinctSpells": 2,
     "usedByVortexDungeon": false,
     "classes": [
-     "Forgelance"
+     "invocation:Fée Stimulante",
+     "invocation:Lance Immortelle"
     ],
     "triggers": {
-     "I": 13
+     "I": 17
     },
     "targetMasks": {
-     "C": 13
+     "C": 17
     },
     "zones": {
-     "P1": 13
+     "P1": 17
     },
     "durations": {
-     "-1": 13
+     "-1": 17
     },
     "delays": {
-     "0": 13
+     "0": 17
     },
     "dispellable": {
-     "2": 13
+     "2": 17
     }
    },
    "examples": [
     {
+     "spell": "Lucioles",
+     "spellId": 28935,
+     "grade": 2,
+     "origin": "sub:25769",
+     "rootOrigin": "summon:7372:Fée Stimulante",
+     "raw": {
+      "effectId": 314,
+      "order": 4,
+      "diceNum": 25746,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
      "spell": "Lance Immortelle",
      "spellId": 24591,
      "grade": 1,
-     "origin": "sub:23286",
-     "rootOrigin": "breed:20:Forgelance",
+     "origin": "sub:23262",
+     "rootOrigin": "summon:7139:Lance Immortelle",
      "raw": {
       "effectId": 314,
       "order": 2,
@@ -13460,14 +13948,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 41,
+    "total": 43,
     "byScope": {
      "breed": 22,
      "monster": 0,
-     "sub": 19,
+     "sub": 21,
      "summon": 0
     },
-    "distinctSpells": 17,
+    "distinctSpells": 19,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
@@ -13479,35 +13967,38 @@
      "Sacrieur",
      "Steamer",
      "Xélor",
-     "Zobal"
+     "Zobal",
+     "invocation:Bambou",
+     "invocation:Pandawasta"
     ],
     "triggers": {
-     "I": 37
+     "I": 39
     },
     "targetMasks": {
      "C": 27,
      "a,f7371": 3,
      "A,f7371": 3,
      "C,e1803": 2,
-     "c": 1,
-     "C,*e8": 1
+     "l,P,o,e63,e97,e1,e3,e8,*e3,*e8": 2,
+     "c": 1
     },
     "zones": {
      "P1": 36,
+     "C1,1": 2,
      "C3": 1
     },
     "durations": {
      "2": 21,
-     "-1": 11,
+     "-1": 13,
      "1": 3,
      "3": 2
     },
     "delays": {
-     "0": 37
+     "0": 39
     },
     "dispellable": {
      "3": 19,
-     "1": 10,
+     "1": 12,
      "2": 8
     }
    },
@@ -13831,48 +14322,49 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 24,
+    "total": 27,
     "byScope": {
      "breed": 22,
      "monster": 0,
-     "sub": 2,
+     "sub": 5,
      "summon": 0
     },
-    "distinctSpells": 10,
+    "distinctSpells": 11,
     "usedByVortexDungeon": false,
     "classes": [
      "Eniripsa",
      "Féca",
-     "Xélor"
+     "Xélor",
+     "invocation:Lapino"
     ],
     "triggers": {
-     "I": 20
+     "I": 23
     },
     "targetMasks": {
      "A": 11,
      "A,E5260": 4,
      "a,A": 2,
-     "a,A,*E4252": 1,
-     "a,A,*E4253": 1,
-     "a,A,*E4254": 1
+     "a,A,*E4252": 2,
+     "a,A,*E4253": 2,
+     "a,A,*E4254": 2
     },
     "zones": {
      "C3": 6,
+     "C2[deg=0%x0]": 6,
      "G2": 3,
      "*2": 3,
-     "C2[deg=0%x0]": 3,
      "C2": 2,
      "X1": 1
     },
     "durations": {
-     "2": 19,
+     "2": 22,
      "1": 1
     },
     "delays": {
-     "0": 20
+     "0": 23
     },
     "dispellable": {
-     "1": 20
+     "1": 23
     }
    },
    "examples": [
@@ -14016,43 +14508,44 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 6,
+    "total": 9,
     "byScope": {
      "breed": 6,
      "monster": 0,
-     "sub": 0,
+     "sub": 3,
      "summon": 0
     },
-    "distinctSpells": 3,
+    "distinctSpells": 4,
     "usedByVortexDungeon": false,
     "classes": [
      "Eniripsa",
-     "Féca"
+     "Féca",
+     "invocation:Lapino"
     ],
     "triggers": {
-     "I": 6
+     "I": 9
     },
     "targetMasks": {
      "A": 2,
-     "a,A,*E4252": 1,
-     "a,A,*E4253": 1,
-     "a,A,*E4254": 1,
+     "a,A,*E4252": 2,
+     "a,A,*E4253": 2,
+     "a,A,*E4254": 2,
      "a": 1
     },
     "zones": {
-     "C2[deg=0%x0]": 3,
+     "C2[deg=0%x0]": 6,
      "X1[deg=0%x0]": 2,
      "C3[deg=0%x0]": 1
     },
     "durations": {
-     "1": 3,
-     "2": 3
+     "2": 6,
+     "1": 3
     },
     "delays": {
-     "0": 6
+     "0": 9
     },
     "dispellable": {
-     "1": 6
+     "1": 9
     }
    },
    "examples": [
@@ -14130,6 +14623,31 @@
      },
      "zone": "C3[deg=0%x0]",
      "refSpellName": "Fontaine de Jouvence"
+    },
+    {
+     "spell": "Lapinoglyphe",
+     "spellId": 25985,
+     "grade": 1,
+     "origin": "sub:25794",
+     "rootOrigin": "summon:7370:Lapino",
+     "raw": {
+      "effectId": 402,
+      "order": 1,
+      "diceNum": 25948,
+      "diceSide": 2,
+      "value": 15407341,
+      "duration": 2,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,*E4252",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "C2[deg=0%x0]",
+     "refSpellName": "Lapinoglyphe"
     }
    ],
    "flags": {
@@ -14168,21 +14686,23 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 48,
+    "total": 52,
     "byScope": {
      "breed": 36,
      "monster": 0,
-     "sub": 12,
-     "summon": 0
+     "sub": 15,
+     "summon": 1
     },
-    "distinctSpells": 13,
+    "distinctSpells": 17,
     "usedByVortexDungeon": false,
     "classes": [
      "Sadida",
-     "invocation:Gobgob Facétieux"
+     "invocation:Gobgob Facétieux",
+     "invocation:La Sacrifiée",
+     "invocation:Tréant"
     ],
     "triggers": {
-     "I": 48
+     "I": 52
     },
     "targetMasks": {
      "a,F5894,e256": 13,
@@ -14190,22 +14710,23 @@
      "j,P,F8083": 12,
      "a,F5901": 3,
      "a,F5896": 2,
-     "a,F5899": 1
+     "a,P,e8": 2
     },
     "zones": {
-     "P1": 48
+     "P1": 52
     },
     "durations": {
-     "0": 48
+     "0": 52
     },
     "delays": {
-     "0": 38,
-     "3": 6,
-     "2": 4
+     "0": 40,
+     "3": 7,
+     "2": 5
     },
     "dispellable": {
      "1": 38,
-     "3": 10
+     "3": 12,
+     "2": 2
     }
    },
    "examples": [
@@ -14345,14 +14866,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 636,
+    "total": 661,
     "byScope": {
      "breed": 169,
      "monster": 4,
-     "sub": 442,
-     "summon": 21
+     "sub": 460,
+     "summon": 28
     },
-    "distinctSpells": 216,
+    "distinctSpells": 230,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -14374,16 +14895,16 @@
      "Steamer",
      "Xélor",
      "Zobal",
+     "invocation:Bambou",
+     "invocation:Barricade",
+     "invocation:Bastion",
+     "invocation:Fée Stimulante",
      "invocation:Gobgob Facétieux",
-     "invocation:La Bloqueuse",
-     "invocation:Lapino",
-     "invocation:Roublabot",
-     "invocation:Épée Vorace",
-     "monstre:Harpille"
+     "invocation:La Bloqueuse"
     ],
     "triggers": {
-     "I": 488,
-     "TE": 41,
+     "I": 509,
+     "TE": 45,
      "EOFF#": 14,
      "EON#": 9,
      "TB": 6,
@@ -14392,34 +14913,34 @@
      "DM": 2
     },
     "targetMasks": {
-     "C": 223,
+     "C": 244,
      "a": 61,
      "A": 53,
-     "a,P,F3112,F3113,F3114,F5161": 34,
+     "a,P,F3112,F3113,F3114,F5161": 35,
      "a,A": 30,
      "a,P,F434,F5192": 10
     },
     "zones": {
-     "P1": 488,
-     "A1": 29,
-     "C2": 9,
+     "P1": 511,
+     "A1": 30,
+     "C2": 10,
      "Q1": 7,
      "X1": 5,
      "a1": 5
     },
     "durations": {
-     "0": 553,
+     "0": 578,
      "2": 6
     },
     "delays": {
-     "0": 553,
+     "0": 578,
      "1": 3,
      "2": 3
     },
     "dispellable": {
-     "1": 481,
-     "2": 54,
-     "3": 24
+     "1": 494,
+     "2": 60,
+     "3": 30
     }
    },
    "examples": [
@@ -14499,21 +15020,21 @@
      "refSpellName": "Superfidie"
     },
     {
-     "spell": "Fermentation",
-     "spellId": 12819,
-     "grade": 3,
-     "origin": "breed:12:Pandawa",
-     "rootOrigin": "breed:12:Pandawa",
+     "spell": "Action !",
+     "spellId": 5060,
+     "grade": 1,
+     "origin": "sub:5006",
+     "rootOrigin": "monster:3835:Vortex:starting",
      "raw": {
       "effectId": 406,
-      "order": 0,
+      "order": 1,
       "diceNum": 0,
       "diceSide": 0,
-      "value": 12819,
+      "value": 5006,
       "duration": 0,
       "delay": 0,
       "effectTriggerDuration": 0,
-      "targetMask": "a",
+      "targetMask": "c,e236",
       "triggers": "I",
       "random": 0,
       "group": 0,
@@ -14521,7 +15042,7 @@
       "effectElement": -1
      },
      "zone": "P1",
-     "refSpellName": "Fermentation"
+     "refSpellName": "Vortexiphan"
     }
    ],
    "flags": {
@@ -14558,39 +15079,42 @@
     "oppositeId": 411
    },
    "usage": {
-    "total": 6,
+    "total": 7,
     "byScope": {
      "breed": 5,
      "monster": 0,
-     "sub": 1,
+     "sub": 2,
      "summon": 0
     },
-    "distinctSpells": 3,
+    "distinctSpells": 4,
     "usedByVortexDungeon": false,
     "classes": [
      "Ecaflip",
-     "Xélor"
+     "Xélor",
+     "invocation:Pelle de Fortune"
     ],
     "triggers": {
-     "I": 6
+     "I": 7
     },
     "targetMasks": {
      "a,A": 4,
-     "C": 2
+     "C": 2,
+     "P,h": 1
     },
     "zones": {
-     "a1": 3,
-     "P1": 3
+     "P1": 4,
+     "a1": 3
     },
     "durations": {
-     "1": 6
+     "1": 6,
+     "2": 1
     },
     "delays": {
-     "0": 6
+     "0": 7
     },
     "dispellable": {
-     "1": 3,
-     "2": 3
+     "2": 4,
+     "1": 3
     }
    },
    "examples": [
@@ -14634,6 +15158,30 @@
       "delay": 0,
       "effectTriggerDuration": 0,
       "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Pelle de Fortune",
+     "spellId": 28584,
+     "grade": 1,
+     "origin": "sub:23516",
+     "rootOrigin": "summon:5829:Pelle de Fortune",
+     "raw": {
+      "effectId": 410,
+      "order": 3,
+      "diceNum": 10,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 2,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "P,h",
       "triggers": "I",
       "random": 0,
       "group": 0,
@@ -14804,37 +15352,43 @@
     "oppositeId": 413
    },
    "usage": {
-    "total": 4,
+    "total": 7,
     "byScope": {
      "breed": 3,
      "monster": 0,
-     "sub": 1,
+     "sub": 4,
      "summon": 0
     },
-    "distinctSpells": 2,
+    "distinctSpells": 4,
     "usedByVortexDungeon": false,
     "classes": [
-     "Ecaflip"
+     "Ecaflip",
+     "invocation:Chalutier",
+     "invocation:Pelle de Fortune"
     ],
     "triggers": {
-     "I": 4
+     "I": 7
     },
     "targetMasks": {
-     "a,A": 4
+     "a,A": 4,
+     "l,m,P,*E135": 2,
+     "P,h": 1
     },
     "zones": {
      "a1": 3,
-     "P1": 1
+     "C7,1[deg=0%x0;LoS]": 2,
+     "P1": 2
     },
     "durations": {
-     "1": 4
+     "1": 6,
+     "2": 1
     },
     "delays": {
-     "0": 4
+     "0": 7
     },
     "dispellable": {
-     "1": 3,
-     "2": 1
+     "2": 4,
+     "1": 3
     }
    },
    "examples": [
@@ -14861,6 +15415,54 @@
       "effectElement": -1
      },
      "zone": "a1"
+    },
+    {
+     "spell": "Chalutier III",
+     "spellId": 14291,
+     "grade": 2,
+     "origin": "sub:14289",
+     "rootOrigin": "summon:5832:Chalutier",
+     "raw": {
+      "effectId": 412,
+      "order": 3,
+      "diceNum": 30,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "l,m,P,*E135",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "C7,1[deg=0%x0;LoS]"
+    },
+    {
+     "spell": "Pelle de Fortune",
+     "spellId": 28584,
+     "grade": 1,
+     "origin": "sub:23516",
+     "rootOrigin": "summon:5829:Pelle de Fortune",
+     "raw": {
+      "effectId": 412,
+      "order": 4,
+      "diceNum": 10,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 2,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "P,h",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
     },
     {
      "spell": "V. Le Hiérophante - Tarot d'Ecaflip",
@@ -15024,14 +15626,14 @@
     "oppositeId": 415
    },
    "usage": {
-    "total": 38,
+    "total": 46,
     "byScope": {
      "breed": 25,
      "monster": 1,
-     "sub": 12,
+     "sub": 20,
      "summon": 0
     },
-    "distinctSpells": 19,
+    "distinctSpells": 23,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -15040,39 +15642,68 @@
      "Iop",
      "Ouginak",
      "Zobal",
-     "monstre:Brabuzar"
+     "invocation:Tactirelle",
+     "monstre:Brabuzar",
+     "monstre:Ikargn"
     ],
     "triggers": {
-     "I": 28,
+     "I": 36,
      "D": 1
     },
     "targetMasks": {
      "C": 18,
      "a,A": 7,
      "a": 3,
-     "g,b14,f5152": 1
+     "l,m,P,*E134": 3,
+     "l,m,P,*E135": 3,
+     "L,*F3839": 1
     },
     "zones": {
-     "P1": 25,
-     "a1": 3,
+     "P1": 26,
+     "C7,1[deg=0%x0;LoS]": 6,
+     "a1": 4,
      "X1": 1
     },
     "durations": {
+     "1": 15,
      "3": 11,
      "2": 10,
-     "1": 7,
      "-1": 1
     },
     "delays": {
-     "0": 29
+     "0": 37
     },
     "dispellable": {
-     "1": 24,
-     "3": 4,
-     "2": 1
+     "1": 26,
+     "2": 7,
+     "3": 4
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5011,
+     "grade": 1,
+     "origin": "sub:5012",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 414,
+      "order": 5,
+      "diceNum": 200,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "L,*F3839",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": 5
+     },
+     "zone": "P1"
+    },
     {
      "spell": "Mise en situation",
      "spellId": 5030,
@@ -15141,30 +15772,6 @@
       "random": 0,
       "group": 0,
       "dispellable": 1,
-      "effectElement": 5
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Tirs Puissants",
-     "spellId": 32466,
-     "grade": 3,
-     "origin": "breed:9:Crâ",
-     "rootOrigin": "breed:9:Crâ",
-     "raw": {
-      "effectId": 414,
-      "order": 2,
-      "diceNum": 150,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 3,
       "effectElement": 5
      },
      "zone": "P1"
@@ -15553,45 +16160,97 @@
     "oppositeId": 419
    },
    "usage": {
-    "total": 6,
+    "total": 8,
     "byScope": {
      "breed": 5,
-     "monster": 0,
-     "sub": 1,
+     "monster": 1,
+     "sub": 2,
      "summon": 0
     },
-    "distinctSpells": 3,
+    "distinctSpells": 5,
     "usedByVortexDungeon": true,
     "classes": [
      "Ecaflip",
+     "monstre:Ikargn",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 5
+     "I": 7
     },
     "targetMasks": {
      "a,A": 3,
+     "c,E221": 1,
+     "a,A,F3835,*E221": 1,
      "g,*E221,f3835": 1,
      "C": 1
     },
     "zones": {
-     "a1": 4,
-     "P1": 1
+     "a1": 5,
+     "P1": 2
     },
     "durations": {
+     "-1": 3,
      "1": 3,
-     "-1": 1,
      "3": 1
     },
     "delays": {
-     "0": 5
+     "0": 7
     },
     "dispellable": {
      "1": 4,
-     "2": 1
+     "2": 2,
+     "3": 1
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 418,
+      "order": 5,
+      "diceNum": 200,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E221",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": 5
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 418,
+      "order": 1,
+      "diceNum": 200,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E221",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": 5
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Heurage",
      "spellId": 5065,
@@ -15639,30 +16298,6 @@
       "effectElement": 5
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Kraps",
-     "spellId": 12883,
-     "grade": 1,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 418,
-      "order": 2,
-      "diceNum": 28,
-      "diceSide": 30,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 5
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -15803,49 +16438,101 @@
     "oppositeId": 421
    },
    "usage": {
-    "total": 20,
+    "total": 22,
     "byScope": {
      "breed": 10,
-     "monster": 0,
-     "sub": 10,
+     "monster": 1,
+     "sub": 11,
      "summon": 0
     },
-    "distinctSpells": 13,
+    "distinctSpells": 15,
     "usedByVortexDungeon": true,
     "classes": [
      "Ecaflip",
      "Forgelance",
+     "monstre:Ikargn",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 17
+     "I": 19
     },
     "targetMasks": {
      "C": 11,
      "a,A": 3,
      "a": 2,
+     "c,E227": 1,
+     "a,A,F3835,*E227": 1,
      "g,*E227,f3835": 1
     },
     "zones": {
-     "P1": 11,
-     "a1": 4,
+     "P1": 12,
+     "a1": 5,
      "C2": 2
     },
     "durations": {
      "3": 8,
      "1": 6,
-     "2": 2,
-     "-1": 1
+     "-1": 3,
+     "2": 2
     },
     "delays": {
-     "0": 17
+     "0": 19
     },
     "dispellable": {
      "1": 16,
-     "2": 1
+     "2": 2,
+     "3": 1
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 420,
+      "order": 11,
+      "diceNum": 150,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E227",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": 5
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 420,
+      "order": 7,
+      "diceNum": 150,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E227",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": 5
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Heurage",
      "spellId": 5065,
@@ -15893,54 +16580,6 @@
       "effectElement": 5
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Esprit Félin",
-     "spellId": 12847,
-     "grade": 3,
-     "origin": "breed:6:Ecaflip",
-     "rootOrigin": "breed:6:Ecaflip",
-     "raw": {
-      "effectId": 420,
-      "order": 5,
-      "diceNum": 30,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 5
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Oriflamme",
-     "spellId": 23828,
-     "grade": 1,
-     "origin": "breed:20:Forgelance",
-     "rootOrigin": "breed:20:Forgelance",
-     "raw": {
-      "effectId": 420,
-      "order": 7,
-      "diceNum": 60,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 2,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 5
-     },
-     "zone": "C2"
     }
    ],
    "flags": {
@@ -16077,14 +16716,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 441,
+    "total": 453,
     "byScope": {
      "breed": 0,
      "monster": 0,
-     "sub": 441,
-     "summon": 0
+     "sub": 448,
+     "summon": 5
     },
-    "distinctSpells": 151,
+    "distinctSpells": 160,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
@@ -16105,14 +16744,19 @@
      "Steamer",
      "Xélor",
      "Zobal",
-     "invocation:Tactirelle",
-     "invocation:Tréant"
+     "invocation:Arbre",
+     "invocation:Balise de Survie",
+     "invocation:Cadran de Xélor",
+     "invocation:La Sacrifiée",
+     "invocation:La Surpuissante",
+     "invocation:Pelle de Fortune",
+     "invocation:Stratège Iop"
     ],
     "triggers": {
-     "I": 429
+     "I": 441
     },
     "targetMasks": {
-     "a,A": 386,
+     "a,A": 398,
      "a": 12,
      "C": 11,
      "a,A,E1952": 11,
@@ -16120,18 +16764,18 @@
      "H,I,M,D": 2
     },
     "zones": {
-     "P1": 418,
+     "P1": 430,
      "a1": 11
     },
     "durations": {
-     "0": 418,
+     "0": 430,
      "2": 11
     },
     "delays": {
-     "0": 429
+     "0": 441
     },
     "dispellable": {
-     "1": 417,
+     "1": 429,
      "3": 12
     }
    },
@@ -16267,14 +16911,14 @@
     "oppositeId": 754
    },
    "usage": {
-    "total": 46,
+    "total": 50,
     "byScope": {
      "breed": 21,
      "monster": 0,
-     "sub": 10,
+     "sub": 14,
      "summon": 15
     },
-    "distinctSpells": 19,
+    "distinctSpells": 21,
     "usedByVortexDungeon": false,
     "classes": [
      "Ecaflip",
@@ -16286,12 +16930,14 @@
      "Zobal",
      "invocation:Bêche Animée",
      "invocation:Fée Vivifiante",
+     "invocation:Pelle de Fortune",
      "invocation:Scarafoudre",
+     "invocation:Tactirelle",
      "invocation:Ventritofu",
      "invocation:Épée Dansante"
     ],
     "triggers": {
-     "I": 39
+     "I": 43
     },
     "targetMasks": {
      "a": 16,
@@ -16299,28 +16945,28 @@
      "C,a": 5,
      "a,A": 3,
      "g,b14,f5152": 3,
-     "A": 2
+     "l,m,P,*E135": 3
     },
     "zones": {
-     "P1": 25,
+     "P1": 26,
      "X1": 5,
      "a1": 4,
      "G1[deg=0%x0]": 3,
-     "G1": 1,
-     "C2,1": 1
+     "C7,1[deg=0%x0;LoS]": 3,
+     "G1": 1
     },
     "durations": {
-     "1": 18,
-     "2": 17,
+     "1": 21,
+     "2": 18,
      "-1": 3,
      "3": 1
     },
     "delays": {
-     "0": 39
+     "0": 43
     },
     "dispellable": {
      "1": 30,
-     "2": 5,
+     "2": 9,
      "3": 4
     }
    },
@@ -16462,14 +17108,14 @@
     "oppositeId": 755
    },
    "usage": {
-    "total": 34,
+    "total": 38,
     "byScope": {
      "breed": 19,
      "monster": 0,
-     "sub": 12,
+     "sub": 16,
      "summon": 3
     },
-    "distinctSpells": 13,
+    "distinctSpells": 15,
     "usedByVortexDungeon": false,
     "classes": [
      "Ecaflip",
@@ -16479,10 +17125,11 @@
      "Ouginak",
      "Sacrieur",
      "Zobal",
+     "invocation:Chalutier",
      "invocation:La Bloqueuse"
     ],
     "triggers": {
-     "I": 31,
+     "I": 35,
      "D": 1
     },
     "targetMasks": {
@@ -16491,24 +17138,25 @@
      "a,A": 3,
      "g,b14,f5152": 3,
      "a,E5268": 3,
-     "a,P,F5129,e4456,E3750": 1
+     "l,m,P,*E134": 2
     },
     "zones": {
      "P1": 22,
      "a1": 4,
+     "C7,1[deg=0%x0;LoS]": 4,
      "X1": 3,
      "A1": 3
     },
     "durations": {
-     "1": 21,
+     "1": 25,
      "2": 7,
      "-1": 4
     },
     "delays": {
-     "0": 32
+     "0": 36
     },
     "dispellable": {
-     "2": 15,
+     "2": 19,
      "1": 14,
      "3": 3
     }
@@ -16997,50 +17645,52 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 14,
+    "total": 16,
     "byScope": {
      "breed": 8,
      "monster": 0,
-     "sub": 2,
-     "summon": 4
+     "sub": 3,
+     "summon": 5
     },
-    "distinctSpells": 6,
+    "distinctSpells": 8,
     "usedByVortexDungeon": false,
     "classes": [
      "Enutrof",
      "Féca",
      "Sacrieur",
      "Steamer",
-     "invocation:Gobgob Glouton"
+     "invocation:Gobgob Glouton",
+     "invocation:Sac Animé",
+     "invocation:Égide"
     ],
     "triggers": {
-     "D": 11,
+     "D": 13,
      "DM": 3
     },
     "targetMasks": {
-     "g": 7,
+     "g": 8,
      "a,A": 2,
+     "g,f7864,f7865": 2,
      "h,m,d": 2,
-     "j": 2,
-     "g,f7864,f7865": 1
+     "j": 2
     },
     "zones": {
-     "C2": 6,
+     "C2": 7,
      "P1": 4,
      "X1": 2,
-     "Q1": 1,
-     "C3": 1
+     "C3": 2,
+     "Q1": 1
     },
     "durations": {
-     "0": 11,
-     "3": 3
+     "0": 12,
+     "3": 4
     },
     "delays": {
-     "0": 14
+     "0": 16
     },
     "dispellable": {
-     "1": 13,
-     "3": 1
+     "1": 14,
+     "3": 2
     }
    },
    "examples": [
@@ -17118,10 +17768,10 @@
     },
     {
      "spell": "Sanctuaire",
-     "spellId": 29086,
+     "spellId": 29075,
      "grade": 2,
-     "origin": "sub:13018",
-     "rootOrigin": "breed:1:Féca",
+     "origin": "sub:13042",
+     "rootOrigin": "summon:5903:Égide",
      "raw": {
       "effectId": 765,
       "order": 0,
@@ -17337,6 +17987,101 @@
     "boostable": false,
     "aoe_efficiency": false,
     "buff": true
+   },
+   "enginePriority": "P0"
+  },
+  "780": {
+   "effectId": 780,
+   "actionId": "CharacterSummonDeadAllyInFight",
+   "name_fr": "Invoque le dernier allié mort avec X % de ses PV",
+   "template_fr": "Invoque le dernier allié mort avec #1{{~1~2 à }}#2 % de ses PV",
+   "kind": "summon",
+   "subkind": "revive_dead_ally",
+   "element": null,
+   "params": {
+    "lifePercentMin": "diceNum",
+    "lifePercentMax": "diceSide (0 => fixe)"
+   },
+   "notes": "'Invoque le dernier allie mort avec #1 a #2 % de ses PV' : ressuscite un allie mort du lanceur (le dernier tue dans OTOMAI GetLastKilledAlly), PV erodes conserves, etat Zombi retire. Vortex: Vortexiphan (5003, au debut de chaque tour du Vortex, masque h,m,d, zone C63,3) ressuscite les monstres de vague morts puis leur relance 'Glyphe teleporteur' (5002).",
+   "uncertain": "OTOMAI remet la cible a 50 % des PV (SetHalfLife) alors que la description DofusDB dit #1-#2 % (20-30 % pour Vortex); base du % (PV max erodes ?) et case d'arrivee (case de mort, sinon case ciblee) INCERTAINES. Le role de la zone C63,3 (>= 3 cases du centre ?) est INCERTAIN.",
+   "sources": [
+    "PYDOFUS3 CharacterSummonDeadAllyInFight = 780",
+    "OTOMAI DamageCalculator (isRevive)",
+    "api.dofusdb.fr/effects/780"
+   ],
+   "dofusdb": {
+    "category": 0,
+    "characteristic": 0,
+    "characteristicName": null,
+    "characteristicOperator": "+",
+    "elementId": -1,
+    "boost": false,
+    "active": false,
+    "useDice": true,
+    "isInPercent": false,
+    "effectPriority": 0,
+    "oppositeId": 0
+   },
+   "usage": {
+    "total": 1,
+    "byScope": {
+     "breed": 0,
+     "monster": 0,
+     "sub": 1,
+     "summon": 0
+    },
+    "distinctSpells": 1,
+    "usedByVortexDungeon": true,
+    "classes": [
+     "monstre:Vortex"
+    ],
+    "triggers": {
+     "I": 1
+    },
+    "targetMasks": {
+     "h,m,d": 1
+    },
+    "zones": {
+     "C63,3": 1
+    },
+    "durations": {
+     "0": 1
+    },
+    "delays": {
+     "0": 1
+    },
+    "dispellable": {
+     "1": 1
+    }
+   },
+   "examples": [
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5003,
+     "grade": 1,
+     "origin": "sub:5006",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 780,
+      "order": 0,
+      "diceNum": 20,
+      "diceSide": 30,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "h,m,d",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "C63,3"
+    }
+   ],
+   "flags": {
+    "direct": false
    },
    "enginePriority": "P0"
   },
@@ -17720,6 +18465,97 @@
    },
    "enginePriority": "P1"
   },
+  "784": {
+   "effectId": 784,
+   "actionId": "CharacterTeleportToFightStartPos",
+   "name_fr": "Téléporte à la position de début de combat",
+   "template_fr": "Téléporte à la position de début de combat",
+   "kind": "movement",
+   "subkind": "teleport_fight_start_position",
+   "element": null,
+   "params": {},
+   "notes": "Teleporte la cible sur sa case de DEBUT DE COMBAT (case de placement). Vortex 'Action !' (5060, masque c,L,*e236): au deverrouillage, le Vortex et les personnages ennemis reviennent a leurs cases de depart.",
+   "uncertain": "Comportement si la case est occupee (echange/telefrag comme 4 ?) INCERTAIN.",
+   "sources": [
+    "PYDOFUS3 CharacterTeleportToFightStartPos = 784",
+    "OTOMAI DamageManagement/Teleport.cs (GetFightStartPosition)"
+   ],
+   "dofusdb": {
+    "category": 0,
+    "characteristic": 0,
+    "characteristicName": null,
+    "characteristicOperator": "/",
+    "elementId": -1,
+    "boost": false,
+    "active": false,
+    "useDice": false,
+    "isInPercent": false,
+    "effectPriority": 0,
+    "oppositeId": 0
+   },
+   "usage": {
+    "total": 1,
+    "byScope": {
+     "breed": 0,
+     "monster": 0,
+     "sub": 1,
+     "summon": 0
+    },
+    "distinctSpells": 1,
+    "usedByVortexDungeon": true,
+    "classes": [
+     "monstre:Vortex"
+    ],
+    "triggers": {
+     "I": 1
+    },
+    "targetMasks": {
+     "c,L,*e236": 1
+    },
+    "zones": {
+     "a1": 1
+    },
+    "durations": {
+     "0": 1
+    },
+    "delays": {
+     "0": 1
+    },
+    "dispellable": {
+     "1": 1
+    }
+   },
+   "examples": [
+    {
+     "spell": "Action !",
+     "spellId": 5060,
+     "grade": 1,
+     "origin": "sub:5006",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 784,
+      "order": 0,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,L,*e236",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "a1"
+    }
+   ],
+   "flags": {
+    "direct": false
+   },
+   "enginePriority": "P0"
+  },
   "786": {
    "effectId": 786,
    "actionId": "CharacterHealAttackers",
@@ -17750,14 +18586,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 28,
+    "total": 29,
     "byScope": {
      "breed": 24,
      "monster": 2,
      "sub": 2,
-     "summon": 0
+     "summon": 1
     },
-    "distinctSpells": 10,
+    "distinctSpells": 11,
     "usedByVortexDungeon": true,
     "classes": [
      "Eniripsa",
@@ -17766,33 +18602,35 @@
      "Osamodas",
      "Ouginak",
      "Sacrieur",
-     "Sadida",
      "Sram",
+     "invocation:Arbre",
+     "invocation:Pelle Animée",
      "monstre:Buboxor"
     ],
     "triggers": {
      "D": 16,
-     "DBA": 1
+     "DBA": 2
     },
     "targetMasks": {
      "A": 11,
      "a,A": 5,
-     "C": 1
+     "C": 2
     },
     "zones": {
-     "P1": 13,
+     "P1": 14,
      "C2": 2,
      "F1": 2
     },
     "durations": {
-     "0": 17
+     "0": 18
     },
     "delays": {
-     "0": 17
+     "0": 18
     },
     "dispellable": {
      "1": 13,
-     "2": 4
+     "2": 4,
+     "3": 1
     }
    },
    "examples": [
@@ -17933,14 +18771,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 1458,
+    "total": 1578,
     "byScope": {
      "breed": 702,
-     "monster": 4,
-     "sub": 726,
-     "summon": 26
+     "monster": 19,
+     "sub": 744,
+     "summon": 113
     },
-    "distinctSpells": 375,
+    "distinctSpells": 429,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -17962,56 +18800,131 @@
      "Steamer",
      "Xélor",
      "Zobal",
-     "invocation:Bombe Ambulante",
-     "invocation:Chalutier",
-     "invocation:Gobgob Facétieux",
-     "invocation:Lapino",
-     "invocation:Mégabombe",
-     "invocation:Roublabot"
+     "invocation:Arbre",
+     "invocation:Balise de Survie",
+     "invocation:Bambou",
+     "invocation:Barricade",
+     "invocation:Bastion",
+     "invocation:Bombe Ambulante"
     ],
     "triggers": {
-     "I": 1148,
-     "TE": 12,
-     "X": 12,
-     "TB": 10,
-     "D": 9,
-     "XD": 7,
-     "EON#": 5,
-     "DM": 4
+     "I": 1209,
+     "X": 29,
+     "TB": 20,
+     "D": 19,
+     "EON#": 19,
+     "EOFF#": 16,
+     "XD": 13,
+     "TE": 12
     },
     "targetMasks": {
-     "C": 282,
+     "C": 364,
      "C,*E3589": 66,
-     "a,P,F3112,F3113,F3114,F5161": 50,
+     "a,P,F3112,F3113,F3114,F5161": 53,
      "c": 22,
      "a,P,F7139,*E3361": 21,
-     "a,A": 17
+     "a,A": 20
     },
     "zones": {
-     "P1": 1068,
-     "a1": 70,
-     "A1": 28,
+     "P1": 1167,
+     "a1": 76,
+     "A1": 39,
      "C8": 8,
      "C9": 8,
-     "C2": 4
+     "C2": 5
     },
     "durations": {
-     "0": 1201,
+     "0": 1321,
      "2": 2
     },
     "delays": {
-     "0": 1173,
-     "1": 16,
+     "0": 1290,
+     "1": 17,
      "2": 13,
-     "3": 1
+     "25": 2
     },
     "dispellable": {
-     "1": 1073,
-     "3": 79,
-     "2": 51
+     "1": 1131,
+     "3": 128,
+     "2": 64
     }
    },
    "examples": [
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5006,
+     "grade": 4,
+     "origin": "monster:3835:Vortex:starting",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 792,
+      "order": 0,
+      "diceNum": 5006,
+      "diceSide": 2,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "refSpellName": "Vortexiphan"
+    },
+    {
+     "spell": "Heure du temps",
+     "spellId": 4999,
+     "grade": 2,
+     "origin": "monster:3833:Auroraire:starting",
+     "rootOrigin": "monster:3833:Auroraire:starting",
+     "raw": {
+      "effectId": 792,
+      "order": 2,
+      "diceNum": 4998,
+      "diceSide": 1,
+      "value": 100,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 63,
+      "targetMask": "C",
+      "triggers": "D",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "refSpellName": "Heure du temps"
+    },
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5001,
+     "grade": 1,
+     "origin": "sub:5002",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 792,
+      "order": 1,
+      "diceNum": 5000,
+      "diceSide": 1,
+      "value": 100,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,F3833",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "a1",
+     "refSpellName": "Glyphe téléporteur"
+    },
     {
      "spell": "Petit poison",
      "spellId": 5020,
@@ -18036,81 +18949,6 @@
      },
      "zone": "P1",
      "refSpellName": "Petit poison"
-    },
-    {
-     "spell": "Mise en situation",
-     "spellId": 5030,
-     "grade": 1,
-     "origin": "monster:3839:Brabuzar",
-     "rootOrigin": "monster:3839:Brabuzar",
-     "raw": {
-      "effectId": 792,
-      "order": 0,
-      "diceNum": 5029,
-      "diceSide": 1,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "A",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1",
-     "refSpellName": "Mise en situation"
-    },
-    {
-     "spell": "En temps et en heure",
-     "spellId": 5062,
-     "grade": 1,
-     "origin": "monster:3835:Vortex",
-     "rootOrigin": "monster:3835:Vortex",
-     "raw": {
-      "effectId": 792,
-      "order": 0,
-      "diceNum": 5061,
-      "diceSide": 1,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A,F3833",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1",
-     "refSpellName": "En temps et en heure"
-    },
-    {
-     "spell": "Heurage",
-     "spellId": 5066,
-     "grade": 1,
-     "origin": "monster:3835:Vortex",
-     "rootOrigin": "monster:3835:Vortex",
-     "raw": {
-      "effectId": 792,
-      "order": 0,
-      "diceNum": 5065,
-      "diceSide": 1,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "g,F3833,*E236",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "a1",
-     "refSpellName": "Heurage"
     }
    ],
    "flags": {
@@ -18151,38 +18989,67 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 1,
+    "total": 3,
     "byScope": {
      "breed": 0,
-     "monster": 1,
+     "monster": 3,
      "sub": 0,
      "summon": 0
     },
-    "distinctSpells": 1,
+    "distinctSpells": 2,
     "usedByVortexDungeon": true,
     "classes": [
-     "monstre:Ikargn"
+     "monstre:Ikargn",
+     "monstre:Vortex"
     ],
     "triggers": {
+     "TB": 2,
      "I": 1
     },
     "targetMasks": {
-     "C": 1
+     "C": 3
     },
     "zones": {
-     "P1": 1
+     "P1": 3
     },
     "durations": {
-     "0": 1
+     "0": 3
     },
     "delays": {
+     "0": 2,
      "1": 1
     },
     "dispellable": {
+     "3": 2,
      "1": 1
     }
    },
    "examples": [
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5006,
+     "grade": 4,
+     "origin": "monster:3835:Vortex:starting",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 793,
+      "order": 3,
+      "diceNum": 5003,
+      "diceSide": 1,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 63,
+      "targetMask": "C",
+      "triggers": "TB",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "refSpellName": "Vortexiphan"
+    },
     {
      "spell": "Attraction ailée",
      "spellId": 5015,
@@ -18246,35 +19113,38 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 1,
+    "total": 5,
     "byScope": {
      "breed": 0,
      "monster": 0,
-     "sub": 1,
+     "sub": 5,
      "summon": 0
     },
-    "distinctSpells": 1,
+    "distinctSpells": 2,
     "usedByVortexDungeon": false,
     "classes": [
-     "Huppermage"
+     "Huppermage",
+     "invocation:Fée Stimulante"
     ],
     "triggers": {
-     "I": 1
+     "I": 5
     },
     "targetMasks": {
+     "C": 4,
      "C,*e6956": 1
     },
     "zones": {
-     "P1": 1
+     "P1": 5
     },
     "durations": {
+     "-1": 4,
      "1": 1
     },
     "delays": {
-     "0": 1
+     "0": 5
     },
     "dispellable": {
-     "2": 1
+     "2": 5
     }
    },
    "examples": [
@@ -18294,6 +19164,30 @@
       "delay": 0,
       "effectTriggerDuration": 0,
       "targetMask": "C,*e6956",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Lucioles",
+     "spellId": 28935,
+     "grade": 2,
+     "origin": "sub:25769",
+     "rootOrigin": "summon:7372:Fée Stimulante",
+     "raw": {
+      "effectId": 798,
+      "order": 0,
+      "diceNum": 25742,
+      "diceSide": 0,
+      "value": 1,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
       "triggers": "I",
       "random": 0,
       "group": 0,
@@ -18341,14 +19235,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 2233,
+    "total": 2433,
     "byScope": {
      "breed": 1108,
-     "monster": 5,
-     "sub": 1033,
-     "summon": 87
+     "monster": 24,
+     "sub": 1076,
+     "summon": 225
     },
-    "distinctSpells": 614,
+    "distinctSpells": 671,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -18370,152 +19264,155 @@
      "Steamer",
      "Xélor",
      "Zobal",
+     "invocation:Arbre",
+     "invocation:Bambou",
+     "invocation:Barricade",
+     "invocation:Bastion",
      "invocation:Bathyscaphe",
-     "invocation:Bombe Ambulante",
-     "invocation:Chalutier",
-     "invocation:Feu Accablant",
-     "invocation:Feu Décourageant",
-     "invocation:Feu Déprimant"
+     "invocation:Bombe Ambulante"
     ],
     "triggers": {
-     "I": 1857,
-     "DM": 6
+     "I": 2053,
+     "DM": 6,
+     "EOFF#": 2,
+     "TB": 2
     },
     "targetMasks": {
-     "C": 287,
-     "a,A": 249,
-     "A": 232,
-     "a": 157,
-     "c": 48,
-     "A,*E296": 20
+     "C": 363,
+     "a,A": 255,
+     "A": 233,
+     "a": 158,
+     "c": 50,
+     "h,P": 27
     },
     "zones": {
-     "P1": 1534,
-     "a1": 82,
-     "C2": 27,
+     "P1": 1667,
+     "a1": 122,
+     "C2": 29,
+     "A1": 29,
      "X1": 26,
-     "C2,1": 18,
-     "C3": 17
+     "C2,1": 20
     },
     "durations": {
-     "1": 810,
-     "-1": 673,
-     "2": 307,
-     "3": 65,
+     "-1": 838,
+     "1": 831,
+     "2": 319,
+     "3": 66,
      "0": 6,
      "4": 2
     },
     "delays": {
-     "0": 1839,
-     "1": 14,
-     "2": 10
+     "0": 2033,
+     "1": 16,
+     "2": 13,
+     "3": 1
     },
     "dispellable": {
-     "2": 863,
-     "3": 662,
-     "1": 338
+     "2": 920,
+     "3": 800,
+     "1": 343
     }
    },
    "examples": [
     {
-     "spell": "Attraction ailée",
-     "spellId": 5015,
-     "grade": 1,
-     "origin": "monster:3834:Ikargn",
-     "rootOrigin": "monster:3834:Ikargn",
+     "spell": "Vortexiphan",
+     "spellId": 5006,
+     "grade": 4,
+     "origin": "monster:3835:Vortex:starting",
+     "rootOrigin": "monster:3835:Vortex:starting",
      "raw": {
       "effectId": 950,
-      "order": 2,
+      "order": 6,
       "diceNum": 0,
       "diceSide": 0,
-      "value": 7,
-      "duration": 1,
+      "value": 56,
+      "duration": -1,
       "delay": 0,
       "effectTriggerDuration": 0,
-      "targetMask": "A",
+      "targetMask": "C",
       "triggers": "I",
       "random": 0,
       "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "C3,1",
-     "stateName": "Pesanteur"
-    },
-    {
-     "spell": "Rayonirique",
-     "spellId": 5022,
-     "grade": 1,
-     "origin": "monster:3836:Méjaire",
-     "rootOrigin": "monster:3836:Méjaire",
-     "raw": {
-      "effectId": 950,
-      "order": 1,
-      "diceNum": 0,
-      "diceSide": 0,
-      "value": 218,
-      "duration": 1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "A",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 2,
+      "dispellable": 3,
       "effectElement": -1
      },
      "zone": "P1",
-     "stateName": "Pacifiste"
+     "stateName": "Invulnérable"
     },
     {
-     "spell": "Contamination zombie",
-     "spellId": 5063,
-     "grade": 1,
-     "origin": "sub:5064",
-     "rootOrigin": "monster:3835:Vortex",
+     "spell": "Heure du temps",
+     "spellId": 4999,
+     "grade": 2,
+     "origin": "monster:3833:Auroraire:starting",
+     "rootOrigin": "monster:3833:Auroraire:starting",
      "raw": {
       "effectId": 950,
       "order": 0,
       "diceNum": 0,
       "diceSide": 0,
-      "value": 76,
-      "duration": 1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "A",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "C2,1",
-     "stateName": "Insoignable"
-    },
-    {
-     "spell": "Heurage",
-     "spellId": 5065,
-     "grade": 1,
-     "origin": "sub:5066",
-     "rootOrigin": "monster:3835:Vortex",
-     "raw": {
-      "effectId": 950,
-      "order": 2,
-      "diceNum": 0,
-      "diceSide": 0,
-      "value": 96,
+      "value": 6490,
       "duration": -1,
       "delay": 0,
       "effectTriggerDuration": 0,
-      "targetMask": "g,*E222,f3835",
+      "targetMask": "C",
       "triggers": "I",
       "random": 0,
       "group": 0,
-      "dispellable": 2,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "stateName": "Xélorium (Songes)"
+    },
+    {
+     "spell": "Décalage horaire",
+     "spellId": 4996,
+     "grade": 1,
+     "origin": "sub:4999",
+     "rootOrigin": "monster:3833:Auroraire:starting",
+     "raw": {
+      "effectId": 950,
+      "order": 1,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 234,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "g,E221,*E232,e6611",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
       "effectElement": -1
      },
      "zone": "a1",
-     "stateName": "Intaclable"
+     "stateName": "Même heure"
+    },
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5000,
+     "grade": 1,
+     "origin": "sub:5001",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 950,
+      "order": 0,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 221,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,E233,*E221",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "a1",
+     "stateName": "Première heure"
     }
    ],
    "flags": {
@@ -18554,15 +19451,15 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 758,
+    "total": 814,
     "byScope": {
      "breed": 195,
      "monster": 0,
-     "sub": 556,
-     "summon": 7
+     "sub": 585,
+     "summon": 34
     },
-    "distinctSpells": 243,
-    "usedByVortexDungeon": false,
+    "distinctSpells": 254,
+    "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
      "Ecaflip",
@@ -18583,48 +19480,125 @@
      "Steamer",
      "Xélor",
      "Zobal",
+     "invocation:Arbre",
      "invocation:Chalutier",
-     "invocation:La Fourbe",
-     "invocation:La Surpuissante",
-     "invocation:Lapino",
-     "invocation:Roublabot",
-     "invocation:Tactirelle"
+     "invocation:Feu Décourageant",
+     "invocation:Fiole Alchimique",
+     "invocation:Fée Stimulante",
+     "invocation:La Fourbe"
     ],
     "triggers": {
-     "I": 695,
-     "TE": 6
+     "I": 749,
+     "TE": 8
     },
     "targetMasks": {
-     "C": 112,
-     "a,A": 111,
-     "A": 49,
-     "a": 46,
+     "C": 144,
+     "a,A": 113,
+     "A": 50,
+     "a": 47,
      "a,A,E5409": 40,
      "a,A,E6244": 36
     },
     "zones": {
-     "P1": 458,
-     "A1": 141,
-     "a1": 73,
+     "P1": 503,
+     "A1": 146,
+     "a1": 75,
      "C63[deg=0%x0]": 16,
-     "L3[deg=0%x0]": 3,
-     "X1": 3
+     "C2,1": 5,
+     "L3[deg=0%x0]": 3
     },
     "durations": {
-     "0": 664,
+     "0": 720,
      "-1": 30,
      "1": 7
     },
     "delays": {
-     "0": 701
+     "0": 753,
+     "1": 2,
+     "2": 2
     },
     "dispellable": {
-     "1": 505,
-     "3": 153,
-     "2": 43
+     "1": 549,
+     "3": 159,
+     "2": 49
     }
    },
    "examples": [
+    {
+     "spell": "Décalage horaire",
+     "spellId": 4996,
+     "grade": 1,
+     "origin": "sub:4999",
+     "rootOrigin": "monster:3833:Auroraire:starting",
+     "raw": {
+      "effectId": 951,
+      "order": 0,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 234,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "g",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "a1",
+     "stateName": "Même heure"
+    },
+    {
+     "spell": "Heure du temps",
+     "spellId": 4998,
+     "grade": 1,
+     "origin": "sub:4999",
+     "rootOrigin": "monster:3833:Auroraire:starting",
+     "raw": {
+      "effectId": 951,
+      "order": 5,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 237,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "stateName": "Feinte"
+    },
+    {
+     "spell": "Action !",
+     "spellId": 5060,
+     "grade": 1,
+     "origin": "sub:5006",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 951,
+      "order": 7,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 221,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "stateName": "Première heure"
+    },
     {
      "spell": "Perception",
      "spellId": 12852,
@@ -18649,81 +19623,6 @@
      },
      "zone": "a1",
      "stateName": "Perception"
-    },
-    {
-     "spell": "Transhumance",
-     "spellId": 12986,
-     "grade": 3,
-     "origin": "breed:1:Féca",
-     "rootOrigin": "breed:1:Féca",
-     "raw": {
-      "effectId": 951,
-      "order": 11,
-      "diceNum": 0,
-      "diceSide": 0,
-      "value": 5260,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1",
-     "stateName": "Glyphes déclenchés"
-    },
-    {
-     "spell": "Rayon Obscur",
-     "spellId": 13253,
-     "grade": 3,
-     "origin": "breed:5:Xélor",
-     "rootOrigin": "breed:5:Xélor",
-     "raw": {
-      "effectId": 951,
-      "order": 2,
-      "diceNum": 0,
-      "diceSide": 0,
-      "value": 3622,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "L3[deg=0%x0]",
-     "stateName": "{{spell,24510,1::Téléfrag}}"
-    },
-    {
-     "spell": "Horloge",
-     "spellId": 13256,
-     "grade": 3,
-     "origin": "breed:5:Xélor",
-     "rootOrigin": "breed:5:Xélor",
-     "raw": {
-      "effectId": 951,
-      "order": 0,
-      "diceNum": 0,
-      "diceSide": 0,
-      "value": 3622,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1",
-     "stateName": "{{spell,24510,1::Téléfrag}}"
     }
    ],
    "flags": {
@@ -18762,38 +19661,40 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 4,
+    "total": 13,
     "byScope": {
      "breed": 3,
      "monster": 0,
      "sub": 1,
-     "summon": 0
+     "summon": 9
     },
-    "distinctSpells": 2,
+    "distinctSpells": 3,
     "usedByVortexDungeon": false,
     "classes": [
      "Forgelance",
-     "Xélor"
+     "Xélor",
+     "invocation:Stratège Iop"
     ],
     "triggers": {
-     "I": 4
+     "I": 13
     },
     "targetMasks": {
-     "C": 3,
+     "C": 12,
      "C,*F7139": 1
     },
     "zones": {
-     "P1": 4
+     "P1": 13
     },
     "durations": {
+     "-1": 9,
      "1": 4
     },
     "delays": {
-     "0": 4
+     "0": 13
     },
     "dispellable": {
-     "2": 3,
-     "3": 1
+     "3": 10,
+     "2": 3
     }
    },
    "examples": [
@@ -18821,6 +19722,31 @@
      },
      "zone": "P1",
      "stateName": "Enraciné"
+    },
+    {
+     "spell": "Stratégie Iop",
+     "spellId": 19723,
+     "grade": 4,
+     "origin": "summon:5130:Stratège Iop",
+     "rootOrigin": "summon:5130:Stratège Iop",
+     "raw": {
+      "effectId": 952,
+      "order": 0,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 567,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "C",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "stateName": "Indéplaçable et invulnérable"
     },
     {
      "spell": "Poinçon",
@@ -19058,14 +19984,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 14,
+    "total": 15,
     "byScope": {
      "breed": 7,
      "monster": 0,
-     "sub": 3,
+     "sub": 4,
      "summon": 4
     },
-    "distinctSpells": 8,
+    "distinctSpells": 9,
     "usedByVortexDungeon": false,
     "classes": [
      "Roublard",
@@ -19073,28 +19999,28 @@
      "invocation:Roublabot"
     ],
     "triggers": {
-     "I": 12,
+     "I": 13,
      "X": 2
     },
     "targetMasks": {
-     "a,P,F3112,F3113,F3114,F5161": 12,
+     "a,P,F3112,F3113,F3114,F5161": 13,
      "a,P,F3112,F3113,F3114,F5161,F5163": 1,
      "a,P,F3112,F3113,F3114,F5161,*e4069": 1
     },
     "zones": {
      "P1": 11,
+     "C2": 2,
      "C3": 1,
-     "C2": 1,
      "C2,1": 1
     },
     "durations": {
-     "0": 14
+     "0": 15
     },
     "delays": {
-     "0": 14
+     "0": 15
     },
     "dispellable": {
-     "1": 12,
+     "1": 13,
      "3": 2
     }
    },
@@ -19388,10 +20314,11 @@
     "min": "diceNum",
     "max": "diceSide"
    },
-   "notes": "Degats Air proportionnels aux PM restants du lanceur: degats_base x PM_restants/PM_max (Zenith de l'Iop).",
-   "uncertain": "Formule exacte (ratio PM restants / PM max) INCERTAINE; DoMath/OTOMAI ne l'exposent pas.",
+   "notes": "Degats Air proportionnels aux PM restants du lanceur (Zenith de l'Iop). OTOMAI DamageSender.GetTotalDamage: jet -> boosts normaux (GetBoostableDamage: base + x(100+Puissance+carac)/100 + fixes) PUIS x PM_restants / (PM_restants + PM_utilises_ce_tour); 0 PM restant => 0 degat. Le ratio vaut PM_restants/PM_max du tour si aucun PM n'a ete gagne/perdu par effet. [verification 2026-10-04: formule lue dans OTOMAI, auparavant INCERTAINE]",
+   "uncertain": "Ratio exact quand les PM max changent pendant le tour (retrait/gain de PM): OTOMAI utilise PM_restants + PM_utilises, pas PM_max (INCERTAIN cote jeu reel).",
    "sources": [
-    "OTOMAI ActionIdHelper.IsBasedOnMovementPoints"
+    "OTOMAI ActionIdHelper.IsBasedOnMovementPoints",
+    "OTOMAI DamageSender.GetTotalDamage (Multiply(movementPoints / (movementPoints + usedPm)))"
    ],
    "dofusdb": {
     "category": 2,
@@ -19484,9 +20411,10 @@
     "max": "diceSide"
    },
    "notes": "Variante Terre de 1013 (Fleche du Jugement du Cra).",
-   "uncertain": "Formule exacte (ratio PM restants / PM max) INCERTAINE; DoMath/OTOMAI ne l'exposent pas.",
+   "uncertain": "Ratio exact quand les PM max changent pendant le tour (retrait/gain de PM): OTOMAI utilise PM_restants + PM_utilises, pas PM_max (INCERTAIN cote jeu reel).",
    "sources": [
-    "OTOMAI ActionIdHelper.IsBasedOnMovementPoints"
+    "OTOMAI ActionIdHelper.IsBasedOnMovementPoints",
+    "OTOMAI DamageSender.GetTotalDamage (Multiply(movementPoints / (movementPoints + usedPm)))"
    ],
    "dofusdb": {
     "category": 2,
@@ -19579,7 +20507,7 @@
     "spellGrade": "diceSide",
     "maxTriggerCount": "value = nombre max de declenchements du buff si l'effet est declenche (triggers != I); 999 = illimite; 0 = pas de limite"
    },
-   "notes": "La cible lance le sort diceNum sur le LANCEUR de l'effet (source). Le sous-sort est execute avec ses propres effets/zones/masques; le lancement herite du flag critique (IsCriticalFlagInherited) et ne coute pas de PA.",
+   "notes": "La cible lance le sort diceNum sur la SOURCE (riposte: Main de Pandawa 'DM' + masque C => le porteur lance le sous-sort sur son agresseur au corps-a-corps; Vestige 'DBA'). 'Source' = entite DECLENCHEUSE si l'effet est joue par un buff declenche (ex: l'attaquant pour un trigger D/DM/DBA), sinon le lanceur de l'effet (OTOMAI SolveSpellExecution: triggeringFighter = runningEffect.IsTriggered ? TriggeringFighter : caster). [verification 2026-10-04] Le sous-sort est execute avec ses propres effets/zones/masques; le lancement herite du flag critique (IsCriticalFlagInherited) et ne coute pas de PA.",
    "uncertain": null,
    "sources": [
     "OTOMAI DamageCalculator.TriggerBuff (Param3 = limite de declenchements)",
@@ -19599,14 +20527,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 42,
+    "total": 74,
     "byScope": {
      "breed": 5,
      "monster": 0,
      "sub": 37,
-     "summon": 0
+     "summon": 32
     },
-    "distinctSpells": 20,
+    "distinctSpells": 35,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
@@ -19615,35 +20543,56 @@
      "Sadida",
      "Sram",
      "Steamer",
-     "Xélor"
+     "invocation:Bambou",
+     "invocation:Explobombe",
+     "invocation:La Bloqueuse",
+     "invocation:La Folle",
+     "invocation:La Fourbe",
+     "invocation:La Gonflable",
+     "invocation:La Sacrifiée",
+     "invocation:La Surpuissante",
+     "invocation:Lanterne du Berger",
+     "invocation:Mégabombe",
+     "invocation:Synchro",
+     "invocation:Tonneau de l'Ivrogne",
+     "invocation:Tonneau de l'Éméché",
+     "invocation:Totem Eliotrope",
+     "invocation:Tréant"
     ],
     "triggers": {
-     "I": 30,
-     "DM": 1
+     "I": 57,
+     "EON#": 3,
+     "DBA": 1,
+     "XDBA": 1,
+     "DM": 1,
+     "TB": 1
     },
     "targetMasks": {
+     "h,P": 10,
      "a,F5836,F5832,F5835,F5833,F5837,F5831": 7,
-     "h,P": 6,
+     "C": 5,
      "a,F5897,F5898,F5895,F5896,F5899,F7934": 3,
      "h,P,*E6050": 2,
-     "h,P,*E6051": 2,
-     "a,A,F5836,F5832,F5835,F5833,F5837,F5831": 2
+     "h,P,*E6051": 2
     },
     "zones": {
-     "P1": 18,
-     "A1": 10,
+     "A1": 36,
+     "P1": 23,
      "a1": 2,
+     "Q63": 1,
      "Q1": 1
     },
     "durations": {
-     "0": 31
+     "0": 63
     },
     "delays": {
-     "0": 31
+     "0": 62,
+     "2": 1
     },
     "dispellable": {
-     "1": 29,
-     "3": 2
+     "1": 55,
+     "3": 6,
+     "2": 2
     }
    },
    "examples": [
@@ -19751,7 +20700,105 @@
    "flags": {
     "direct": false
    },
-   "enginePriority": "P1"
+   "enginePriority": "P0"
+  },
+  "1018": {
+   "effectId": 1018,
+   "actionId": "SourceExecuteSpellOnTarget",
+   "name_fr": "#1",
+   "template_fr": "#1",
+   "kind": "cast_spell",
+   "subkind": "source_executes_on_target",
+   "element": null,
+   "params": {
+    "spellId": "diceNum",
+    "spellGrade": "diceSide",
+    "maxTriggerCount": "value = nombre max de declenchements du buff si l'effet est declenche (triggers != I); 999 = illimite; 0 = pas de limite"
+   },
+   "notes": "La SOURCE lance le sort diceNum sur la cible de l'effet (Reperage de la Lanterne du Berger, invocation). 'Source' = entite DECLENCHEUSE si l'effet est joue par un buff declenche (ex: l'attaquant pour un trigger D/DM/DBA), sinon le lanceur de l'effet (OTOMAI SolveSpellExecution: triggeringFighter = runningEffect.IsTriggered ? TriggeringFighter : caster). [verification 2026-10-04] Le sous-sort est execute avec ses propres effets/zones/masques; le lancement herite du flag critique (IsCriticalFlagInherited) et ne coute pas de PA.",
+   "uncertain": null,
+   "sources": [
+    "OTOMAI DamageCalculator.TriggerBuff (Param3 = limite de declenchements)",
+    "OTOMAI ActionIdHelper.IsSpellExecution/SpellExecutionHasGlobalLimitation",
+    "PYDOFUS3 SourceExecuteSpellOnTarget = 1018",
+    "OTOMAI DamageCalculator.SolveSpellExecution"
+   ],
+   "dofusdb": {
+    "category": 0,
+    "characteristic": 0,
+    "characteristicName": null,
+    "characteristicOperator": "/",
+    "elementId": -1,
+    "boost": false,
+    "active": false,
+    "useDice": false,
+    "isInPercent": false,
+    "effectPriority": 0,
+    "oppositeId": 0
+   },
+   "usage": {
+    "total": 1,
+    "byScope": {
+     "breed": 0,
+     "monster": 0,
+     "sub": 1,
+     "summon": 0
+    },
+    "distinctSpells": 1,
+    "usedByVortexDungeon": false,
+    "classes": [
+     "invocation:Lanterne du Berger"
+    ],
+    "triggers": {
+     "I": 1
+    },
+    "targetMasks": {
+     "g,p,o": 1
+    },
+    "zones": {
+     "Q63": 1
+    },
+    "durations": {
+     "0": 1
+    },
+    "delays": {
+     "0": 1
+    },
+    "dispellable": {
+     "1": 1
+    }
+   },
+   "examples": [
+    {
+     "spell": "Repérage",
+     "spellId": 29071,
+     "grade": 2,
+     "origin": "sub:29070",
+     "rootOrigin": "summon:7841:Lanterne du Berger",
+     "raw": {
+      "effectId": 1018,
+      "order": 1,
+      "diceNum": 29071,
+      "diceSide": 4,
+      "value": 999,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "g,p,o",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "Q63",
+     "refSpellName": "Repérage"
+    }
+   ],
+   "flags": {
+    "direct": false
+   },
+   "enginePriority": "P2"
   },
   "1019": {
    "effectId": 1019,
@@ -19766,7 +20813,7 @@
     "spellGrade": "diceSide",
     "maxTriggerCount": "value = nombre max de declenchements du buff si l'effet est declenche (triggers != I); 999 = illimite; 0 = pas de limite"
    },
-   "notes": "La source (lanceur) lance le sort diceNum sur elle-meme (Museliere Ouginak). Le sous-sort est execute avec ses propres effets/zones/masques; le lancement herite du flag critique (IsCriticalFlagInherited) et ne coute pas de PA.",
+   "notes": "La SOURCE lance le sort diceNum sur elle-meme (Museliere Ouginak, Strategie Iop). 'Source' = entite DECLENCHEUSE si l'effet est joue par un buff declenche (ex: l'attaquant pour un trigger D/DM/DBA), sinon le lanceur de l'effet (OTOMAI SolveSpellExecution: triggeringFighter = runningEffect.IsTriggered ? TriggeringFighter : caster). [verification 2026-10-04] Le sous-sort est execute avec ses propres effets/zones/masques; le lancement herite du flag critique (IsCriticalFlagInherited) et ne coute pas de PA.",
    "uncertain": null,
    "sources": [
     "OTOMAI DamageCalculator.TriggerBuff (Param3 = limite de declenchements)",
@@ -19786,35 +20833,38 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 4,
+    "total": 6,
     "byScope": {
      "breed": 4,
      "monster": 0,
      "sub": 0,
-     "summon": 0
+     "summon": 2
     },
-    "distinctSpells": 1,
+    "distinctSpells": 2,
     "usedByVortexDungeon": false,
     "classes": [
-     "Ouginak"
+     "Ouginak",
+     "invocation:Stratège Iop"
     ],
     "triggers": {
-     "I": 2
+     "I": 4
     },
     "targetMasks": {
-     "A,E516": 2
+     "A,E516": 2,
+     "A,O": 1,
+     "a,O": 1
     },
     "zones": {
-     "P1": 2
+     "P1": 4
     },
     "durations": {
-     "0": 2
+     "0": 4
     },
     "delays": {
-     "0": 2
+     "0": 4
     },
     "dispellable": {
-     "1": 2
+     "1": 4
     }
    },
    "examples": [
@@ -19842,6 +20892,31 @@
      },
      "zone": "P1",
      "refSpellName": "Muselière"
+    },
+    {
+     "spell": "Stratégie Iop",
+     "spellId": 19723,
+     "grade": 2,
+     "origin": "summon:5130:Stratège Iop",
+     "rootOrigin": "summon:5130:Stratège Iop",
+     "raw": {
+      "effectId": 1019,
+      "order": 1,
+      "diceNum": 19723,
+      "diceSide": 3,
+      "value": 999,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "A,O",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "refSpellName": "Stratégie Iop"
     }
    ],
    "flags": {
@@ -19880,14 +20955,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 272,
+    "total": 275,
     "byScope": {
      "breed": 210,
      "monster": 0,
-     "sub": 48,
-     "summon": 14
+     "sub": 50,
+     "summon": 15
     },
-    "distinctSpells": 59,
+    "distinctSpells": 62,
     "usedByVortexDungeon": false,
     "classes": [
      "Ecaflip",
@@ -19904,11 +20979,12 @@
      "invocation:Bathyscaphe",
      "invocation:Fée Galvanisante",
      "invocation:Lapino",
+     "invocation:Masque Grimaçant",
      "invocation:Scarafoudre",
      "invocation:Tréant"
     ],
     "triggers": {
-     "I": 199,
+     "I": 202,
      "MPA": 2,
      "M": 2,
      "TP": 2,
@@ -19931,18 +21007,18 @@
      "X3": 3
     },
     "durations": {
-     "2": 154,
-     "1": 40,
+     "2": 155,
+     "1": 42,
      "3": 6,
      "-1": 2
     },
     "delays": {
-     "0": 199,
+     "0": 202,
      "1": 3
     },
     "dispellable": {
-     "1": 181,
-     "2": 15,
+     "1": 182,
+     "2": 17,
      "3": 6
     }
    },
@@ -20080,43 +21156,71 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 6,
+    "total": 18,
     "byScope": {
      "breed": 0,
      "monster": 0,
-     "sub": 6,
+     "sub": 18,
      "summon": 0
     },
-    "distinctSpells": 4,
-    "usedByVortexDungeon": false,
+    "distinctSpells": 5,
+    "usedByVortexDungeon": true,
     "classes": [
-     "Steamer"
+     "Steamer",
+     "monstre:Auroraire"
     ],
     "triggers": {
-     "I": 6
+     "I": 18
     },
     "targetMasks": {
      "a,A,F5836,F5832,F5835,F5833,F5837,F5831,*e7,*e6,*e97,e7,e6,e97": 2,
-     "g,A,E5285,F5836,F5832,F5835,F5833,F5837,F5831,*e7,*e97,e97,e7,*e6,e6": 1,
-     "g,A,E5286,F5836,F5832,F5835,F5833,F5837,F5831,*e7,*e97,e97,e7,*e6,e6": 1,
-     "a,A,F5836,F5832,F5835,F5833,F5837,F5831,*e7,*e6,*e97,e7,e6,e97,e5288,*e5288": 1,
-     "a,A,F5836,F5832,F5835,F5833,F5837,F5831,e7,e6,e97,*e7,*e6,*e97": 1
+     "a,A,*E231,*e6490": 1,
+     "a,A,*E232,*e6490": 1,
+     "a,A,*E221,*e6490": 1,
+     "a,A,*E222,*e6490": 1,
+     "a,A,*E223,*e6490": 1
     },
     "zones": {
+     ";1": 12,
      "l2": 4,
      "a1": 2
     },
     "durations": {
-     "0": 6
+     "0": 18
     },
     "delays": {
-     "0": 6
+     "0": 18
     },
     "dispellable": {
+     "2": 12,
      "1": 6
     }
    },
    "examples": [
+    {
+     "spell": "Décalage horaire",
+     "spellId": 4996,
+     "grade": 1,
+     "origin": "sub:4999",
+     "rootOrigin": "monster:3833:Auroraire:starting",
+     "raw": {
+      "effectId": 1023,
+      "order": 13,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,*E231,*e6490",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": ";1"
+    },
     {
      "spell": "Compas",
      "spellId": 13882,
@@ -20188,36 +21292,12 @@
       "effectElement": -1
      },
      "zone": "l2"
-    },
-    {
-     "spell": "Boussole",
-     "spellId": 29138,
-     "grade": 4,
-     "origin": "sub:13860",
-     "rootOrigin": "breed:15:Steamer",
-     "raw": {
-      "effectId": 1023,
-      "order": 0,
-      "diceNum": 0,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A,F5836,F5832,F5835,F5833,F5837,F5831,e7,e6,e97,*e7,*e6,*e97",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "l2"
     }
    ],
    "flags": {
     "direct": false
    },
-   "enginePriority": "P2"
+   "enginePriority": "P0"
   },
   "1026": {
    "effectId": 1026,
@@ -21738,14 +22818,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 63,
+    "total": 67,
     "byScope": {
      "breed": 16,
      "monster": 0,
      "sub": 47,
-     "summon": 0
+     "summon": 4
     },
-    "distinctSpells": 20,
+    "distinctSpells": 24,
     "usedByVortexDungeon": false,
     "classes": [
      "Ecaflip",
@@ -21755,32 +22835,37 @@
      "Sadida",
      "Steamer",
      "Xélor",
-     "Zobal"
+     "Zobal",
+     "invocation:Gobgob Facétieux",
+     "invocation:Gobgob Glouton",
+     "invocation:Lapino",
+     "invocation:Masque Grimaçant"
     ],
     "triggers": {
-     "I": 63
+     "I": 67
     },
     "targetMasks": {
      "C": 44,
      "c": 8,
+     "h,P": 4,
      "a,*F5896,e4007": 1,
      "a,*F5896,E4007": 1,
-     "a,*F5895,e4008": 1,
-     "a,*F5895,E4008": 1
+     "a,*F5895,e4008": 1
     },
     "zones": {
-     "P1": 63
+     "P1": 63,
+     "A1": 4
     },
     "durations": {
-     "0": 61,
+     "0": 65,
      "1": 2
     },
     "delays": {
-     "0": 63
+     "0": 67
     },
     "dispellable": {
-     "1": 29,
-     "3": 28,
+     "1": 32,
+     "3": 29,
      "2": 6
     }
    },
@@ -22089,26 +23174,28 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 47,
+    "total": 51,
     "byScope": {
      "breed": 0,
      "monster": 0,
-     "sub": 47,
-     "summon": 0
+     "sub": 46,
+     "summon": 5
     },
-    "distinctSpells": 33,
+    "distinctSpells": 34,
     "usedByVortexDungeon": false,
     "classes": [
      "Huppermage",
      "Roublard",
      "Xélor",
-     "invocation:Mégabombe"
+     "invocation:La Sacrifiée",
+     "invocation:Mégabombe",
+     "invocation:Synchro"
     ],
     "triggers": {
-     "I": 47
+     "I": 51
     },
     "targetMasks": {
-     "C": 41,
+     "C": 45,
      "a,P,F5129,e4456,E3750": 1,
      "a,P,F5129,e4456,E3746": 1,
      "a,P,F5129,e4456,E3747": 1,
@@ -22116,18 +23203,20 @@
      "a,P,F5129,e4456,E3748": 1
     },
     "zones": {
-     "P1": 41,
+     "P1": 45,
      "a1": 6
     },
     "durations": {
-     "-1": 47
+     "-1": 51
     },
     "delays": {
-     "0": 47
+     "0": 47,
+     "1": 2,
+     "2": 2
     },
     "dispellable": {
      "2": 31,
-     "3": 16
+     "3": 20
     }
    },
    "examples": [
@@ -22159,8 +23248,8 @@
      "spell": "Fin des Temps",
      "spellId": 13270,
      "grade": 5,
-     "origin": "sub:13279",
-     "rootOrigin": "breed:5:Xélor",
+     "origin": "summon:3958:Synchro",
+     "rootOrigin": "summon:3958:Synchro",
      "raw": {
       "effectId": 1060,
       "order": 1,
@@ -22263,47 +23352,51 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 14,
+    "total": 16,
     "byScope": {
      "breed": 8,
      "monster": 0,
      "sub": 6,
-     "summon": 0
+     "summon": 2
     },
-    "distinctSpells": 9,
+    "distinctSpells": 11,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
      "Enutrof",
      "Osamodas",
-     "Sadida"
+     "Sadida",
+     "invocation:Masque Grimaçant",
+     "invocation:Musette Animée"
     ],
     "triggers": {
-     "D": 13
+     "D": 15
     },
     "targetMasks": {
+     "a": 4,
      "c,h,d,m,i": 4,
-     "a": 3,
      "C,j": 2,
+     "C,l,P": 1,
      "a,E5425": 1,
-     "j,P": 1,
-     "c,h,m,d,E7010": 1
+     "j,P": 1
     },
     "zones": {
      "a1": 5,
      "C2,1": 4,
-     "Q1": 2,
-     "P1": 2
+     "Q1": 3,
+     "P1": 2,
+     "A1": 1
     },
     "durations": {
-     "0": 11,
+     "0": 13,
      "2": 2
     },
     "delays": {
-     "0": 13
+     "0": 15
     },
     "dispellable": {
-     "1": 13
+     "1": 14,
+     "2": 1
     }
    },
    "examples": [
@@ -22421,7 +23514,7 @@
    "params": {
     "turns": "diceNum"
    },
-   "notes": "Reduit de d1 tours la duree des effets DISSIPABLES (dispellable=1) presents sur la cible ('desenvoutement'); un effet ramene a 0 est retire. Trigger 'DIS' sur la cible. Utilise par Vortex (Heuristique: -2 tours).",
+   "notes": "Reduit de d1 tours la duree des effets DISSIPABLES (dispellable=1) presents sur la cible ('desenvoutement'); un effet ramene a 0 est retire. Les effets infinis (duration -1) et encore differes (delay > 0) ne sont PAS touches (OTOMAI HaxeFighter.ReduceBuffDurations). Trigger 'DIS' sur la cible. Utilise par Vortex (Heuristique: -2 tours).",
    "uncertain": null,
    "sources": [
     "OTOMAI HaxeFighter.ReduceBuffDurations",
@@ -22782,14 +23875,14 @@
     "oppositeId": 1033
    },
    "usage": {
-    "total": 49,
+    "total": 65,
     "byScope": {
      "breed": 23,
-     "monster": 0,
-     "sub": 20,
-     "summon": 6
+     "monster": 1,
+     "sub": 31,
+     "summon": 10
     },
-    "distinctSpells": 18,
+    "distinctSpells": 24,
     "usedByVortexDungeon": true,
     "classes": [
      "Forgelance",
@@ -22797,44 +23890,100 @@
      "Roublard",
      "Sacrieur",
      "Sadida",
+     "invocation:Arbre",
+     "invocation:Explobombe",
+     "invocation:Gardienne",
      "invocation:Gobgob Glouton",
+     "invocation:La Sacrifiée",
      "invocation:Lapino",
      "invocation:Mégabombe",
+     "monstre:Ikargn",
      "monstre:Vortex"
     ],
     "triggers": {
-     "I": 35
+     "I": 51
     },
     "targetMasks": {
-     "C": 9,
+     "C": 13,
      "a,P,U": 8,
      "c": 6,
      "g,A": 6,
-     "a,F5897,F5898,F5895,F5896,F5899,F7934": 2,
-     "g,*E231,f3835": 1
+     "l,m,P,*E134": 3,
+     "l,m,P,*E135": 3
     },
     "zones": {
-     "P1": 32,
-     "a1": 3
+     "P1": 41,
+     "C7,1[deg=0%x0;LoS]": 6,
+     "a1": 4
     },
     "durations": {
-     "-1": 17,
+     "-1": 27,
      "4": 12,
+     "1": 7,
      "3": 2,
      "0": 2,
-     "2": 1,
-     "1": 1
+     "2": 1
     },
     "delays": {
-     "0": 35
+     "0": 47,
+     "1": 2,
+     "2": 2
     },
     "dispellable": {
-     "1": 14,
-     "2": 13,
-     "3": 8
+     "2": 20,
+     "3": 17,
+     "1": 14
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 1078,
+      "order": 15,
+      "diceNum": 30,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "c,E231",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 1078,
+      "order": 11,
+      "diceNum": 30,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,F3835,*E231",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Heurage",
      "spellId": 5065,
@@ -22879,54 +24028,6 @@
       "random": 0,
       "group": 0,
       "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Pacte de Sang",
-     "spellId": 12762,
-     "grade": 2,
-     "origin": "breed:11:Sacrieur",
-     "rootOrigin": "breed:11:Sacrieur",
-     "raw": {
-      "effectId": 1078,
-      "order": 0,
-      "diceNum": 25,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 3,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "C",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Explobombe Résiliente",
-     "spellId": 13471,
-     "grade": 2,
-     "origin": "breed:13:Roublard",
-     "rootOrigin": "breed:13:Roublard",
-     "raw": {
-      "effectId": 1078,
-      "order": 5,
-      "diceNum": 40,
-      "diceSide": 0,
-      "value": 0,
-      "duration": -1,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,P,U",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 2,
       "effectElement": -1
      },
      "zone": "P1"
@@ -22975,14 +24076,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 118,
+    "total": 120,
     "byScope": {
      "breed": 100,
      "monster": 2,
      "sub": 15,
-     "summon": 1
+     "summon": 3
     },
-    "distinctSpells": 37,
+    "distinctSpells": 38,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -22995,19 +24096,20 @@
      "Roublard",
      "Xélor",
      "Zobal",
+     "invocation:Cadran de Xélor",
      "invocation:Feu Décourageant",
      "monstre:Ikargn"
     ],
     "triggers": {
-     "I": 66
+     "I": 68
     },
     "targetMasks": {
      "a,A": 29,
      "A": 27,
      "g,A,*E5598": 2,
+     "A,E251": 2,
      "g,p": 2,
-     "g,P,f3112,f3113,f3114,f5161,f5162,f5163": 2,
-     "A,*E5598": 1
+     "g,P,f3112,f3113,f3114,f5161,f5162,f5163": 2
     },
     "zones": {
      "P1": 41,
@@ -23018,14 +24120,14 @@
      "C3[deg=0%x0]": 3
     },
     "durations": {
-     "1": 63,
+     "1": 65,
      "2": 3
     },
     "delays": {
-     "0": 66
+     "0": 68
     },
     "dispellable": {
-     "3": 65,
+     "3": 67,
      "1": 1
     }
    },
@@ -23374,14 +24476,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 65,
+    "total": 68,
     "byScope": {
      "breed": 47,
      "monster": 0,
-     "sub": 16,
+     "sub": 19,
      "summon": 2
     },
-    "distinctSpells": 37,
+    "distinctSpells": 39,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
@@ -23392,37 +24494,39 @@
      "Sacrieur",
      "Sram",
      "Xélor",
-     "invocation:Sulfénix"
+     "invocation:Lanterne du Berger",
+     "invocation:Sulfénix",
+     "invocation:Égide"
     ],
     "triggers": {
-     "I": 57
+     "I": 60
     },
     "targetMasks": {
      "a,A": 25,
-     "a": 21,
+     "a": 24,
      "c": 3,
      "a,A,F50000": 2,
      "A": 2,
      "a,e7": 1
     },
     "zones": {
-     "C3": 12,
+     "C3": 13,
+     "P1": 10,
      "X1": 9,
      "C2": 9,
-     "P1": 8,
      "G2": 5,
      "G1": 4
     },
     "durations": {
      "1": 25,
      "2": 24,
-     "-1": 8
+     "-1": 11
     },
     "delays": {
-     "0": 57
+     "0": 60
     },
     "dispellable": {
-     "1": 50,
+     "1": 53,
      "2": 7
     }
    },
@@ -24646,14 +25750,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 45,
+    "total": 46,
     "byScope": {
      "breed": 41,
      "monster": 2,
-     "sub": 2,
+     "sub": 3,
      "summon": 0
     },
-    "distinctSpells": 9,
+    "distinctSpells": 10,
     "usedByVortexDungeon": true,
     "classes": [
      "Ecaflip",
@@ -24663,10 +25767,11 @@
      "Pandawa",
      "Steamer",
      "Xélor",
+     "monstre:Auroraire",
      "monstre:Brabuzar"
     ],
     "triggers": {
-     "I": 24
+     "I": 25
     },
     "targetMasks": {
      "a,A": 10,
@@ -24674,23 +25779,48 @@
      "a,A,*e5597,*e5598": 3,
      "a,A,*E5597": 3,
      "j,J": 3,
-     "A": 1
+     "A,o,*e6490": 1
     },
     "zones": {
      "P1": 22,
-     "T1[deg=0%x0]": 2
+     "T1[deg=0%x0]": 2,
+     "a1": 1
     },
     "durations": {
-     "0": 24
+     "0": 25
     },
     "delays": {
-     "0": 24
+     "0": 25
     },
     "dispellable": {
-     "1": 24
+     "1": 25
     }
    },
    "examples": [
+    {
+     "spell": "Heure du temps",
+     "spellId": 4998,
+     "grade": 1,
+     "origin": "sub:4999",
+     "rootOrigin": "monster:3833:Auroraire:starting",
+     "raw": {
+      "effectId": 1105,
+      "order": 0,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "A,o,*e6490",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Neutralisation",
      "spellId": 5033,
@@ -24757,30 +25887,6 @@
       "targetMask": "a,A,*e5597,*e5598",
       "triggers": "I",
       "random": 50,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1"
-    },
-    {
-     "spell": "Frappe de Xélor",
-     "spellId": 13252,
-     "grade": 3,
-     "origin": "breed:5:Xélor",
-     "rootOrigin": "breed:5:Xélor",
-     "raw": {
-      "effectId": 1105,
-      "order": 0,
-      "diceNum": 0,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,A",
-      "triggers": "I",
-      "random": 0,
       "group": 0,
       "dispellable": 1,
       "effectElement": -1
@@ -25005,14 +26111,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 236,
+    "total": 243,
     "byScope": {
      "breed": 117,
      "monster": 0,
      "sub": 90,
-     "summon": 29
+     "summon": 36
     },
-    "distinctSpells": 91,
+    "distinctSpells": 98,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -25028,16 +26134,21 @@
      "Sadida",
      "Steamer",
      "Xélor",
+     "invocation:Arbre",
+     "invocation:Balise de Survie",
      "invocation:Fée de Jouvence",
      "invocation:Gardienne",
      "invocation:Groute",
      "invocation:Lapino",
      "invocation:Malle Animée",
      "invocation:Mégabombe",
-     "monstre:Brabuzar"
+     "invocation:Pelle de Fortune",
+     "invocation:Ronce",
+     "invocation:Synchro",
+     "invocation:Tonneau de l'Ivrogne"
     ],
     "triggers": {
-     "I": 188,
+     "I": 195,
      "TE": 24,
      "TB": 9,
      "DM": 1,
@@ -25045,36 +26156,60 @@
     },
     "targetMasks": {
      "a": 60,
-     "C": 41,
-     "g": 7,
+     "C": 42,
+     "g": 8,
      "a,A": 5,
      "a,*E296": 5,
      "a,F5836,F5832,F5835,F5833,F5837,F5831,e135,e6094": 5
     },
     "zones": {
-     "P1": 177,
-     "a1": 17,
+     "P1": 180,
+     "a1": 18,
      "C2[deg=0%x0]": 5,
+     "C63[deg=0%x0;LoS]": 4,
      "C2,1[deg=0%x0]": 3,
-     "C3,1[deg=0%x0]": 3,
-     "C2[deg=0%x4]": 3
+     "C3,1[deg=0%x0]": 3
     },
     "durations": {
-     "0": 212,
+     "0": 219,
      "1": 2
     },
     "delays": {
-     "0": 189,
+     "0": 195,
      "1": 23,
-     "2": 2
+     "2": 3
     },
     "dispellable": {
-     "1": 171,
-     "2": 27,
+     "1": 176,
+     "2": 29,
      "3": 16
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5011,
+     "grade": 1,
+     "origin": "sub:5012",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 1109,
+      "order": 2,
+      "diceNum": 10,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "L,*F3836",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": 0
+     },
+     "zone": "P1"
+    },
     {
      "spell": "Décollage",
      "spellId": 5031,
@@ -25146,30 +26281,6 @@
       "effectElement": 0
      },
      "zone": "a1"
-    },
-    {
-     "spell": "Ruée vers l'Or",
-     "spellId": 13342,
-     "grade": 3,
-     "origin": "breed:3:Enutrof",
-     "rootOrigin": "breed:3:Enutrof",
-     "raw": {
-      "effectId": 1109,
-      "order": 3,
-      "diceNum": 10,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": 0
-     },
-     "zone": "P1"
     }
    ],
    "flags": {
@@ -25364,6 +26475,102 @@
     "direct": true,
     "boostable": false,
     "aoe_efficiency": true
+   },
+   "enginePriority": "P0"
+  },
+  "1123": {
+   "effectId": 1123,
+   "actionId": "FightSplashRawTakenDamage",
+   "name_fr": "Dommages : X% des dommages initiaux subis",
+   "template_fr": "Dommages : #1{{~1~2 à }}#2% des dommages initiaux subis",
+   "kind": "damage",
+   "subkind": "splash_raw_damage",
+   "element": "same_as_source",
+   "params": {
+    "percent": "diceNum"
+   },
+   "notes": "Comme 1223 mais sur les dommages INITIAUX (avant reductions) que le porteur vient de subir: d1% de ces dommages, dans le meme element, aux cibles de la zone/masque (OTOMAI: LastTheoreticalRawDamageTaken, ou LastRawDamageTaken si le porteur est Pacifiste). Non boostable, sans degressivite. Vortex: 'Heure du temps' (4998, Auroraire) renvoie 100 % des dommages initiaux subis aux allies TELEFRAGUES ce tour (masque a,T).",
+   "uncertain": null,
+   "sources": [
+    "PYDOFUS3 FightSplashRawTakenDamage = 1123",
+    "OTOMAI DamageSender.GetSplashDamage (IsSplashRawDamage)",
+    "api.dofusdb.fr/effects/1123 ('X% des dommages initiaux subis')"
+   ],
+   "dofusdb": {
+    "category": 2,
+    "characteristic": 0,
+    "characteristicName": null,
+    "characteristicOperator": "",
+    "elementId": -1,
+    "boost": false,
+    "active": false,
+    "useDice": true,
+    "isInPercent": false,
+    "effectPriority": 0,
+    "oppositeId": 0
+   },
+   "usage": {
+    "total": 1,
+    "byScope": {
+     "breed": 0,
+     "monster": 0,
+     "sub": 1,
+     "summon": 0
+    },
+    "distinctSpells": 1,
+    "usedByVortexDungeon": true,
+    "classes": [
+     "monstre:Auroraire"
+    ],
+    "triggers": {
+     "I": 1
+    },
+    "targetMasks": {
+     "a,T": 1
+    },
+    "zones": {
+     "a1": 1
+    },
+    "durations": {
+     "0": 1
+    },
+    "delays": {
+     "0": 1
+    },
+    "dispellable": {
+     "1": 1
+    }
+   },
+   "examples": [
+    {
+     "spell": "Heure du temps",
+     "spellId": 4998,
+     "grade": 1,
+     "origin": "sub:4999",
+     "rootOrigin": "monster:3833:Auroraire:starting",
+     "raw": {
+      "effectId": 1123,
+      "order": 2,
+      "diceNum": 100,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,T",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "a1"
+    }
+   ],
+   "flags": {
+    "direct": false,
+    "boostable": false,
+    "aoe_efficiency": false
    },
    "enginePriority": "P0"
   },
@@ -25587,14 +26794,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 3573,
+    "total": 3657,
     "byScope": {
      "breed": 2352,
-     "monster": 7,
-     "sub": 1062,
-     "summon": 152
+     "monster": 9,
+     "sub": 1075,
+     "summon": 221
     },
-    "distinctSpells": 717,
+    "distinctSpells": 752,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -25616,56 +26823,132 @@
      "Steamer",
      "Xélor",
      "Zobal",
-     "invocation:Bathyscaphe",
-     "invocation:Bombe Ambulante",
-     "invocation:Chalutier",
-     "invocation:Crapipaud",
-     "invocation:Feu Accablant",
-     "invocation:Feu Décourageant"
+     "invocation:Arbre",
+     "invocation:Balise de Survie",
+     "invocation:Bambou",
+     "invocation:Barricade",
+     "invocation:Bastion",
+     "invocation:Bathyscaphe"
     ],
     "triggers": {
-     "I": 2262,
-     "TE": 47,
-     "D": 23,
-     "EOFF#": 22,
-     "XD": 20,
-     "EON#": 19,
-     "X": 19,
-     "DM": 16
+     "I": 2297,
+     "TE": 50,
+     "TB": 49,
+     "X": 25,
+     "D": 24,
+     "EOFF#": 24,
+     "XD": 21,
+     "EON#": 19
     },
     "targetMasks": {
-     "a,A": 536,
+     "a,A": 537,
      "A": 384,
-     "C": 206,
+     "C": 257,
      "a": 119,
      "a,P,F7370,F7371": 68,
      "A,E263": 48
     },
     "zones": {
-     "P1": 1899,
-     "a1": 144,
+     "P1": 1969,
+     "a1": 148,
      "C63[deg=0%x0]": 57,
      "C2,1": 49,
      "X1": 45,
      "C2": 43
     },
     "durations": {
-     "0": 2501,
-     "1": 5,
+     "0": 2584,
+     "1": 6,
      "-1": 4
     },
     "delays": {
-     "0": 2474,
+     "0": 2557,
      "1": 30,
-     "2": 6
+     "2": 6,
+     "3": 1
     },
     "dispellable": {
-     "1": 2234,
-     "2": 221,
-     "3": 55
+     "1": 2263,
+     "2": 241,
+     "3": 90
     }
    },
    "examples": [
+    {
+     "spell": "Heure du temps",
+     "spellId": 4999,
+     "grade": 2,
+     "origin": "monster:3833:Auroraire:starting",
+     "rootOrigin": "monster:3833:Auroraire:starting",
+     "raw": {
+      "effectId": 1160,
+      "order": 1,
+      "diceNum": 4996,
+      "diceSide": 1,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 63,
+      "targetMask": "L",
+      "triggers": "TB",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "a1",
+     "refSpellName": "Décalage horaire"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5008,
+     "grade": 1,
+     "origin": "sub:5006",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 1160,
+      "order": 0,
+      "diceNum": 5007,
+      "diceSide": 1,
+      "value": 100,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "h,m,d,e6611",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "a1",
+     "refSpellName": "Vortexiphan"
+    },
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5011,
+     "grade": 1,
+     "origin": "sub:5012",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 1160,
+      "order": 7,
+      "diceNum": 5025,
+      "diceSide": 1,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "L",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "refSpellName": "Glyphe téléporteur"
+    },
     {
      "spell": "Attraction ailée",
      "spellId": 5014,
@@ -25690,81 +26973,6 @@
      },
      "zone": "C3,1",
      "refSpellName": "Attraction ailée"
-    },
-    {
-     "spell": "Décollage",
-     "spellId": 5032,
-     "grade": 1,
-     "origin": "monster:3839:Brabuzar",
-     "rootOrigin": "monster:3839:Brabuzar",
-     "raw": {
-      "effectId": 1160,
-      "order": 0,
-      "diceNum": 5031,
-      "diceSide": 1,
-      "value": 100,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 1,
-      "targetMask": "A",
-      "triggers": "PD",
-      "random": 0,
-      "group": 0,
-      "dispellable": 2,
-      "effectElement": -1
-     },
-     "zone": "a1",
-     "refSpellName": "Décollage"
-    },
-    {
-     "spell": "Contamination zombie",
-     "spellId": 5064,
-     "grade": 1,
-     "origin": "monster:3835:Vortex",
-     "rootOrigin": "monster:3835:Vortex",
-     "raw": {
-      "effectId": 1160,
-      "order": 0,
-      "diceNum": 5063,
-      "diceSide": 1,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "a,E74",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "P1",
-     "refSpellName": "Contamination zombie"
-    },
-    {
-     "spell": "Heurage",
-     "spellId": 5066,
-     "grade": 1,
-     "origin": "monster:3835:Vortex",
-     "rootOrigin": "monster:3835:Vortex",
-     "raw": {
-      "effectId": 1160,
-      "order": 1,
-      "diceNum": 5067,
-      "diceSide": 1,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 0,
-      "targetMask": "g,F3833,*e236",
-      "triggers": "I",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "a1",
-     "refSpellName": "Heurage"
     }
    ],
    "flags": {
@@ -25803,14 +27011,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 94,
+    "total": 102,
     "byScope": {
      "breed": 50,
-     "monster": 4,
-     "sub": 36,
-     "summon": 4
+     "monster": 5,
+     "sub": 40,
+     "summon": 7
     },
-    "distinctSpells": 48,
+    "distinctSpells": 56,
     "usedByVortexDungeon": true,
     "classes": [
      "Crâ",
@@ -25825,51 +27033,104 @@
      "Sacrieur",
      "Sram",
      "Xélor",
+     "invocation:Bambou",
      "invocation:Bouflourd",
+     "invocation:Pandawasta",
+     "invocation:Stratège Iop",
      "monstre:Harpille",
+     "monstre:Ikargn",
      "monstre:Méjaire",
      "monstre:Vortex"
     ],
     "triggers": {
-     "D": 69,
+     "D": 74,
      "DBE": 4,
      "DM": 4,
+     "DBA": 3,
      "DTE": 1,
      "DTB": 1,
      "DV": 1,
-     "PD": 1,
-     "DR": 1
+     "PD": 1
     },
     "targetMasks": {
      "A": 12,
      "a": 12,
-     "C": 8,
+     "C": 11,
      "a,A": 6,
      "g,A": 2,
      "C,e583": 2
     },
     "zones": {
-     "P1": 54,
+     "P1": 59,
      "A1": 10,
+     "a1": 5,
      "Q1,1": 3,
-     "a1": 2,
      "+1": 2,
      "G1[deg=0%x0]": 2
     },
     "durations": {
-     "0": 78
+     "0": 84,
+     "-1": 2
     },
     "delays": {
-     "0": 76,
+     "0": 84,
      "1": 2
     },
     "dispellable": {
-     "1": 28,
-     "3": 26,
-     "2": 24
+     "3": 31,
+     "1": 30,
+     "2": 25
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5002,
+     "grade": 1,
+     "origin": "monster:3834:Ikargn:starting",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 1163,
+      "order": 9,
+      "diceNum": 70,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 63,
+      "targetMask": "c,E225",
+      "triggers": "D",
+      "random": 0,
+      "group": 0,
+      "dispellable": 2,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vortexiphan",
+     "spellId": 5009,
+     "grade": 1,
+     "origin": "sub:5060",
+     "rootOrigin": "monster:3835:Vortex:starting",
+     "raw": {
+      "effectId": 1163,
+      "order": 5,
+      "diceNum": 75,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 63,
+      "targetMask": "a,A,F3835,*E225",
+      "triggers": "D",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "a1"
+    },
     {
      "spell": "Tirs optiques",
      "spellId": 5018,
@@ -25917,54 +27178,6 @@
       "effectElement": -1
      },
      "zone": "P1"
-    },
-    {
-     "spell": "Heurage",
-     "spellId": 5065,
-     "grade": 1,
-     "origin": "sub:5066",
-     "rootOrigin": "monster:3835:Vortex",
-     "raw": {
-      "effectId": 1163,
-      "order": 5,
-      "diceNum": 70,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 63,
-      "targetMask": "g,*E225,f3835",
-      "triggers": "D",
-      "random": 0,
-      "group": 0,
-      "dispellable": 2,
-      "effectElement": -1
-     },
-     "zone": "a1"
-    },
-    {
-     "spell": "Bond",
-     "spellId": 13107,
-     "grade": 3,
-     "origin": "breed:8:Iop",
-     "rootOrigin": "breed:8:Iop",
-     "raw": {
-      "effectId": 1163,
-      "order": 2,
-      "diceNum": 115,
-      "diceSide": 0,
-      "value": 0,
-      "duration": 0,
-      "delay": 0,
-      "effectTriggerDuration": 1,
-      "targetMask": "A",
-      "triggers": "D",
-      "random": 0,
-      "group": 0,
-      "dispellable": 1,
-      "effectElement": -1
-     },
-     "zone": "Q1,1"
     }
    ],
    "flags": {
@@ -26007,42 +27220,69 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 7,
+    "total": 8,
     "byScope": {
      "breed": 4,
      "monster": 0,
-     "sub": 3,
+     "sub": 4,
      "summon": 0
     },
-    "distinctSpells": 5,
-    "usedByVortexDungeon": false,
+    "distinctSpells": 6,
+    "usedByVortexDungeon": true,
     "classes": [
      "Féca",
-     "Ouginak"
+     "Ouginak",
+     "monstre:Ikargn"
     ],
     "triggers": {
-     "I": 7
+     "I": 8
     },
     "targetMasks": {
      "a,A": 6,
+     "a,A,*e56": 1,
      "a,e7": 1
     },
     "zones": {
-     "P1": 4,
+     "P1": 5,
      "O3": 3
     },
     "durations": {
-     "1": 7
+     "1": 8
     },
     "delays": {
-     "0": 7
+     "0": 8
     },
     "dispellable": {
-     "1": 5,
+     "1": 6,
      "2": 2
     }
    },
    "examples": [
+    {
+     "spell": "Glyphe téléporteur",
+     "spellId": 5012,
+     "grade": 1,
+     "origin": "sub:5002",
+     "rootOrigin": "monster:3834:Ikargn:starting",
+     "raw": {
+      "effectId": 1165,
+      "order": 0,
+      "diceNum": 5011,
+      "diceSide": 1,
+      "value": 4210852,
+      "duration": 1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A,*e56",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "P1",
+     "refSpellName": "Glyphe téléporteur"
+    },
     {
      "spell": "Barrière",
      "spellId": 13019,
@@ -26122,7 +27362,7 @@
    "flags": {
     "direct": false
    },
-   "enginePriority": "P1"
+   "enginePriority": "P0"
   },
   "1171": {
    "effectId": 1171,
@@ -26153,14 +27393,14 @@
     "oppositeId": 1172
    },
    "usage": {
-    "total": 92,
+    "total": 96,
     "byScope": {
      "breed": 17,
      "monster": 0,
-     "sub": 74,
-     "summon": 1
+     "sub": 72,
+     "summon": 7
     },
-    "distinctSpells": 49,
+    "distinctSpells": 50,
     "usedByVortexDungeon": false,
     "classes": [
      "Ecaflip",
@@ -26173,13 +27413,15 @@
      "Ouginak",
      "Sacrieur",
      "Xélor",
-     "invocation:Mégabombe"
+     "invocation:La Sacrifiée",
+     "invocation:Mégabombe",
+     "invocation:Synchro"
     ],
     "triggers": {
-     "I": 86
+     "I": 90
     },
     "targetMasks": {
-     "C": 42,
+     "C": 46,
      "a": 2,
      "a,A": 2,
      "a,P,F7376,F7377,F7378,F7379": 2,
@@ -26187,23 +27429,25 @@
      "C,*e616": 1
     },
     "zones": {
-     "P1": 70,
+     "P1": 74,
      "A1": 10,
      "a1": 5,
      "X1": 1
     },
     "durations": {
-     "-1": 49,
+     "-1": 53,
      "1": 22,
      "3": 13,
      "2": 2
     },
     "delays": {
-     "0": 86
+     "0": 86,
+     "1": 2,
+     "2": 2
     },
     "dispellable": {
+     "3": 44,
      "2": 43,
-     "3": 40,
      "1": 3
     }
    },
@@ -26349,8 +27593,8 @@
     "byScope": {
      "breed": 14,
      "monster": 0,
-     "sub": 7,
-     "summon": 0
+     "sub": 6,
+     "summon": 1
     },
     "distinctSpells": 9,
     "usedByVortexDungeon": false,
@@ -26360,8 +27604,8 @@
      "Féca",
      "Huppermage",
      "Osamodas",
-     "Xélor",
-     "Zobal"
+     "Zobal",
+     "invocation:Synchro"
     ],
     "triggers": {
      "I": 14,
@@ -26539,39 +27783,40 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 25,
+    "total": 26,
     "byScope": {
      "breed": 19,
      "monster": 0,
      "sub": 6,
-     "summon": 0
+     "summon": 1
     },
-    "distinctSpells": 9,
+    "distinctSpells": 10,
     "usedByVortexDungeon": false,
     "classes": [
-     "Eliotrope"
+     "Eliotrope",
+     "invocation:Totem Eliotrope"
     ],
     "triggers": {
-     "I": 21,
+     "I": 22,
      "D": 4,
      "XD": 4
     },
     "targetMasks": {
      "a,A,*E3737": 10,
      "a,A,*E3738": 10,
-     "a,A": 5
+     "a,A": 6
     },
     "zones": {
-     "P1": 25
+     "P1": 26
     },
     "durations": {
-     "-1": 25
+     "-1": 26
     },
     "delays": {
-     "0": 25
+     "0": 26
     },
     "dispellable": {
-     "1": 25
+     "1": 26
     }
    },
    "examples": [
@@ -26705,37 +27950,38 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 4,
+    "total": 5,
     "byScope": {
      "breed": 3,
      "monster": 0,
      "sub": 1,
-     "summon": 0
+     "summon": 1
     },
-    "distinctSpells": 3,
+    "distinctSpells": 4,
     "usedByVortexDungeon": false,
     "classes": [
-     "Eliotrope"
+     "Eliotrope",
+     "invocation:Totem Eliotrope"
     ],
     "triggers": {
-     "I": 2,
+     "I": 3,
      "D": 2,
      "XD": 2
     },
     "targetMasks": {
-     "a,A": 4
+     "a,A": 5
     },
     "zones": {
-     "P1": 4
+     "P1": 5
     },
     "durations": {
-     "0": 4
+     "0": 5
     },
     "delays": {
-     "0": 4
+     "0": 5
     },
     "dispellable": {
-     "1": 4
+     "1": 5
     }
    },
    "examples": [
@@ -26772,6 +28018,30 @@
      "raw": {
       "effectId": 1182,
       "order": 3,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 0,
+      "duration": 0,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,A",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 1,
+      "effectElement": -1
+     },
+     "zone": "P1"
+    },
+    {
+     "spell": "Vestige",
+     "spellId": 14624,
+     "grade": 2,
+     "origin": "summon:5109:Totem Eliotrope",
+     "rootOrigin": "summon:5109:Totem Eliotrope",
+     "raw": {
+      "effectId": 1182,
+      "order": 1,
       "diceNum": 0,
       "diceSide": 0,
       "value": 0,
@@ -26941,57 +28211,61 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 18,
+    "total": 25,
     "byScope": {
      "breed": 8,
      "monster": 0,
-     "sub": 10,
-     "summon": 0
+     "sub": 8,
+     "summon": 9
     },
-    "distinctSpells": 13,
+    "distinctSpells": 16,
     "usedByVortexDungeon": false,
     "classes": [
      "Eliotrope",
      "Iop",
      "Sacrieur",
      "Sadida",
-     "Xélor"
+     "Xélor",
+     "invocation:Cadran de Xélor",
+     "invocation:Complice",
+     "invocation:Ronce",
+     "invocation:Stratège Iop"
     ],
     "triggers": {
-     "I": 10,
+     "I": 15,
      "DM": 3,
      "XDM": 3,
      "D": 3,
      "XD": 3,
-     "DS": 1,
-     "XDS": 1
+     "DS": 3,
+     "XDS": 3
     },
     "targetMasks": {
-     "A": 5,
+     "A": 7,
+     "A,O": 4,
      "a,A": 3,
      "g": 1,
-     "A,O": 1,
      "A,O,E251": 1,
      "A,E5242,*E5241": 1
     },
     "zones": {
-     "a1": 5,
-     "P1": 4,
+     "P1": 6,
+     "a1": 6,
+     "C2,1[deg=0%x0]": 4,
      "Q1[deg=0%x0]": 3,
-     "C2,1[deg=0%x0]": 2,
-     "C3,1[deg=0%x0]": 2,
-     "Q1,1[deg=0%x0]": 1
+     "C4,1[deg=0%x0]": 2,
+     "C3,1[deg=0%x0]": 2
     },
     "durations": {
-     "0": 17
+     "0": 24
     },
     "delays": {
-     "0": 17
+     "0": 24
     },
     "dispellable": {
-     "1": 11,
-     "2": 5,
-     "3": 1
+     "1": 13,
+     "3": 6,
+     "2": 5
     }
    },
    "examples": [
@@ -27257,7 +28531,7 @@
     "spellGrade": "diceSide",
     "maxTriggerCount": "value = nombre max d'execution (limite GLOBALE au sort, tous declencheurs confondus)"
    },
-   "notes": "Comme 1017 avec limite globale 'value'. Le sous-sort est execute avec ses propres effets/zones/masques; le lancement herite du flag critique (IsCriticalFlagInherited) et ne coute pas de PA.",
+   "notes": "Comme 1017 avec limite globale 'value'. 'Source' = entite DECLENCHEUSE si l'effet est joue par un buff declenche (ex: l'attaquant pour un trigger D/DM/DBA), sinon le lanceur de l'effet (OTOMAI SolveSpellExecution: triggeringFighter = runningEffect.IsTriggered ? TriggeringFighter : caster). [verification 2026-10-04] Le sous-sort est execute avec ses propres effets/zones/masques; le lancement herite du flag critique (IsCriticalFlagInherited) et ne coute pas de PA.",
    "uncertain": null,
    "sources": [
     "OTOMAI DamageCalculator.TriggerBuff (Param3 = limite de declenchements)",
@@ -27371,38 +28645,43 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 15,
+    "total": 20,
     "byScope": {
      "breed": 8,
      "monster": 0,
-     "sub": 7,
+     "sub": 12,
      "summon": 0
     },
-    "distinctSpells": 7,
+    "distinctSpells": 12,
     "usedByVortexDungeon": false,
     "classes": [
      "Forgelance",
      "Féca",
-     "Xélor"
+     "Xélor",
+     "invocation:Barricade",
+     "invocation:Bastion",
+     "invocation:Lance Immortelle",
+     "invocation:Lanterne du Berger",
+     "invocation:Égide"
     ],
     "triggers": {
-     "I": 10
+     "I": 15
     },
     "targetMasks": {
-     "C": 10
+     "C": 15
     },
     "zones": {
-     "P1": 7,
-     "a1": 3
+     "P1": 8,
+     "a1": 7
     },
     "durations": {
-     "0": 10
+     "0": 15
     },
     "delays": {
-     "0": 10
+     "0": 15
     },
     "dispellable": {
-     "1": 10
+     "1": 15
     }
    },
    "examples": [
@@ -27984,37 +29263,40 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 3,
+    "total": 4,
     "byScope": {
      "breed": 0,
      "monster": 0,
-     "sub": 3,
+     "sub": 4,
      "summon": 0
     },
-    "distinctSpells": 3,
+    "distinctSpells": 4,
     "usedByVortexDungeon": false,
     "classes": [
      "Sram",
-     "Steamer"
+     "Steamer",
+     "invocation:La Fourbe"
     ],
     "triggers": {
-     "I": 3
+     "I": 4
     },
     "targetMasks": {
      "a,P": 2,
-     "a": 1
+     "a": 1,
+     "a,P,E2132,e2130": 1
     },
     "zones": {
-     "P1": 3
+     "P1": 3,
+     "a1": 1
     },
     "durations": {
-     "-1": 3
+     "-1": 4
     },
     "delays": {
-     "0": 3
+     "0": 4
     },
     "dispellable": {
-     "3": 2,
+     "3": 3,
      "2": 1
     }
    },
@@ -28090,6 +29372,30 @@
       "effectElement": -1
      },
      "zone": "P1"
+    },
+    {
+     "spell": "Maîtrise des Invocations",
+     "spellId": 18649,
+     "grade": 1,
+     "origin": "sub:29622",
+     "rootOrigin": "summon:7934:La Fourbe",
+     "raw": {
+      "effectId": 2027,
+      "order": 0,
+      "diceNum": 0,
+      "diceSide": 0,
+      "value": 0,
+      "duration": -1,
+      "delay": 0,
+      "effectTriggerDuration": 0,
+      "targetMask": "a,P,E2132,e2130",
+      "triggers": "I",
+      "random": 0,
+      "group": 0,
+      "dispellable": 3,
+      "effectElement": -1
+     },
+     "zone": "a1"
     }
    ],
    "flags": {
@@ -28786,14 +30092,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 184,
+    "total": 186,
     "byScope": {
      "breed": 124,
      "monster": 0,
      "sub": 51,
-     "summon": 9
+     "summon": 11
     },
-    "distinctSpells": 55,
+    "distinctSpells": 57,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
@@ -28811,17 +30117,19 @@
      "invocation:Groute",
      "invocation:La Folle",
      "invocation:La Sacrifiée",
+     "invocation:Lanterne du Berger",
+     "invocation:Lapino",
      "invocation:Pandawasta",
      "invocation:Sulfénix",
      "invocation:Tréant"
     ],
     "triggers": {
-     "I": 152,
+     "I": 154,
      "TE": 1
     },
     "targetMasks": {
      "C": 76,
-     "h,P": 22,
+     "h,P": 24,
      "C,*E600": 4,
      "a,P,F5836,E135": 4,
      "a,P,F5833,E135": 4,
@@ -28829,18 +30137,18 @@
     },
     "zones": {
      "P1": 119,
-     "A1": 30,
+     "A1": 32,
      "a1": 4
     },
     "durations": {
-     "0": 153
+     "0": 155
     },
     "delays": {
-     "0": 148,
+     "0": 150,
      "1": 5
     },
     "dispellable": {
-     "1": 147,
+     "1": 149,
      "2": 6
     }
    },
@@ -30759,7 +32067,8 @@
     "classes": [
      "Forgelance",
      "Ouginak",
-     "Steamer"
+     "Steamer",
+     "invocation:Lance Immortelle"
     ],
     "triggers": {
      "I": 34
@@ -30861,8 +32170,8 @@
      "spell": "Lance Immortelle",
      "spellId": 24591,
      "grade": 1,
-     "origin": "sub:23286",
-     "rootOrigin": "breed:20:Forgelance",
+     "origin": "sub:23262",
+     "rootOrigin": "summon:7139:Lance Immortelle",
      "raw": {
       "effectId": 2905,
       "order": 0,
@@ -30932,7 +32241,8 @@
     "classes": [
      "Forgelance",
      "Ouginak",
-     "Steamer"
+     "Steamer",
+     "invocation:Lance Immortelle"
     ],
     "triggers": {
      "I": 16
@@ -31034,8 +32344,8 @@
      "spell": "Lance Immortelle",
      "spellId": 24591,
      "grade": 1,
-     "origin": "sub:23286",
-     "rootOrigin": "breed:20:Forgelance",
+     "origin": "sub:23262",
+     "rootOrigin": "summon:7139:Lance Immortelle",
      "raw": {
       "effectId": 2906,
       "order": 1,
@@ -32802,14 +34112,14 @@
     "oppositeId": 0
    },
    "usage": {
-    "total": 174,
+    "total": 177,
     "byScope": {
      "breed": 97,
      "monster": 0,
-     "sub": 64,
-     "summon": 13
+     "sub": 66,
+     "summon": 14
     },
-    "distinctSpells": 62,
+    "distinctSpells": 65,
     "usedByVortexDungeon": false,
     "classes": [
      "Crâ",
@@ -32829,12 +34139,15 @@
      "Sadida",
      "Sram",
      "Xélor",
+     "invocation:Bambou",
      "invocation:Crapipaud",
      "invocation:Crapipou",
-     "invocation:La Folle"
+     "invocation:La Folle",
+     "invocation:Pandawasta",
+     "invocation:Pelle de Fortune"
     ],
     "triggers": {
-     "I": 71,
+     "I": 74,
      "TB": 33,
      "TE": 18,
      "PD": 4,
@@ -32857,21 +34170,21 @@
      "C2": 5,
      "a1": 4,
      "G1": 2,
-     "C63,1": 2
+     "C1,1": 2
     },
     "durations": {
-     "0": 124,
+     "0": 127,
      "1": 5
     },
     "delays": {
-     "0": 78,
+     "0": 80,
      "1": 33,
-     "2": 12,
+     "2": 13,
      "3": 4
     },
     "dispellable": {
-     "1": 91,
-     "2": 31,
+     "1": 93,
+     "2": 32,
      "3": 7
     }
    },

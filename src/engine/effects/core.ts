@@ -358,9 +358,8 @@ export function runEffect(engine: Engine, fight: FightState, a: RunEffectArgs): 
   if (!isInstant(effect)) {
     const turns = effect.triggerDuration ?? effect.duration
     for (const t of a.targets) {
-      const codes = parseTriggerCodes(effect.triggers)
-      // Un buff 'TB' posé sur le lanceur pendant son tour expirerait avant son premier déclenchement.
-      const bonus = codes.includes('TB') && t.id === a.caster.id ? 1 : 0
+      // Pas de « +1 tour » pour les buffs TB : c'est un artefact du décompte OTOMAI (effects.md, vérification).
+      const bonus = 0
       engine.addBuff(fight, t, {
         sourceId: a.caster.id,
         spellId: a.spellId,

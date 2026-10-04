@@ -328,6 +328,16 @@ export class Engine {
     this.trigger(fight, target, { type: 'X', source: killer, killed: true })
     if (killer && killer.alive && killer.id !== target.id) this.trigger(fight, killer, { type: 'K', source: killer })
     target.cell = -1
+    // Mort : retrait des buffs portés par le mort et des buffs qu'il a lancés (dispellable 1 ou 2),
+    // comme le client (FightDeathStep → BuffManager.dispell + removeLinkedBuff).
+    target.buffs = []
+    this.recomputeStats(target)
+    for (const f of fight.fighters) {
+      if (!f.alive || f.id === target.id) continue
+      for (const b of f.buffs.slice()) {
+        if (b.sourceId === target.id && (b.effect.dispellable === 1 || b.effect.dispellable === 2)) this.removeBuff(fight, f, b.uid)
+      }
+    }
     // Les invocations meurent avec leur invocateur.
     for (const f of fight.fighters) if (f.alive && f.summonerId === target.id) this.kill(fight, f, killer)
     // Les glyphes/pièges de la cible disparaissent.

@@ -69,7 +69,12 @@
     "verification": {
       "date": "2026-10-04",
       "checked": "Recalcul indépendant : 560 cellules vs MapPoint.init et formules Haxe, offsets par parité, 10 exemples de cellules, 8 distances, 8 lignes de vue (toutes exactes) ; DDA vs décompilation Haxe de Kohana sur les 313 040 paires (identiques) ; drapeaux CellData, couleurs, DirectionsEnum.",
-      "changed": "rangeShapes réécrit (diagonales en pas diagonaux, cases marchables seulement, forme 'l', ordre du test 63, plafond 280) ; pushGeometry : règle des dommages de collision en chaîne ; cellData.dofusdbD3Format ajouté ; lineOfSight.symmetry précisé et lineOfSight.crossCheck ajouté."
+      "changed": "rangeShapes réécrit (diagonales en pas diagonaux, cases marchables seulement, forme 'l', ordre du test 63, plafond 280) ; pushGeometry : règle des dommages de collision en chaîne ; cellData.dofusdbD3Format ajouté ; lineOfSight.symmetry précisé et lineOfSight.crossCheck ajouté.",
+      "secondPass": {
+        "date": "2026-10-04",
+        "checked": "Script indépendant : 560 cellules (MapPoint.init, formules Haxe, isInMap), offsets par parité pour les 8 directions, 10 exemples de cellules (coordonnées, voisins, diagonales, px/py), 8 distances, 8 lignes de vue, symétrie du DDA (0 paire asymétrique sur 313 040). DDA comparé à une ré-implémentation propre de _createCellsListForCells (Kohana, conditions corrigées) : 0 différence ; 86 640 paires avec passage par un coin. Exemples de zones de portée recalculés (Cross.as / Lozenge.as / FightSpellCastFrame.as relus). Drapeaux CellData v>=9 / <9 relus. Carte Vortex revérifiée en direct.",
+        "changed": "lineOfSight.lineAlgorithm.name (le terme 'supercover' était trompeur) ; cellData.dofusdbD3Format : champ roleplayMonstersMovementBlocked ajouté + verifiedLive ; pathfinding : règle de dénivelé (nouveau système de déplacement) ajoutée. Aucune erreur de formule ni d'exemple trouvée."
+      }
     }
   },
   "constants": {
@@ -273,9 +278,10 @@
     },
     "dofusdbD3Format": {
       "url": "https://api.dofusdb.fr/maps/<mapId>.json -> cellsData[0..559]",
-      "fields": "cellNumber, mov, los, nonWalkableDuringFight, nonWalkableDuringRP, red, blue, visible, farmCell, havenbagCell, floor, moveZone, linkedZone, speed, mapChangeData, arrow",
+      "fields": "cellNumber, mov, los, nonWalkableDuringFight, nonWalkableDuringRP, red, blue, visible, farmCell, havenbagCell, roleplayMonstersMovementBlocked, floor, moveZone, linkedZone, speed, mapChangeData, arrow",
       "semantics": "valeurs 0/1 DÉJÀ DÉCODÉES et positives : mov=1 => marchable, los=1 => transparent. NE PAS réappliquer les masques de bits ci-dessus (dans le binaire v>=9, le bit 1 posé signifie NON marchable).",
-      "example_map_143393281": "222 cases mov=1 ; 262 mov=0,los=1 (vide/trou) ; 76 mov=0,los=0 (obstacles) ; red = [424,427,430,438,440,441,443,453,455,457,482,484] ; blue = [268..277]"
+      "example_map_143393281": "222 cases mov=1 ; 262 mov=0,los=1 (vide/trou) ; 76 mov=0,los=0 (obstacles) ; red = [424,427,430,438,440,441,443,453,455,457,482,484] ; blue = [268..277]",
+      "verifiedLive": "2ᵉ vérification (2026-10-04) : API en direct, carte 143393281 -> 560 cellules, 222 mov=1 / 262 mov=0,los=1 / 76 mov=0,los=0, red et blue identiques, toutes les cases rouges/bleues ont mov=1, aucune nonWalkableDuringFight, floor=0 et moveZone=0 sur toutes les cases marchables."
     }
   },
   "placement": {
@@ -293,7 +299,7 @@
   },
   "lineOfSight": {
     "lineAlgorithm": {
-      "name": "GetCellsIdBetween / MapTools.getLOSCellsVector (DDA 'supercover' sur les centres de cellules)",
+      "name": "GetCellsIdBetween / MapTools.getLOSCellsVector (DDA sur les centres de cellules ; PAS un 'supercover' : un passage exact par un coin est franchi en diagonale, sans tester les 2 cases latérales)",
       "pseudoCode": [
         "si a == b : []",
         "(x1,y1)=xy(a) ; (x2,y2)=xy(b) ; dx=x2-x1 ; dy=y2-y1 ; d=sqrt(dx²+dy²)",
@@ -610,7 +616,8 @@
       "En combat le déplacement est 4-connexe (voisins orthogonaux dans (x,y)) : pas de diagonale (Pathfinding.findPath(..., allowDiag=false, bAllowTroughEntity=false, bIsFighting=true)).",
       "Chaque pas coûte 1 PM ; le coût d'un chemin = son nombre de pas (BFS suffit, pas de poids de cellule en combat).",
       "Une cellule est franchissable si mov && !nonWalkableDuringFight && aucun combattant vivant dessus (alliés compris).",
-      "Le tacle s'applique en QUITTANT une case adjacente à un ennemi (voir mechanics.md §Tacle)."
+      "Le tacle s'applique en QUITTANT une case adjacente à un ennemi (voir mechanics.md §Tacle).",
+      "Cartes au 'nouveau système de déplacement' (dataMap.isUsingNewMovementSystem) : DataMapProvider.pointMov interdit aussi le passage d'une case à sa voisine si moveZone diffère et que le dénivelé |floor| > 0, ou si moveZone = 0 des deux côtés et que le dénivelé > TOLERANCE_ELEVATION = 11. Aucun effet sur la carte Vortex 143393281 (floor = 0 et moveZone = 0 sur ses 222 cases marchables). INCERTAIN : la façon dont DofusDB expose ce drapeau de carte."
     ]
   },
   "pushGeometry": {
