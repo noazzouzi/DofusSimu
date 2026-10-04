@@ -51,6 +51,55 @@ export interface Buff {
   maxTriggers?: number
   /** Garde de réentrance pendant l'exécution du déclencheur. */
   firing?: boolean
+  // ── Champs optionnels renseignés par effects/buffs (absents des autres buffs) ──
+  /** Modificateur de sort accordé par ce buff (effets de catégorie 3 : 280-299, 314, 798, 2905/2906, 2935...). */
+  spellMod?: SpellModEntry
+  /** État neutralisé (sans être retiré) tant que ce buff est actif (effet 952). */
+  disabledStateId?: number
+  /** Tour annulé (effet 140) : le porteur passe automatiquement ses tours tant que ce buff est actif. */
+  passTurn?: boolean
+}
+
+/**
+ * Modificateurs de sort (effets de catégorie 3), agrégés par `Engine.recomputeStats` dans `Fighter.spellMods`.
+ * Clés additives : rangeMin/rangeMax (280/281, 294/295), apCost (285 −, 296 +), critChance (287), castsPerTurn (290),
+ * castsPerTarget (291), baseDamage (293), damage (283), baseHeal (2935), heal (284), cooldown (286 −).
+ * Clés « fixées » (la dernière gagne) : setRangeMin/setRangeMax (2906/2905), setCooldown (292), rangeBoostable (282),
+ * noLos (289), noLine (288), needFreeCell (299 → 1 / 298 → 0), needTakenCell (314 → 1 / 297 → 0),
+ * needVisibleEntity (798). Lecture : effects/buffs/spellMods.ts (`spellModifier`, `modifiedSpellLevel`).
+ */
+export type SpellModKey =
+  | 'rangeMin'
+  | 'rangeMax'
+  | 'setRangeMin'
+  | 'setRangeMax'
+  | 'rangeBoostable'
+  | 'apCost'
+  | 'critChance'
+  | 'castsPerTurn'
+  | 'castsPerTarget'
+  | 'baseDamage'
+  | 'damage'
+  | 'baseHeal'
+  | 'heal'
+  | 'cooldown'
+  | 'setCooldown'
+  | 'noLos'
+  | 'noLine'
+  | 'needFreeCell'
+  | 'needTakenCell'
+  | 'needVisibleEntity'
+
+/** Modificateurs d'un sort (clés présentes seulement si un buff les fixe). */
+export type SpellModifiers = Partial<Record<SpellModKey, number>>
+
+/** Modificateur porté par un buff : sort visé (0 = tous les sorts du porteur, INCERTAIN), clé, valeur signée. */
+export interface SpellModEntry {
+  spellId: number
+  key: SpellModKey
+  value: number
+  /** Valeur fixée (remplace) plutôt qu'additive. */
+  set?: boolean
 }
 
 export interface Fighter {
@@ -102,6 +151,13 @@ export interface Fighter {
   wave?: number
   /** Marqueurs libres pour scénarios/IA (ex. 'invulnerableUntilRound'). */
   tags: Record<string, number | string | boolean>
+  /**
+   * Modificateurs de sorts actifs (spellId -> modificateurs ; clé 0 = tous les sorts), recalculés depuis les buffs
+   * par `Engine.recomputeStats` (objet remplacé, jamais modifié en place : partageable entre clones). Absent sans buff.
+   */
+  spellMods?: Record<number, SpellModifiers>
+  /** États neutralisés par un buff 952 (toujours présents dans `states`, mais sans leurs drapeaux). */
+  disabledStates?: number[]
 }
 
 export interface Glyph {
@@ -115,6 +171,23 @@ export interface Glyph {
   effects: EffectData[]
   trigger: 'turnStart' | 'turnEnd' | 'enter' | 'aura'
   color: string
+  // ── Champs optionnels renseignés par effects/marks.ts (absents des glyphes créés ailleurs) ──
+  /** Nature de la marque : glyphe (défaut), rune Huppermage (inerte, déclenchée par 2023), portail Eliotrope. */
+  markType?: 'glyph' | 'rune' | 'portal'
+  /** Sort lancé par la marque (diceNum de l'effet de pose) et son grade ; `spellId` reste le sort qui a posé la marque. */
+  castSpellId?: number
+  castGrade?: number
+  /** Pose en coup critique : le sort de la marque utilise ses effets critiques (flag hérité). */
+  crit?: boolean
+  /** Équipe du poseur (portails, visibilité). */
+  team?: TeamId
+  /** Glyphe-aura : combattants déjà affectés (une seule application tant qu'ils restent dans la zone). */
+  triggered?: number[]
+  /** Portail : paramètres de bonus (diceNum = % par case, value = bonus de base) et désactivation. */
+  portalBonusPerCell?: number
+  portalBaseBonus?: number
+  /** Portail désactivé jusqu'au début du prochain tour de ce combattant (effet 1183). */
+  disabledUntil?: number
 }
 
 export interface Trap {
@@ -126,6 +199,20 @@ export interface Trap {
   effects: EffectData[]
   visible: boolean
   color: string
+  // ── Champs optionnels renseignés par effects/marks.ts ──
+  castSpellId?: number
+  castGrade?: number
+  crit?: boolean
+  team?: TeamId
+}
+
+/** Mort enregistrée (ordre chronologique) — résurrections (780/1034 : « dernier allié mort »). */
+export interface DeathRecord {
+  fighter: number
+  /** Case occupée au moment de la mort. */
+  cell: number
+  round: number
+  killer?: number
 }
 
 /** Instantané minimal d'un combattant (début de combat / invocation / vague) pour le replay. */
@@ -248,6 +335,11 @@ export interface FightState {
   metrics: Record<number, FighterMetrics>
   /** Données libres du scénario (ex. vague courante). */
   scenarioState: Record<string, unknown>
+  /**
+   * Morts dans l'ordre chronologique (renseigné par Engine.kill). Tableau remplacé (copie) à chaque ajout et jamais
+   * modifié en place : un clone de combat (`cloneFight`, copie superficielle) peut donc le partager sans risque.
+   */
+  deaths?: DeathRecord[]
 }
 
 export interface FighterMetrics {

@@ -1,7 +1,8 @@
 /**
  * Fabrique de combattants : personnages (classe + caractéristiques calculées) et monstres (grade).
  */
-import { addStats, emptyStats, type Stats, type TeamId } from '../core/types'
+import { addStats, emptyStats, type StatKey, type Stats, type TeamId } from '../core/types'
+import type { SummonerShare } from '../data/model'
 import type { DataStore } from '../data/store'
 import type { Fighter, KnownSpell } from './types'
 
@@ -90,6 +91,24 @@ export interface MonsterFighterInput {
   /** Facteur d'échelle appliqué aux caractéristiques (invocations : niveau de l'invocateur). */
   scale?: number
   ai?: string
+  /**
+   * Invocateur (effects/summons.ts) : si le grade porte une part des caractéristiques de l'invocateur
+   * (`summonerShare`, DofusDB `bonusCharacteristics`), l'invocation reçoit `floor(stat_invocateur × % / 100)` pour
+   * chaque caractéristique listée et `floor(PV max de début de combat × lifePct / 100)` PV — INCERTAIN : base des PV
+   * (PV max de l'invocateur retenus) et caractéristiques effectives (buffs compris) au moment de l'invocation.
+   */
+  summoner?: Fighter
+}
+
+/** Applique la part des caractéristiques de l'invocateur (`summonerShare`) : renvoie les PV hérités. */
+function applySummonerShare(stats: Stats, share: SummonerShare | undefined, summoner: Fighter | undefined): number {
+  if (!share || !summoner) return 0
+  for (const k in share.stats) {
+    const key = k as StatKey
+    const pct = share.stats[key]
+    if (pct) stats[key] += Math.floor((summoner.stats[key] * pct) / 100)
+  }
+  return share.lifePct > 0 ? Math.floor((summoner.baseMaxHp * share.lifePct) / 100) : 0
 }
 
 export function createMonsterFighter(data: DataStore, input: MonsterFighterInput): Fighter {
@@ -103,7 +122,19 @@ export function createMonsterFighter(data: DataStore, input: MonsterFighterInput
   if (scale !== 1) {
     for (const k of ['strength', 'intelligence', 'chance', 'agility', 'wisdom', 'vitality'] as const) stats[k] = Math.floor(stats[k] * scale)
   }
-  const hp = Math.floor(g.lifePoints * scale) + stats.vitality
+  const inherited = applySummonerShare(stats, g.summonerShare, input.summoner)
+  // Caractéristiques dérivées (mêmes règles que les personnages, cf. src/stats/build.ts finalizeStats) : les grades de
+  // monstres ne donnent que des bonus. Hypothèse documentée : la Sagesse donne aussi esquive/retrait aux monstres.
+  stats.initiative += stats.strength + stats.intelligence + stats.chance + stats.agility
+  const agi10 = Math.floor(stats.agility / 10)
+  const wis10 = Math.floor(stats.wisdom / 10)
+  stats.tackleBlock += agi10
+  stats.tackleEvade += agi10
+  stats.apParry += wis10
+  stats.mpParry += wis10
+  stats.apReduction += wis10
+  stats.mpReduction += wis10
+  const hp = Math.floor(g.lifePoints * scale) + stats.vitality + inherited
   const spells: KnownSpell[] = []
   m.spells.forEach((spellId, i) => {
     const grades = (m as { spellGrades?: number[][] }).spellGrades?.[i]
@@ -139,6 +170,6 @@ export function createMonsterFighter(data: DataStore, input: MonsterFighterInput
     summonerId: input.summonerId,
     ai: input.ai ?? (m.isBoss ? `boss:${m.id}` : `monster:${m.id}`),
     direction: 5,
-    tags: { canTackle: m.canTackle, canBePushed: m.canBePushed, canSwitchPos: m.canSwitchPos, boss: m.isBoss },
+    tags: { canTackle: m.canTackle, canBePushed: m.canBePushed, canSwitchPos: m.canSwitchPos, boss: m.isBoss, canPlay: m.canPlay },
   }
 }

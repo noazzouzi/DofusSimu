@@ -22,11 +22,16 @@
  * les formes orientées comptent des PAS diagonaux (d >> 1), comme le client.
  *
  * Orientation (formes L, l, /, T, -, U, R, B : 8 directions ; V, F : 4 directions comme le port) :
- *  1. `opts.direction` si fourni ; 2. `forcedDirection` : direction = `maxDecreaseCount` (le port lit la direction
- *  forcée dans le même paramètre que le nombre de paliers — INCERTAIN, seulement des sorts de monstres hors Vortex) ;
- *  3. direction exacte lanceur → impact s'ils sont alignés ; 4. lanceur = impact : 1 (8 dir.) / 3 (4 dir.), comme le
- *  port ; 5. sinon direction de déplacement la plus proche (`lookDirection4`). Écart assumé : sur un lancer non aligné,
- *  le port renvoie la direction −1 et produit des zones incohérentes (artefact) ; on oriente sur l'axe le plus proche.
+ *  1. `opts.direction` si fourni ; 2. direction exacte lanceur → impact s'ils sont alignés ; 3. lanceur = impact :
+ *  1 (8 dir.) / 3 (4 dir.), comme le port ; 4. sinon direction de déplacement la plus proche (`lookDirection4`).
+ *  Écart assumé : sur un lancer non aligné, le port renvoie la direction −1 et produit des zones incohérentes
+ *  (artefact) ; on oriente sur l'axe le plus proche.
+ *  Drapeau `forcedDirection` (L1/L63/'/63' : Tarot « Le Fou », Audace de Dodge, Kimon...) : la direction est imposée
+ *  par le moteur, à passer dans `opts.direction`. Les descriptions (« téléporté aléatoirement sur une case
+ *  ADJACENTE ») indiquent une direction de déplacement tirée au hasard — INCERTAIN. Elle ne vient PAS de
+ *  `maxDecreaseCount` : le port y lit `Direction`, mais l'ignore pour cibler (`IsCellInLineZone` l'écrase), et toutes
+ *  ces zones ont `maxDecreaseCount = 4`, c.-à-d. une diagonale (case non adjacente). Sans `opts.direction`, la zone
+ *  est orientée comme un lancer normal (comportement du port).
  *
  * Performances : zones compilées et mises en cache par objet `ZoneSpec` ; les formes en rayons (lignes, croix,
  * étoiles, T, U, B) génèrent leurs candidats le long des directions (O(r)), les autres parcourent un ordre
@@ -53,7 +58,10 @@ import { hasLineOfSight, type BlocksLos } from './los'
 export const MAX_RADIUS_DEGRESSION = 50
 
 export interface ZoneOptions {
-  /** Orientation imposée (0..7), prioritaire sur `forcedDirection` et sur la direction lanceur → impact. */
+  /**
+   * Orientation imposée (0..7), prioritaire sur la direction lanceur → impact (zones `forcedDirection` : direction
+   * choisie par le moteur). Ignorée si invalide, et si paire pour les formes à 4 directions (V, F).
+   */
   direction?: number
   /**
    * Blocage de la ligne de vue (obstacle ou entité) pour les zones `onlyIfInSight` : seules les cellules en
@@ -81,8 +89,8 @@ export interface CompiledZone {
   readonly maxTicks: number
   readonly stopAtTarget: boolean
   readonly onlyIfInSight: boolean
-  /** Direction forcée (0..7) ou −1. */
-  readonly forcedDirection: number
+  /** Drapeau `forcedDirection` des données : l'orientation doit être fournie par le moteur (`opts.direction`). */
+  readonly forcedDirection: boolean
   /** Orientation : aucune, 8 directions (lanceur → impact exacte), 4 directions (axes). */
   readonly orientation: 0 | 8 | 4
   /** Demi-côté de la boîte englobante autour de l'origine (en pas). */
@@ -92,6 +100,8 @@ export interface CompiledZone {
 }
 
 const WHOLE_MAP_SPAN = 64
+/** Plus grande distance entre deux cellules : |dx| + |dy| = max(|Δ(x + y)|, |Δ(x − y)|) ≤ max(27, 39). */
+const MAP_DIAMETER = 39
 const SHAPES_8 = 'LlT-U/RB'
 const SHAPES_4 = 'VF'
 
@@ -173,11 +183,6 @@ function buildCompiledZone(zone: ZoneSpec): CompiledZone {
       radius = 0
   }
   const orientation: 0 | 8 | 4 = SHAPES_8.includes(shape) ? 8 : SHAPES_4.includes(shape) ? 4 : 0
-  let forcedDirection = -1
-  if (zone.forcedDirection) {
-    const d = zone.maxDecreaseCount | 0
-    if (isValidDirection(d)) forcedDirection = d
-  }
   let span = Math.max(radius, minRadius)
   if (shape === 'A' || shape === 'a' || shape === 'I' || shape === 'Z' || span >= WHOLE_MAP_SPAN) span = WHOLE_MAP_SPAN
   return {
@@ -188,7 +193,7 @@ function buildCompiledZone(zone: ZoneSpec): CompiledZone {
     maxTicks: Math.max(0, zone.maxDecreaseCount | 0),
     stopAtTarget: !!zone.stopAtTarget,
     onlyIfInSight: !!zone.onlyIfInSight,
-    forcedDirection,
+    forcedDirection: !!zone.forcedDirection,
     orientation,
     span,
     cells: zone.cells,
@@ -214,11 +219,9 @@ function orientationOf(z: CompiledZone, center: number, caster: number, forced: 
   if (z.orientation === 0) return -1
   if (z.orientation === 4) {
     if (forced !== undefined && isValidDirection(forced) && (forced & 1) === 1) return forced
-    if (z.forcedDirection >= 0 && (z.forcedDirection & 1) === 1) return z.forcedDirection
     return lookDirection4(caster, center)
   }
   if (forced !== undefined && isValidDirection(forced)) return forced
-  if (z.forcedDirection >= 0) return z.forcedDirection
   if (caster === center) return 1
   const exact = directionBetween(caster, center)
   return exact >= 0 ? exact : lookDirection4(caster, center)
@@ -583,7 +586,9 @@ function collect(f: Frame, out: number[]): number[] {
     return out
   }
   const order = cellsByDistance(f.origin)
-  if ((z.shape === 'A' || z.shape === 'a') && !f.blocksLos && !f.cellFilter) {
+  // Toute la carte (A, a, et cercles qui la couvrent : C63, C40...) sans filtre : l'ordre précalculé tel quel.
+  const wholeMap = z.shape === 'A' || z.shape === 'a' || (z.shape === 'C' && z.minRadius === 0 && z.radius >= MAP_DIAMETER)
+  if (wholeMap && !f.blocksLos && !f.cellFilter) {
     for (let i = 0; i < CELL_COUNT; i++) out.push(order[i])
     return out
   }
@@ -604,7 +609,8 @@ function collect(f: Frame, out: number[]): number[] {
 
 /**
  * Cellules couvertes par une zone centrée sur `center` (case d'impact), lancée depuis `casterCell`.
- * Ordre : distance de Manhattan croissante à l'origine de la zone (le lanceur pour 'l', l'impact sinon), puis id.
+ * Ordre : distance de Manhattan croissante à l'origine de la zone (le lanceur pour 'l', l'impact sinon), puis id ;
+ * sauf la forme ';' (liste explicite) qui garde l'ordre des données, doublons et cellules invalides retirés.
  * Les cellules hors carte sont ignorées ; aucun filtre de marchabilité sauf `opts.cellFilter`. Nouveau tableau.
  */
 export function zoneCells(zone: ZoneSpec, center: number, casterCell: number, opts?: ZoneOptions): number[] {
@@ -702,10 +708,13 @@ function shapeDistance(z: CompiledZone, center: number, cell: number, caster: nu
 /**
  * Malus de zone en % (0..100) pour la cellule `cell` : min(min(max(d − rayonMin, 0), paliers) × pas, 100),
  * rayonMin ignoré pour R ; aucun malus si le rayon effectif dépasse 50 (C63, l1,63...) ou si le pas est nul.
+ * Aucun malus non plus si le rayon effectif est < 1 (point P, C0... : effects.md §4.3, D2 `getSimpleEfficiency`) ;
+ * le port n'a pas ce test, mais ces zones ne contiennent que l'impact (distance 0) : seule une cible ajoutée hors
+ * zone (masques C / O / K) serait concernée, et elle n'a jamais de malus.
  */
 export function zoneMalusPct(zone: ZoneSpec, center: number, cell: number, casterCell: number = center): number {
   const z = compileZone(zone)
-  if (z.step <= 0 || z.radius > MAX_RADIUS_DEGRESSION) return 0
+  if (z.step <= 0 || z.radius < 1 || z.radius > MAX_RADIUS_DEGRESSION) return 0
   const minEff = z.shape === 'R' ? 0 : z.minRadius
   const d = Math.max(shapeDistance(z, center, cell, casterCell) - minEff, 0)
   return Math.min(Math.min(d, z.maxTicks) * z.step, 100)

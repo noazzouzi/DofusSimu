@@ -14,7 +14,7 @@ import { distance } from '../../map/geometry'
 import { zoneCells, zoneEfficiency } from '../../map/zones'
 import type { Engine } from '../engine'
 import { nextRandom } from '../random'
-import { matchesTargetMask } from '../targetMask'
+import { compileTargetMask, matchesTargetMask, type MaskContext } from '../targetMask'
 import type { Buff, DamageKind, Fighter, FightState, KnownSpell } from '../types'
 import { getEffectHandler, noteUnknownEffect, type EffectContext } from './registry'
 
@@ -233,7 +233,61 @@ interface PreparedEffect {
 }
 
 /** Masques dont les cibles sont recalculées au moment de l'effet (et non pré-calculées). */
-const LATE_MASK = /(^|,)\s*[UuTWVv](\d*|,|$)/
+/** Ciblage tardif : décidé par le masque compilé (U/u/T/W — targetMask.ts `lateTargeting`). */
+const LATE_MASK = { test: (mask: string): boolean => compileTargetMask(mask).lateTargeting }
+
+/**
+ * Options additionnelles d'une exécution d'effets (marques, sous-sorts, déclenchements) — toutes facultatives ;
+ * sans elles, `applyEffects` / `target` se comportent comme avant (ajout de effects/summons|marks|castspell).
+ */
+export interface ApplyOptions {
+  /** Événement déclencheur propagé aux sous-sorts : « source » des 1017/1018/1019, masques O/o. */
+  trigger?: TriggerEvent
+  /** Seule cible possible si elle est dans la zone (glyphe déclenché par un combattant : `forceTarget` du port). */
+  forceTarget?: Fighter
+  /** Cible ajoutée même hors zone (combattant qui déclenche un piège : `additionalTarget` du port). */
+  additionalTarget?: Fighter
+  /** Exécution issue d'une mort (déclencheur X) : le mourant reste lanceur/cible possible (`IsAlive(isFromDeath)`). */
+  fromDeath?: boolean
+  /** Marque à l'origine de l'exécution (type des dommages indirects, origine des poussées). */
+  mark?: EffectContext['mark']
+}
+
+/**
+ * Entités « apparues » pendant l'exécution en cours (masques U/u : invoquées ou ressuscitées par un effet précédent
+ * du même sort ou d'un de ses sous-sorts). Portée = l'appel `applyEffects` le plus externe ; vidé à son entrée.
+ */
+const appearing: Fighter[] = []
+let applyNesting = 0
+
+/** Déclare une entité apparue (invocation, résurrection) pour les masques U/u des effets suivants. */
+export function markAppearing(f: Fighter): void {
+  if (!appearing.includes(f)) appearing.push(f)
+}
+
+export function isAppearing(f: Fighter): boolean {
+  return appearing.includes(f)
+}
+
+/** Combattant en cours de mort (déclencheurs X : `alive` déjà faux mais encore sur sa case). */
+export function isDying(f: Fighter): boolean {
+  return !f.alive && f.cell >= 0
+}
+
+/** Points d'invocation utilisés par `f` (invocations vivantes portant le tag `summonCost`, cf. effects/summons.ts). */
+export function usedSummonSlots(fight: FightState, f: Fighter): number {
+  let n = 0
+  for (const o of fight.fighters) {
+    if (o.alive && o.summonerId === f.id && o.id !== f.id) n += (o.tags.summonCost as number | undefined) ?? 0
+  }
+  return n
+}
+
+let maskFight: FightState | null = null
+const BASE_MASK_CONTEXT: MaskContext = {
+  isAppearing,
+  summonCount: f => (maskFight ? usedSummonSlots(maskFight, f) : 0),
+}
 
 /**
  * Applique une liste d'effets (sort, sous-sort, glyphe, piège) sur une cellule cible.
@@ -251,6 +305,30 @@ export function applyEffects(
   crit: boolean,
   indirect: boolean,
   depth: number,
+  opts?: ApplyOptions,
+): void {
+  if (applyNesting === 0) appearing.length = 0
+  applyNesting++
+  try {
+    applyEffectsInner(engine, fight, caster, spell, spellId, effects, cell, casterCell, crit, indirect, depth, opts)
+  } finally {
+    applyNesting--
+  }
+}
+
+function applyEffectsInner(
+  engine: Engine,
+  fight: FightState,
+  caster: Fighter,
+  spell: KnownSpell | null,
+  spellId: number,
+  effects: EffectData[],
+  cell: number,
+  casterCell: number,
+  crit: boolean,
+  indirect: boolean,
+  depth: number,
+  opts: ApplyOptions | undefined,
 ): void {
   if (depth > MAX_DEPTH) return
   const ordered = [...effects].sort((a, b) => a.order - b.order)
@@ -276,7 +354,7 @@ export function applyEffects(
   const prepared: PreparedEffect[] = []
   for (const effect of ordered) {
     if (effect.random > 0 && (effect.group || -effect.order - 1) !== pickedGroup) continue
-    prepared.push(effect.targetMask && LATE_MASK.test(effect.targetMask) ? { effect, cells: [], targets: [], efficiency: new Map() } : target(engine, fight, caster, effect, cell, casterCell))
+    prepared.push(effect.targetMask && LATE_MASK.test(effect.targetMask) ? { effect, cells: [], targets: [], efficiency: new Map() } : target(engine, fight, caster, effect, cell, casterCell, opts))
   }
 
   for (const p of prepared) {
@@ -286,10 +364,12 @@ export function applyEffects(
       break
     }
     const late = p.effect.targetMask && LATE_MASK.test(p.effect.targetMask)
-    const prep = late ? target(engine, fight, caster, p.effect, cell, casterCell) : p
-    // Les cibles mortes ou déplacées hors du jeu entre-temps sont ignorées.
-    const targets = prep.targets.filter(t => t.alive)
+    const prep = late ? target(engine, fight, caster, p.effect, cell, casterCell, opts) : p
+    // Les cibles mortes ou déplacées hors du jeu entre-temps sont ignorées (sauf le mourant d'un déclenchement X).
+    const targets = prep.targets.filter(t => t.alive || (opts?.fromDeath === true && isDying(t)))
     runEffect(engine, fight, {
+      trigger: opts?.trigger,
+      mark: opts?.mark,
       caster,
       spell,
       spellId,
@@ -306,7 +386,20 @@ export function applyEffects(
   }
 }
 
-/** Calcule la zone et les cibles d'un effet. */
+/** Combattant vivant (ou mourant si `dying`) sur une case. */
+function occupantAt(engine: Engine, fight: FightState, c: number, dying: boolean): Fighter | undefined {
+  const f = engine.fighterAt(fight, c)
+  if (f || !dying) return f
+  for (const o of fight.fighters) if (isDying(o) && o.cell === c && o.carriedBy === undefined) return o
+  return undefined
+}
+
+/**
+ * Calcule la zone et les cibles d'un effet. Avec `opts` (ajout effects/summons|marks|castspell) : contexte de masque
+ * (O/o = déclencheur, U/u = entités apparues, Q/q = invocations), cibles hors zone du port
+ * (`TargetManagement.GetOutOfAreaTarget` : C = lanceur sauf 780, O = déclencheur, K = porté ; cible additionnelle),
+ * cible forcée (glyphes) et mourant ciblable (`fromDeath`). Le lanceur `C` hors zone est ajouté dans tous les cas.
+ */
 export function target(
   engine: Engine,
   fight: FightState,
@@ -314,16 +407,52 @@ export function target(
   effect: EffectData,
   cell: number,
   casterCell: number,
+  opts?: ApplyOptions,
 ): PreparedEffect {
-  const cells = zoneCells(effect.zone, cell, casterCell)
+  // Zones « seulement en LdV » : obstacles et entités bloquent depuis le centre de la zone.
+  const cells = effect.zone.onlyIfInSight
+    ? zoneCells(effect.zone, cell, casterCell, {
+        blocksLos: c => !fight.map.cells[c]?.los || (c !== cell && !!engine.fighterAt(fight, c)),
+      })
+    : zoneCells(effect.zone, cell, casterCell)
   const targets: Fighter[] = []
   const efficiency = new Map<number, number>()
+  const dying = opts?.fromDeath === true
+  const force = opts?.forceTarget
+  maskFight = fight
+  const mctx: MaskContext = opts?.trigger?.source ? { ...BASE_MASK_CONTEXT, triggering: opts.trigger.source } : BASE_MASK_CONTEXT
+  const mask = effect.targetMask
+  const ok = (f: Fighter) => f.alive || (dying && isDying(f))
   for (const c of cells) {
-    const f = engine.fighterAt(fight, c)
-    if (!f || !f.alive) continue
-    if (!matchesTargetMask(effect.targetMask, caster, f)) continue
+    const f = occupantAt(engine, fight, c, dying)
+    if (!f || !ok(f)) continue
+    if (force && f !== force) continue
+    if (!matchesTargetMask(mask, caster, f, mctx)) continue
     targets.push(f)
-    efficiency.set(f.id, zoneEfficiency(effect.zone, cell, c))
+    efficiency.set(f.id, zoneEfficiency(effect.zone, cell, c, casterCell))
+  }
+  if (mask) {
+    const m = compileTargetMask(mask)
+    const add = (f: Fighter | undefined, eff: number) => {
+      if (!f || !ok(f) || targets.includes(f) || !matchesTargetMask(mask, caster, f, mctx)) return
+      targets.push(f)
+      efficiency.set(f.id, eff)
+    }
+    // Masque U/u sur une zone ponctuelle : l'entité qui vient d'apparaître est la cible, où qu'elle soit (port).
+    if (appearing.length && effect.zone.shape === 'P' && /(^|,)[Uu](,|$)/.test(mask)) {
+      targets.length = 0
+      for (const f of appearing) add(f, 1)
+    }
+    if (m.addsCaster && effect.effectId !== 780) add(caster, 1)
+    if (m.addsTriggering) add(opts?.trigger?.source, 1)
+    if (m.addsCarried && caster.carrying !== undefined) add(fight.fighters[caster.carrying], 1)
+  }
+  if (opts?.additionalTarget && !force) {
+    const f = opts.additionalTarget
+    if (ok(f) && !targets.includes(f) && matchesTargetMask(mask, caster, f, mctx)) {
+      targets.push(f)
+      efficiency.set(f.id, f.cell >= 0 ? zoneEfficiency(effect.zone, cell, f.cell, casterCell) : 1)
+    }
   }
   targets.sort((a, b) => distance(cell, a.cell) - distance(cell, b.cell) || a.id - b.id)
   return { effect, cells, targets, efficiency }
@@ -393,8 +522,16 @@ export function isCastSpellEffect(effectId: number): boolean {
   return CAST_SPELL_EFFECTS.has(effectId)
 }
 
+/** Options d'un sous-sort (ajout effects/castspell|summons|marks) : en plus d'`ApplyOptions`. */
+export interface SubSpellOptions extends ApplyOptions {
+  /** Niveau de sort déjà résolu (ex. sort de départ d'un monstre, par id de spell-level) : ignore spellId/grade. */
+  level?: SpellLevelData
+}
+
 /**
  * Lance un sous-sort sans coût ni condition (portée, LdV). Le flag critique est hérité.
+ * `opts` (facultatif) : déclencheur propagé, cible forcée/additionnelle, marque, exécution issue d'une mort
+ * (`fromDeath` : un lanceur mourant peut encore lancer, cf. déclencheurs X).
  */
 export function castSubSpell(
   engine: Engine,
@@ -405,9 +542,11 @@ export function castSubSpell(
   cell: number,
   crit: boolean,
   depth: number,
+  opts?: SubSpellOptions,
 ): boolean {
-  if (depth > MAX_DEPTH || !caster.alive || cell < 0) return false
-  const lvl: SpellLevelData | undefined = engine.data.spellLevel(spellId, { grade: grade || undefined })
+  if (depth > MAX_DEPTH || cell < 0) return false
+  if (!caster.alive && !(opts?.fromDeath === true && isDying(caster))) return false
+  const lvl: SpellLevelData | undefined = opts?.level ?? engine.data.spellLevel(spellId, { grade: grade || undefined })
   if (!lvl) return false
   const effects = crit && lvl.criticalEffects.length ? lvl.criticalEffects : lvl.effects
   const known = caster.spells.find(s => s.spellId === spellId) ?? null
@@ -415,7 +554,7 @@ export function castSubSpell(
     const name = engine.data.spell(spellId)?.name
     if (name) engine.log(fight, `${caster.name} déclenche ${name}.`)
   }
-  applyEffects(engine, fight, caster, known, spellId, effects, cell, caster.cell >= 0 ? caster.cell : cell, crit, true, depth + 1)
+  applyEffects(engine, fight, caster, known, spellId, effects, cell, caster.cell >= 0 ? caster.cell : cell, crit, true, depth + 1, opts)
   return true
 }
 

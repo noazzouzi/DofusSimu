@@ -10,6 +10,7 @@ import {
   DIRECTIONS,
   ORTHOGONAL_DIRECTIONS,
   areAdjacent,
+  castRangeCells,
   cellInDirection,
   cellToPoint,
   cellsBetween,
@@ -21,6 +22,7 @@ import {
   inDiagonal,
   inLine,
   isCardinal,
+  isInCastRange,
   isOrthogonal,
   isValidCell,
   isValidPoint,
@@ -242,5 +244,74 @@ describe('géométrie : déplacements de cellule', () => {
     }
     expect(Object.isFrozen(neighborsOf(0))).toBe(true)
     expect(Object.isFrozen(cellToPoint(0))).toBe(true)
+  })
+})
+
+describe('géométrie : portée de lancer (map-geometry.json#rangeShapes)', () => {
+  const ex = geo.rangeShapes.examples as { caster: number; spell: string; cells: number[] }[]
+  const sorted = (xs: number[]) => [...xs].sort((a, b) => a - b)
+
+  it('exemples du document (lanceur 215) : 8 directions, diagonale seule, losange', () => {
+    expect(castRangeCells(ex[0].caster, 1, 1, true, true)).toEqual(sorted(ex[0].cells))
+    expect(castRangeCells(ex[1].caster, 1, 2, false, true)).toEqual(sorted(ex[1].cells))
+    expect(castRangeCells(ex[2].caster, 1, 1, false, false)).toEqual(sorted(ex[2].cells))
+  })
+
+  it('en diagonale, la portée compte des PAS diagonaux (Manhattan 2r) ; min = 0 inclut le lanceur', () => {
+    const c = pointToCell(17, -4)
+    // Espingole (diagonale seule, PO 1–6) : (x+6, y+6) est à portée bien qu'à 12 en Manhattan.
+    expect(isInCastRange(c, pointToCell(23, 2), 1, 6, false, true)).toBe(true)
+    expect(isInCastRange(c, pointToCell(24, 3), 1, 6, false, true)).toBe(false)
+    expect(isInCastRange(c, pointToCell(18, -4), 1, 6, false, true)).toBe(false) // en ligne : refusé
+    // Ligne seule : Manhattan sur les axes, rien hors des axes.
+    expect(isInCastRange(c, pointToCell(17, 2), 1, 6, true, false)).toBe(true)
+    expect(isInCastRange(c, pointToCell(18, -3), 1, 6, true, false)).toBe(false)
+    // Losange : Manhattan, rayon minimal.
+    expect(isInCastRange(c, pointToCell(18, -3), 2, 2, false, false)).toBe(true)
+    expect(isInCastRange(c, pointToCell(18, -4), 2, 6, false, false)).toBe(false)
+    for (const [l, d] of [
+      [true, true],
+      [true, false],
+      [false, true],
+      [false, false],
+    ] as const) {
+      expect(isInCastRange(c, c, 0, 3, l, d)).toBe(true)
+      expect(isInCastRange(c, c, 1, 3, l, d)).toBe(false)
+    }
+    // Ligne + diagonale de PO 0–1 (Esprit Félin, Cabriole, Cri de l'Ours) : le lanceur et les 8 cases autour.
+    expect(castRangeCells(c, 0, 1, true, true).length).toBe(9)
+    expect(castRangeCells(-1, 0, 1, true, true)).toEqual([])
+  })
+
+  it('toutes les cellules : équivalence avec la définition par rayons (Cross / Lozenge du client)', () => {
+    for (const from of [0, 215, 300, 559])
+      for (const [min, max] of [
+        [0, 0],
+        [1, 1],
+        [1, 6],
+        [2, 4],
+        [0, 63],
+      ])
+        for (const [l, d] of [
+          [true, true],
+          [true, false],
+          [false, true],
+          [false, false],
+        ] as const) {
+          const want = new Set<number>()
+          const p = cellToPoint(from)
+          for (let r = min; r <= max; r++) {
+            const add = (x: number, y: number) => {
+              const cell = pointToCell(x, y)
+              if (cell >= 0) want.add(cell)
+            }
+            if (l || d) {
+              if (r === 0) add(p.x, p.y)
+              if (l) for (const [x, y] of [[p.x + r, p.y], [p.x - r, p.y], [p.x, p.y + r], [p.x, p.y - r]]) add(x, y)
+              if (d) for (const [x, y] of [[p.x + r, p.y + r], [p.x - r, p.y - r], [p.x + r, p.y - r], [p.x - r, p.y + r]]) add(x, y)
+            } else for (let c = 0; c < CELL_COUNT; c++) if (distance(from, c) === r) want.add(c)
+          }
+          expect(castRangeCells(from, min, max, l, d), `${from} ${min}-${max} ${l} ${d}`).toEqual(sorted([...want]))
+        }
   })
 })

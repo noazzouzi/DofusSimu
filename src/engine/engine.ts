@@ -6,8 +6,10 @@
  * (effects/*) s'appuient sur les primitives exposées ici.
  */
 import { addStats, emptyStats, type Element, type Stats, type TeamId } from '../core/types'
+import { erosion } from '../damage/life'
 import type { DataStore } from '../data/store'
 import type { MapData } from '../data/model'
+import { accumulateSpellMod } from './effects/buffs/spellMods'
 import type {
   Buff,
   DamageKind,
@@ -18,6 +20,7 @@ import type {
   FightOptions,
   FightState,
   ScenarioHooks,
+  SpellModifiers,
 } from './types'
 
 export interface FightSetup {
@@ -31,6 +34,9 @@ export const DEFAULT_OPTIONS: FightOptions = { seed: 1, rollMode: 'random', reco
 
 /** Pourcentage d'érosion de base (part des dommages subis retirée des PV max). */
 export const BASE_EROSION_PCT = 10
+/** Effets de buff « ±X % Érosion » (776 / 3804) lus par `Engine.erosionPercent`. */
+export const EROSION_BOOST_EFFECT = 776
+export const EROSION_DEBOOST_EFFECT = 3804
 
 export class Engine {
   constructor(
@@ -148,6 +154,7 @@ export class Engine {
   /** Vrai si un des états du combattant porte le drapeau demandé (invulnérable, indéplaçable...). */
   stateFlag(f: Fighter, flag: keyof NonNullable<ReturnType<DataStore['state']>>): boolean {
     for (const s of f.states) {
+      if (f.disabledStates !== undefined && f.disabledStates.includes(s)) continue // état neutralisé (952)
       const st = this.data.state(s)
       if (st && st[flag]) return true
     }
@@ -159,13 +166,35 @@ export class Engine {
   recomputeStats(f: Fighter): void {
     const s: Stats = addStats(emptyStats(), f.baseStats)
     const states: number[] = []
+    let mods: Record<number, SpellModifiers> | undefined
+    let disabled: number[] | undefined
     for (const b of f.buffs) {
       if (b.delay > 0) continue
       if (b.statDelta) addStats(s, b.statDelta)
       if (b.stateId !== undefined && !states.includes(b.stateId)) states.push(b.stateId)
+      // Modificateurs de sorts (effects/buffs/spellMods.ts) et états neutralisés (952) : tables reconstruites.
+      if (b.spellMod) mods = accumulateSpellMod(mods, b.spellMod)
+      if (b.disabledStateId !== undefined) (disabled ??= []).push(b.disabledStateId)
+    }
+    // Caractéristiques dérivées : les totaux de base incluent déjà ⌊Agi/10⌋ (tacle/fuite) et ⌊Sag/10⌋ (esquive et
+    // retrait PA/PM) ; un buff d'Agilité/Sagesse en combat doit les faire varier d'autant.
+    const b0 = f.baseStats
+    const dAgi = Math.floor(s.agility / 10) - Math.floor(b0.agility / 10)
+    if (dAgi) {
+      s.tackleBlock += dAgi
+      s.tackleEvade += dAgi
+    }
+    const dWis = Math.floor(s.wisdom / 10) - Math.floor(b0.wisdom / 10)
+    if (dWis) {
+      s.apParry += dWis
+      s.mpParry += dWis
+      s.apReduction += dWis
+      s.mpReduction += dWis
     }
     f.stats = s
     f.states = states
+    if (mods || f.spellMods) f.spellMods = mods
+    if (disabled || f.disabledStates) f.disabledStates = disabled
   }
 
   addBuff(fight: FightState, target: Fighter, buff: Omit<Buff, 'uid'>): Buff {
@@ -192,11 +221,12 @@ export class Engine {
     const i = target.buffs.findIndex(b => b.uid === uid)
     if (i < 0) return
     const hadStates = new Set(target.states)
-    target.buffs.splice(i, 1)
+    const removed = target.buffs.splice(i, 1)[0]
     const before = target.stats
     this.recomputeStats(target)
     this.applyPoolDelta(fight, target, before)
     this.emit(fight, { t: 'unbuff', target: target.id, uid })
+    this.hooks.onBuffRemoved?.(fight, target, removed)
     this.emitStateChanges(fight, target, hadStates)
   }
 
@@ -212,6 +242,13 @@ export class Engine {
    * (ex. retrait de PA en cours de tour, bonus de PM).
    */
   private applyPoolDelta(fight: FightState, f: Fighter, before: Stats): void {
+    // Bonus/malus de Vitalité en combat (125, 1078, 1033, 2844...) : PV max et PV courants suivent la variation,
+    // sans pouvoir tuer (la fin d'un bonus laisse au moins 1 PV).
+    const dVit = f.stats.vitality - before.vitality
+    if (dVit && f.alive) {
+      f.maxHp = Math.max(1, f.maxHp + dVit)
+      f.hp = Math.min(f.maxHp, Math.max(1, f.hp + dVit))
+    }
     const dAp = f.stats.ap - before.ap
     const dMp = f.stats.mp - before.mp
     if (!dAp && !dMp) return
@@ -247,7 +284,7 @@ export class Engine {
     amount: number,
     element: Element | -1,
     kind: DamageKind,
-    opts: { crit?: boolean; melee?: boolean; isWeapon?: boolean } = {},
+    opts: { crit?: boolean; melee?: boolean; isWeapon?: boolean; ignoreShield?: boolean } = {},
   ): number {
     if (!target.alive || amount <= 0) return 0
     if (this.scenario?.canBeDamaged && !this.scenario.canBeDamaged(fight, target, source)) {
@@ -258,18 +295,20 @@ export class Engine {
     if (opts.melee === true && this.stateFlag(target, 'invulnerableMelee')) return 0
     if (opts.melee === false && this.stateFlag(target, 'invulnerableRange')) return 0
     amount = Math.floor(amount)
+    // Érosion calculée sur les dommages AVANT bouclier (DoMath, port D3), plafonnée à 50 %, sans pouvoir tuer.
+    const eroded = erosion(amount, this.erosionPercent(target), { currentHp: target.hp })
     let absorbed = 0
-    if (target.shield > 0) {
+    // `ignoreShield` : « faux dommages » (perte de % PV 1048, transfert de vie) qui ne touchent pas le bouclier.
+    if (target.shield > 0 && !opts.ignoreShield) {
       absorbed = Math.min(target.shield, amount)
       target.shield -= absorbed
       amount -= absorbed
+      this.hooks.onShieldAbsorbed?.(fight, target, absorbed)
     }
     const lost = Math.min(target.hp, amount)
     target.hp -= lost
-    const erosionPct = BASE_EROSION_PCT + (target.tags.erosionBonus as number | undefined ?? 0)
-    const erosion = Math.floor((lost * erosionPct) / 100)
-    if (erosion > 0) {
-      target.maxHp = Math.max(1, target.maxHp - erosion)
+    if (eroded > 0) {
+      target.maxHp = Math.max(1, target.maxHp - eroded)
       target.hp = Math.min(target.hp, target.maxHp)
     }
     this.emit(fight, {
@@ -280,7 +319,7 @@ export class Engine {
       element,
       kind,
       shieldAbsorbed: absorbed || undefined,
-      erosion: erosion || undefined,
+      erosion: eroded || undefined,
       crit: opts.crit,
     })
     if (source) fight.metrics[source.id].damageDealt += lost
@@ -290,7 +329,11 @@ export class Engine {
     return lost
   }
 
-  heal(fight: FightState, source: Fighter | undefined, target: Fighter, amount: number): number {
+  /**
+   * Soigne `target` (plafonné aux PV max courants). `noTrigger` : soin qui ne déclenche pas les buffs H / CH
+   * (soin d'un vol de vie, OTOMAI `HaxeBuff`).
+   */
+  heal(fight: FightState, source: Fighter | undefined, target: Fighter, amount: number, opts: { noTrigger?: boolean } = {}): number {
     if (!target.alive || amount <= 0) return 0
     if (this.stateFlag(target, 'incurable')) return 0
     const healed = Math.min(Math.floor(amount), target.maxHp - target.hp)
@@ -298,9 +341,25 @@ export class Engine {
     target.hp += healed
     this.emit(fight, { t: 'heal', source: source?.id ?? -1, target: target.id, amount: healed })
     if (source) fight.metrics[source.id].healingDone += healed
+    if (opts.noTrigger) return healed
     this.trigger(fight, target, { type: 'H', source, amount: healed })
     if (source && source.alive) this.trigger(fight, source, { type: 'CH', source, amount: healed })
     return healed
+  }
+
+  /**
+   * Érosion totale (%) d'un combattant : 10 % de base + `tags.erosionBonus` + buffs « ±X % Érosion » (776 / 3804,
+   * valeur du buff ou, à défaut, `diceNum` de l'effet). Le plafond de 50 % est appliqué par `erosion()`.
+   */
+  erosionPercent(f: Fighter): number {
+    let pct = BASE_EROSION_PCT + ((f.tags.erosionBonus as number | undefined) ?? 0)
+    for (const b of f.buffs) {
+      if (b.delay > 0 || b.kind === 'trigger') continue
+      const id = b.effect.effectId
+      if (id === EROSION_BOOST_EFFECT) pct += Math.abs(b.value || b.effect.diceNum)
+      else if (id === EROSION_DEBOOST_EFFECT) pct -= Math.abs(b.value || b.effect.diceNum)
+    }
+    return pct
   }
 
   addShield(fight: FightState, source: Fighter | undefined, target: Fighter, amount: number): void {
@@ -324,13 +383,17 @@ export class Engine {
       target.carriedBy = undefined
     }
     this.emit(fight, { t: 'death', target: target.id, killer: killer?.id })
+    // Registre chronologique des morts (résurrections 780/1034) : tableau remplacé, jamais modifié en place.
+    const death = { fighter: target.id, cell: target.cell, round: fight.round, killer: killer?.id }
+    fight.deaths = fight.deaths ? [...fight.deaths, death] : [death]
     if (killer && killer.team !== target.team) fight.metrics[killer.id].kills++
     this.trigger(fight, target, { type: 'X', source: killer, killed: true })
     if (killer && killer.alive && killer.id !== target.id) this.trigger(fight, killer, { type: 'K', source: killer })
     target.cell = -1
     // Mort : retrait des buffs portés par le mort et des buffs qu'il a lancés (dispellable 1 ou 2),
-    // comme le client (FightDeathStep → BuffManager.dispell + removeLinkedBuff).
-    target.buffs = []
+    // comme le client (FightDeathStep → BuffManager.dispell + removeLinkedBuff). Les buffs « désenvoûtement fort »
+    // (3) et indissipables (4) restent sur le mort (ex. états d'heure du Vortex, conservés à la résurrection).
+    target.buffs = target.buffs.filter(b => b.effect.dispellable === 3 || b.effect.dispellable === 4)
     this.recomputeStats(target)
     for (const f of fight.fighters) {
       if (!f.alive || f.id === target.id) continue
@@ -430,9 +493,21 @@ export class Engine {
       this.startTurn(fight, f)
       if (fight.ended) return undefined
       if (!f.alive) continue
+      // Tour annulé (effet 140) : le tour commence (durées, déclencheurs TB) puis se termine aussitôt.
+      if (this.passesTurn(f)) {
+        this.endTurn(fight, f)
+        if (fight.ended) return undefined
+        continue
+      }
       return f
     }
     return undefined
+  }
+
+  /** Tour annulé (effet 140, effects/buffs) : un buff actif `passTurn` fait passer automatiquement le tour du porteur. */
+  passesTurn(f: Fighter): boolean {
+    for (const b of f.buffs) if (b.passTurn && b.delay <= 0) return true
+    return false
   }
 
   startTurn(fight: FightState, f: Fighter): void {
@@ -463,8 +538,12 @@ export class Engine {
   hooks: {
     onTurnStart?: (fight: FightState, f: Fighter) => void
     onTurnEnd?: (fight: FightState, f: Fighter) => void
-    /** Entrée d'un combattant sur une cellule (pièges, glyphes d'entrée). */
-    onEnterCell?: (fight: FightState, f: Fighter, cell: number) => void
+    /**
+     * Entrée d'un combattant sur une cellule (pièges, glyphes d'entrée, glyphes-auras, portails ; effects/marks.ts).
+     * `fromDrag` : arrivée par poussée/attirance (les glyphes non-auras ne se déclenchent alors pas — port
+     * `ExecuteMarks`). À appeler aussi après une téléportation / un échange / un jet.
+     */
+    onEnterCell?: (fight: FightState, f: Fighter, cell: number, opts?: { fromDrag?: boolean }) => void
     /** Après des dommages subis (déclencheurs de buffs réactifs). */
     onDamaged?: (
       fight: FightState,
@@ -473,6 +552,10 @@ export class Engine {
       amount: number,
       info?: { element: number; kind: DamageKind; melee?: boolean; isWeapon?: boolean },
     ) => void
+    /** Points de bouclier consommés par un dommage (suivi des boucliers par buff, effects/damage.ts). */
+    onShieldAbsorbed?: (fight: FightState, target: Fighter, absorbed: number) => void
+    /** Un buff vient d'être retiré (expiration, désenvoûtement, 406...) — après mise à jour des caractéristiques. */
+    onBuffRemoved?: (fight: FightState, target: Fighter, buff: Buff) => void
   } = {}
 
   /**
@@ -532,10 +615,13 @@ export class Engine {
 
 // ───────────────────────────── utilitaires ─────────────────────────────
 
+/**
+ * Initiative d'un combattant. Convention : `stats.initiative` est le TOTAL (bonus + Force + Intelligence + Chance +
+ * Agilité), calculé par src/stats pour les personnages et par la fabrique pour les monstres. Le facteur PV/PV max a été
+ * retiré au patch 3.3 (docs/research/equipment.md).
+ */
 export function initiativeOf(f: Fighter): number {
-  // Initiative effective : initiative × PV courants / PV max (règle Dofus).
-  const base = f.stats.initiative + f.stats.strength + f.stats.intelligence + f.stats.chance + f.stats.agility
-  return f.maxHp > 0 ? (base * f.hp) / f.maxHp : base
+  return f.stats.initiative
 }
 
 export function emptyMetrics(): FighterMetrics {

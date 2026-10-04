@@ -82,9 +82,21 @@ export interface Stats {
   reflect: number // renvoi de dommages
   lifePoints: number // PV bonus fixes hors vitalité (ex. bonus de monstres)
   weaponSkillPct: number // maîtrise d'arme
+  // ── Caractéristiques de combat OPTIONNELLES (buffs de sorts uniquement, hors STAT_KEYS ; absentes = 0) ──
+  /** % résistance à tous les éléments (effets 1076 / 1077, carac 101), ajouté à chaque % élémentaire AVANT plafond. */
+  allResPct?: number
+  /** % soins finaux (effets 2971 / 2972). */
+  finalHealPct?: number
+  /** % dommages combo des bombes Roublard (effet 1027). */
+  comboDamagePct?: number
+  /** Puissance aux sorts (effet 1054, carac 98), ajoutée à la puissance pour les sorts uniquement. */
+  spellPower?: number
 }
 
-export type StatKey = keyof Stats
+/** Clés des caractéristiques toujours présentes (celles de STAT_KEYS) : les caractéristiques optionnelles en sont exclues. */
+export type StatKey = { [K in keyof Stats]-?: undefined extends Stats[K] ? never : K }[keyof Stats]
+/** Caractéristiques de combat optionnelles (absentes de STAT_KEYS, lues avec `?? 0`). */
+export type FightStatKey = Exclude<keyof Stats, StatKey>
 
 export const STAT_KEYS: readonly StatKey[] = [
   'vitality', 'wisdom', 'strength', 'intelligence', 'chance', 'agility', 'ap', 'mp', 'range', 'summons',
@@ -97,16 +109,72 @@ export const STAT_KEYS: readonly StatKey[] = [
   'lifePoints', 'weaponSkillPct',
 ]
 
+/** Caractéristiques à zéro — littéral objet (forme stable pour V8 : accès et copies rapides). */
 export function emptyStats(): Stats {
-  const s = {} as Stats
-  for (const k of STAT_KEYS) s[k] = 0
-  return s
+  return {
+    vitality: 0,
+    wisdom: 0,
+    strength: 0,
+    intelligence: 0,
+    chance: 0,
+    agility: 0,
+    ap: 0,
+    mp: 0,
+    range: 0,
+    summons: 0,
+    initiative: 0,
+    prospecting: 0,
+    critical: 0,
+    heals: 0,
+    power: 0,
+    damage: 0,
+    neutralDamage: 0,
+    earthDamage: 0,
+    fireDamage: 0,
+    waterDamage: 0,
+    airDamage: 0,
+    criticalDamage: 0,
+    pushDamage: 0,
+    trapDamage: 0,
+    trapPower: 0,
+    spellDamagePct: 0,
+    weaponDamagePct: 0,
+    meleeDamagePct: 0,
+    rangedDamagePct: 0,
+    finalDamagePct: 0,
+    apReduction: 0,
+    mpReduction: 0,
+    apParry: 0,
+    mpParry: 0,
+    tackleBlock: 0,
+    tackleEvade: 0,
+    neutralResPct: 0,
+    earthResPct: 0,
+    fireResPct: 0,
+    waterResPct: 0,
+    airResPct: 0,
+    neutralRes: 0,
+    earthRes: 0,
+    fireRes: 0,
+    waterRes: 0,
+    airRes: 0,
+    criticalRes: 0,
+    pushRes: 0,
+    meleeResPct: 0,
+    rangedResPct: 0,
+    spellResPct: 0,
+    weaponResPct: 0,
+    reflect: 0,
+    lifePoints: 0,
+    weaponSkillPct: 0,
+  }
 }
 
 export function addStats(target: Stats, source: Partial<Stats>, factor = 1): Stats {
   for (const k in source) {
     const v = source[k as StatKey]
-    if (v) target[k as StatKey] += v * factor
+    // `?? 0` : une caractéristique de combat optionnelle peut être absente de `target`.
+    if (v) target[k as StatKey] = (target[k as StatKey] ?? 0) + v * factor
   }
   return target
 }

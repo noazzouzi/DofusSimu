@@ -35,6 +35,12 @@ export interface EffectContext {
    * des effets 1017/2017/1019 (docs/research/effects.md §2.5, vérification).
    */
   trigger?: { type: string; source?: Fighter; element?: number; amount?: number; melee?: boolean }
+  /**
+   * Effet joué par une marque (piège, glyphe, glyphe-aura, rune) : `kind` donne le type des dommages indirects
+   * ('trap' ⇒ DamageKind 'trap' / déclencheur DT ; 'glyph' et 'aura' ⇒ 'glyph' / DG), `cell` la case principale de la
+   * marque (origine des poussées). Absent pour un sort lancé normalement.
+   */
+  mark?: { kind: 'trap' | 'glyph' | 'aura' | 'rune'; uid: number; cell: number }
 }
 
 export type EffectHandler = (ctx: EffectContext) => void

@@ -3,12 +3,14 @@
  * jet de coup critique, calcul des zones et des cibles, puis application ordonnée des effets.
  */
 import type { SpellLevelData } from '../data/model'
-import { distance, inDiagonal, inLine } from '../map/geometry'
+import { critChance } from '../damage/crit'
+import { distance, inDiagonal, inLine, isInCastRange } from '../map/geometry'
 import { hasLineOfSight } from '../map/los'
 import { zoneCells } from '../map/zones'
 import { checkStatesCriterion } from './criteria'
 import type { Engine } from './engine'
 import { applyEffects } from './effects/core'
+import { modifiedSpellLevel } from './effects/buffs/spellMods'
 import { nextRandom } from './random'
 import type { Fighter, FightState, KnownSpell } from './types'
 
@@ -44,7 +46,8 @@ export function canCast(
   cell: number,
   opts: { ignoreAp?: boolean; fromCell?: number } = {},
 ): CastFailure | null {
-  const lvl = spell.level
+  // Modificateurs de sorts du lanceur (portée, coût, lancers, LdV... — effects/buffs/spellMods.ts) ; `spell.level` sinon.
+  const lvl = modifiedSpellLevel(caster, spell.level)
   const from = opts.fromCell ?? caster.cell
   if (!caster.alive) return 'dead'
   if (!opts.ignoreAp && caster.ap < lvl.apCost) return 'ap'
@@ -56,11 +59,13 @@ export function canCast(
   if (!mapCell || !mapCell.walkable) return 'cellInvalid'
   const { min, max } = spellRange(caster, lvl)
   const d = distance(from, cell)
-  if (d < min || d > max) return 'range'
-  if (lvl.castInLine && lvl.castInDiagonal) {
-    if (!inLine(from, cell) && !inDiagonal(from, cell)) return 'line'
-  } else if (lvl.castInLine && !inLine(from, cell)) return 'line'
-  else if (lvl.castInDiagonal && !inDiagonal(from, cell)) return 'diagonal'
+  // Portée en « pas » (une diagonale de r cases compte r — map-grammar, isInCastRange).
+  if (!isInCastRange(from, cell, min, max, lvl.castInLine, lvl.castInDiagonal)) {
+    if (lvl.castInLine && !lvl.castInDiagonal && !inLine(from, cell)) return 'line'
+    if (lvl.castInDiagonal && !lvl.castInLine && !inDiagonal(from, cell)) return 'diagonal'
+    if (lvl.castInLine && lvl.castInDiagonal && !inLine(from, cell) && !inDiagonal(from, cell)) return 'line'
+    return 'range'
+  }
   const occupant = engine.fighterAt(fight, cell)
   if (lvl.needFreeCell && occupant && occupant.id !== caster.id) return 'cellNotFree'
   if (lvl.needFreeCell && from !== caster.cell && cell === from) return 'cellNotFree'
@@ -76,15 +81,16 @@ export function canCast(
       const o = engine.fighterAt(fight, c)
       return !!o && o.id !== caster.id
     }
-    if (!hasLineOfSight(from, cell, blocks)) return 'los'
+    // La case cible doit elle-même être transparente (son occupant ne bloque pas).
+    const targetBlocks = (c: number) => !fight.map.cells[c]?.los
+    if (!hasLineOfSight(from, cell, blocks, targetBlocks)) return 'los'
   }
   return null
 }
 
 /** Probabilité de coup critique d'un sort pour un lanceur (0..1). */
 export function critProbability(caster: Fighter, lvl: SpellLevelData): number {
-  if (lvl.critChance <= 0) return 0
-  return Math.max(0, Math.min(1, (lvl.critChance + caster.stats.critical) / 100))
+  return critChance(lvl.critChance, caster.stats.critical) / 100
 }
 
 export interface CastResult {
@@ -102,7 +108,7 @@ export function castSpell(engine: Engine, fight: FightState, caster: Fighter, sp
   if (!spell) return { ok: false, failure: 'unknownSpell' }
   const failure = canCast(engine, fight, caster, spell, cell)
   if (failure) return { ok: false, failure }
-  const lvl = spell.level
+  const lvl = modifiedSpellLevel(caster, spell.level)
   caster.ap -= lvl.apCost
   const pCrit = critProbability(caster, lvl)
   const crit = fight.options.rollMode === 'random' ? nextRandom(fight) < pCrit : false

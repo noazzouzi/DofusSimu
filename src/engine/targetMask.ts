@@ -100,6 +100,8 @@ export interface MaskCondition {
   letter?: string
   /** Groupe OU (familles B / F / Z) : index de groupe, −1 sinon. */
   group: number
+  /** Premier membre de son groupe OU dans sa liste (le groupe y est évalué en entier). */
+  groupHead?: boolean
   raw: string
 }
 
@@ -225,6 +227,11 @@ function buildMask(mask: string): CompiledMask {
     ;(onCaster ? m.casterConditions : m.targetConditions).push(cond)
   }
   m.groupCount = groups.size
+  for (const list of [m.casterConditions, m.targetConditions])
+    for (let i = 0; i < list.length; i++) {
+      const g = list[i].group
+      if (g >= 0 && !list.slice(0, i).some(c => c.group === g)) list[i].groupHead = true
+    }
   return m
 }
 
@@ -386,30 +393,28 @@ function conditionHolds(c: MaskCondition, caster: Fighter, who: Fighter, ctx: Ma
   }
 }
 
-// Résultats des groupes OU (pas de réentrance possible : évaluation synchrone sans rappel vers ce module).
-const groupState = new Uint8Array(32)
-
-function conditionsHold(m: CompiledMask, list: MaskCondition[], caster: Fighter, who: Fighter, ctx: MaskContext): boolean {
-  if (!list.length) return true
-  let hasGroups = false
-  for (const c of list) {
+/**
+ * Toutes les conditions de la liste (ET), sauf les groupes OU (B# / F# / Z# de même famille) : au moins un membre
+ * vrai par groupe. Sans état partagé : les rappels de `ctx` peuvent réévaluer d'autres masques (réentrance sûre).
+ */
+function conditionsHold(list: readonly MaskCondition[], caster: Fighter, who: Fighter, ctx: MaskContext): boolean {
+  for (let i = 0; i < list.length; i++) {
+    const c = list[i]
     if (c.group < 0) {
       if (!conditionHolds(c, caster, who, ctx)) return false
-    } else hasGroups = true
+    } else if (c.groupHead) {
+      let any = false
+      for (let j = i; j < list.length && !any; j++) if (list[j].group === c.group && conditionHolds(list[j], caster, who, ctx)) any = true
+      if (!any) return false
+    }
   }
-  if (!hasGroups) return true
-  // Groupes OU : au moins une condition vraie par groupe présent dans la liste.
-  const n = Math.min(m.groupCount, groupState.length)
-  groupState.fill(0, 0, n)
-  for (const c of list) if (c.group >= 0) groupState[c.group] |= 2 | (conditionHolds(c, caster, who, ctx) ? 1 : 0)
-  for (let g = 0; g < n; g++) if (groupState[g] === 2) return false
   return true
 }
 
 /** Conditions portant sur le lanceur ('*') : si elles échouent, l'effet est retiré du sort (aucune cible). */
 export function casterPassesMask(mask: string, caster: Fighter, ctx: MaskContext = NO_CONTEXT): boolean {
   const m = compileTargetMask(mask)
-  return conditionsHold(m, m.casterConditions, caster, caster, ctx)
+  return conditionsHold(m.casterConditions, caster, caster, ctx)
 }
 
 /**
@@ -420,7 +425,7 @@ export function casterPassesMask(mask: string, caster: Fighter, ctx: MaskContext
 export function matchesTargetMask(mask: string, caster: Fighter, target: Fighter, ctx: MaskContext = NO_CONTEXT): boolean {
   const m = compileTargetMask(mask)
   if (m.empty) return true
-  if (m.casterConditions.length && !conditionsHold(m, m.casterConditions, caster, caster, ctx)) return false
+  if (m.casterConditions.length && !conditionsHold(m.casterConditions, caster, caster, ctx)) return false
   if (!included(m, caster, target)) return false
-  return conditionsHold(m, m.targetConditions, caster, target, ctx)
+  return conditionsHold(m.targetConditions, caster, target, ctx)
 }

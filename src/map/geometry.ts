@@ -243,6 +243,51 @@ export function cellsBetween(a: number, b: number): number[] {
   return cellsInDirection(a, dir, steps - 1)
 }
 
+// ───────────────────────────── portée de lancer ─────────────────────────────
+
+/**
+ * `to` est-elle dans la zone de PORTÉE d'un sort lancé depuis `from` ? (D2 `FightSpellCastFrame` + `Cross.as` /
+ * `Lozenge.as`, mechanics.md §4.2, map-geometry.json#rangeShapes). Géométrie seule : la marchabilité de la case,
+ * la LdV et la portée illimitée (63 sans ligne/diagonale/LdV, testée avant le bonus de PO) restent à l'appelant.
+ *  - lancer en ligne ET en diagonale : croix 8 directions, (x ± r, y), (x, y ± r), (x ± r, y ± r) ;
+ *  - en ligne seulement : (x ± r, y), (x, y ± r) ; en diagonale seulement : (x ± r, y ± r) ;
+ *  - ni l'un ni l'autre : losange, min ≤ |dx| + |dy| ≤ max.
+ * Avec min ≤ r ≤ max, où r compte des PAS : en diagonale, (x + r, y + r) est à r de portée (Manhattan 2r) — une PO
+ * de 1 « ligne + diagonale » atteint les 8 cases autour du lanceur. min = 0 inclut la case du lanceur.
+ */
+export function isInCastRange(
+  from: number,
+  to: number,
+  minRange: number,
+  maxRange: number,
+  castInLine: boolean,
+  castInDiagonal: boolean,
+): boolean {
+  const adx = Math.abs(CELL_X[to] - CELL_X[from])
+  const ady = Math.abs(CELL_Y[to] - CELL_Y[from])
+  let r = adx + ady
+  if (castInLine || castInDiagonal) {
+    if (castInLine && (adx === 0 || ady === 0)) r = adx + ady
+    else if (castInDiagonal && adx === ady) r = adx
+    else return false
+  }
+  return r >= minRange && r <= maxRange
+}
+
+/** Cellules dans la zone de portée (`isInCastRange`), par identifiant croissant — ajoutées à `out`. */
+export function castRangeCells(
+  from: number,
+  minRange: number,
+  maxRange: number,
+  castInLine: boolean,
+  castInDiagonal: boolean,
+  out: number[] = [],
+): number[] {
+  if (from < 0 || from >= CELL_COUNT) return out
+  for (let c = 0; c < CELL_COUNT; c++) if (isInCastRange(from, c, minRange, maxRange, castInLine, castInDiagonal)) out.push(c)
+  return out
+}
+
 // ───────────────────────────── voisinage ─────────────────────────────
 
 /** Voisins orthogonaux précalculés (ordre SE, NW, NE, SW), tableaux partagés et gelés. */

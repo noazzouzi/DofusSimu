@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ZoneSpec } from '../src/data/model'
-import { CELL_COUNT, CELL_X, CELL_Y, distance, pointToCell } from '../src/map/geometry'
+import { CELL_COUNT, CELL_X, CELL_Y, cellInDirection, directionBetween, distance, pointToCell } from '../src/map/geometry'
 import {
   KNOWN_SHAPES,
   compileZone,
@@ -148,10 +148,20 @@ describe('zones : formes orientées (direction lanceur → impact)', () => {
     expect(rel(z('/3,0,10,4'), WEST)).toEqual(rel(z('L3,0,10,4'), WEST))
   })
 
-  it('L : direction forcée (drapeau d → paliers, ou option) et L63 jusqu’au bord', () => {
-    expect(zoneDirection(z('L1,0,10,4', 'd'), CENTER, WEST)).toBe(4)
-    expect(rel(z('L1,0,10,4', 'd'), WEST)).toEqual(pts([0, 0], [-1, -1]))
+  it('L : direction forcée (drapeau d : direction fournie par le moteur) et L63 jusqu’au bord', () => {
+    // Le drapeau ne dit pas QUELLE direction : maxDecreaseCount (= 4 pour toutes ces zones) n'en est pas une
+    // (4 = diagonale, alors que « Le Fou » / Audace de Dodge téléportent sur une case ADJACENTE aléatoire).
+    const forced = z('L1,0,10,4', 'd')
+    expect(compileZone(forced).forcedDirection).toBe(true)
+    expect(zoneDirection(forced, CENTER, WEST)).toBe(1) // sans option : orientation d'un lancer normal (port)
+    expect(rel(forced, WEST)).toEqual(pts([0, 0], [1, 0]))
+    for (const d of [1, 3, 5, 7]) {
+      // Impact puis la case adjacente dans la direction imposée.
+      expect(zoneCells(forced, CENTER, WEST, { direction: d })).toEqual([CENTER, cellInDirection(CENTER, d)])
+      expect(distance(CENTER, cellInDirection(CENTER, d))).toBe(1)
+    }
     expect(rel(z('L1,0,10,4'), WEST, CENTER, { direction: 7 })).toEqual(pts([0, 0], [0, 1]))
+    expect(rel(z('L1,0,10,4'), WEST, CENTER, { direction: 9 })).toEqual(pts([0, 0], [1, 0])) // invalide : ignorée
     const long = zoneCells(z('L63,0,10,4'), CENTER, WEST)
     expect(long[0]).toBe(CENTER)
     expect(long.every((c, i) => CELL_Y[c] === CY && CELL_X[c] === CX + i)).toBe(true)
@@ -265,6 +275,7 @@ describe('zones : ordre, cohérence et API', () => {
     'P1,0,10,4', 'C2,1,10,4', 'C3,0,10,4', 'O2,0,10,4', 'I2,0,10,4', 'D4,0,10,4', 'X2,1,10,4', 'Q3,0,10,4', '+3,1,10,4',
     '#2,2,10,4', '*2,0,10,4', 'G2,0,10,4', 'W2,0,10,4', 'Z5,0,10,4', 'L3,0,10,4', '/3,0,10,4', 'T2,0,10,4', '-2,0,10,4',
     'U2,0,10,4', 'V2,0,10,4', 'F2,0,10,4', 'R1,3,10,4', 'R2,1,10,4', 'B3,0,10,4', 'a1,0,10,4', 'A1,0,10,4', 'C63,1,10,4',
+    'C63,0,10,4', 'C39,0,10,4', 'C38,0,10,4',
   ]
   const lines: [string, string][] = [
     ['l1,63,0,0', 's'],
@@ -340,8 +351,8 @@ describe('zones : ordre, cohérence et API', () => {
     expect(compileZone(z('#1,0,10,4'))).toMatchObject({ radius: 1, minRadius: 1 })
     expect(compileZone(z('*2,1,10,4'))).toMatchObject({ radius: 2, minRadius: 0 })
     expect(compileZone(z('R0,0,0,0'))).toMatchObject({ radius: 1, minRadius: 1 })
-    expect(compileZone(z('L1,0,10,4', 'd'))).toMatchObject({ forcedDirection: 4, orientation: 8 })
-    expect(compileZone(z('V1,0,10,4'))).toMatchObject({ orientation: 4, forcedDirection: -1 })
+    expect(compileZone(z('L1,0,10,4', 'd'))).toMatchObject({ forcedDirection: true, orientation: 8 })
+    expect(compileZone(z('V1,0,10,4'))).toMatchObject({ orientation: 4, forcedDirection: false })
     expect(compileZone(z('C2,0,10,4', 'v'))).toMatchObject({ onlyIfInSight: true, orientation: 0 })
     for (const s of KNOWN_SHAPES) expect(compileZone({ shape: s, size: 1, minSize: 0, decreaseStepPct: 10, maxDecreaseCount: 4, stopAtTarget: false }).shape).toBe(s)
   })
@@ -417,6 +428,10 @@ describe('zones : dégressivité (GetAoeMalus)', () => {
     expect(zoneEfficiency(z('l1,63,10,4', 's'), CENTER, at(-2, 0), WEST)).toBe(1)
     expect(zoneEfficiency(z('P1,0,10,4'), CENTER, CENTER)).toBe(1)
     expect(zoneEfficiency(z('X1,0,10,0'), CENTER, at(1, 0))).toBe(1) // 0 palier
+    // Rayon < 1 : jamais de malus, même pour une cible hors zone (lanceur ajouté par C, déclencheur O...).
+    expect(zoneMalusPct(z('P1,0,10,4'), CENTER, at(3, 0))).toBe(0)
+    expect(zoneMalusPct(z('C0,0,10,4'), CENTER, at(0, 2))).toBe(0)
+    expect(zoneMalusPct(z('C1,0,10,4'), CENTER, at(0, 1))).toBe(10)
   })
 
   it('l à rayon ≤ 50 : distance mesurée depuis la case d’impact, moins le rayon minimal (port)', () => {
@@ -424,5 +439,240 @@ describe('zones : dégressivité (GetAoeMalus)', () => {
     const far = pointToCell(CX + 4, CY)
     expect(zoneEfficiency(zone, far, at(-2, 0), WEST)).toBe(0.6) // d = 6 − 1 = 5 → 4 paliers
     expect(zoneEfficiency(zone, far, at(3, 0), WEST)).toBe(1)
+  })
+})
+
+// ───────────── Oracle : transcription littérale du port C# (SpellZone.cs) ─────────────
+// `FightContext.GetFightersFromZone` appelle `IsCellInZone(case du combattant, case d'impact, case du lanceur)` ;
+// les paramètres des fonctions du port portent des noms trompeurs, on garde ici leur ordre exact.
+// Formes non couvertes : D (version « IsCellIn » cassée dans le port), F (profondeur r + 1), B (incohérent) —
+// écarts documentés dans zones.ts. Lancers non alignés exclus (direction −1 dans le port, écart documenté).
+const portDist = (a: number, b: number) => Math.abs(CELL_X[a] - CELL_X[b]) + Math.abs(CELL_Y[a] - CELL_Y[b])
+const portCardinal = (d: number) => d >= 0 && d % 2 === 0
+/** GetLookDirection8ExactByCoord (a == b → 1, non aligné → −1). */
+function portLook8(a: number, b: number): number {
+  const dx = CELL_X[b] - CELL_X[a]
+  const dy = CELL_Y[b] - CELL_Y[a]
+  if (dy === 0) return dx < 0 ? 5 : 1
+  if (dx === 0) return dy < 0 ? 3 : 7
+  if (dx === -dy) return dx < 0 ? 6 : 2
+  if (dx === dy) return dx < 0 ? 4 : 0
+  return -1
+}
+function portLook4(a: number, b: number): number {
+  const dx = CELL_X[a] - CELL_X[b]
+  const dy = CELL_Y[a] - CELL_Y[b]
+  if (Math.abs(dx) > Math.abs(dy)) return dx < 0 ? 1 : 5
+  return dy < 0 ? 7 : 3
+}
+interface PortZone {
+  shape: string
+  R: number
+  m: number
+  stop: boolean
+}
+/** FromRawZone + FillZoneFunctions sur les paramètres Dofus 3 (param1, param2). */
+function portZone(s: string, flags = ''): PortZone {
+  const p = s.slice(1).split(',').map(Number)
+  const z: PortZone = { shape: s[0], R: p[0], m: '#+CQRXl'.includes(s[0]) ? p[1] : 0, stop: flags.includes('s') }
+  if (z.shape === 'l') [z.R, z.m] = [p[1], p[0]]
+  if (z.shape === 'I') [z.m, z.R] = [z.R, 63]
+  if (z.shape === 'O') z.m = z.R
+  if (z.shape === 'P') z.R = 0
+  if (z.shape === 'R') [z.R, z.m] = [Math.max(1, z.R), Math.max(1, z.m)]
+  return z
+}
+function portLine(z: PortZone, fromCaster: boolean, casterCellId: number, targetCellId: number, cellToCheckId: number): boolean {
+  if (cellToCheckId === casterCellId) return false
+  const lookDirection = portLook8(cellToCheckId, targetCellId)
+  let maxRadius = z.R
+  let direction: number
+  let d: number
+  if (fromCaster) {
+    direction = portLook8(cellToCheckId, casterCellId)
+    d = portDist(cellToCheckId, casterCellId)
+    if (z.stop && portDist(cellToCheckId, targetCellId) < maxRadius) maxRadius = portDist(cellToCheckId, targetCellId)
+  } else {
+    direction = portLook8(targetCellId, casterCellId)
+    d = portDist(targetCellId, casterCellId)
+  }
+  if (portCardinal(direction) && d > 1) d >>= 1
+  return (lookDirection === direction || d === 0) && d >= z.m && d <= maxRadius
+}
+function portCross(z: PortZone, dirs: number[], ignoreCenter: boolean, centerCellId: number, targetCellId: number): boolean {
+  const look = portLook8(targetCellId, centerCellId)
+  let d = portDist(centerCellId, targetCellId)
+  if (portCardinal(look) && d > 1) d >>= 1
+  return (dirs.includes(look) || d === 0) && d >= z.m + (ignoreCenter && z.m === 0 ? 1 : 0) && d <= z.R
+}
+function portPerp(z: PortZone, targetCellId: number, casterCellId: number, impactCellId: number): boolean {
+  const l8 = portLook8(impactCellId, casterCellId)
+  const look = portLook8(casterCellId, targetCellId)
+  let d = portDist(casterCellId, targetCellId)
+  if (portCardinal(look) && d > 1) d >>= 1
+  return (look === (l8 + 2) % 8 || look === (l8 + 6) % 8 || d === 0) && d >= z.m && d <= z.R
+}
+function portHalf(z: PortZone, targetCellId: number, originCellId: number, directionCellId: number): boolean {
+  const d8 = portLook8(directionCellId, originCellId)
+  const look = portLook8(originCellId, targetCellId)
+  let d = portDist(originCellId, targetCellId)
+  if (portCardinal(look) && d > 1) d >>= 1
+  return ((d8 + 5) % 8 === look || (d8 + 3) % 8 === look || d === 0) && d <= z.R && d >= z.m
+}
+function portCone(z: PortZone, targetCellId: number, casterCellId: number, cellId: number): boolean {
+  const dX = CELL_X[targetCellId] - CELL_X[casterCellId]
+  const dY = CELL_Y[targetCellId] - CELL_Y[casterCellId]
+  switch (portLook4(cellId, casterCellId)) {
+    case 1:
+      return dX >= 0 && dX <= z.R && Math.abs(dY) <= dX
+    case 3:
+      return dY <= 0 && dY >= -z.R && Math.abs(dX) <= -dY
+    case 5:
+      return dX <= 0 && dX >= -z.R && Math.abs(dY) <= -dX
+    default:
+      return dY >= 0 && dY <= z.R && Math.abs(dX) <= dY
+  }
+}
+function portRect(z: PortZone, c1: number, c2: number, c3: number): boolean {
+  const d8 = portLook8(c3, c2)
+  const sign = d8 === 5 || d8 === 3 ? -1 : 1
+  const vertical = d8 === 7 || d8 === 3
+  const diff1 = Math.abs(vertical ? CELL_X[c1] - CELL_X[c2] : CELL_Y[c1] - CELL_Y[c2])
+  const diff2 = (vertical ? CELL_Y[c1] - CELL_Y[c2] : CELL_X[c1] - CELL_X[c2]) * sign
+  return diff1 <= Math.floor((1 + 2 * z.R) / 2) && diff2 >= 0 && diff2 < 1 + z.m
+}
+function portSquare(z: PortZone, ignoreDiagonal: boolean, cellId: number, startCellId: number): boolean {
+  const ax = Math.abs(CELL_X[cellId] - CELL_X[startCellId])
+  const ay = Math.abs(CELL_Y[cellId] - CELL_Y[startCellId])
+  return (!ignoreDiagonal || ax !== ay) && ax <= z.R && ay <= z.R && ax >= z.m && ay >= z.m
+}
+/** spellZone.IsCellInZone(x = combattant, y = impact, z = lanceur). */
+function portIsCellInZone(zn: PortZone, x: number, y: number, k: number): boolean {
+  switch (zn.shape) {
+    case 'P':
+      return x === y
+    case 'C':
+    case 'O':
+    case 'I':
+      return portDist(x, y) <= zn.R && portDist(x, y) >= zn.m
+    case 'X':
+      return portCross(zn, [1, 3, 5, 7], false, x, y)
+    case 'Q':
+      return portCross(zn, [1, 3, 5, 7], true, x, y)
+    case '+':
+      return portCross(zn, [0, 2, 4, 6], false, x, y)
+    case '#':
+      return portCross(zn, [0, 2, 4, 6], true, x, y)
+    case '*':
+      return portCross(zn, [0, 1, 2, 3, 4, 5, 6, 7], false, x, y)
+    case 'G':
+      return portSquare(zn, false, x, y)
+    case 'W':
+      return portSquare(zn, true, x, y)
+    case 'L':
+    case '/':
+      return portLine(zn, false, x, y, k)
+    case 'l':
+      return portLine(zn, true, x, y, k)
+    case 'T':
+    case '-':
+      return portPerp(zn, x, y, k)
+    case 'U':
+      return portHalf(zn, x, y, k)
+    case 'V':
+      return portCone(zn, x, y, k)
+    case 'R':
+      return portRect(zn, x, y, k)
+    case 'Z': {
+      const dx = CELL_X[x] - CELL_X[y]
+      const dy = CELL_Y[x] - CELL_Y[y]
+      return Math.sqrt(dx * dx + dy * dy) >= zn.R
+    }
+    default:
+      return true // A, a
+  }
+}
+/** SpellZone.GetAoeMalus(sourceCell = impact, casterCellId, affectedCellId). */
+function portAoeMalus(zn: PortZone, step: number, ticks: number, source: number, caster: number, affected: number): number {
+  if (zn.R > 50) return 0
+  let d: number
+  const tx = CELL_X[source]
+  const ty = CELL_Y[source]
+  const ax = CELL_X[affected]
+  const ay = CELL_Y[affected]
+  switch (zn.shape) {
+    case 'A':
+    case 'a':
+    case 'I':
+      d = 0
+      break
+    case 'G':
+    case 'R':
+    case 'W':
+      d = Math.max(Math.abs(tx - ax), Math.abs(ty - ay))
+      break
+    case '#':
+    case '+':
+    case '-':
+    case '/':
+    case 'U':
+      d = portDist(source, affected) >> 1
+      break
+    case 'V': {
+      const dir = portLook8(caster, source)
+      d = dir === 1 || dir === 5 ? Math.abs(tx - ax) : dir === 3 || dir === 7 ? Math.abs(ty - ay) : dir < 0 ? 0 : NaN
+      break
+    }
+    default:
+      d = portDist(source, affected)
+  }
+  return Math.min(Math.min(Math.max(d - (zn.shape === 'R' ? 0 : zn.m), 0), ticks) * step, 100)
+}
+
+describe('zones : conformité au port D3 (SpellZone.cs) pour tout lancer aligné', () => {
+  const specs: [string, string][] = [
+    ['P1,0,10,4', ''], ['C2,0,10,4', ''], ['C2,1,10,4', ''], ['O2,0,10,4', ''], ['I3,0,10,4', ''], ['X1,0,10,4', ''],
+    ['X6,1,10,4', ''], ['Q2,2,10,4', ''], ['+3,1,10,4', ''], ['#2,2,10,4', ''], ['*2,0,10,4', ''], ['G2,0,10,4', ''],
+    ['W2,0,10,4', ''], ['Z4,0,10,4', ''], ['L3,0,10,4', ''], ['L63,0,10,4', ''], ['/3,0,10,4', ''], ['l1,63,0,0', 's'],
+    ['l1,7,10,4', ''], ['l0,6,10,4', 's'], ['l1,3,10,4', 's'], ['T2,0,10,4', ''], ['-2,0,10,4', ''], ['U2,0,10,4', ''],
+    ['V2,0,10,4', ''], ['R1,3,0,0', ''], ['R2,1,10,4', ''], ['a1,0,10,4', ''],
+  ]
+  // Centres variés (bords, coins, milieu) ; lanceurs : le centre lui-même et toutes les cases alignées.
+  const centers = [0, 13, 27, 215, 300, 333, 546, 559]
+  const castersOf = (center: number) => {
+    const out = [center]
+    for (let c = 0; c < CELL_COUNT; c++) if (c !== center && portLook8(c, center) >= 0) out.push(c)
+    return out
+  }
+
+  it('appartenance : zoneCells ⇔ IsCellInZone(combattant, impact, lanceur)', () => {
+    for (const [s, f] of specs) {
+      const pz = portZone(s, f)
+      const zone = z(s, f)
+      for (const center of centers)
+        for (const caster of castersOf(center)) {
+          const mine = zoneMembership(zone, center, caster)
+          for (let c = 0; c < CELL_COUNT; c++)
+            if (mine(c) !== portIsCellInZone(pz, c, center, caster))
+              throw new Error(`${s}|${f} impact ${center} lanceur ${caster} cellule ${c} : port ${!mine(c)}`)
+        }
+    }
+  })
+
+  it('dégressivité : zoneMalusPct = GetAoeMalus (V : lancers en ligne ; diagonale = écart documenté)', () => {
+    for (const [s, f] of specs) {
+      const pz = portZone(s, f)
+      const zone = z(s, f)
+      const c = compileZone(zone)
+      for (const center of centers)
+        for (const caster of castersOf(center)) {
+          if (c.shape === 'V' && caster !== center && directionBetween(caster, center) % 2 === 0) continue
+          for (let cell = 0; cell < CELL_COUNT; cell += 3) {
+            const want = c.radius < 1 ? 0 : portAoeMalus(pz, c.step, c.maxTicks, center, caster, cell)
+            const got = zoneMalusPct(zone, center, cell, caster)
+            if (got !== want) throw new Error(`${s} impact ${center} lanceur ${caster} cellule ${cell} : ${got} ≠ ${want}`)
+          }
+        }
+    }
   })
 })

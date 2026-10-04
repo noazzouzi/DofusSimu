@@ -143,6 +143,15 @@ describe('masques : conditions (PassMaskExclusion)', () => {
     expect(matchesTargetMask('a,F8', caster, caster)).toBe(false)
     // Deux groupes OU distincts (F et B) : chacun doit être satisfait.
     expect(sel('a,A,F3112,F3835,B8,B9')).toEqual([])
+    // Groupes OU du lanceur (*F) et de la cible (F) : évalués séparément, l'ordre des jetons est indifférent.
+    const lance = fighter(20, 0, 'summon', { monsterId: 7139, summonerId: 0 })
+    expect(matchesTargetMask('a,A,*F1,F3833,*F7139,F3835', lance, enemySummon)).toBe(true)
+    expect(matchesTargetMask('a,A,*F1,F3833,*F7139,F3835', lance, enemyPlayer)).toBe(false)
+    expect(matchesTargetMask('a,A,*F1,F3833,*F2,F3835', lance, enemySummon)).toBe(false)
+    // Réentrance : un rappel du contexte peut évaluer un autre masque à groupes OU pendant l'évaluation.
+    const ctx: MaskContext = { custom: (_code, f) => matchesTargetMask('a,A,B1,B9', caster, f) }
+    expect(matchesTargetMask('a,A,B9,PR,B1', caster, enemyPlayer, ctx)).toBe(true)
+    expect(matchesTargetMask('a,A,F3833,PR,F3835', caster, enemySummon, ctx)).toBe(false)
   })
 
   it('*F (groupe OU sur le lanceur), *h / *i / *m / *j / *l / *s (type du lanceur)', () => {
