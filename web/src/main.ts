@@ -101,6 +101,7 @@ async function openSource(key: string): Promise<void> {
     app.load(replay)
     currentKey = key
     renderSelect()
+    if (replay.warnings?.length) toast(`« ${src.label} » : ${replay.warnings.join(' · ')}`, true)
   } catch (e) {
     toast(e instanceof ReplayError ? e.message : `Impossible de charger « ${src.label} » : ${(e as Error).message}`, true)
     select.value = currentKey
@@ -125,6 +126,7 @@ function loadDirect(replay: Replay, label: string): void {
   app.load(replay)
   currentKey = key
   renderSelect()
+  if (replay.warnings?.length) toast(`${label} : ${replay.warnings.join(' · ')}`, true)
 }
 
 window.loadReplay = (input: unknown, label = 'Replay chargé') => {
@@ -141,8 +143,9 @@ const fileInput = $<HTMLInputElement>('file-input')
 $('open-file').addEventListener('click', () => fileInput.click())
 async function readFile(file: File): Promise<void> {
   try {
-    loadDirect(parseReplay(await file.text()), `Fichier : ${file.name}`)
-    toast(`Replay « ${file.name} » chargé`)
+    const replay = parseReplay(await file.text())
+    loadDirect(replay, `Fichier : ${file.name}`)
+    if (!replay.warnings?.length) toast(`Replay « ${file.name} » chargé`)
   } catch (e) {
     toast(e instanceof ReplayError ? `${file.name} : ${e.message}` : `Lecture impossible : ${(e as Error).message}`, true)
   }

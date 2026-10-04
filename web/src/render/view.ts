@@ -13,6 +13,8 @@ export const CELL_H = 32
 /** Hauteur des piliers et épaisseur de la dalle (unités carte). */
 export const PILLAR_H = 22
 export const SLAB_H = 9
+/** Marge supplémentaire au-dessus de la carte accessible à la caméra en vue zoomée (unités carte). */
+export const ZOOM_TOP_MARGIN = 70
 
 export type CellKind = 'floor' | 'hole' | 'pillar' | 'void'
 
@@ -89,8 +91,9 @@ export function computeBounds(kinds: CellKind[], extraCells: Iterable<number>): 
   if (!Number.isFinite(minX)) {
     for (let c = 0; c < CELL_COUNT; c++) add(c)
   }
-  // Marges : jetons et barres de vie au-dessus de la rangée du haut, dalle en dessous.
-  return { minX: minX - 14, minY: minY - 62, maxX: maxX + 14, maxY: maxY + SLAB_H + 12 }
+  // Marges : jetons, barres de vie et textes flottants (dégâts empilés) au-dessus de la rangée
+  // du haut, dalle en dessous.
+  return { minX: minX - 14, minY: minY - 92, maxX: maxX + 14, maxY: maxY + SLAB_H + 12 }
 }
 
 /**
@@ -153,8 +156,12 @@ export class Viewport {
     const b = this.bounds
     const vw = this.visW
     const vh = this.visH
+    // En vue zoomée, la caméra peut monter un peu au-dessus de la carte : les textes de dégâts des
+    // combattants du haut de l'arène et les puces de la scène (tour, vague, zoom) ne se gênent pas.
+    const minTop = b.minY - ZOOM_TOP_MARGIN
+    const height = b.maxY - minTop
     this.left = vw >= this.width ? b.minX - (vw - this.width) / 2 : Math.max(b.minX, Math.min(b.maxX - vw, x - vw / 2))
-    this.top = vh >= this.height ? b.minY - (vh - this.height) / 2 : Math.max(b.minY, Math.min(b.maxY - vh, y - vh / 2))
+    this.top = vh >= height ? minTop - (vh - height) / 2 : Math.max(minTop, Math.min(b.maxY - vh, y - vh / 2))
   }
 
   /** Matrice à passer à ctx.setTransform pour dessiner en unités carte. */

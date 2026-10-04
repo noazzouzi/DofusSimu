@@ -109,6 +109,11 @@ export class StageRenderer {
     this.settled = false
   }
 
+  /** Prolonge l'indication de caméra en cours (les dégâts d'un sort restent à l'écran le temps de les lire). */
+  holdFocus(until: number): void {
+    if (this.hint) this.hint.until = Math.max(this.hint.until, until)
+  }
+
   /** Recentre la caméra sur l'action (fin d'un déplacement manuel, saut dans la chronologie). */
   releaseCamera(snap = false): void {
     this.manualFocus = null

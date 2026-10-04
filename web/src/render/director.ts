@@ -93,40 +93,55 @@ export class Director {
   }
 
   /**
-   * Emplacement vertical d'un texte flottant : le plus bas qui ne chevauche aucun texte récent
-   * d'un combattant voisin (à l'écran) — y compris le même combattant. Un texte avec sous-titre
+   * Emplacement vertical d'un texte flottant (en « emplacements » de SLOT_PX px au-dessus de la
+   * tête, éventuellement fractionnaire) : le plus bas dont la bande verticale, en coordonnées
+   * ABSOLUES de la carte, ne chevauche aucun texte récent d'un combattant voisin à l'écran (ou du
+   * même combattant). Les têtes voisines n'étant pas à la même hauteur, l'empilement se fait sur
+   * des positions absolues et non sur des numéros d'emplacement. Un texte avec sous-titre
    * (« critique ! », « bouclier »...) occupe deux emplacements.
    */
   private slot(cell: number, t0: number, h: number): number {
     const k = Math.max(0.05, this.r.view.k)
+    const unit = SLOT_PX / k
     const c = cellCenter(cell)
     this.texts = this.texts.filter(t => t.t0 > t0 - TEXT_BUSY_MS && t.t0 <= t0 + TEXT_BUSY_MS)
     const busy = this.texts.filter(t => Math.abs(t.x - c.x) * k < 76 && Math.abs(t.y - c.y) * k < 44)
+    // Bande occupée [haut, bas] (y croissant vers le bas), avec une petite marge.
+    const band = (y: number, slot: number, span: number) => [y - (slot + span) * unit, y - slot * unit + 0.25 * unit]
     let slot = 0
-    while (slot < 6 && busy.some(t => slot < t.slot + t.h && t.slot < slot + h)) slot++
+    for (; slot < 8; slot += 0.5) {
+      const [top, bottom] = band(c.y, slot, h)
+      if (!busy.some(t => {
+        const [bt, bb] = band(t.y, t.slot, t.h)
+        return top < bb && bt < bottom
+      })) break
+    }
     this.texts.push({ x: c.x, y: c.y, t0, slot, h })
     return slot
   }
 
   private text(f: FighterView, text: string, style: FloatStyle, t0: number, dur?: number): void {
     const h = style.sub || style.size >= 20 ? 2 : 1
-    this.r.add(floatTextAnim(f.id, text, style, t0, this.slot(f.cell, t0, h), dur, SLOT_PX))
+    this.r.add(floatTextAnim(f.id, text, style, t0, this.slot(f.cell, t0, h), dur, SLOT_PX, h))
   }
 
   /**
-   * Point de caméra pour un lancer : milieu lanceur → cible, décalé si besoin pour que la cible
-   * (et sa zone) reste visible quand la carte est zoomée (téléphone).
+   * Point de caméra pour un lancer quand la carte est zoomée (téléphone) : entre le lanceur et la
+   * cible, mais toujours de façon que la cible reste visible avec, au-dessus d'elle, la place des
+   * textes de dégâts empilés (marge haute plus grande que les autres).
    */
   private castFocus(from: Pt, to: Pt): Pt {
     const v = this.r.view
-    const mx = (from.x + to.x) / 2
-    const my = (from.y + to.y) / 2 - 20
+    const mx = from.x * 0.4 + to.x * 0.6
+    const my = from.y * 0.4 + to.y * 0.6 - 20
     if (v.zoom <= 1.001) return { x: mx, y: my }
-    const halfW = Math.max(0, v.visW / 2 - 80)
-    const halfH = Math.max(0, v.visH / 2 - 70)
+    const clampTo = (val: number, lo: number, hi: number, fallback: number) => (lo > hi ? fallback : Math.max(lo, Math.min(hi, val)))
+    const side = 80
+    const top = 160
+    const bottom = 60
     return {
-      x: Math.max(to.x - halfW, Math.min(to.x + halfW, mx)),
-      y: Math.max(to.y - 20 - halfH, Math.min(to.y - 20 + halfH, my)),
+      x: clampTo(mx, to.x - v.visW / 2 + side, to.x + v.visW / 2 - side, to.x),
+      y: clampTo(my, to.y + bottom - v.visH / 2, to.y - top + v.visH / 2, to.y - (top - bottom) / 2),
     }
   }
 
@@ -235,6 +250,7 @@ export class Director {
         }
         if (ev.shieldAbsorbed) this.text(t, `-${formatInt(ev.shieldAbsorbed)}`, { color: pal.shield, size: 14, sub: { text: 'bouclier', color: '#fff' } }, t0 + 40)
         this.r.add(hitAnim(t.id, t0, ev.crit ? '#fff3c4' : '#ffffff', !!ev.crit))
+        this.r.holdFocus(t0 + 1100)
         // Coup fatal : laisser la barre de vie se vider avant l'animation de mort.
         if (after?.t === 'death' && after.target === ev.target) return 340
         return lastOfAction ? 420 : 170

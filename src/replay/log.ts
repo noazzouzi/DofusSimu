@@ -8,6 +8,7 @@
 import { ELEMENT_NAMES_FR, type Element } from '../core/types'
 import type { DamageKind, FightEvent } from '../engine/types'
 import { distance, isValidCell } from '../map/geometry'
+import { overlayOwner } from './owner'
 import type { FighterView, LogEntry, LogSeg, LogTone, ViewState } from './types'
 
 /** Entier formaté à la française (séparateur de milliers : espace fine insécable). */
@@ -46,6 +47,9 @@ export function plural(n: number, one: string, many = one + 's'): string {
   return `${formatInt(n)} ${Math.abs(n) > 1 ? many : one}`
 }
 
+/** Événements qui ne sont pas des actions du combattant (un tour sans rien d'autre est « passé »). */
+const PASSIVE = new Set<FightEvent['t']>(['log', 'apmp', 'unbuff', 'state', 'glyph', 'trap', 'buff', 'turnStart', 'turnEnd'])
+
 /** Événements qui ouvrent une nouvelle action (fin du contexte d'un lancer de sort). */
 const BOUNDARY = new Set<FightEvent['t']>(['cast', 'move', 'turnStart', 'turnEnd', 'roundStart', 'fightEnd', 'wave', 'tackle', 'fightStart'])
 
@@ -61,6 +65,9 @@ export class LogBuilder {
   private readonly merged = new Set<number>()
   private readonly spellNames = new Map<number, string>()
   private castOpen = false
+  /** Combattant du tour en cours et nombre d'actions jouées depuis son `turnStart`. */
+  private turnFighter: number | null = null
+  private turnActions = 0
 
   constructor(private readonly events: FightEvent[]) {}
 
@@ -78,6 +85,7 @@ export class LogBuilder {
   /** Ajoute les lignes de l'événement `ev` (index `i`) ; `s` est l'état AVANT l'événement. */
   add(s: ViewState, ev: FightEvent, i: number): void {
     if (BOUNDARY.has(ev.t)) this.castOpen = false
+    if (!PASSIVE.has(ev.t)) this.turnActions++
     switch (ev.t) {
       case 'fightStart': {
         const p = ev.fighters.filter(f => f.team === 0 && f.kind !== 'summon').length
@@ -91,12 +99,19 @@ export class LogBuilder {
         this.push(i, 'round', [{ text: `Tour ${ev.round}` }], undefined, 0)
         break
       case 'turnStart': {
+        this.turnFighter = ev.fighter
+        this.turnActions = 0
         const who = this.name(s, ev.fighter)
         this.push(i, 'turn', [{ text: startsWithVowel(who.text) ? 'Au tour d’' : 'Au tour de ' }, who, { text: ` · ${ev.ap} PA · ${ev.mp} PM`, style: 'muted' }], ev.fighter, 0)
         break
       }
-      case 'turnEnd':
+      case 'turnEnd': {
+        const f = getF(s, ev.fighter)
+        if (this.turnFighter === ev.fighter && this.turnActions === 0 && f?.alive)
+          this.push(i, 'turn', [this.name(s, ev.fighter), { text: ' passe son tour', style: 'muted' }], ev.fighter, 1)
+        this.turnFighter = null
         break
+      }
       case 'move': {
         const n = Math.max(0, ev.path.length - 1)
         this.push(i, 'move', [this.name(s, ev.fighter), { text: ` se déplace de ${plural(n, 'case')}` }], ev.fighter, 0)
@@ -195,7 +210,7 @@ export class LogBuilder {
         const word = ev.t === 'glyph' ? 'la glyphe' : 'le piège'
         const spell = this.spellNames.get(data.spellId)
         if (ev.added) {
-          const who = s.lastCast?.fighter ?? s.current ?? undefined
+          const who = overlayOwner(s)
           const segs: LogSeg[] = []
           if (who !== undefined) segs.push(this.name(s, who), { text: ` pose ${word} ` })
           else segs.push({ text: `${word[0].toUpperCase()}${word.slice(1)} ` })

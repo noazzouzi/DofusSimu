@@ -1,6 +1,6 @@
 /**
  * Modèle de données « runtime » du simulateur : forme normalisée des sorts, objets et monstres,
- * indépendante du format brut DofusDB (voir src/data/loaders.ts pour la conversion).
+ * indépendante du format brut DofusDB (voir src/data/convert.ts pour la conversion, src/data/raw.ts pour le format brut).
  */
 import type { Stats } from '../core/types'
 
@@ -17,6 +17,24 @@ export interface ZoneSpec {
   maxDecreaseCount: number
   /** La zone (ligne) s'arrête sur la première entité rencontrée. */
   stopAtTarget: boolean
+  // Drapeaux additionnels de zoneDescr (optionnels pour compatibilité, toujours renseignés par src/data/convert.ts) :
+  /** includeCarried : la zone touche aussi l'entité portée (Pandawa). */
+  includeCarried?: boolean
+  /** onlyAffectIfInSightLine : seules les cases en ligne de vue du centre sont affectées. */
+  onlyIfInSight?: boolean
+  /** forcedDirection : direction imposée (rare, formes L). */
+  forcedDirection?: boolean
+  /** cellIds : liste explicite de cellules (forme ';', parfois 'a'/'A'). */
+  cells?: number[]
+}
+
+/**
+ * Condition d'états compilée en forme normale disjonctive : satisfaite si AU MOINS UNE clause a tous ses
+ * états `has` présents et aucun de ses états `not` (cf. src/data/criteria.ts).
+ */
+export interface StatesClause {
+  has: number[]
+  not: number[]
 }
 
 /** Un effet de sort ou d'arme, avec les champs bruts nécessaires à son interprétation. */
@@ -35,12 +53,17 @@ export interface EffectData {
   targetId: number
   /** Déclencheurs ('I' = immédiat, sinon conditions de déclenchement d'un buff). */
   triggers: string
+  /** Valeur brute : 1 désenvoûtable, 2 retiré seulement à la mort, 3 désenvoûtement « fort » uniquement, 4 jamais (effects.md §1). */
   dispellable: number
-  /** Élément (-1 = aucun). */
+  /** Élément (-1 = aucun ; 0..4 = Element ; 5 = meilleur élément). */
   element: number
   zone: ZoneSpec
   /** Durée (tours) d'un buff déclencheur (triggers ≠ 'I') : effectTriggerDuration DofusDB. */
   triggerDuration?: number
+  /** effectUid DofusDB (identifiant unique de l'effet, utile au débogage). */
+  uid?: number
+  /** forClientOnly : effet purement visuel côté client (toujours renseigné par src/data/convert.ts). */
+  clientOnly?: boolean
 }
 
 export interface SpellLevelData {
@@ -70,6 +93,16 @@ export interface SpellLevelData {
   statesCriterion: string
   effects: EffectData[]
   criticalEffects: EffectData[]
+  /** Id DofusDB du spell-level (référencé par startingSpellId des monstres et l'effet 1181). */
+  levelId?: number
+  /** `statesCriterion` compilé (absent si aucune condition) — évite de re-parser la chaîne à chaque lancer. */
+  statesCondition?: StatesClause[]
+  needVisibleEntity?: boolean
+  needCellWithoutPortal?: boolean
+  portalProjectionForbidden?: boolean
+  /** Limites globales (tous lanceurs alliés confondus), 0 = aucune. */
+  maxGlobalCastPerTurn?: number
+  maxGlobalCastPerTarget?: number
 }
 
 export interface SpellData {
@@ -78,7 +111,18 @@ export interface SpellData {
   nameEn?: string
   description?: string
   breedId?: number
+  /** Grades triés par `grade` croissant. */
   levels: SpellLevelData[]
+  /** Type de sort DofusDB (= id de classe pour la variante 0 des classes 1-18 seulement). */
+  typeId?: number
+  iconId?: number
+  /** Sorts de classe : index de la paire (0..21) et variante (0 = sort de base, 1 = variante). */
+  pairIndex?: number
+  variant?: 0 | 1
+  /** Peut déclencher des buffs sur des événements issus de lui-même (présent seulement si vrai). */
+  canAlwaysTriggerSpells?: boolean
+  /** Invocation hors limite d'invocations (présent seulement si vrai). */
+  bypassSummoningLimit?: boolean
 }
 
 export type EquipmentSlot =
@@ -94,11 +138,17 @@ export type EquipmentSlot =
   | 'pet' // familiers, montiliers, montures
   | 'other'
 
-/** Plage de valeur d'un effet d'objet (jet min..max). */
+/**
+ * Plage de valeur d'un effet d'objet (jet min..max) : `min = diceNum`, `max = diceSide || diceNum`.
+ * Pour les effets qui référencent un sort (1175 sort passif : min = id du sort, max = grade ; 281-297
+ * modificateurs : min = max = id du sort modifié, `value` = valeur), les bornes portent ces paramètres bruts.
+ */
 export interface ItemEffectRange {
   effectId: number
   min: number
   max: number
+  /** 3ᵉ paramètre brut (`value`), présent seulement s'il est non nul (id de sort de 722, valeur de 281-297…). */
+  value?: number
 }
 
 export interface WeaponData {
@@ -128,6 +178,9 @@ export interface ItemData {
   effects: ItemEffectRange[]
   weapon?: WeaponData
   isLegendary?: boolean
+  iconId?: number
+  /** Zone des armes (item-types.rawZone : Bâton T1, Marteau X1, Pelle V1, Faux U1, Lance L3, sinon P). */
+  weaponZone?: ZoneSpec
 }
 
 export interface ItemSetData {
@@ -136,15 +189,22 @@ export interface ItemSetData {
   items: number[]
   /** bonuses[n] = effets accordés quand n objets de la panoplie sont équipés. */
   bonuses: Record<number, ItemEffectRange[]>
+  level?: number
 }
 
 export interface MonsterGrade {
   grade: number
   level: number
+  /** PV du grade (bonusCharacteristics.lifePoints inclus ; la vitalité éventuelle est dans `stats.vitality`). */
   lifePoints: number
   ap: number
   mp: number
+  /** Caractéristiques non nulles du grade (bonusCharacteristics fusionnés), `ap`/`mp` inclus. */
   stats: Partial<Stats>
+  /** Id de spell-level brut du sort de départ (DofusDB `startingSpellId`). */
+  startingSpellLevelId?: number
+  /** Sort de départ résolu (absent si le spell-level n'est pas dans les données extraites). */
+  startingSpell?: { spellId: number; grade: number }
 }
 
 export interface MonsterData {
@@ -162,6 +222,17 @@ export interface MonsterData {
   tags: string[]
   spells: number[]
   grades: MonsterGrade[]
+  /**
+   * Aligné sur `spells` : `spellGrades[i][g - 1]` = grade du sort `spells[i]` pour le grade `g` du monstre
+   * (0 = sort indisponible à ce grade).
+   */
+  spellGrades?: number[][]
+  gfxId?: number
+  canSwitchPosOnTarget?: boolean
+  canBeCarried?: boolean
+  canUsePortal?: boolean
+  useBombSlot?: boolean
+  summonCost?: number
 }
 
 export interface BreedData {
@@ -174,6 +245,10 @@ export interface BreedData {
   spellPairs: [number, number][]
   /** Paliers de coût des points de caractéristiques par stat (DofusDB statsPointsFor*). */
   statPointCosts?: Record<string, [number, number][]>
+  /** Note de la classe pour chacun des 8 rôles DofusDB (nom français -> note). */
+  roleScores?: Record<string, number>
+  /** Niveaux de déblocage [variante 0, variante 1] de chaque paire. */
+  spellPairUnlockLevels?: [number, number][]
 }
 
 /** Données d'une carte de combat. */
@@ -190,4 +265,11 @@ export interface MapData {
   name?: string
   cells: MapCell[]
   approximate?: boolean
+  /** Cases de placement rouges (équipe 0, joueurs) et bleues (équipe 1, monstres), même non marchables. */
+  redCells?: number[]
+  blueCells?: number[]
+  dungeonIds?: number[]
+  image?: string
+  /** Annotations manuelles (ex. `clockPositions` de la salle du Vortex). */
+  annotations?: Record<string, unknown>
 }

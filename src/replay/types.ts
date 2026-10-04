@@ -165,6 +165,8 @@ export interface ViewState {
   current: number | null
   /** Vrai entre `turnStart` et `turnEnd`. */
   turnActive: boolean
+  /** Index de l'événement `turnStart` du tour en cours (-1 avant le premier tour). */
+  turnAt: number
   /** Combattants dans l'ordre d'apparition (morts compris). */
   fighters: FighterView[]
   glyphs: OverlayView[]

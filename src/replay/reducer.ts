@@ -18,6 +18,9 @@
  */
 import type { FightEvent, FighterSnapshot } from '../engine/types'
 import { LogBuilder } from './log'
+import { overlayOwner } from './owner'
+
+export { overlayOwner }
 import type {
   FighterMetricsView,
   FighterView,
@@ -88,6 +91,7 @@ export function initialState(replay: Replay): ViewState {
     round: 0,
     current: null,
     turnActive: false,
+    turnAt: -1,
     fighters: ev.fighters.map(f => fighterFromSnapshot(f, 0, ctx)),
     glyphs: [],
     traps: [],
@@ -157,9 +161,15 @@ export function applyEventMut(s: ViewState, ev: FightEvent, index: number, ctx: 
         f.mpMax = ev.mp
         f.metrics.turnsPlayed++
       }
+      s.turnAt = index
       // Les durées des effets lancés par ce combattant baissent au début de son tour
-      // (les effets arrivés à 0 ont déjà été retirés par des événements `unbuff`).
-      for (const t of s.fighters) for (const b of t.buffs) if (b.sourceId === ev.fighter && b.remaining > 1) b.remaining--
+      // (les effets arrivés à 0 ont déjà été retirés par des événements `unbuff`). Comme le
+      // moteur, on ignore les cibles mortes. Limite connue : un effet DIFFÉRÉ (delay > 0) n'est
+      // pas décrémenté par le moteur, mais l'événement `buff` ne transporte pas ce délai.
+      for (const t of s.fighters) {
+        if (!t.alive) continue
+        for (const b of t.buffs) if (b.sourceId === ev.fighter && b.remaining > 1) b.remaining--
+      }
       break
     }
     case 'turnEnd':
@@ -301,7 +311,7 @@ export function applyEventMut(s: ViewState, ev: FightEvent, index: number, ctx: 
           cells: data.cells,
           color: data.color,
           spellId: data.spellId,
-          sourceId: s.lastCast?.fighter ?? s.current ?? undefined,
+          sourceId: overlayOwner(s),
         }
         list.push(overlay)
       }

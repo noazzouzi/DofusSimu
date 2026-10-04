@@ -78,7 +78,7 @@
   "teamAssumption": "Cases rouges = équipe des personnages (challengers), cases bleues = monstres (défenseurs). Convention Dofus PvM habituelle - INCERTAIN pour ce combat ; cohérent avec les guides (monstres 'en haut', joueurs en bas).",
   "centerCell": 328,
   "centerNote": "Cellule 328 (18,-5) = axe central de l'horloge, non marchable et bloque la ligne de vue.",
-  "coordinateSystem": "x,y Dofus (MapPoint) : ligne de cellules paire r : x = r/2 + col, y = -r/2 + col ; impaire : x = (r-1)/2 + 1 + col. \"En ligne\" = même x ou même y.",
+  "coordinateSystem": "x,y Dofus (MapPoint) : r = cellId // 14, col = cellId % 14 ; ligne paire r : x = r/2 + col, y = col - r/2 ; impaire : x = (r-1)/2 + 1 + col, y = col - (r-1)/2. \"En ligne\" = même x ou même y. Distance = |dx| + |dy|.",
   "auroraire": {
    "summonCell": 255,
    "summonCellCoords": [
@@ -709,17 +709,17 @@
  },
  "mechanics": {
   "hourClock": {
-   "summary": "L'Auroraire (3833) est une horloge à 12 positions (cases des chiffres I..XII). Elle avance d'UNE heure : (a) au début du tour de chaque personnage joueur ; (b) chaque fois qu'un personnage déclenche le glyphe d'un monstre. Avec N personnages et sans glyphe, elle avance de N heures par tour de jeu ; si N divise 12 (2,3,4,6) le cycle est régulier (4 joueurs : 3 tours pour un tour complet).",
+   "summary": "L'Auroraire (3833) est une horloge à 12 positions (cases des chiffres I..XII). Elle avance d'UNE heure : (a) au début du tour de chaque personnage joueur ; (b) chaque fois qu'un personnage déclenche le glyphe d'un monstre. Avec N personnages et sans glyphe, elle avance de N heures par tour de jeu : un même personnage (et le Vortex) retrouve la même heure tous les 12/pgcd(N,12) tours et ne voit que 12/pgcd(N,12) heures distinctes -> 2 joueurs : 6 tours ; 3 : 4 ; 4 et 8 : 3 ; 6 : 2 ; 1, 5, 7 : 12 (toutes les heures). Corrigé à la 2e vérification : dofuspourlesnoobs classe 8 comme 'irrégulier', c'est faux arithmétiquement (8 x 3 = 24 = 0 mod 12). Déduit (INCERTAIN) : un personnage mort n'a pas de début de tour, donc ne fait plus avancer l'horloge (N = personnages vivants).",
    "advanceSpell": 4996,
-   "moveRule": "En avançant de h vers h+1, si une entité occupe la case de h+1 elle échange de place de force avec l'Auroraire (1023), sinon l'Auroraire s'y téléporte (4).",
+   "moveRule": "En avançant de h vers h+1, si une entité occupe la case de h+1 elle échange de place de force avec l'Auroraire (1023), sinon l'Auroraire s'y téléporte (4). Cas limite (déduit, INCERTAIN) : l'entité sur la case de IV (292, marchable) est envoyée sur la case de III (220, non marchable et bloquant la LdV) ; c'est la seule heure marchable précédée d'une heure non marchable. Implémentation : évaluer les conditions *E (heure du lanceur) au début du lancer de 4996, sinon les 951 (retrait des 12 états) annulent les 950 suivants.",
    "hourAtVortexTurnFormula": "heure = ((k + nbGlyphesDéclenchés + N*(tour-1) - 1) mod 12) + 1, k = nombre de tours de personnages joués avant le Vortex au tour 1. Avec 4 joueurs et Vortex jouant après les 4 : IV, VIII, XII, IV... (dofuspourlesnoobs). Condition (déduite de la timeline alternée, docs/research/mechanics.md §8 ; INCERTAIN) : l'équipe des joueurs commence (meilleure initiative) ET le Vortex est le dernier de son équipe (initiative 4x800 = 3200 < 4x850 = 3400 des monstres de vague grade 5 ; faux aux grades 1-3). Si les monstres commencent : M1 P1 M2 P2 M3 P3 V P4 -> k = 3 -> III, VII, XI.",
    "startHour": 12
   },
   "deathTagging": "À la mort d'un monstre de vague (déclencheur X), il reçoit Mort latente puis l'Auroraire lui pose l'état de l'heure courante (221..232). Les états d'heure sont cumulables (un monstre tué à 3 heures différentes porte 3 états).",
-  "resurrection": "Au début de CHAQUE tour du Vortex : 'Invoque le dernier allié mort avec 20 à 30 % de ses PV' (780) en zone cercle r63 min 3 autour du Vortex (les guides : ressuscités à 3 PO du Vortex, placés dans le sens horaire ; tous les monstres morts sont ressuscités). Le ressuscité est en état Zombi (74) et relance le sort 5002 (bonus des heures enregistrées). Les données ajoutent -1 PM permanent (169, masque a,A,U) mais en zone P1 centrée sur le Vortex alors que le ressuscité est à >= 3 cases : appliqué seulement si le masque U ignore la zone - INCERTAIN, absent des guides. JOL/Tofus parlent de 'moitié de ses PV' : DofusDB (20-30 %) fait foi.",
+  "resurrection": "Au début de CHAQUE tour du Vortex : 'Invoque le dernier allié mort avec 20 à 30 % de ses PV' (780) en zone cercle r63 min 3 autour du Vortex (les guides : ressuscités à 3 PO du Vortex, placés dans le sens horaire ; tous les monstres morts sont ressuscités). Le ressuscité est en état Zombi (74) et relance le sort 5002 (bonus des heures enregistrées). Les données ajoutent -1 PM permanent (169, masque a,A,U) mais en zone P1 centrée sur le Vortex alors que le ressuscité est à >= 3 cases : appliqué seulement si le masque U ignore la zone - INCERTAIN, absent des guides. Même appliqué, il est en dispellable 1 (retiré à la mort) : au plus -1 PM par vie, pas de cumul entre résurrections. Aucun effet du cache ne pose l'état Zombi (74) : posé côté serveur (par 780, probablement). JOL/Tofus parlent de 'moitié de ses PV' : DofusDB (20-30 %) fait foi.",
   "corruption": "Quand l'Auroraire arrive sur une heure h, tout monstre (non corrompu) portant l'état d'heure h reçoit 'Même heure' (234, étoile jaune). Si on le tue pendant qu'il porte 'Même heure', il est ressuscité corrompu : tour annulé permanent (140), Invulnérable permanent, état 6611 'Vortex (monstre tué à la même heure)'. Il reste sur la carte (bloque cases/LdV, peut tacler selon Gamosaurus) jusqu'au déverrouillage. Un monstre tué à une autre heure est ressuscité avec un état d'heure en plus (corruptible ensuite à n'importe laquelle de ses heures). Déduit des données : l'étoile n'est posée qu'au moment où l'horloge ARRIVE sur l'heure (4996), sur les monstres vivants non corrompus ; un monstre ressuscité alors que l'horloge est déjà sur une de ses heures n'a pas l'étoile avant le passage suivant.",
-  "hourBonusesOnMonsters": "À chaque résurrection, un monstre gagne (permanent, non désenvoûtable) les bonus de TOUTES les heures auxquelles il a été tué (liste par heure dans map.auroraire.hours[].bonus). Note : relancer 5002 à chaque résurrection RE-applique ces bonus (cumul probable à chaque résurrection - INCERTAIN).",
-  "heurageBuffPhase1": "Heurage (5066) pendant la phase 1 : l'Auroraire donne à TOUS les monstres alliés sauf Vortex le bonus de l'heure courante (permanent, cumulable). Relance 3, pas avant le tour 4. Décrit par Tofus ('boost infini'), absent de dofuspourlesnoobs.",
+  "hourBonusesOnMonsters": "À chaque résurrection, un monstre gagne (durée infinie, non désenvoûtable) les bonus de TOUTES les heures auxquelles il a été tué (liste par heure dans map.auroraire.hours[].bonus), un bonus par état d'heure. Pas de cumul d'une résurrection à l'autre (2e vérification) : ces bonus sont en dispellable 2 = retirés à la mort (client D2 BasicBuff.dispellableByDeath), puis ré-appliqués par 5002 ; seuls les états d'heure (dispellable 3) survivent à la mort. Un monstre corrompu reçoit aussi ces bonus (les masques c,E22x n'excluent pas E234).",
+  "heurageBuffPhase1": "Heurage (5066) pendant la phase 1 : l'Auroraire donne à TOUS les monstres alliés vivants sauf Vortex le bonus de l'heure courante (durée infinie, cumulable : maxStack -1 ; mais dispellable 2 -> perdu à la mort du monstre, non rendu par la résurrection). Relance 3, pas avant le tour 4. Décrit par Tofus ('boost infini'), absent de dofuspourlesnoobs. Déduit : à 4 joueurs sans glyphe et Heurage lancé dès que possible (tours 4, 7, 10...), il tombe toujours sur l'heure du 1er tour du Vortex (IV si k = 4 : +2 PM ; III si k = 3 : +400 Int) - INCERTAIN.",
   "glyphs": {
    "summary": "Au début de son tour, chaque monstre de vague non invulnérable pose un glyphe (durée 1) sur sa case. Un personnage joueur qui le déclenche (y entre - selon la majorité des guides ; Tofus dit 'termine son tour') échange de place avec le monstre poseur, et LES DEUX reçoivent le bonus du monstre ; l'Auroraire avance d'une heure. Les invocations ne déclenchent pas le glyphe. Pesanteur / Stabilisation / porté par un Pandawa : déclenche sans échange (Gamosaurus).",
    "bonusByMonster": {
@@ -739,7 +739,7 @@
   "unlockSequence": [
    "Phase 1 : Vortex Invulnérable (56), Indéplaçable (97), -100 PM, Marginal (236) 25 tours. Les sorts Heuristique/Morfaille exigent 'pas Marginal' (HS!236), Contamination zombie exige 'Marginal' (HS=236).",
    "À partir de son ~26e tour (délai 25 sur les déclencheurs ; décompte exact ±1 INCERTAIN) : à chaque début de tour, le Vortex reprend Marginal 1 tour s'il existe au moins un monstre allié non invoqué non corrompu (5008).",
-   "Tour T : le dernier monstre est tué à la bonne heure. Tour du Vortex suivant : il est ressuscité corrompu ; 5008 ne pose plus Marginal mais Action ! ne part pas encore (probablement parce que le Marginal 1 tour du tour précédent est encore actif quand les déclencheurs TB sont évalués - INCERTAIN). Pendant ce tour le Vortex n'est plus Marginal : Heurage prend la variante TÉLÉPORTATION au contact de l'Auroraire (5067, dofuspourlesnoobs : 'Vortex a la possibilité de se téléporter sur l'Auroraire') ; d'après les données Heuristique/Morfaille (HS!236) seraient aussi lançables (toujours invulnérable, -100 PM) - non rapporté par les guides, INCERTAIN.",
+   "Tour T : le dernier monstre est tué à la bonne heure. Tour du Vortex suivant : il est ressuscité corrompu ; 5008 ne pose plus Marginal mais Action ! ne part pas encore (probablement parce que le Marginal 1 tour du tour précédent est encore actif quand les déclencheurs TB sont évalués - INCERTAIN). Pendant ce tour le Vortex n'est plus Marginal : Heurage prend la variante TÉLÉPORTATION au contact de l'Auroraire (5067, dofuspourlesnoobs : 'Vortex a la possibilité de se téléporter sur l'Auroraire') ; d'après les données Heuristique/Morfaille (HS!236) seraient aussi lançables (toujours invulnérable, -100 PM) - non rapporté par les guides, INCERTAIN. Contre-indice (2e vérification) : le client D2 décrémente les buffs posés par un combattant au GameFightTurnStartMessage, avant les effets des déclencheurs TB (FightBattleFrame.as, .cache/domath/d2client) ; si le serveur fait de même, Action ! partirait dès ce tour-ci (pas de tour 'à vide' Vortex). Retenu : DPLN (1 tour d'écart), paramètre moteur actionDelayAfterLastCorruption = 1 (0 possible).",
    "Tour du Vortex suivant (plus Marginal) : 'Action !' (5060) : Vortex + personnages téléportés à leur case de départ, tous les monstres tués, le Vortex récupère les bonus d'heures des monstres (une fois par heure), reste Invulnérable 1 tour et passe son tour. Fortes latences possibles.",
    "Tour suivant : le Vortex est vulnérable, 16 PA / 5 PM + bonus, et joue (Heurage -> téléportation au contact de l'Auroraire s'il est disponible, sinon dès qu'il l'est)."
   ],
@@ -747,7 +747,7 @@
   "antiHeal": "Contamination zombie (phase 1) : Insoignable 1 tour sur les ennemis à <= 2 cases d'un monstre ressuscité ciblé (LdV requise depuis le Vortex).",
   "notes": [
    "Le Dofus Ébène est déconseillé : son poison persiste sur les monstres ressuscités et peut les tuer à la mauvaise heure (dofuspourlesnoobs).",
-   "Avec 4 personnages (diviseur de 12), un même personnage joue toujours aux mêmes heures : celui qui a tué un monstre pourra le corrompre exactement 3 tours plus tard (2 tours à 6, 4 tours à 3).",
+   "Avec 4 personnages, un même personnage joue toujours aux mêmes heures : celui qui a tué un monstre pourra le corrompre exactement 3 tours plus tard (3 tours aussi à 8, 2 tours à 6, 4 tours à 3, 6 tours à 2, 12 tours à 1, 5 ou 7 ; formule 12/pgcd(N,12), sans glyphe).",
    "Éviter de tuer à la 5e heure (x70 % dommages subis) et à la 11e (+30 % vitalité) : ces bonus rendent les ressuscités et le Vortex plus durs (Gamosaurus conseille d'éviter 1, 5, 11)."
   ]
  },
@@ -10212,9 +10212,9 @@
     }
    ],
    "aiNotes": [
-    "Phase 1 (état Marginal, invulnérable, -100 PM, indéplaçable) : chaque tour il lance En temps et en heure (dès son 2e tour) qui frappe toutes les cases en ligne (même x ou même y) avec l'Auroraire ; Contamination zombie (2x/tour) sur un monstre ressuscité (état Zombi) en ligne de vue -> Insoignable 1 tour aux ennemis à <= 2 cases de ce monstre ; Heurage (relance 3, pas avant le tour 4) -> l'Auroraire donne à tous les monstres (sauf Vortex) le bonus de l'heure courante (permanent, cumulable).",
+    "Phase 1 (état Marginal, invulnérable, -100 PM, indéplaçable) : chaque tour il lance En temps et en heure (dès son 2e tour) qui frappe toutes les cases en ligne (même x ou même y) avec l'Auroraire ; Contamination zombie (2x/tour) sur un monstre ressuscité (état Zombi) en ligne de vue -> Insoignable 1 tour aux ennemis à <= 2 cases de ce monstre ; Heurage (relance 3, pas avant le tour 4) -> l'Auroraire donne à tous les monstres vivants (sauf Vortex) le bonus de l'heure courante (durée infinie mais perdu à la mort du monstre : dispellable 2 ; cumulable). Déduit : à 4 joueurs sans glyphe, s'il le lance dès que possible (tours 4, 7, 10...), Heurage tombe toujours sur l'heure de son 1er tour (IV : +2 PM cumulés si k = 4 ; III : +400 Int si k = 3) - INCERTAIN.",
     "Début de chacun de ses tours : ressuscite les monstres morts depuis son dernier tour (20 à 30 % PV selon DofusDB ; 'moitié' selon JOL/Tofus) à >= 3 cases de lui, avec les bonus des heures auxquelles il a été tué ; -1 PM permanent INCERTAIN (effet 169 du sort 5003 en zone P1 = case du Vortex, alors que le ressuscité est à >= 3 cases).",
-    "Phase 2 (après déverrouillage) : priorité Heurage (si disponible) pour se téléporter au contact de l'Auroraire, puis Heuristique (ligne, 1-8 PO, sans LdV, 3x/tour, 1x/cible : Air+Feu, -2 tours d'envoûtements, Pacifiste 1 tour désenvoûtable) et Morfaille (1-4 PO, LdV, 3x/tour : renvoie la cible à sa position précédente, Neutre+Eau en anneau r2 autour de la cible, répété au tour suivant SAUF sur coup critique : la version critique n'a pas la répétition différée). En temps et en heure continue chaque tour.",
+    "Phase 2 (après déverrouillage) : priorité Heurage (si disponible) pour se téléporter au contact de l'Auroraire, puis Heuristique (ligne, 1-8 PO, sans LdV, 3x/tour, 1x/cible : Air+Feu, -2 tours d'envoûtements, Pacifiste 1 tour désenvoûtable) et Morfaille (1-4 PO, LdV, 3x/tour : renvoie la cible à sa position précédente, Neutre+Eau en anneau r2 autour de la cible, répété au tour suivant, y compris sur coup critique : les effets critiques sont identiques aux effets normaux, 5069 immédiat + 5069 différé d'un tour). En temps et en heure continue chaque tour.",
     "16 PA / 5 PM en phase 2 (+ bonus d'heures récupérés au déverrouillage : jusqu'à +4 PA, +2 PM, +400 dans chaque caractéristique, etc.).",
     "Toujours prévoir la position de l'Auroraire au tour du Vortex : c'est là qu'il se téléporte (Heurage, tous les 3 tours) et ce sont ses lignes qui sont frappées."
    ],
@@ -10503,7 +10503,7 @@
     "spellNotes": {
      "5062": "En temps et en heure : 1 PA, 1x/tour, dès le tour 2, cible l'Auroraire -> lignes de l'Auroraire frappées (500 Terre base + 50 % PV érodés, +20 % érosion 2 tours).",
      "5064": "Contamination zombie : 4 PA, 2x/tour, 1x/cible, LdV, cible un monstre en état Zombi.",
-     "5066": "Heurage (Marginal) : 4 PA, relance 3, pas avant le tour 4 -> bonus de l'heure courante à tous les monstres (sauf Vortex)."
+     "5066": "Heurage (Marginal) : 4 PA, relance 3, pas avant le tour 4 -> bonus de l'heure courante à tous les monstres vivants (sauf Vortex), cumulable, perdu à la mort du monstre (dispellable 2)."
     },
     "endCondition": "Tous les monstres (non invoqués) de toutes les vagues corrompus (état 6611) ET environ 25 tours du Vortex écoulés (délai 25 des déclencheurs ; ±1 INCERTAIN)."
    },
@@ -10511,7 +10511,7 @@
     "id": "phase_transition",
     "nameFr": "Transition : Action !",
     "durationVortexTurns": 2,
-    "description": "1 tour du Vortex avec tous les monstres corrompus (encore Marginal) puis 'Action !' : téléportation de tous à la case de départ, mort de tous les monstres, Vortex Invulnérable + tour annulé 1 tour, récupération des bonus d'heures (une fois par heure distincte)."
+    "description": "1 tour du Vortex avec tous les monstres corrompus (Vortex déjà plus Marginal : Heurage = téléportation 5067 ; toujours invulnérable, -100 PM ; Action ! pas encore partie - délai d'un tour selon DPLN, paramètre actionDelayAfterLastCorruption, INCERTAIN) puis 'Action !' : téléportation de tous à la case de départ, mort de tous les monstres, Vortex Invulnérable + tour annulé 1 tour, récupération des bonus d'heures (une fois par heure distincte). Corrigé à la 2e vérification : la version précédente disait 'encore Marginal', en contradiction avec mechanics.unlockSequence."
    },
    {
     "id": "phase2_boss",
@@ -10529,8 +10529,8 @@
     ],
     "spellNotes": {
      "5066": "Heurage : 4 PA, relance 3 -> téléportation au contact de l'Auroraire. Utilisé dès qu'il est disponible (au plus tard le 1er tour vulnérable).",
-     "5068": "Heuristique : 4 PA, 1-8 PO en ligne, SANS LdV, 3x/tour, 1x/cible : 41-50 Air + 41-50 Feu (x9 avec 800 stats -> ~370-450 chacun avant bonus d'heures), -2 tours aux envoûtements, Pacifiste 1 tour (désenvoûtable).",
-     "5070": "Morfaille : 4 PA, 1-4 PO, LdV, 3x/tour, 1x/cible : renvoie la cible à sa position précédente puis 41-50 Neutre + 41-50 Eau aux ennemis à 1-2 cases de la cible (pas la cible) + Terre = 20 % des PV érodés du lanceur (cible incluse), répété au tour suivant (pas de répétition sur coup critique : les effets critiques n'ont pas le 5069 différé). Zones dégressives : Neutre/Eau 100 % à 1 case, 90 % à 2 ; Terre 100/90/80 % (effects.md §4.3).",
+     "5068": "Heuristique : 4 PA, 1-8 PO en ligne, SANS LdV, 3x/tour, 1x/cible : 41-50 Air + 41-50 Feu (x9 avec 800 stats -> 369-450 chacun avant bonus d'heures ; CC 46-55 -> 414-495), -2 tours aux envoûtements, Pacifiste 1 tour (désenvoûtable).",
+     "5070": "Morfaille : 4 PA, 1-4 PO, LdV, 3x/tour, 1x/cible : renvoie la cible à sa position précédente puis 41-50 Neutre + 41-50 Eau aux ennemis à 1-2 cases de la cible (pas la cible) + Terre = 20 % des PV érodés du lanceur (cible incluse), répété au tour suivant, y compris sur coup critique (2e vérification : criticalEffect contient aussi le 1160 -> 5069 avec delay 1 ; effets critiques identiques aux normaux, la partie dégâts étant dans 5069). Zones dégressives : Neutre/Eau 100 % à 1 case, 90 % à 2 ; Terre 100/90/80 % (effects.md §4.3).",
      "5062": "En temps et en heure : continue chaque tour."
     },
     "aiPriority": [
@@ -24935,7 +24935,7 @@
     }
    ],
    "criticalEffects": [],
-   "purposeFr": "Glyphe téléporteur : sort de départ de chaque monstre de vague (et relancé à chaque résurrection) : marquage à la mort, glyphe à chaque début de tour, corruption si 'Même heure', bonus des heures déjà enregistrées."
+   "purposeFr": "Glyphe téléporteur : sort de départ de chaque monstre de vague (et relancé à chaque résurrection) : marquage à la mort, glyphe à chaque début de tour, corruption si 'Même heure', bonus des heures déjà enregistrées (bonus et déclencheurs en dispellable 2 = retirés à la mort puis ré-appliqués : un bonus par état d'heure, pas de cumul d'une résurrection à l'autre ; les états d'heure et Même heure, dispellable 3, survivent à la mort)."
   },
   {
    "id": 5003,
@@ -36815,7 +36815,7 @@
     }
    ],
    "criticalEffects": [],
-   "purposeFr": "Heurage phase 1 (exécuté par l'Auroraire) : donne à tous les alliés (sauf Vortex) le bonus de l'heure courante (permanent, non désenvoûtable)."
+   "purposeFr": "Heurage phase 1 (exécuté par l'Auroraire) : donne à tous les alliés vivants (sauf Vortex) le bonus de l'heure courante (durée infinie, non désenvoûtable mais retiré à la mort : dispellable 2 ; cumulable, maxStack -1)."
   },
   {
    "id": 5067,
@@ -37887,7 +37887,7 @@
  "achievementsNote": "dungeons/87 ne liste que 1156, 1157, 1158, 1159, 6243 ; s'y ajoute le méta-succès 1160 Vortexicomane (Focus + Hardi + Trio). Les succès 2396/2772/2874 'Vortex' (catégories 104-106 'Donjons (Première/Seconde/Dernière vague)', 0 point) sont des succès de serveurs temporaires (vaincre Vortex 1, 2 ou 3 fois après l'ouverture du serveur), hors périmètre. Les succès 'Score 150/200' (idoles) cités par JOL/dofuspourlesnoobs n'existent plus ; aucun succès 'Duo', 'Premier', 'Zombie', 'Statue' ou 'Anachorète' pour ce donjon.",
  "strategyNotes": [
   "Objectif : corrompre chaque monstre (le tuer une 2e fois à l'heure de sa 1re mort, repérée par l'étoile jaune 'Même heure') ; le Vortex n'est vulnérable qu'après corruption de TOUTES les vagues et au plus tôt au 26e tour du Vortex.",
-  "Jouer à 4 (ou 6/3/2) pour un cycle d'Auroraire régulier : à 4, un personnage tue un monstre au tour t et le même personnage le corrompt au tour t+3.",
+  "Jouer à 4 ou 8 (cycle de 3 tours), 6 (2 tours), 3 (4 tours) ou 2 (6 tours) pour un cycle d'Auroraire court : à 4, un personnage tue un monstre au tour t et le même personnage le corrompt au tour t+3 (à 5 ou 7 : 12 tours).",
   "Profiter de la vague 1 (un tour de plus) pour corrompre les 3 monstres avant la vague 2.",
   "Rester à distance, retirer des PM (Méjaire 4 PM, Ikargn/Brabuzar/Harpille 5, Buboxor 6) ; garder les Méjaires (Pacifiste) hors ligne <= 3.",
   "Ne jamais finir son tour en ligne (même x/y) avec la case qu'occupera l'Auroraire au tour du Vortex (à 4 : IV, VIII, XII si personne ne déclenche de glyphe).",
@@ -37963,6 +37963,18 @@
    "dofusdb": "Monstres x70 %, Vortex x75 %",
    "guides": "x70 % (monstres)",
    "retained": "DofusDB"
+  },
+  {
+   "topic": "Cycle de l'Auroraire à 8 personnages",
+   "dofusdb": "n/a (arithmétique : +N heures par tour, période 12/pgcd(N,12))",
+   "guides": "dofuspourlesnoobs : '8, 7, 5, 1 : pas de cycle régulier, jamais sur les mêmes heures'",
+   "retained": "Calcul (2e vérification) : 8 -> cycle de 3 tours comme à 4 (Vortex sur VIII/IV/XII si k = 8) ; seuls 1, 5, 7 parcourent les 12 heures"
+  },
+  {
+   "topic": "Dégâts Heuristique",
+   "dofusdb": "41-50 Air + 41-50 Feu (369-450 chacun à 800 stats, 533-650 avec +400 Agi/Int)",
+   "guides": "dofuspourlesnoobs 'Frappe du 1200 dans les éléments air et feu'",
+   "retained": "DofusDB (1200 = total des deux lignes avec bonus d'heures, plausible)"
   }
  ],
  "openQuestions": [
@@ -37971,10 +37983,11 @@
   "Tour d'arrivée de la vague 2 : 7 (DPLN 2024) ou 6 (JOL) ; déclenchement anticipé d'une vague quand tous ses monstres sont morts/corrompus.",
   "Position de départ exacte du Vortex parmi les cases bleues 268-277 et ordre d'initiative Vortex/joueurs.",
   "PV des ressuscités : 20-30 % (DofusDB) contre 'moitié' (JOL/Tofus).",
-  "Les bonus d'heures sont-ils ré-appliqués (cumulés) à chaque résurrection d'un même monstre ?",
+  "Bonus d'heures à chaque résurrection : quasi résolu à la 2e vérification -> ré-appliqués SANS cumul (bonus dispellable 2 = retirés à la mort, client D2 BasicBuff.dispellableByDeath) ; à confirmer en jeu. Idem : les bonus d'Heurage phase 1 sont perdus à la mort du monstre.",
+  "Un personnage mort fait-il encore avancer l'horloge ? Déduit : non (pas de début de tour) -> N = personnages vivants.",
   "Sémantique des lettres de masque : alignée sur docs/research/effects.md §5 à la vérification ; T (téléfrag) et U (zone ignorée ou non) restent INCERTAINS dans ce donjon.",
   "Le -1 PM du sort 5003 (zone P1 sur la case du Vortex, masque U) s'applique-t-il réellement aux ressuscités ?",
-  "Décompte exact du délai 25 (Marginal 25 tours + déclencheurs différés de 25) et ordre 'déclencheurs TB / décrément des durées' : conditionne le tour exact d'Action ! (le tour 'à vide' décrit par dofuspourlesnoobs).",
+  "Décompte exact du délai 25 (Marginal 25 tours + déclencheurs différés de 25) et ordre 'déclencheurs TB / décrément des durées' : conditionne le tour exact d'Action ! (le tour 'à vide' décrit par dofuspourlesnoobs). Le client D2 décrémente au GameFightTurnStartMessage, avant les effets TB, ce qui plaiderait pour Action ! dès le 1er tour du Vortex après le dernier kill : contradiction avec DPLN non résolue (paramètre).",
   "Lanceur effectif d'En temps et en heure (Auroraire sans caractéristiques -> 500 Terre de base ?) et rôle du '+10 PA'.",
   "Effet 'dommages subis x75 %' sur les personnages si le Vortex cumule les 12 heures (Action !).",
   "Esquive PA/PM issue de la Sagesse des monstres (650-850) en Dofus 3.",
@@ -38031,16 +38044,17 @@
    "T": "ligne perpendiculaire"
   },
   "dispellable": {
-   "1": "désenvoûtable",
-   "2": "non désenvoûtable",
-   "3": "non désenvoûtable et persistant (effet technique)"
+   "1": "désenvoûtable (et retiré à la mort)",
+   "2": "non désenvoûtable mais retiré à la mort (DISPELLABLE_BY_DEATH)",
+   "3": "retiré seulement par un désenvoûtement « fort » : PERSISTE à la mort (DISPELLABLE_BY_STRONG_DISPEL)",
+   "4": "jamais retiré (REALLY_NOT_DISPELLABLE)"
   },
   "damageEstimateFormula": "floor(base x (100 + caractéristique) / 100), sans Puissance/Dommages fixes, avant résistances et avant dégressivité de zone ; Neutre/Terre = Force, Feu = Intelligence, Eau = Chance, Air = Agilité.",
   "zoneDamageDecrease": "Dégressivité (docs/research/effects.md §4.3) : malus = min(max(dist - minSize, 0), maxDamageDecreaseApplyCount) x damageDecreaseStepPercent ; aucune si shape P/a/A/I/; ou size > 50 (ex. X63 d'En temps et en heure). Ici : Cercle de feu C2,1 et Morfaille N/E C2,1 -> 100 % à 1 case, 90 % à 2 ; Attraction ailée (5014) C3,1 -> 100/90/80 % ; Morfaille Terre C2,0 -> 100/90/80 %."
  },
  "verification": {
   "date": "2026-10-04",
-  "summary": "Vérification adverse : cache = API live (8 monstres, 47 sorts, 52 niveaux, 12 états tirés au sort : 0 écart) ; 1898 champs JSON comparés à l'API live : 0 écart ; JSON reproductible par build_json.py ; corrections : estimations (floor au lieu de round), champs de dégressivité de zone, glossaire des masques, -1 PM rendu INCERTAIN, tour 'à vide' avant Action !, Morfaille critique sans répétition, méta-succès 1160. Détails : docs/research/vortex.md §18."
+  "summary": "Vérification adverse : cache = API live (8 monstres, 47 sorts, 52 niveaux, 12 états tirés au sort : 0 écart) ; 1898 champs JSON comparés à l'API live : 0 écart ; JSON reproductible par build_json.py ; corrections : estimations (floor au lieu de round), champs de dégressivité de zone, glossaire des masques, -1 PM rendu INCERTAIN, tour 'à vide' avant Action !, méta-succès 1160. 2e vérification (même date) : cache/JSON/scripts re-contrôlés (35 enregistrements live, 902 champs de grades + 1378 champs de sorts JSON vs API live : 0 écart ; JSON, dump et crawl reproductibles) ; corrections : Morfaille critique RÉPÈTE bien au tour suivant (la 1re vérification s'était trompée), sémantique de dispellable (2 = retiré à la mort, 3 = persiste) -> bonus d'heures non cumulés d'une résurrection à l'autre et bonus d'Heurage perdus à la mort, cycle à 8 joueurs = 3 tours (pas irrégulier), phase de transition 'encore Marginal' contradictoire, contre-indice client sur le timing d'Action !, cas limite d'échange III->IV, ordre d'évaluation des masques de 4996. Détails : docs/research/vortex.md §18-19."
  },
  "sources": [
   "https://api.dofusdb.fr/dungeons/87",

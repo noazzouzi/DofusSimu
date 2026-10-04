@@ -52,7 +52,34 @@ export interface RenderCtx {
 
 export type Layer = 'ground' | 'fx' | 'text'
 
+/** Nature d'une animation (débogage, tests de séquencement). */
+export type AnimKind =
+  | 'move'
+  | 'slide'
+  | 'teleport'
+  | 'spawn'
+  | 'death'
+  | 'hit'
+  | 'castPulse'
+  | 'ring'
+  | 'projectile'
+  | 'zone'
+  | 'overlay'
+  | 'sparkle'
+  | 'spellLabel'
+  | 'bubble'
+  | 'text'
+
+/** Animations qui déplacent un jeton : elles ne doivent jamais se chevaucher pour un même combattant. */
+export const POSITION_KINDS: ReadonlySet<AnimKind> = new Set<AnimKind>(['move', 'slide', 'teleport'])
+
 export interface Anim {
+  kind?: AnimKind
+  /** Combattant visé par un effet qui ne modifie pas sa pose (texte flottant...). */
+  target?: number
+  /** Emplacement vertical et hauteur (en emplacements) d'un texte flottant. */
+  slot?: number
+  span?: number
   t0: number
   dur: number
   layer: Layer
@@ -77,6 +104,7 @@ export function moveAnim(fighter: number, path: number[], t0: number, perCell: n
   const pts = path.map(cellCenter)
   const segs = Math.max(1, pts.length - 1)
   return {
+    kind: 'move',
     t0,
     dur: perCell * segs,
     layer: 'ground',
@@ -100,6 +128,7 @@ export function slideAnim(fighter: number, from: number, to: number, t0: number,
   const a = cellCenter(from)
   const b = cellCenter(to)
   return {
+    kind: 'slide',
     t0,
     dur: dur + (collision ? 160 : 0),
     layer: 'ground',
@@ -124,6 +153,7 @@ export function teleportAnim(fighter: number, from: number, to: number, t0: numb
   const a = cellCenter(from)
   const b = cellCenter(to)
   return {
+    kind: 'teleport',
     t0,
     dur,
     layer: 'fx',
@@ -168,6 +198,7 @@ export function teleportAnim(fighter: number, from: number, to: number, t0: numb
 export function spawnAnim(fighter: number, cell: number, t0: number, dur: number, color: string): Anim {
   const c = cellCenter(cell)
   return {
+    kind: 'spawn',
     t0,
     dur,
     layer: 'ground',
@@ -188,6 +219,7 @@ export function spawnAnim(fighter: number, cell: number, t0: number, dur: number
 /** Mort : le jeton bascule, s'écrase et s'efface. */
 export function deathAnim(fighter: number, t0: number, dur: number): Anim {
   return {
+    kind: 'death',
     t0,
     dur,
     layer: 'ground',
@@ -208,6 +240,7 @@ export function deathAnim(fighter: number, t0: number, dur: number): Anim {
 export function hitAnim(fighter: number, t0: number, color: string, strong: boolean): Anim {
   const dur = strong ? 420 : 300
   return {
+    kind: 'hit',
     t0,
     dur,
     layer: 'ground',
@@ -223,6 +256,7 @@ export function hitAnim(fighter: number, t0: number, color: string, strong: bool
 /** Impulsion du lanceur au moment du lancer. */
 export function castPulseAnim(fighter: number, t0: number, color: string): Anim {
   return {
+    kind: 'castPulse',
     t0,
     dur: 520,
     layer: 'fx',
@@ -252,13 +286,14 @@ function ringAt(r: RenderCtx, c: Pt, p: number, color: string, maxR: number, wid
 }
 
 export function ringAnim(at: Pt, t0: number, dur: number, color: string, maxR = 36, layer: Layer = 'ground'): Anim {
-  return { t0, dur, layer, draw: (r, p) => ringAt(r, at, p, color, maxR, 3) }
+  return { kind: 'ring', t0, dur, layer, draw: (r, p) => ringAt(r, at, p, color, maxR, 3) }
 }
 
 /** Projectile en arc du lanceur vers la cellule ciblée, avec traînée. */
 export function projectileAnim(caster: number, fallbackFrom: Pt, to: Pt, t0: number, dur: number, color: string): Anim {
   let from: Pt | null = null
   return {
+    kind: 'projectile',
     t0,
     dur,
     layer: 'fx',
@@ -303,6 +338,7 @@ export function projectileAnim(caster: number, fallbackFrom: Pt, to: Pt, t0: num
 export function zoneFlashAnim(cells: number[], center: number, t0: number, dur: number, color: string): Anim {
   const c = cellCenter(center)
   return {
+    kind: 'zone',
     t0,
     dur,
     layer: 'ground',
@@ -324,6 +360,7 @@ export function zoneFlashAnim(cells: number[], center: number, t0: number, dur: 
 /** Apparition / disparition d'une glyphe ou d'un piège. */
 export function overlayPulseAnim(cells: number[], t0: number, color: string, added: boolean): Anim {
   return {
+    kind: 'overlay',
     t0,
     dur: 600,
     layer: 'ground',
@@ -343,6 +380,7 @@ export function overlayPulseAnim(cells: number[], t0: number, color: string, add
 export function sparkleAnim(fighter: number, t0: number, color: string, shape: 'plus' | 'hex'): Anim {
   const seeds = Array.from({ length: 6 }, (_, i) => ({ dx: Math.sin(i * 2.4 + fighter) * 16, dy: (i % 3) * 6, d: (i * 37) % 100 / 400 }))
   return {
+    kind: 'sparkle',
     t0,
     dur: 900,
     layer: 'fx',
@@ -401,6 +439,7 @@ function roundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 /** Nom du sort au-dessus du lanceur. */
 export function spellLabelAnim(fighter: number, text: string, t0: number, color: string, crit: boolean): Anim {
   return {
+    kind: 'spellLabel',
     t0,
     dur: 1250,
     layer: 'text',
@@ -438,6 +477,7 @@ export function spellLabelAnim(fighter: number, text: string, t0: number, color:
 /** Bulle de pensée de l'IA au-dessus d'un combattant. */
 export function bubbleAnim(fighter: number, text: string, t0: number, dur: number): Anim {
   return {
+    kind: 'bubble',
     t0,
     dur,
     layer: 'text',
@@ -509,8 +549,12 @@ export interface FloatStyle {
 }
 
 /** Texte flottant (dégâts, soins, PA/PM, états) qui monte et s'efface. */
-export function floatTextAnim(fighter: number, text: string, style: FloatStyle, t0: number, slot: number, dur = 1500, slotPx = 19): Anim {
+export function floatTextAnim(fighter: number, text: string, style: FloatStyle, t0: number, slot: number, dur = 1500, slotPx = 19, span = 1): Anim {
   return {
+    kind: 'text',
+    target: fighter,
+    slot,
+    span,
     t0,
     dur,
     layer: 'text',
@@ -528,8 +572,9 @@ export function floatTextAnim(fighter: number, text: string, style: FloatStyle, 
       ctx.restore()
       const vis = view.visible()
       const x = Math.max(vis.minX + half, Math.min(vis.maxX - half, h.x))
-      // Bord haut de la vue : on borne en gardant l'écart entre emplacements (pas de superposition).
-      const y = Math.max(vis.minY + fs * 1.6 + slot * view.px(slotPx), h.y - view.px(4) - rise - slot * view.px(slotPx))
+      // Ne pas sortir par le haut de la vue (la carte garde une marge au-dessus des combattants
+      // pour que les piles de textes y tiennent, voir computeBounds).
+      const y = Math.max(vis.minY + fs * 1.35, h.y - view.px(4) - rise - slot * view.px(slotPx))
       ctx.save()
       ctx.globalAlpha *= a
       ctx.font = `${style.italic ? 'italic ' : ''}${style.weight ?? 800} ${fs}px ${r.pal.font}`
