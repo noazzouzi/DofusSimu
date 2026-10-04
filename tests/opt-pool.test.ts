@@ -15,13 +15,15 @@ import { STUFFS } from '../src/optimizer/team/presets'
 import { runOne } from '../src/optimizer/runner'
 import { campaignSeeds } from '../src/optimizer/seeds'
 import { parseTeam } from '../src/optimizer/team/presets'
-import type { FightSpec, WorkerResult } from '../src/optimizer/types'
+import type { FightSpec, WorkerResult, WorkerTask } from '../src/optimizer/types'
 
 const DATA = loadDataStore('data')
 const CONTROL = 'control:143393281:3834,3836,3837,3838'
 const TEAM = parseTeam('iop:killer,cra:feu,enutrof:mpLock,eniripsa:healer', DATA)
 const SPEC: FightSpec = { scenarioId: CONTROL, team: TEAM, mode: 'scripted', theta: loadTheta(), variantPolicy: 'default', monsterNoise: 0 }
 const SEEDS = campaignSeeds(31, 24)
+const task = (taskId: number, seed: number, spec: FightSpec = SPEC): WorkerTask => ({ taskId, spec, seeds: [seed], kind: 'full', record: false })
+const finished = (p: ManagedPool) => p.stats().tasksByWorker.reduce((a, b) => a + b, 0)
 
 let pool1: ManagedPool
 let pool4: ManagedPool
@@ -80,6 +82,53 @@ describe('pool Node (worker_threads)', () => {
     const after = await runBatch(SPEC, SEEDS.slice(0, 2), pool1)
     expect(after.summaries).toHaveLength(2)
   }, 300_000)
+
+  it('IA `fast` sur l\'Œil de Vortex, variantes tirées : 4 workers = pool local (graine par graine)', async () => {
+    // Garde-fou pour WP1/WP2 : un cache de module qui influencerait une décision (historique propre à chaque worker)
+    // casserait l'égalité dès que l'IA `fast` réelle remplacera le bouchon.
+    const spec: FightSpec = { ...SPEC, scenarioId: 'vortex', mode: 'fast', variantPolicy: 'sampled' }
+    const seeds = SEEDS.slice(8, 14)
+    const local = await runBatch(spec, seeds, createLocalPool(DATA))
+    const four = await runBatch(spec, seeds, pool4, { chunk: 1 })
+    expect(four.summaries).toEqual(local.summaries)
+    expect(new Set(local.summaries.map(s => s.eventsHash)).size).toBe(seeds.length)
+  }, 300_000)
+
+  it('lot abandonné (sortie anticipée du for await) ou en échec : ses tâches restantes ne sont pas calculées', async () => {
+    // Sortie anticipée : 6 tâches, lecture de la première seulement.
+    let before = finished(pool1)
+    for await (const r of pool1.run(SEEDS.slice(0, 6).map((s, i) => task(9200 + i, s)))) {
+      expect(r.taskId).toBe(9200)
+      break
+    }
+    expect((await runBatch(SPEC, SEEDS.slice(0, 1), pool1)).summaries).toHaveLength(1) // pool toujours utilisable
+    // 1 lue + au plus 1 déjà envoyée au worker + 1 du lot suivant (au lieu de 6 + 1).
+    expect(finished(pool1) - before).toBeLessThanOrEqual(3)
+    // Échec de la première tâche : les 5 suivantes du même lot sont retirées de la file.
+    before = finished(pool1)
+    const bad = pool1.run([task(9300, 1, { ...SPEC, scenarioId: 'inconnu' }), ...SEEDS.slice(0, 5).map((s, i) => task(9301 + i, s))])
+    await expect((async () => { for await (const _ of bad) void _ })()).rejects.toThrow(/inconnu/)
+    expect((await runBatch(SPEC, SEEDS.slice(1, 2), pool1)).summaries).toHaveLength(1)
+    expect(finished(pool1) - before).toBeLessThanOrEqual(3)
+  }, 300_000)
+
+  it('pool local : même sémantique d\'annulation que les workers (lecture en échec, `cancelled`)', async () => {
+    const local = createLocalPool(DATA)
+    const it1 = local.run([task(9401, SEEDS[0]), task(9402, SEEDS[1])])
+    local.cancel(9402)
+    const got: WorkerResult[] = []
+    const err = await (async () => {
+      try {
+        for await (const r of it1) got.push(r)
+      } catch (e) {
+        return e as Error & { cancelled?: boolean }
+      }
+      return undefined
+    })()
+    expect(err?.message).toMatch(/annulée/)
+    expect(err?.cancelled).toBe(true)
+    expect(got.map(r => r.taskId)).toEqual([9401])
+  })
 
   it('preload : un scénario enregistré par un module est disponible dans chaque worker', async () => {
     const dungeons = new URL('../src/dungeons/index.ts', import.meta.url).href

@@ -11,3 +11,8 @@ for (const id of (process.argv[2] ?? '13141,13142,25863,12826,12781,13118').spli
   console.log('   profile cat', p.cat, 'dmg lines', p.damage.length, 'shield', p.shield, 'heal', p.heal, 'states', JSON.stringify(p.states.map(s => [s.stateId, s.on, s.duration])), 'cov', p.analyticCoverage.toFixed(2), 'unsupported', p.unsupported, 'zoneR', p.zoneRadius)
   for (const st of p.states) { const sd = data.state(st.stateId); console.log('     state', st.stateId, sd?.name, JSON.stringify(Object.fromEntries(Object.entries(sd ?? {}).filter(([k, v]) => v === true)))) }
 }
+for (const id of (process.argv[3] ?? '').split(',').filter(Boolean).map(Number)) {
+  const l = data.spellLevel(id, { playerLevel: 200 }) ?? data.spellLevel(id, {})!
+  const p = idx.of(l)
+  console.log(id, 'stats', JSON.stringify(p.stats.map(s => [s.effectId, s.stat, s.sign, s.value, s.duration, s.mask])), 'removals', JSON.stringify(p.removals.map(r => [r.effectId, r.pool, r.value, r.duration, r.delay, r.mask])), 'moves', JSON.stringify(p.moves.map(m => [m.kind, m.cells, m.mask])))
+}

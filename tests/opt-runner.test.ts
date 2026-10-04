@@ -3,7 +3,7 @@
  * (docs/design/ai.md §13, §15.1-§15.2, §16.5) sur données réelles (loadDataStore('data'), vraie carte du Vortex,
  * vrais monstres de vague et vrais sorts de classe).
  */
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
@@ -14,9 +14,12 @@ import { Rng } from '../src/core/rng'
 import { loadDataStore } from '../src/data/node'
 import { sampleVariant as scenarioVariant, variantKey } from '../src/dungeons'
 import type { UncertainParam } from '../src/dungeons/types'
-import { canCast, createEngine } from '../src/engine'
+import { canCast, castSpell, createEngine } from '../src/engine'
 import { distance } from '../src/map/geometry'
-import { MemoryFightCache, JsonlFightCache, cacheKey, canonicalJson } from '../src/optimizer/cache'
+import { zoneCells } from '../src/map/zones'
+import { critChance } from '../src/damage/crit'
+import { expectedDamage, type DamageInput } from '../src/damage/damage'
+import { MemoryFightCache, JsonlFightCache, cacheKey, cacheVersion, canonicalJson, sourceFingerprint } from '../src/optimizer/cache'
 import { autoChunk, checkpoints, compareConfigs, notableSeeds, runBatch } from '../src/optimizer/montecarlo'
 import { createLocalPool } from '../src/optimizer/pool/pool'
 import { buildTeam, controlScenario, fightDigest, fightParams, parseControlId, parseMirrorId, resolveScenario, runMicro, runOne, runTask, toReplay } from '../src/optimizer/runner'
@@ -30,11 +33,13 @@ import {
   rankKey,
   summarizeBatch,
   variantMarginals,
+  variantMinN,
   wilson,
+  worstMarginal,
   worstVariant,
 } from '../src/optimizer/stats'
 import { PRESETS, getPreset, parseTeam, presetMember } from '../src/optimizer/team/presets'
-import { DAMAGE_SPECS } from '../src/engine/effects/damage/pipeline'
+import { DAMAGE_SPECS, diceMax, diceMin, resolveElement } from '../src/engine/effects/damage/pipeline'
 import type { FightSpec, FightSummary } from '../src/optimizer/types'
 import { parseReplay } from '../src/replay/validate'
 import { fighterTable, parseArgs, parseParams, writeReplay } from '../src/cli/simulate'
@@ -182,6 +187,13 @@ describe('stats (§15.2) : Wilson, agrégats, comparaisons appariées', () => {
       fakeSummary(3, false, 0.2, { variant: 'a=1|b=x' }), fakeSummary(4, true, 1, { variant: 'b=x' }),
     ])
     expect(mv.map(m => `${m.param}=${m.value}:${m.n}/${m.baseN}:${m.winRate}/${m.baseWinRate}`)).toEqual(['a=1:2/2:0/1', 'b=x:2/2:0.5/0.5'])
+    // Pire valeur INCERTAINE, seulement parmi les valeurs vues assez souvent (une variante vue une fois ne dit rien).
+    expect(worstMarginal([fakeSummary(1, true, 1, { variant: 'default' }), fakeSummary(2, false, 0, { variant: 'a=1' }), fakeSummary(3, false, 0.2, { variant: 'a=1|b=x' }), fakeSummary(4, true, 1, { variant: 'b=x' })], 2)).toMatchObject({ param: 'a', value: '1', n: 2, winRate: 0 })
+    expect(worstMarginal([fakeSummary(2, false, 0, { variant: 'a=1' })], 2)).toBeUndefined()
+    expect([variantMinN(10), variantMinN(100), variantMinN(1000)]).toEqual([5, 5, 50])
+    const many = campaignSeeds(3, 40).map((seed, i) => fakeSummary(seed, i % 2 === 0, 0.5, { variant: i === 7 ? 'rare=1' : 'default' }))
+    expect(worstVariant(summarizeBatch(many))?.key).toBe('rare=1') // minN = 1 : la variante vue une fois « gagne »
+    expect(worstVariant(summarizeBatch(many), variantMinN(40))?.key).toBe('default')
   })
 
   it('arrêts séquentiels et différence appariée', () => {
@@ -303,6 +315,30 @@ describe('runner : combat complet sur données réelles', () => {
     expect(() => runMicro(DATA, spec(), 1, 'prefix12')).toThrow(/indisponible/)
   })
 
+  it('buildTeam refuse un build irréalisable (computeBuildStats.valid faux) au lieu de le jouer', () => {
+    const [ok] = parseTeam('iop:killer', DATA)
+    expect(() => buildTeam(DATA, [ok])).not.toThrow()
+    // Niveau 150 : objets de niveau 200 (et points hors budget) ⇒ build invalide.
+    const low = { ...ok, build: { ...ok.build, level: 150 } }
+    expect(() => buildTeam(DATA, [low])).toThrow(/Build invalide pour « Iop ».*niveau 200 requis/)
+    // Deux fois le même Dofus.
+    const dofus = ok.build.items.find(it => DATA.item(it.itemId)?.slot === 'dofus')!
+    const twice = { ...ok, build: { ...ok.build, items: [...ok.build.items.filter(it => it !== dofus), dofus, { ...dofus }] } }
+    expect(() => buildTeam(DATA, [twice])).toThrow(/Build invalide/)
+    expect(() => runOne(DATA, spec({ team: [low] }), 1)).toThrow(/Build invalide/)
+  })
+
+  it('fightParams : une clé de spec.params valant undefined n\'écrase ni le défaut ni la variante tirée', () => {
+    const vortex = resolveScenario('vortex')
+    const k = vortex.uncertain[0].key
+    for (const seed of campaignSeeds(12, 16)) {
+      const free = fightParams(vortex, spec({ scenarioId: 'vortex', variantPolicy: 'sampled' }), seed)
+      const undef = fightParams(vortex, spec({ scenarioId: 'vortex', variantPolicy: 'sampled', params: { [k]: undefined, maxRounds: undefined } }), seed)
+      expect(undef).toEqual(free)
+      expect(undef.params.maxRounds).toBe(vortex.defaultParams.maxRounds)
+    }
+  })
+
   it('runTask : graines dans l\'ordre ; t0 refusé (WP4b)', () => {
     const out = runTask(DATA, { taskId: 1, spec: spec(), seeds: [4, 2], kind: 'full', record: false })
     expect(out.map(s => s.seed)).toEqual([4, 2])
@@ -321,7 +357,7 @@ describe('combats de contrôle (§16.5) sur données réelles', () => {
     }
   })
 
-  it('miroir 1 c 1 (Iop contre sa copie) : 50 % ± 8 sur 400 graines ; côté et équipe qui commence tirés sur la graine', () => {
+  it('miroir 1 c 1 (Iop contre sa copie) : 50 % ± 4 sur 1 000 graines (§16.5) ; côté et équipe qui commence tirés sur la graine', () => {
     expect(parseMirrorId('mirror')).toEqual({ mapId: 121373185 })
     expect(parseMirrorId('mirror:143393281')).toEqual({ mapId: 143393281 })
     expect(parseMirrorId('mirrors')).toBeUndefined()
@@ -341,10 +377,69 @@ describe('combats de contrôle (§16.5) sur données réelles', () => {
       starters.add(fight.fighters[fight.timeline[0]].team)
     }
     expect([...starters].sort()).toEqual([0, 1])
-    const out = campaignSeeds(5, 400).map(seed => runOne(DATA, s, seed).summary)
+    const out = campaignSeeds(5, 1000).map(seed => runOne(DATA, s, seed).summary)
     const rate = out.filter(x => x.win).length / out.length
     console.info(`[miroir 1 c 1] équipe 0 : ${(100 * rate).toFixed(1)} % sur ${out.length} graines (IC95 ${wilson(out.filter(x => x.win).length, out.length).map(v => (100 * v).toFixed(1)).join('-')} %)`)
-    expect(Math.abs(rate - 0.5)).toBeLessThanOrEqual(0.08)
+    expect(Math.abs(rate - 0.5)).toBeLessThanOrEqual(0.04)
+    expect(out.every(x => x.rounds < 30)).toBe(true) // aucun match nul par limite de tours
+  })
+
+  it('mannequin : dégâts moyens = calculateur DoMath ± 1 % (build → personnage → moteur, jets et critiques aléatoires) ; exact en espérance', () => {
+    // Iop du preset (src/stats → fabrique) contre le mannequin de WP3 (résistances du mix Vortex), Épée de Iop : une
+    // ligne Terre 37-41 et sa ligne critique ; le calculateur ne voit que les caractéristiques du build et du mannequin.
+    // Deux stuffs : Terre (82 en critique ⇒ 97 % de CC) et Tank (45 ⇒ 60 %) : lignes normales ET critiques exercées.
+    for (const stuff of ['default', 'tank']) {
+      const sc = resolveScenario('dummy')
+      const engine = createEngine(DATA, sc.hooks)
+      const fight = sc.createFight(engine, buildTeam(DATA, parseTeam(`iop:killer@${stuff}`, DATA)), { params: sc.defaultParams, seed: 77, rollMode: 'random', record: false, rngRekey: 'none' })
+      const iop = fight.fighters.find(f => f.team === 0)!
+      const dummy = fight.fighters.find(f => f.team === 1)!
+      const spell = iop.spells.find(s => s.spellId === 13125)!
+      const line = spell.level.effects[0]
+      const critLine = spell.level.criticalEffects[0]
+      expect(spell.level.effects.filter(e => DAMAGE_SPECS.has(e.effectId))).toHaveLength(1)
+      // Case de lancer : à distance (pas de mêlée), hors de la croix de l'Épée centrée sur le mannequin (pas d'auto-dégât).
+      iop.ap = iop.stats.ap
+      const from = fight.map.cells.map(c => c.id).find(c => {
+        if (!fight.map.cells[c].walkable || engine.fighterAt(fight, c) || distance(c, dummy.cell) < 2) return false
+        if (zoneCells(line.zone, dummy.cell, c).includes(c)) return false
+        iop.cell = c
+        return canCast(engine, fight, iop, spell, dummy.cell) === null
+      })!
+      iop.cell = from
+      const element = resolveElement(DAMAGE_SPECS.get(line.effectId)!.element, iop.stats)
+      const input: DamageInput = {
+        attacker: iop.stats, defender: dummy.stats, element: element as DamageInput['element'], crit: false, isWeapon: false, isMelee: false,
+        defenderIsPlayer: false, spellPower: iop.stats.spellPower ?? 0, allResPct: dummy.stats.allResPct ?? 0,
+      }
+      const pCrit = critChance(spell.level.critChance, iop.stats.critical)
+      const expected = expectedDamage(input, null, { min: diceMin(line), max: diceMax(line), critMin: diceMin(critLine), critMax: diceMax(critLine) }, pCrit)
+      expect(expected).toBeGreaterThan(100)
+      const statsBefore = JSON.stringify(iop.stats)
+      const cast = (): number => {
+        iop.ap = iop.stats.ap
+        iop.castsThisTurn = {}
+        iop.castsOnTarget = {}
+        iop.cooldowns = {}
+        dummy.maxHp = dummy.baseMaxHp // érosion (PV max perdus) remise à zéro
+        dummy.hp = dummy.maxHp
+        const before = dummy.hp
+        expect(castSpell(engine, fight, iop, spell.spellId, dummy.cell).ok).toBe(true)
+        return before - dummy.hp
+      }
+      // Espérance (rollMode 'average', critique pondéré) : exactement le calculateur, à l'arrondi près.
+      fight.options.rollMode = 'average'
+      expect(cast()).toBe(Math.round(expected))
+      // Jets aléatoires : moyenne de 4 000 lancers à ± 1 % du calculateur.
+      fight.options.rollMode = 'random'
+      const n = 4000
+      let sum = 0
+      for (let i = 0; i < n; i++) sum += cast()
+      const mean = sum / n
+      console.info(`[mannequin] Épée de Iop (stuff ${stuff}) : moyenne ${mean.toFixed(1)} sur ${n} lancers, calculateur ${expected.toFixed(1)} (CC ${pCrit.toFixed(1)} %)`)
+      expect(Math.abs(mean - expected) / expected, stuff).toBeLessThan(0.01)
+      expect(JSON.stringify(iop.stats)).toBe(statsBefore) // aucun buff parasite n'a faussé la comparaison
+    }
   })
 
   it('4 personnages nus contre l\'Œil de Vortex : ≈ 0 % (aucune victoire sur 8 graines, variantes tirées)', () => {
@@ -545,5 +640,30 @@ describe('Monte-Carlo (L1) et cache', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
+  })
+
+  it('version du cache : empreinte du code (src hors CLI, data/ai) — un changement d\'IA invalide les combats en cache', () => {
+    const fp = (files: Record<string, string>): string => {
+      const root = mkdtempSync(join(tmpdir(), 'opt-fp-'))
+      try {
+        for (const [f, text] of Object.entries(files)) {
+          mkdirSync(join(root, f, '..'), { recursive: true })
+          writeFileSync(join(root, f), text)
+        }
+        return sourceFingerprint(root)
+      } finally {
+        rmSync(root, { recursive: true, force: true })
+      }
+    }
+    const base = { 'src/ai/a.ts': 'export const a = 1', 'src/cli/x.ts': 'cli', 'data/ai/theta.json': '{}' }
+    const ref = fp(base)
+    expect(ref).toMatch(/^[0-9a-f]{16}$/)
+    expect(fp({ ...base, 'src/cli/x.ts': 'autre CLI' })).toBe(ref) // la CLI ne change aucun combat
+    expect(fp({ ...base, 'src/ai/a.ts': 'export const a = 2' })).not.toBe(ref)
+    expect(fp({ ...base, 'data/ai/theta.json': '{"x":1}' })).not.toBe(ref)
+    expect(fp({ ...base, 'src/engine/b.ts': '' })).not.toBe(ref)
+    expect(fp({ 'README.md': '' })).toBe('0')
+    expect(cacheVersion().endsWith(`-${sourceFingerprint()}`)).toBe(true)
+    expect(sourceFingerprint()).toMatch(/^[0-9a-f]{16}$/)
   })
 })

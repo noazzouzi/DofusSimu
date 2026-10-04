@@ -247,8 +247,9 @@ export function forecastHours(
       ticks[f.id] = round
     }
     // Tour annulé (140 : corrompus, *Action !*) : le tour commence (déclencheurs TB, tics des morts) puis passe aussitôt
-    // (`Engine.nextTurn`) — pas de créneau joué.
-    if (!(f.alive && passesTurnAt(f, k))) {
+    // (`Engine.nextTurn`) — pas de créneau joué. Un mort tué sous l'étoile est corrompu à sa résurrection (5002) : il
+    // reprend sa place dans la timeline mais passe tous ses tours.
+    if (!(f.alive && passesTurnAt(f, k)) && !(revived.has(f.id) && hasStar(f))) {
       push({ round, index: idx, fighterId: f.id, isPlayer: isClockPlayer(f), isVortex: f.monsterId === VORTEX, hour })
     }
     if (f.monsterId === VORTEX && rezQueue.length) {
@@ -309,12 +310,27 @@ export function starWindows(slots: readonly ClockSlot[], hoursMask: number): { f
 /**
  * Fenêtres d'étoile d'un monstre précis : heures de mort de `m` ; la fenêtre en cours au créneau 0 n'est retenue que
  * si `m` porte déjà l'étoile (l'étoile n'est posée qu'à l'ARRIVÉE de l'heure, sur un monstre vivant) ; un monstre
- * corrompu n'a plus de fenêtre. Fenêtres futures : supposent `m` vivant à l'arrivée de l'heure.
+ * corrompu, ou mort sous l'étoile (corrompu à sa résurrection), n'a plus de fenêtre. Un monstre mort n'a de fenêtre
+ * qu'après sa résurrection : une heure arrivée avant ne lui pose pas l'étoile. Créneau de résurrection : premier
+ * créneau du Vortex de la prévision ; avec `s` (combat de la prévision), rang de `m` dans la file des morts quand
+ * `rezAllPerTurn` est faux (un mort par tour du Vortex, le plus récent d'abord), et jamais après *Action !*.
+ * Fenêtres futures : supposent `m` vivant à l'arrivée de l'heure.
  */
-export function monsterStarWindows(slots: readonly ClockSlot[], m: Fighter): { from: number; to: number; hour: number }[] {
-  if (isCorrupted(m)) return []
+export function monsterStarWindows(slots: readonly ClockSlot[], m: Fighter, s?: FightState): { from: number; to: number; hour: number }[] {
+  if (isCorrupted(m) || (!m.alive && hasStar(m))) return []
   const mask = deathHours(m)
-  return starWindows(slots, mask).filter(w => w.from > 0 || (m.alive && hasStar(m)))
+  if (m.alive) return starWindows(slots, mask).filter(w => w.from > 0 || hasStar(m))
+  const vx = s ? vortexState(s) : undefined
+  if ((vx?.actionRound ?? 0) > 0) return []
+  // Rang dans la file de 780 (0 = premier ressuscité) : tous au premier tour du Vortex par défaut.
+  let rank = 0
+  if (s && vx && !vx.rezAllPerTurn) rank = Math.max(0, deadWaveMonstersByRecency(s).indexOf(m.id))
+  let wake = 0
+  for (let r = 0; r <= rank; r++) {
+    wake = nextVortexSlot(slots, wake + 1)
+    if (wake < 0) return []
+  }
+  return starWindows(slots, mask).filter(w => w.from > wake)
 }
 
 /** Créneau du prochain tour du Vortex dans une prévision (−1 si absent). */

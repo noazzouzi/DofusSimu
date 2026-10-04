@@ -4,9 +4,12 @@
  * État ABSTRAIT (pas de cases ni de sorts) : heure, monstres (statut, PV, heures de mort, étoile), heures distinctes
  * posées. Les transitions reproduisent les règles du moteur vérifiées par T-clock / le tracker :
  *  - `beginSlot` (passage au créneau i de la prévision `forecastHours`) : fin de tour de jeu (vagues `pending →
- *    invulnerable → alive`), heure du créneau (+ décalage des glyphes du plan), ÉTOILES recalculées à chaque arrivée
- *    d'heure (4996 : retire toutes les étoiles, les pose sur les monstres vivants non corrompus qui portent l'heure qui
- *    arrive), créneau du Vortex : résurrection (`rezHpPct`·PVmax, ×1,3 si XI) et corruption des tués sous étoile ;
+ *    invulnerable → alive`, invulnérables `arrivalInvulnerableTurns` tours), heure du créneau (+ décalage des glyphes du
+ *    plan), ÉTOILES recalculées à chaque arrivée d'heure (4996 : retire toutes les étoiles, les pose sur les monstres
+ *    vivants non corrompus qui portent l'heure qui arrive), créneau du Vortex : résurrection et corruption des tués sous
+ *    étoile. PV d'un ressuscité comme dans le moteur : `rezHpPct`·PV de base (780), puis la Vitalité de XI (+30 % des
+ *    PV de base, 1078 de 5002) s'ajoute aux PV courants ET aux PV max, sans cumul d'une vie à l'autre (bonus en
+ *    `dispellable` 2, vortex.md §6) ;
  *  - `applyAbs` (créneau joueur) : glyphes « avant », morts (heure de mort marquée ; sous étoile ⇒ corrompu au réveil),
  *    pré-dégâts plafonnés à PV − 1, glyphes « après ».
  * Les coûts (exposition, coûts d'heures, prix) appartiennent au planificateur (planner.ts, WP3b) : ce module fournit
@@ -40,6 +43,8 @@ export interface AbsMonster {
   invulnerableUntil?: number
   /** Menace propre (PVe/tour) : coût d'exposition quand le monstre joue. */
   threat: number
+  /** PV max hors bonus (base des résurrections) ; défaut : `maxHp`. */
+  baseMaxHp?: number
 }
 
 /** Pas d'un plan chaîné (trace remontante). */
@@ -65,19 +70,36 @@ export interface AbsState {
 }
 
 export interface AbsParams {
-  /** PV des ressuscités en % des PV max (moyenne du jet). */
+  /** PV des ressuscités en % des PV max de base (moyenne du jet). */
   rezHpPct: number
-  /** Bonus de PV max de l'heure XI (+30 %). */
+  /** Bonus de PV de l'heure XI (+30 % des PV de base, ajouté aux PV courants et max). */
   vitalityXiPct: number
+  /** Tours de jeu d'invulnérabilité d'une vague qui arrive (`arrivalInvulnerableTurns`, défaut 1). */
+  arrivalInvulnerableTurns?: number
 }
 
-export const DEFAULT_ABS_PARAMS: Readonly<AbsParams> = { rezHpPct: 25, vitalityXiPct: 30 }
+export const DEFAULT_ABS_PARAMS: Readonly<AbsParams> = { rezHpPct: 25, vitalityXiPct: 30, arrivalInvulnerableTurns: 1 }
 
 /** Paramètres abstraits depuis l'état du scénario (moyenne du jet `rezHpPct`). */
 export function absParamsOf(fight: FightState): AbsParams {
   const vx = vortexState(fight)
   if (!vx) return { ...DEFAULT_ABS_PARAMS }
-  return { rezHpPct: (vx.rezHpPct[0] + vx.rezHpPct[1]) / 2, vitalityXiPct: DEFAULT_ABS_PARAMS.vitalityXiPct }
+  return {
+    rezHpPct: (vx.rezHpPct[0] + vx.rezHpPct[1]) / 2,
+    vitalityXiPct: DEFAULT_ABS_PARAMS.vitalityXiPct,
+    arrivalInvulnerableTurns: vx.arrivalInvulnerableTurns,
+  }
+}
+
+/**
+ * PV max et PV d'un monstre ressuscité (voir l'en-tête) : `base`·(1 + XI·30 %) et `rezHpPct`·`base` + bonus de XI.
+ * Mêmes arrondis que le moteur (780 : plancher du pourcentage ; 1078 : plancher de 30 % des PV de base).
+ */
+export function resurrection(m: Pick<AbsMonster, 'hours' | 'maxHp' | 'baseMaxHp'>, p: AbsParams = DEFAULT_ABS_PARAMS): { hp: number; maxHp: number } {
+  const base = m.baseMaxHp ?? m.maxHp
+  const bonus = maskHas(m.hours, 11) ? Math.floor((base * p.vitalityXiPct) / 100) : 0
+  const maxHp = base + bonus
+  return { maxHp, hp: Math.max(1, Math.min(maxHp, Math.floor((base * p.rezHpPct) / 100) + bonus)) }
 }
 
 /** Racine abstraite au créneau 0 de `slots` (observée par le tracker). */
@@ -97,6 +119,7 @@ export function absFromFight(fight: FightState, slots: readonly ClockSlot[], o: 
     arrivesRound: t.arrivesRound,
     invulnerableUntil: t.invulnerableUntil || undefined,
     threat: t.threat,
+    baseMaxHp: t.baseMaxHp,
   }))
   return {
     slotIdx: 0,
@@ -146,7 +169,8 @@ export function beginSlot(s: AbsState, slots: readonly ClockSlot[], i: number, p
     monsters.forEach((m, k) => {
       let n: AbsMonster | undefined
       if (m.status === 'pending' && m.arrivesRound !== undefined && m.arrivesRound <= round) {
-        n = { ...m, status: 'invulnerable', invulnerableUntil: round + 1, hp: m.maxHp }
+        const turns = p.arrivalInvulnerableTurns ?? 1
+        n = turns > 0 ? { ...m, status: 'invulnerable', invulnerableUntil: round + turns, hp: m.maxHp } : { ...m, status: 'alive', hp: m.maxHp }
       } else if (m.status === 'invulnerable' && (m.invulnerableUntil ?? 0) <= round) n = { ...m, status: 'alive' }
       if (n) {
         changed ??= monsters.slice()
@@ -167,10 +191,7 @@ export function beginSlot(s: AbsState, slots: readonly ClockSlot[], i: number, p
       if (m.status !== 'dead') return
       changed ??= monsters.slice()
       if (m.corruptOnWake) changed[k] = { ...m, status: 'corrupt', star: false, corruptOnWake: false }
-      else {
-        const maxHp = maskHas(m.hours, 11) ? Math.floor(m.maxHp * (1 + p.vitalityXiPct / 100)) : m.maxHp
-        changed[k] = { ...m, status: 'alive', star: false, hp: Math.max(1, Math.floor((maxHp * p.rezHpPct) / 100)), maxHp }
-      }
+      else changed[k] = { ...m, status: 'alive', star: false, ...resurrection(m, p) }
     })
     if (changed) monsters = changed
   }

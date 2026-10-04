@@ -19,9 +19,11 @@
  * téléportations) : non joués (score analytique nul) — simplification assumée de la référence `scripted`.
  *
  * Coût : aucun clone ; caches par « état » (niveaux de sort modifiés, occupation des cases, scores par (sort, case))
- * invalidés après chaque action ; préfiltre de portée avant `canCast`.
+ * invalidés après chaque action ; préfiltre de portée avant `canCast` ; zones testées sur les seules cases occupées.
  * Déterministe : aucun tirage ; départages par score, puis case, puis id de sort. N'utilise que la vue honnête
- * (`createView(...).visible()`, src/ai/core) : ni `fight.events`, ni pièges invisibles, ni dés futurs.
+ * (`createView(...).visible()`, src/ai/core) : ni `fight.events`, ni pièges invisibles, ni dés futurs ; occupation des
+ * cases, cibles et chemins (`honestReach`) sont calculés sur cette vue (un invisible adverse est à sa dernière case
+ * connue, jamais à sa case réelle).
  */
 import { createView } from '../core'
 import type { Element } from '../../core/types'
@@ -31,12 +33,12 @@ import { canCast } from '../../engine/cast'
 import type { Engine } from '../../engine/engine'
 import { modifiedSpellLevel } from '../../engine/effects/buffs/spellMods'
 import { DAMAGE_SPECS, resolveElement } from '../../engine/effects/damage/pipeline'
-import { pathTo, reachableCells, type Reachable } from '../../engine/move'
+import { pathTo, type Reachable } from '../../engine/move'
 import { performAction, type Controller } from '../../engine/runner'
 import { compileTargetMask, matchesTargetMask } from '../../engine/targetMask'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
 import { CELL_COUNT, distance, neighborsOf } from '../../map/geometry'
-import { zoneCells } from '../../map/zones'
+import { zoneMembership } from '../../map/zones'
 import { defaultPresetOf, findPreset, type Preset, type PresetTarget, type RotationStep } from '../../optimizer/team/presets'
 import type { AIConfig } from '../types'
 
@@ -123,9 +125,13 @@ interface TurnCtx {
   me: Fighter
   seed: number
   visible: readonly Fighter[]
+  /** Combattants tels que vus par l'équipe, par id (invisible adverse : copie placée sur sa dernière case connue). */
+  seen: Map<number, Fighter>
   enemies: Fighter[]
   /** Occupant visible de chaque case (−1 = libre). */
   occ: Int16Array
+  /** Cases occupées (vue honnête), croissantes : les zones ne sont testées que sur elles. */
+  occupied: number[]
   /** Niveaux de sort modifiés par les buffs du lanceur. */
   lvl: Map<number, SpellLevelData>
   /** Estimations par « spellId:case » depuis la case actuelle. */
@@ -148,15 +154,26 @@ interface CastValue {
 function turnCtx(engine: Engine, fight: FightState, me: Fighter, seed: number): TurnCtx {
   const visible = createView(engine, fight, me, seed).visible()
   const occ = new Int16Array(CELL_COUNT).fill(-1)
-  for (const f of visible) if (f.alive && f.cell >= 0 && f.carriedBy === undefined) occ[f.cell] = f.id
+  const seen = new Map<number, Fighter>()
+  const occupied: number[] = []
+  for (const f of visible) {
+    seen.set(f.id, f)
+    if (f.alive && f.cell >= 0 && f.carriedBy === undefined) {
+      if (occ[f.cell] < 0) occupied.push(f.cell)
+      occ[f.cell] = f.id
+    }
+  }
+  occupied.sort((a, b) => a - b)
   return {
     engine,
     fight,
     me,
     seed,
     visible,
+    seen,
     enemies: visible.filter(f => f.alive && f.team !== me.team && f.cell >= 0 && f.carriedBy === undefined),
     occ,
+    occupied,
     lvl: new Map(),
     scores: new Map(),
   }
@@ -170,9 +187,35 @@ function levelOf(ctx: TurnCtx, spell: KnownSpell): SpellLevelData {
   return l
 }
 
+/** Occupant d'une case selon la vue honnête (jamais la case réelle d'un invisible adverse). */
 function occupantAt(ctx: TurnCtx, cell: number): Fighter | undefined {
   const id = cell >= 0 && cell < CELL_COUNT ? ctx.occ[cell] : -1
-  return id >= 0 ? ctx.fight.fighters[id] : undefined
+  return id >= 0 ? ctx.seen.get(id) : undefined
+}
+
+/**
+ * Cases atteignables avec les PM actuels (BFS 4-voisins, même ordre que `reachableCells` du moteur) sur l'occupation
+ * VUE par l'équipe : un invisible adverse bloque sa dernière case connue, pas sa case réelle. Le déplacement réel
+ * (`move`) s'arrête de lui-même s'il bute sur lui, comme en jeu.
+ */
+function honestReach(ctx: TurnCtx): Reachable {
+  const me = ctx.me
+  const cells = ctx.fight.map.cells
+  const cost = new Map<number, number>([[me.cell, 0]])
+  const prev = new Map<number, number>()
+  const queue = [me.cell]
+  for (let qi = 0; qi < queue.length; qi++) {
+    const c = queue[qi]
+    const d = cost.get(c)!
+    if (d >= me.mp) continue
+    for (const n of neighborsOf(c)) {
+      if (cost.has(n) || !cells[n]?.walkable || ctx.occ[n] >= 0) continue
+      cost.set(n, d + 1)
+      prev.set(n, c)
+      queue.push(n)
+    }
+  }
+  return { cost, prev }
 }
 
 // ───────────────────────────── estimation d'un lancer ─────────────────────────────
@@ -223,6 +266,18 @@ function scoreCast(ctx: TurnCtx, spell: KnownSpell, cell: number, from: number):
   return v0
 }
 
+/**
+ * Cases OCCUPÉES couvertes par une zone (croissantes) : la zone n'est jamais énumérée — une zone « toute la carte »
+ * (C63, 560 cases : sous-sorts des balises du Crâ, Flèche Dévorante…) coûtait ≈ 0,3 ms par estimation — mais testée
+ * case par case (`zoneMembership`, même règle que `zoneCells`) sur les seules cases occupées.
+ */
+function occupiedInZone(ctx: TurnCtx, zone: EffectData['zone'], cell: number, from: number): number[] {
+  const inZone = zoneMembership(zone, cell, from)
+  const out: number[] = []
+  for (const c of ctx.occupied) if (inZone(c)) out.push(c)
+  return out
+}
+
 /** Accumule dans `v0` la valeur des `effects` lancés sur `cell` (voir `scoreCast`). */
 function scoreEffects(ctx: TurnCtx, effects: readonly EffectData[], kinds: readonly EffectKind[], cell: number, from: number, depth: number, v0: CastValue): void {
   const me = ctx.me
@@ -244,7 +299,7 @@ function scoreEffects(ctx: TurnCtx, effects: readonly EffectData[], kinds: reado
       }
       if (e.zone !== lastZone) {
         lastZone = e.zone
-        lastCells = zoneCells(e.zone, cell, from)
+        lastCells = occupiedInZone(ctx, e.zone, cell, from)
       }
       for (const c of lastCells) {
         const t = occupantAt(ctx, c)
@@ -261,7 +316,7 @@ function scoreEffects(ctx: TurnCtx, effects: readonly EffectData[], kinds: reado
     }
     if (e.zone !== lastZone) {
       lastZone = e.zone
-      lastCells = zoneCells(e.zone, cell, from)
+      lastCells = occupiedInZone(ctx, e.zone, cell, from)
     }
     // Effets différés (poisons, explosions programmées) : comptés à moitié.
     const w = e.delay > 0 ? 0.5 : 1
@@ -440,7 +495,7 @@ function moveToCast(ctx: TurnCtx, spells: { spell: KnownSpell; hint: PresetTarge
   const usable = spells.filter(({ spell }) => me.ap >= levelOf(ctx, spell).apCost)
   if (!usable.length) return false
   const cands = usable.map(({ spell, hint }) => ({ spell, cells: candidateCells(ctx, spell, hint) }))
-  const reach = reachableCells(ctx.fight, me, ctx.engine)
+  const reach = honestReach(ctx)
   const byCost: number[][] = []
   for (const [c, cost] of reach.cost) if (c !== me.cell) (byCost[cost] ??= []).push(c)
   for (const cells of byCost) {
@@ -462,7 +517,7 @@ function moveToCast(ctx: TurnCtx, spells: { spell: KnownSpell; hint: PresetTarge
 function approach(ctx: TurnCtx, ideal: number): boolean {
   const me = ctx.me
   if (me.mp < 1 || !ctx.enemies.length) return false
-  const reach = reachableCells(ctx.fight, me, ctx.engine)
+  const reach = honestReach(ctx)
   const gap = (c: number) => {
     let m = Infinity
     for (const e of ctx.enemies) m = Math.min(m, distance(c, e.cell))
@@ -492,7 +547,7 @@ function kite(ctx: TurnCtx): void {
     return m
   }
   if (minDist(me.cell) > 3) return
-  const reach = reachableCells(ctx.fight, me, ctx.engine)
+  const reach = honestReach(ctx)
   let bestCell = me.cell
   let bestD = minDist(me.cell)
   let bestCost = 0

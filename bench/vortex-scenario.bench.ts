@@ -8,6 +8,8 @@
  * | `trackVortex` (19 monstres, vagues à venir comprises) | ≤ 20 µs | racine abstraite, signature du tracker |
  * | `absFromFight` + `beginSlot` sur tout l'horizon | ≤ 30 µs | racine et transitions du planificateur |
  * | `vortexHooks.cloneState` (E2) | ≤ 1 µs | part du scénario dans `cloneFight` (`structuredClone` ≈ 7 µs) |
+ * | modèle de base : `update` (début de tour de joueur) | ≤ 30 µs | prévision 2 tours + croix par créneau |
+ * | modèle de base : `extraIncoming` (une case) | ≤ 0,5 µs | appelé par allié × case par la menace (`cellIncoming` ≤ 2 µs) |
  * | `cloneFight` complet (référence moteur) | ≤ 12 µs | §14.1 — coût du MOTEUR (combattants, buffs), hors WP3a |
  * | placement analytique (11 880 affectations) | ≤ 60 ms | §12.10 (≈ 5 µs par affectation visés) |
  * | combat passif de 30 tours (moteur + règles serveur seules) | ≤ 50 ms | §14.2 « Moteur 0,05 s » par combat ; mesuré
@@ -26,7 +28,10 @@ import { absFromFight, beginSlot } from '../src/dungeons/vortex/abstract'
 import { forecastHours } from '../src/dungeons/vortex/clock'
 import { VORTEX_DEFAULT_PARAMS } from '../src/dungeons/vortex/constants'
 import { rankVortexPlacements } from '../src/dungeons/vortex/placement'
-import { createSmokeTeam, runVortexSmoke } from '../src/dungeons/vortex/scenario'
+import { createView } from '../src/ai/core'
+import { emptyBlackboard } from '../src/ai/team/controller'
+import type { Perception } from '../src/ai/types'
+import { basicVortexAIModel, createSmokeTeam, runVortexSmoke } from '../src/dungeons/vortex/scenario'
 import { createVortexFight, vortexHooks } from '../src/dungeons/vortex/setup'
 import { trackVortex } from '../src/dungeons/vortex/tracker'
 import { createEngine } from '../src/engine'
@@ -68,6 +73,18 @@ function measure(label: string, targetUs: number, n: number, fn: () => unknown):
 
 const mid = midFight()
 const horizon = forecastHours(mid.fight, 4, VORTEX_DEFAULT_PARAMS)
+const midMe = mid.engine.current(mid.fight)!
+const midView = createView(mid.engine, mid.fight, midMe, 1)
+const model = basicVortexAIModel(VORTEX_DEFAULT_PARAMS)
+const bb = emptyBlackboard()
+const noPerception = {} as Perception
+model.update(midView, bb, noPerception, 'fast')
+const allies = mid.fight.fighters.filter(f => f.alive && f.team === midMe.team)
+let cellCursor = 0
+const extraOnce = () => {
+  cellCursor = (cellCursor + 37) % mid.fight.map.cells.length
+  return model.extraIncoming!(mid.fight, allies[cellCursor % allies.length], cellCursor)
+}
 const team = createSmokeTeam(DATA)
 // Préchauffage : conversion paresseuse des données (sorts, monstres, carte) hors mesure.
 runVortexSmoke(99, { data: DATA, rounds: 3 })
@@ -88,6 +105,12 @@ describe('WP3a — horloge, suivi, modèle abstrait (tour 13, créneau joueur)',
   })
   bench('vortexHooks.cloneState (E2)', () => {
     vortexHooks.cloneState!(mid.fight.scenarioState)
+  })
+  bench('modèle de base : update', () => {
+    model.update(midView, bb, noPerception, 'fast')
+  })
+  bench('modèle de base : extraIncoming', () => {
+    extraOnce()
   })
   bench('cloneFight complet (référence moteur)', () => {
     mid.engine.cloneFight(mid.fight, false)
@@ -117,6 +140,8 @@ afterAll(() => {
     return a
   })
   measure('vortexHooks.cloneState (E2)', 1, 50000, () => vortexHooks.cloneState!(mid.fight.scenarioState))
+  measure('modèle de base : update', 30, 20000, () => model.update(midView, bb, noPerception, 'fast'))
+  measure('modèle de base : extraIncoming', 0.5, 200000, extraOnce)
   measure('cloneFight complet (référence moteur, hors WP3a)', 12, 20000, () => mid.engine.cloneFight(mid.fight, false))
   measure('placement analytique', 60_000, 10, () => rankVortexPlacements(team, VORTEX_DEFAULT_PARAMS, { top: 8 }))
   measure('combat passif 30 tours (dominé par le moteur)', 50_000, 10, () => {

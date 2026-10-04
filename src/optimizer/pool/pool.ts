@@ -7,7 +7,10 @@
  * exécute les tâches dans le fil courant (tests, CLI `--workers 0`, référence de déterminisme).
  *
  * Plusieurs `run()` peuvent être en cours simultanément (lots appariés, préchargement des graines) : ils partagent la
- * file. `cancel(taskId)` retire une tâche en attente (une tâche en cours se termine, son résultat est ignoré).
+ * file. `cancel(taskId)` retire une tâche en attente (une tâche en cours se termine, son résultat est ignoré) ; la
+ * lecture du `run()` concerné échoue alors avec une erreur `cancelled: true` (même comportement pour le pool local).
+ * Un `run()` en échec (tâche en erreur) ou abandonné par son lecteur (`break` dans `for await`) retire de la file ses
+ * tâches restantes : aucun calcul n'est gaspillé pour un résultat que personne ne lira.
  */
 import type { DataStore } from '../../data/store'
 import type { WorkerPool, WorkerResult, WorkerTask } from '../types'
@@ -41,6 +44,20 @@ interface Sink {
   buffer: WorkerResult[]
   error?: Error
   waiter?: { resolve: (r: IteratorResult<WorkerResult>) => void; reject: (e: Error) => void }
+  /** Tâches de ce `run()` (abandon : retirées de la file). */
+  entries: Entry[]
+  /** Lecture terminée ou abandonnée : plus aucun résultat n'est attendu. */
+  closed?: boolean
+}
+
+/** Erreur d'annulation (`cancelled: true`). */
+function cancelledError(taskId: number): Error {
+  return Object.assign(new Error(`Tâche ${taskId} annulée`), { cancelled: true })
+}
+
+/** Retire de la file les tâches non commencées d'un `run()` (échec ou lecture abandonnée). */
+function dropRemaining(sink: Sink): void {
+  for (const e of sink.entries) e.cancelled = true
 }
 
 interface Entry {
@@ -52,7 +69,10 @@ interface Entry {
 function deliver(sink: Sink, result: WorkerResult | Error): void {
   sink.pending--
   if (result instanceof Error) {
-    sink.error ??= result
+    if (!sink.error) {
+      sink.error = result
+      dropRemaining(sink) // le lot a échoué : ses autres tâches ne servent plus
+    }
   } else {
     sink.buffer.push(result)
   }
@@ -70,7 +90,7 @@ function deliver(sink: Sink, result: WorkerResult | Error): void {
   }
 }
 
-/** Itérable asynchrone lisant un `Sink`. */
+/** Itérable asynchrone lisant un `Sink` ; `return()` (sortie anticipée d'un `for await`) abandonne le reste du lot. */
 function iterate(sink: Sink): AsyncIterable<WorkerResult> {
   return {
     [Symbol.asyncIterator]: () => ({
@@ -78,9 +98,14 @@ function iterate(sink: Sink): AsyncIterable<WorkerResult> {
         new Promise<IteratorResult<WorkerResult>>((resolve, reject) => {
           if (sink.error) return reject(sink.error)
           if (sink.buffer.length) return resolve({ value: sink.buffer.shift()!, done: false })
-          if (sink.pending <= 0) return resolve({ value: undefined, done: true })
+          if (sink.pending <= 0 || sink.closed) return resolve({ value: undefined, done: true })
           sink.waiter = { resolve, reject }
         }),
+      return: () => {
+        sink.closed = true
+        dropRemaining(sink)
+        return Promise.resolve({ value: undefined, done: true })
+      },
     }),
   }
 }
@@ -168,11 +193,15 @@ export function createPool(size: number, spawn: (index: number) => Endpoint, ini
   return {
     size: n,
     run(tasks: WorkerTask[]): AsyncIterable<WorkerResult> {
-      const sink: Sink = { pending: tasks.length, buffer: [] }
+      const sink: Sink = { pending: tasks.length, buffer: [], entries: [] }
       if (closed) sink.error = new Error('Pool fermé')
       else if (slots.every(s => s.dead)) sink.error = new Error('Aucun worker disponible')
       else {
-        for (const task of tasks) queue.push({ task, sink, cancelled: false })
+        for (const task of tasks) {
+          const e: Entry = { task, sink, cancelled: false }
+          sink.entries.push(e)
+          queue.push(e)
+        }
         pump()
       }
       return iterate(sink)
@@ -181,13 +210,13 @@ export function createPool(size: number, spawn: (index: number) => Endpoint, ini
       for (const e of queue) {
         if (e.task.taskId === taskId && !e.cancelled) {
           e.cancelled = true
-          deliver(e.sink, Object.assign(new Error(`Tâche ${taskId} annulée`), { cancelled: true }))
+          deliver(e.sink, cancelledError(taskId))
         }
       }
       for (const s of slots) {
         if (s.busy && s.busy.task.taskId === taskId && !s.busy.cancelled) {
           s.busy.cancelled = true
-          deliver(s.busy.sink, Object.assign(new Error(`Tâche ${taskId} annulée`), { cancelled: true }))
+          deliver(s.busy.sink, cancelledError(taskId))
         }
       }
     },
@@ -213,7 +242,10 @@ export function createPool(size: number, spawn: (index: number) => Endpoint, ini
   }
 }
 
-/** Pool « local » : tâches exécutées dans le fil courant, une à une (size = 1). */
+/**
+ * Pool « local » : tâches exécutées dans le fil courant, une à une (size = 1). Même sémantique d'annulation que le
+ * pool de workers : la lecture d'un `run()` dont une tâche est annulée échoue (`cancelled: true`).
+ */
 export function createLocalPool(data: DataStore): ManagedPool {
   const cancelled = new Set<number>()
   let closed = false
@@ -228,7 +260,7 @@ export function createLocalPool(data: DataStore): ManagedPool {
           for (const task of list) {
             if (closed) throw new Error('Pool fermé')
             await Promise.resolve() // rend la main entre deux tâches (annulation, autres lots)
-            if (cancelled.has(task.taskId)) continue
+            if (cancelled.has(task.taskId)) throw cancelledError(task.taskId)
             const t0 = clock()
             const r = executeTask(data, task)
             busy += clock() - t0

@@ -10,9 +10,13 @@
  */
 import type { AIMode, AIView, Blackboard, PhaseId, Perception, ReferenceTargets, StrategyParams } from '../../ai/types'
 import { emptyStats, type Stats } from '../../core/types'
+import { effectiveResistPercent } from '../../damage/damage'
+import { erosion } from '../../damage/life'
 import type { DataStore } from '../../data/store'
 import { createEngine } from '../../engine'
 import type { Engine } from '../../engine/engine'
+import { unerodedMaxHp } from '../../engine/effects/damage/pipeline'
+import { BASE_EROSION_PCT } from '../../engine/engine'
 import { createMonsterFighter, createPlayerFighter } from '../../engine/factory'
 import { runFight } from '../../engine/runner'
 import type { Fighter, FightState } from '../../engine/types'
@@ -21,7 +25,7 @@ import { passTurnController, scriptedVortexController, uniformProvider } from '.
 import { VORTEX_TARGET_MIX } from '../generic/dummy'
 import type { DungeonScenario, KeyDecisionReason, ScenarioAIModel, ScenarioParams, ScenarioSummary } from '../types'
 import { arrivalInvulnerableUntil } from '../waves'
-import { forecastHours, hourCount, isCorrupted, isWaveMonster, lineCells, nextVortexSlot } from './clock'
+import { currentHour, forecastHours, hourCount, isCorrupted, isWaveMonster, onHourLine } from './clock'
 import {
   AURORAIRE,
   INVULNERABLE,
@@ -32,10 +36,12 @@ import {
   VORTEX_ROLE_NEEDS,
   VORTEX_SCENARIO_ID,
   VORTEX_UNCERTAIN,
+  nextHour,
   type VortexParams,
 } from './constants'
 import { vortexMicro } from './micro'
 import { resolveVortexParams, vortexState } from './params'
+import { rankVortexPlacements } from './placement'
 import { corruptedCount, createVortexFight, vortexHooks } from './setup'
 import { trackVortex } from './tracker'
 
@@ -50,8 +56,32 @@ export function vortexParams(params: ScenarioParams): VortexParams {
 
 /** Dégâts de base d'*En temps et en heure* (5061 : 500 Terre, Auroraire sans caractéristiques) — INCERTAIN. */
 export const AURORAIRE_LINE_BASE_DAMAGE = 500
+/** Érosion ajoutée par 5061 (776 : +20 %, posée avant les dégâts) et part des PV érodés frappée en Terre (1096). */
+export const AURORAIRE_LINE_EROSION_PCT = 20
+export const AURORAIRE_LINE_ERODED_PART = 0.5
 
-/** Phase de combat déduite de l'état (§9.4, sans plan). */
+/**
+ * Dégâts attendus d'*En temps et en heure* sur `a` (formule des effets de 5061, vérifiée contre le moteur par
+ * tests/vortex-scenario-smoke.test.ts) : `500 Terre` (Auroraire sans caractéristiques) moins les résistances fixes puis
+ * en %, puis l'érosion de ce coup (10 % de base + 20 % de 776 + bonus d'érosion de `a`, plafond 50 %) s'ajoute aux PV
+ * déjà érodés, et 1096 frappe en Terre 50 % du total érodé, mêmes résistances. `erosionPct` : érosion de `a` avant le
+ * sort (`Engine.erosionPercent`, défaut 10 %). Coups critiques ignorés (l'Auroraire n'a pas de Critique).
+ */
+export function auroraireLineDamage(a: Fighter, erosionPct = BASE_EROSION_PCT): number {
+  const r = effectiveResistPercent(a.stats.earthResPct ?? 0, a.kind === 'player') / 100
+  const fixed = a.stats.earthRes ?? 0
+  const hit = (v: number) => Math.max(0, Math.trunc((v - fixed) * (1 - r)))
+  const first = hit(AURORAIRE_LINE_BASE_DAMAGE)
+  const eroded = Math.max(0, unerodedMaxHp(a) - a.maxHp) + erosion(first, erosionPct + AURORAIRE_LINE_EROSION_PCT)
+  return first + hit(Math.trunc(AURORAIRE_LINE_ERODED_PART * eroded))
+}
+
+/**
+ * Phase de combat déduite de l'état (§9.4, sans plan) : `opening` (tour 1), `waveCycle` (un monstre de vague non
+ * corrompu), `waiting` (tout corrompu, *Action !* encore loin : vagues à venir ou déverrouillage à plus de 2 tours du
+ * Vortex), `transition` (*Action !* dans au plus 2 tours du Vortex, ou lancée et Vortex encore invulnérable), `burst`
+ * (Vortex vulnérable).
+ */
 export function vortexPhase(fight: FightState): PhaseId {
   const vx = vortexState(fight)
   if (!vx) return 'fight'
@@ -59,7 +89,12 @@ export function vortexPhase(fight: FightState): PhaseId {
   if (vx.actionRound > 0) return vortex && vortex.alive && !vortex.states.includes(INVULNERABLE) ? 'burst' : 'transition'
   const monsters = fight.fighters.filter(isWaveMonster)
   const allCorrupt = monsters.length > 0 && monsters.every(isCorrupted)
-  if (allCorrupt && vx.wavesSpawned >= vx.arrivalRounds.length) return 'transition'
+  if (allCorrupt && vx.wavesSpawned >= vx.arrivalRounds.length) {
+    // *Action !* au tour du Vortex max(déverrouillage, première observation « tout corrompu » + délai) (setup.ts).
+    const since = vx.allCorruptSince || vx.vortexTurns + 1
+    const actionTurn = Math.max(vx.unlockVortexTurn, since + vx.actionDelay)
+    return actionTurn - vx.vortexTurns <= 2 ? 'transition' : 'waiting'
+  }
   if (allCorrupt) return 'waiting'
   if (fight.round <= 1) return 'opening'
   return 'waveCycle'
@@ -110,17 +145,31 @@ export function setVortexAIModelFactory(f: ModelFactory | undefined): void {
   modelFactory = f
 }
 
+/** Croix d'*En temps et en heure* vue depuis un créneau de la prévision (cache du modèle de base). */
+interface LineFromSlot {
+  /** Heures entre ce créneau et le prochain créneau du Vortex (sans glyphe) : heure frappée = heure lue + `offset`. */
+  offset: number
+  /** Combattants qui jouent entre ce créneau (exclu) et le Vortex : ils peuvent encore quitter la croix. */
+  movers: ReadonlySet<number>
+}
+
+/** Clé d'un créneau (tour de jeu, combattant). */
+const slotKey = (round: number, fighterId: number): number => round * 65536 + fighterId
+
 /**
  * Modèle de base : publie la phase et les besoins en rôles ; `extraIncoming` = dégâts attendus d'*En temps et en heure*
- * sur une case de la croix de l'Auroraire au prochain créneau du Vortex (à partir de son 2e tour), pour un allié qui
- * ne rejoue pas avant ; `vulnerableAt` (§6.6) ; décisions clés : arrivée de vague, changement de phase ; cibles de
- * référence (`vortexReferenceTargets`).
+ * (`auroraireLineDamage`) sur une case de la croix de l'Auroraire au prochain créneau du Vortex (à partir de son 2e
+ * tour), pour un allié qui ne rejoue pas avant. La croix est recalculée depuis l'état évalué : heure LUE dans `s` (une
+ * glyphe déclenchée dans la simulation la décale) + heures qui restent jusqu'au créneau du Vortex (prévision faite par
+ * `update`, indexée par créneau : valable aussi dans les états de rollout des 2 tours suivants). `vulnerableAt`
+ * (§6.6) ; décisions clés : arrivée de vague, changement de phase ; cibles de référence (`vortexReferenceTargets`) ;
+ * placement analytique (`rankVortexPlacements`, indice `θ.vortex.placementIndex`).
  */
-export function basicVortexAIModel(params: ScenarioParams, _theta?: StrategyParams): ScenarioAIModel {
+export function basicVortexAIModel(params: ScenarioParams, theta?: StrategyParams): ScenarioAIModel {
   const p = resolveVortexParams(params)
   // Cache rafraîchi par `update` (début du tour de chaque joueur, état réel).
-  let line: Uint8Array | null = null
-  let beforeVortex = new Set<number>()
+  let lines = new Map<number, LineFromSlot>()
+  let engine: Engine | undefined
   let lastPhase: PhaseId | undefined
   let lastWaves = 0
   let keyReason: KeyDecisionReason | null = null
@@ -129,6 +178,7 @@ export function basicVortexAIModel(params: ScenarioParams, _theta?: StrategyPara
     id: VORTEX_SCENARIO_ID,
     update(view: AIView, bb: Blackboard, _perception: Perception, _mode: AIMode) {
       const s = view.fight
+      engine = view.engine
       const phase = vortexPhase(s)
       const vx = vortexState(s)
       keyReason = null
@@ -137,31 +187,42 @@ export function basicVortexAIModel(params: ScenarioParams, _theta?: StrategyPara
       lastPhase = phase
       lastWaves = vx?.wavesSpawned ?? 0
       bb.phase = phase
-      line = null
-      beforeVortex = new Set()
+      lines = new Map()
       if (!vx) return
-      const slots = forecastHours(s, 2, p)
-      const vi = nextVortexSlot(slots, 1)
-      // En temps et en heure : pas au 1er tour du Vortex (vortexTurns = tours déjà commencés).
-      const willStrike = vi >= 0 && (vx.vortexTurns >= 1 || (slots[0]?.isVortex ?? false))
-      if (vi >= 0 && willStrike) {
-        const cells = lineCells(slots[vi].hour)
-        line = new Uint8Array(s.map.cells.length || 560)
-        for (const c of cells) line[c] = 1
-        for (let i = 1; i < vi; i++) if (slots[i].isPlayer) beforeVortex.add(slots[i].fighterId)
+      const slots = forecastHours(s, 2, p).filter(sl => sl.index >= 0)
+      // Tours du Vortex déjà commencés avant chaque créneau (En temps et en heure : pas à son 1er tour, délai initial).
+      let started = vx.vortexTurns
+      for (let i = 0; i < slots.length; i++) {
+        if (slots[i].isVortex && i > 0) started++
+        let j = i + 1
+        while (j < slots.length && !slots[j].isVortex) j++
+        if (j >= slots.length || started < 1) continue
+        const key = slotKey(slots[i].round, slots[i].fighterId)
+        if (lines.has(key)) continue
+        const movers = new Set<number>()
+        for (let k = i + 1; k < j; k++) movers.add(slots[k].fighterId)
+        lines.set(key, { offset: (((slots[j].hour - slots[i].hour) % 12) + 12) % 12, movers })
       }
     },
-    extraIncoming(_s: FightState, a: Fighter, cell: number): number {
-      if (!line || cell < 0 || !line[cell] || beforeVortex.has(a.id)) return 0
-      const res = a.stats.earthResPct ?? 0
-      const fixed = a.stats.earthRes ?? 0
-      const eroded = Math.max(0, a.baseMaxHp - a.maxHp)
-      return Math.max(0, AURORAIRE_LINE_BASE_DAMAGE * (1 - Math.min(50, res) / 100) - fixed) + 0.5 * eroded
+    extraIncoming(s: FightState, a: Fighter, cell: number): number {
+      if (cell < 0 || !lines.size) return 0
+      const cur = s.turnIndex >= 0 ? s.fighters[s.timeline[s.turnIndex]] : undefined
+      const line = cur && lines.get(slotKey(s.round, cur.id))
+      if (!line || line.movers.has(a.id)) return 0
+      const h = currentHour(s)
+      if (!h || !onHourLine(nextHour(h, line.offset), cell)) return 0
+      return auroraireLineDamage(a, engine ? engine.erosionPercent(a) : BASE_EROSION_PCT)
     },
     vulnerableAt: vortexVulnerableAt,
     isKeyDecision: () => keyReason,
     roleNeeds: () => ({ ...VORTEX_ROLE_NEEDS }),
     referenceTargets: (view: AIView) => (refTargets ??= vortexReferenceTargets(view.engine.data, p)),
+    choosePlacement(team: Fighter[], _perception: Perception, _budget: 'analytic' | 'simulated'): number[] {
+      const idx = Math.max(0, Math.floor(theta?.vortex?.placementIndex ?? 0))
+      // N = taille de l'équipe (composition de la vague 1, estimation de k), comme `createVortexFight`.
+      const ranked = rankVortexPlacements(team, { ...p, players: team.length }, { top: idx + 1 })
+      return ranked[Math.min(idx, ranked.length - 1)].cells
+    },
   }
 }
 
@@ -193,7 +254,8 @@ export function firstPlayerDeathKiller(fight: FightState): Fighter | undefined {
 /**
  * Classement de l'échec (§15.2) depuis l'état final : limite de tours ; burst raté (après *Action !*) ; mort sur la
  * croix de l'Auroraire (première mort de personnage due à *En temps et en heure*) ; vague non corrompue au
- * déverrouillage ; submersion (plus de 2N monstres non corrompus vivants) ; défaite sinon.
+ * déverrouillage (le Vortex a atteint son tour de déverrouillage avec au moins un monstre non corrompu) ; submersion
+ * (plus de 2N monstres non corrompus vivants) ; défaite sinon. « Pacifiste de Méjaire » n'est pas détecté.
  */
 export function vortexFailReason(fight: FightState): string | undefined {
   if (fight.ended && fight.winner === 0) return undefined
@@ -202,9 +264,9 @@ export function vortexFailReason(fight: FightState): string | undefined {
   if (!vx) return 'défaite'
   if (vx.actionRound > 0) return 'burst raté'
   if (firstPlayerDeathKiller(fight)?.monsterId === AURORAIRE) return 'mort sur la croix de l’Auroraire'
-  if (fight.round >= vx.unlockVortexTurn) return 'vague non corrompue au déverrouillage'
-  const aliveMonsters = fight.fighters.filter(f => isWaveMonster(f) && f.alive && !isCorrupted(f)).length
-  if (aliveMonsters > 2 * vx.players) return 'submersion'
+  const uncorrupted = fight.fighters.filter(f => isWaveMonster(f) && !isCorrupted(f))
+  if (vx.vortexTurns >= vx.unlockVortexTurn && uncorrupted.length > 0) return 'vague non corrompue au déverrouillage'
+  if (uncorrupted.filter(f => f.alive).length > 2 * vx.players) return 'submersion'
   return 'défaite'
 }
 

@@ -15,7 +15,7 @@ import type { Fighter, FightState } from '../../engine/types'
 import { CELL_COUNT, distance } from '../../map/geometry'
 import type { ThetaJson } from '../theta'
 import type { AIView, Blackboard, Perception, PotentialModel, ReachInfo } from '../types'
-import { firstCastCell, LosOracle, levelFor, nextTurnStaticOk } from './castCells'
+import { hitCastCell, LosOracle, levelFor, nextTurnStaticOk } from './castCells'
 import { createDptTable, DptFrame, type DptTableImpl } from './dpt'
 import { fnvInt, mobilityDigest, stateSig } from './hash'
 import { killProbability } from './kill'
@@ -280,7 +280,8 @@ export class PotentialModelImpl implements PotentialModel {
     const ks = a.spells[i]
     const lvl = levelFor(a, ks)
     if (!nextTurnStaticOk(this.view.engine, a, ks, lvl, ap)) return -1
-    return firstCastCell(s, a, ks, lvl, cell, reach, los, true)
+    const p = this.dpt.profiles.ofFighter(a)[i]
+    return hitCastCell(s, a, ks, lvl, p?.zone ?? null, p?.zoneRadius ?? 0, cell, reach, los, true)
   }
 }
 

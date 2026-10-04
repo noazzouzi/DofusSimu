@@ -10,13 +10,14 @@
  *    lancers par cible) : toutes les cases d'où le lancer est valide APRÈS le déplacement.
  */
 import type { TeamId } from '../../core/types'
-import type { SpellLevelData } from '../../data/model'
+import type { SpellLevelData, ZoneSpec } from '../../data/model'
 import { checkStatesCriterion } from '../../engine/criteria'
 import type { CastFailure } from '../../engine/cast'
 import { modifiedSpellLevel } from '../../engine/effects/buffs/spellMods'
 import type { Engine } from '../../engine/engine'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
 import { CELL_COUNT, distance, isInCastRange } from '../../map/geometry'
+import { zoneMembership } from '../../map/zones'
 import { losLine } from '../../map/los'
 import type { ReachInfo } from '../types'
 import { buildOccupancy } from './reach'
@@ -155,9 +156,11 @@ export function occupantAfterMove(occ: Int16Array, casterId: number, casterCell:
 export function castGeometryOk(s: FightState, caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, g: CastGeom,
                                from: number, target: number, los: LosOracle, nextTurn = false): boolean {
   const mc = s.map.cells[target]
-  if (!mc || !mc.walkable) return false
+  if (!mc) return false
   if (!isInCastRange(from, target, g.min, g.max, g.line, g.diag)) return false
   const occId = occupantAfterMove(los.occ, caster.id, caster.cell, from, target)
+  // Case non marchable : ciblable seulement si une entité y a été posée (Auroraire du Vortex), comme `canCast`.
+  if (!mc.walkable && occId < 0) return false
   if (lvl.needFreeCell && occId >= 0 && occId !== caster.id) return false
   if (lvl.needFreeCell && from !== caster.cell && target === from) return false
   if (lvl.needTakenCell && occId < 0) return false
@@ -203,6 +206,33 @@ export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, 
     }
   }
   return out
+}
+
+/**
+ * Un sort de portée 0 à zone (lancé sur la case du lanceur : Cercle de feu, Cri de Guerre…) touche-t-il `target`
+ * quand le lanceur est sur `from` ? Zone centrée sur `from`, orientation neutre.
+ */
+export function selfZoneHits(zone: ZoneSpec, radius: number, from: number, target: number): boolean {
+  if (from === target || distance(from, target) > radius) return false
+  return zoneMembership(zone, from, from)(target)
+}
+
+/**
+ * Case de `reach` d'où le sort ATTEINT l'entité sur `target` (menace, potentiel) : sort ciblé ⇒ `firstCastCell`
+ * (portée, LdV, case occupée) ; sort de portée 0 à zone ⇒ case atteignable (PA suffisants) dont la zone autour du
+ * lanceur contient `target`. −1 si aucune. `zone`/`radius` : zone principale du profil (null/0 si monocible).
+ */
+export function hitCastCell(s: FightState, caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, zone: ZoneSpec | null,
+                            radius: number, target: number, reach: ReachInfo, los: LosOracle, nextTurn = false): number {
+  const g = castGeom(caster, lvl)
+  if (g.max > 0 || !zone || radius <= 0) return firstCastCell(s, caster, spell, lvl, target, reach, los, nextTurn)
+  const cost = lvl.apCost
+  for (let i = 0; i < reach.count; i++) {
+    const c = reach.cells[i]
+    if (reach.apLeft[c] < cost || !selfZoneHits(zone, radius, c, target)) continue
+    return c
+  }
+  return -1
 }
 
 /** Première case de `reach` d'où `spell` peut toucher `target` (−1 si aucune). */

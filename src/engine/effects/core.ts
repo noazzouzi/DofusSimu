@@ -412,6 +412,9 @@ function addOutOfArea(
 }
 
 /** Combattant vivant (ou mourant si `dying`) sur une case. */
+/** Tampon de marquage des cases d'une zone (réutilisé, remis à zéro après usage). */
+const ZONE_MARK = new Uint8Array(560)
+
 function occupantAt(engine: Engine, fight: FightState, c: number, dying: boolean): Fighter | undefined {
   const f = engine.fighterAt(fight, c)
   if (f || !dying) return f
@@ -447,13 +450,34 @@ export function target(
   maskFight = fight
   const mctx: MaskContext = opts?.trigger?.source ? { ...BASE_MASK_CONTEXT, triggering: opts.trigger.source } : BASE_MASK_CONTEXT
   const mask = effect.targetMask
-  for (const c of cells) {
-    const f = occupantAt(engine, fight, c, dying)
-    if (!f || !(f.alive || (dying && isDying(f)))) continue
+  // Parcours des COMBATTANTS (et non des cases) : O(cases + combattants) au lieu de O(cases × combattants),
+  // décisif pour les zones « toute la carte » (a1, C63) des scripts du Vortex. Même sélection que `occupantAt` :
+  // occupant vivant non porté de chaque case, ou mourant si `fromDeath` et la case n'a pas d'occupant vivant.
+  const mark = ZONE_MARK
+  for (let i = 0; i < cells.length; i++) mark[cells[i]] = 1
+  const picked: Fighter[] = []
+  for (const f of fight.fighters) {
+    if (f.cell < 0 || f.carriedBy !== undefined || !mark[f.cell]) continue
+    if (f.alive) picked.push(f)
+  }
+  if (dying) {
+    for (const f of fight.fighters) {
+      if (!isDying(f) || f.carriedBy !== undefined || !mark[f.cell]) continue
+      if (!picked.some(o => o.cell === f.cell)) picked.push(f)
+    }
+  }
+  for (let i = 0; i < cells.length; i++) mark[cells[i]] = 0
+  // Ordre des cases de la zone conservé (tri final par distance de toute façon).
+  if (picked.length > 1) {
+    const order = new Map<number, number>()
+    for (let i = 0; i < cells.length; i++) if (!order.has(cells[i])) order.set(cells[i], i)
+    picked.sort((a, b) => (order.get(a.cell) ?? 0) - (order.get(b.cell) ?? 0))
+  }
+  for (const f of picked) {
     if (force && f !== force) continue
     if (!matchesTargetMask(mask, caster, f, mctx)) continue
     targets.push(f)
-    efficiency.set(f.id, zoneEfficiency(effect.zone, cell, c, casterCell))
+    efficiency.set(f.id, zoneEfficiency(effect.zone, cell, f.cell, casterCell))
   }
   if (mask) {
     const m = compileTargetMask(mask)

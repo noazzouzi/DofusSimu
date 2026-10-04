@@ -329,6 +329,8 @@ export interface FightOptions {
   record: boolean
   /** Nombre maximal de tours de jeu avant de déclarer un match nul. */
   maxRounds: number
+  /** Appliquer les relances initiales (initialCooldown) des sorts à l'entrée en combat (défaut : non). */
+  initialCooldowns?: boolean
   /**
    * (E1, docs/design/ai.md §3.3, §13.1) Re-semis des dés. 'none' (défaut, absent) : un seul flux depuis `seed`.
    * 'perTurn' : `startTurn` pose `rngState = mix32(mix32(seed, round), fighterId)` (src/core/hash.ts), de sorte qu'une

@@ -25,7 +25,7 @@ import type { ZoneSpec } from '../../data/model'
 import { compileZone } from '../../map/zones'
 import type { DptTable } from '../types'
 import { damageDigest, fnvInt } from './hash'
-import { createSpellProfileIndex, type DamageLineX, type SpellProfileIndexX, type SpellProfileX } from './spellProfile'
+import { createSpellProfileIndex, zoneRadius, type DamageLineX, type SpellProfileIndexX, type SpellProfileX } from './spellProfile'
 
 // ───────────────────────────── calibration ─────────────────────────────
 
@@ -222,8 +222,15 @@ export function lineDamage(a: Fighter, d: Fighter, line: DamageLineX, spellId: n
 // ───────────────────────────── un lancer ─────────────────────────────
 
 export interface CastDamage {
+  /** Meilleure position de la cible dans la zone (centre ou couronne) : utilisé par le DPT « sans contrainte ». */
   mean: number
   variance: number
+  /** Cible sur la case d'impact (lignes dont la zone contient son centre). */
+  centerMean?: number
+  centerVar?: number
+  /** Cible dans la zone hors de la case d'impact (lignes de zone de rayon ≥ 1 ; anneaux « hors centre »). */
+  ringMean?: number
+  ringVar?: number
 }
 
 /** Le sort `p` est-il « de mêlée » (portée max ≤ 1) ? */
@@ -238,24 +245,51 @@ export function spellCritPct(a: Fighter, p: SpellProfileX): number {
 }
 
 /**
- * Dégâts d'UN lancer de `p` par `a` sur `d` placé au centre de la zone (`eff` = efficacité de zone, 1 au centre) :
- * lignes acceptées par le masque, DoT (× min(durée, 2) × 0,8), effets différés (× 0,8).
+ * Dégâts d'UN lancer de `p` par `a` sur `d` (`eff` = efficacité de zone appliquée aux jets) : lignes acceptées par le
+ * masque, DoT (× min(durée, 2) × 0,8), effets différés (× 0,8). Deux placements de la cible : sur la case d'impact
+ * (`center*` : lignes dont la zone contient son centre) ou ailleurs dans la zone (`ring*` : lignes de zone de rayon
+ * ≥ 1, ex. « Cri de Guerre » en cercle autour du lanceur, centre exclu) ; `mean`/`variance` = le meilleur des deux
+ * (DPT « sans contrainte de position », §6.4).
  */
 export function castDamage(a: Fighter, d: Fighter, p: SpellProfileX, isWeapon: boolean, eff = 1, melee = isMeleeSpell(p),
                            out: CastDamage = { mean: 0, variance: 0 }): CastDamage {
-  out.mean = 0
-  out.variance = 0
-  if (!p.damage.length) return out
-  const critPct = spellCritPct(a, p)
-  for (const line of p.damage) {
-    if (eff >= 1 && !zoneHitsCenter(line.zone)) continue
-    if (!matchesTargetMask(line.mask, a, d)) continue
-    const r = lineDamage(a, d, line, p.spellId, isWeapon, melee, eff, critPct)
-    let w = line.p
-    if (line.dotTurns > 0) w *= Math.min(line.dotTurns, 2) * 0.8
-    else if (line.delayed > 0) w *= 0.8
-    out.mean += w * r.mean
-    out.variance += w * w * r.variance
+  let cm = 0
+  let cv = 0
+  let rm = 0
+  let rv = 0
+  if (p.damage.length) {
+    const critPct = spellCritPct(a, p)
+    for (const line of p.damage) {
+      const center = zoneHitsCenter(line.zone)
+      const ring = zoneRadius(line.zone) > 0
+      if (!center && !ring) continue
+      if (!matchesTargetMask(line.mask, a, d)) continue
+      const r = lineDamage(a, d, line, p.spellId, isWeapon, melee, eff, critPct)
+      let w = line.p
+      if (line.dotTurns > 0) w *= Math.min(line.dotTurns, 2) * 0.8
+      else if (line.delayed > 0) w *= 0.8
+      const m = w * r.mean
+      const v = w * w * r.variance
+      if (center) {
+        cm += m
+        cv += v
+      }
+      if (ring) {
+        rm += m
+        rv += v
+      }
+    }
+  }
+  out.centerMean = cm
+  out.centerVar = cv
+  out.ringMean = rm
+  out.ringVar = rv
+  if (rm > cm) {
+    out.mean = rm
+    out.variance = rv
+  } else {
+    out.mean = cm
+    out.variance = cv
   }
   return out
 }
@@ -350,7 +384,8 @@ export class DptTableImpl implements DptTable {
     let r = row[spellIndex]
     if (!r) {
       castDamage(a, d, p, ks.isWeapon === true, 1, isMeleeSpell(p), this.tmp)
-      row[spellIndex] = r = { mean: this.tmp.mean, variance: this.tmp.variance }
+      const t = this.tmp
+      row[spellIndex] = r = { mean: t.mean, variance: t.variance, centerMean: t.centerMean, centerVar: t.centerVar, ringMean: t.ringMean, ringVar: t.ringVar }
     }
     return r
   }

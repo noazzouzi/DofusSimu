@@ -22,5 +22,5 @@ for (const seed of seeds) {
   const show = (r: typeof rows[0]) => `  ${r.c.key.padEnd(16)} ${(engine.data.spell(r.c.cast!.spellId)?.name ?? '').padEnd(22)} ${r.c.cat.padEnd(9)} v=${Math.round(r.v)} prior=${Math.round(r.c.prior)} rankP=${byPrior.indexOf(r)} ${JSON.stringify(Object.fromEntries(Object.entries(r.d).filter(([k, x]) => x !== 0 && k !== 'total')))}`
   for (const r of rows.slice(0, 4)) console.log(show(r))
   console.log('  -- top prior')
-  for (const r of byPrior.slice(0, 3)) console.log(show(r))
+  for (const r of byPrior.slice(0, Number(process.env.TOPP ?? 3))) console.log(show(r))
 }

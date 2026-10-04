@@ -15,9 +15,10 @@ import {
   killProbability,
   normalCdf,
   pushStep,
+  resurrection,
   traceSteps,
 } from '../src/dungeons/vortex/abstract'
-import { forecastHours, hourBit, isWaveMonster } from '../src/dungeons/vortex/clock'
+import { currentHour, deathHours, forecastHours, hourBit, isWaveMonster } from '../src/dungeons/vortex/clock'
 import { IKARGN, MEJAIRE, VORTEX_DEFAULT_PARAMS } from '../src/dungeons/vortex/constants'
 import { vortexState } from '../src/dungeons/vortex/params'
 import { createSmokeTeam } from '../src/dungeons/vortex/scenario'
@@ -35,11 +36,22 @@ interface Setup {
   players: Fighter[]
 }
 
-function setup(seed = 1): Setup {
+function setup(seed = 1, params: Record<string, unknown> = {}, initiative = 4000): Setup {
   const engine = createEngine(data, vortexHooks)
-  const players = createSmokeTeam(data, undefined, { hp: 1_000_000 })
-  const fight = createVortexFight(engine, players, { params: VORTEX_DEFAULT_PARAMS, seed, rollMode: 'random', record: false, rngRekey: 'perTurn' })
+  const players = createSmokeTeam(data, undefined, { hp: 1_000_000, initiative })
+  const fight = createVortexFight(engine, players, { params: { ...VORTEX_DEFAULT_PARAMS, ...params }, seed, rollMode: 'random', record: false, rngRekey: 'perTurn' })
   return { engine, fight, players }
+}
+
+/** Joue passivement jusqu'au premier créneau de personnage où l'horloge est à `hour` (≥ `minRound`). */
+function playerAtHour(s: Setup, hour: number, minRound = 1): Fighter {
+  for (let i = 0; i < 3000; i++) {
+    const cur = s.engine.current(s.fight)
+    if (cur && cur.kind === 'player' && s.fight.round >= minRound && currentHour(s.fight) === hour) return cur
+    if (cur && s.fight.round > 0 && cur.alive) s.engine.endTurn(s.fight, cur)
+    if (!s.engine.nextTurn(s.fight)) break
+  }
+  throw new Error(`heure ${hour} jamais atteinte`)
 }
 
 function turnOf(s: Setup, f: Fighter, round = 0): void {
@@ -207,6 +219,85 @@ describe('modèle abstrait = moteur (mort, résurrection, étoile, corruption)',
     expect(killProbability(1200, 1000)).toBeGreaterThan(killProbability(1100, 1000))
     expect(killProbability(0, 1000)).toBe(0)
     expect(killProbability(500, 0)).toBe(1)
+  })
+
+  it('vagues à venir : PV max réels (grade du scénario), PV pleins à l’arrivée = arrivants du moteur', () => {
+    const s = setup(7)
+    const [p1] = s.players
+    turnOf(s, p1, 6)
+    const slots = forecastHours(s.fight, 3, VORTEX_DEFAULT_PARAMS)
+    const root = absFromFight(s.fight, slots)
+    let a = root
+    const pending = a.monsters.filter(m => m.status === 'pending' && m.wave === 2)
+    expect(pending).toHaveLength(4)
+    for (const m of pending) expect(m.maxHp).toBeGreaterThan(1000)
+    // Passage au tour 7 (arrivée) puis au tour 8 (fin de l'invulnérabilité d'arrivée).
+    const k7 = slots.findIndex(sl => sl.round === 7)
+    const k8 = slots.findIndex(sl => sl.round === 8)
+    a = beginSlot(a, slots, k7)
+    const arrived = a.monsters.filter(m => m.wave === 2)
+    expect(arrived.every(m => m.status === 'invulnerable' && m.hp === m.maxHp && m.invulnerableUntil === 8)).toBe(true)
+    expect(beginSlot(a, slots, k8).monsters.filter(m => m.wave === 2).every(m => m.status === 'alive')).toBe(true)
+    // Les vrais arrivants ont exactement ces PV (même composition, même ordre de monstres).
+    turnOf(s, p1, 7)
+    const real = s.fight.fighters.filter(f => isWaveMonster(f) && f.wave === 2)
+    expect(real.map(f => [f.monsterId, f.maxHp]).sort()).toEqual(arrived.map(m => [m.monsterId, m.maxHp]).sort())
+    // Paramètre : invulnérabilité de 2 tours (abstrait) ; 0 tour ⇒ vivants dès l'arrivée.
+    const a2 = beginSlot(root, slots, k7, { rezHpPct: 25, vitalityXiPct: 30, arrivalInvulnerableTurns: 0 })
+    expect(a2.monsters.filter(m => m.wave === 2).every(m => m.status === 'alive')).toBe(true)
+  })
+
+  it('résurrection après un kill à XI : PV et PV max du modèle abstrait = moteur (jet 50 % et jet des données)', () => {
+    for (const rez of [[50, 50], [20, 30]]) {
+      // k = 3 : P3 voit III/VII/XI.
+      const s = setup(9, { rezHpPct: rez }, 1000)
+      const ika = s.fight.fighters.find(f => f.monsterId === IKARGN)!
+      const killer = playerAtHour(s, 11)
+      const slots = forecastHours(s.fight, 3, VORTEX_DEFAULT_PARAMS)
+      let a = absFromFight(s.fight, slots)
+      const i = absIndex(a, ika.id)
+      a = applyAbs(a, slots[0], { t: 'kill', m: [ika.id], glyph: 'none' })!
+      s.engine.kill(s.fight, ika, killer)
+      expect(deathHours(ika)).toBe(hourBit(11))
+      const vi = slots.findIndex((sl, k) => k > 0 && sl.isVortex)
+      for (let k = 1; k <= vi; k++) a = beginSlot(a, slots, k, { rezHpPct: (rez[0] + rez[1]) / 2, vitalityXiPct: 30 })
+      turnOf(s, s.fight.fighters[vortexState(s.fight)!.vortexId], s.fight.round)
+      expect(ika.alive).toBe(true)
+      const abs = a.monsters[i]
+      const base = ika.baseMaxHp
+      const bonus = Math.floor(base * 0.3)
+      // PV max : base + 30 % (pas de ×1,3 sur des PV déjà bonifiés).
+      expect(ika.maxHp).toBe(base + bonus)
+      expect(abs.maxHp).toBe(base + bonus)
+      expect(resurrection({ hours: hourBit(11), maxHp: 99999, baseMaxHp: base }, { rezHpPct: 50, vitalityXiPct: 30 })).toEqual({ maxHp: base + bonus, hp: Math.floor(base / 2) + bonus })
+      if (rez[0] === 50) {
+        // Variante 50 % (règle du scénario) : 50 % des PV de base + bonus de XI, comme le jet des données.
+        expect(ika.hp).toBe(Math.floor(base / 2) + bonus)
+        expect(abs.hp).toBe(ika.hp)
+      } else {
+        expect(ika.hp).toBeGreaterThanOrEqual(Math.floor(base * 0.2) + bonus)
+        expect(ika.hp).toBeLessThanOrEqual(Math.floor(base * 0.3) + bonus)
+        expect(abs.hp).toBe(Math.floor(base * 0.25) + bonus)
+      }
+    }
+  })
+
+  // Défaut du moteur (rapport de revue WP3a) : la Vitalité d'un buff retiré à la mort (1078 de 5002, `dispellable` 2)
+  // n'est pas rendue — `Engine.kill` filtre les buffs puis `recomputeStats`, mais `applyPoolDelta` (seul endroit où les
+  // PV max suivent la Vitalité) ne s'applique qu'aux vivants. Les PV max d'un monstre tué une fois à XI gonflent donc de
+  // +30 % des PV de base à CHAQUE résurrection, alors que les bonus d'heures ne se cumulent pas (vortex.md §6). Ce test
+  // échouera (et devra devenir un `it`) quand le moteur sera corrigé.
+  it('diagnostic moteur : bonus de XI sans cumul après une 2e mort (PV max = base + 30 %)', () => {
+    const s = setup(9, {}, 1000)
+    const ika = s.fight.fighters.find(f => f.monsterId === IKARGN)!
+    s.engine.kill(s.fight, ika, playerAtHour(s, 11))
+    turnOf(s, s.fight.fighters[vortexState(s.fight)!.vortexId], s.fight.round)
+    const base = ika.baseMaxHp
+    expect(ika.maxHp).toBe(base + Math.floor(base * 0.3))
+    s.engine.kill(s.fight, ika, playerAtHour(s, 3, s.fight.round + 1))
+    expect(ika.maxHp).toBe(base) // mort : le bonus (retiré) ne compte plus
+    turnOf(s, s.fight.fighters[vortexState(s.fight)!.vortexId], s.fight.round)
+    expect(ika.maxHp).toBe(base + Math.floor(base * 0.3))
   })
 
   it('statuts de tous les monstres de vague cohérents avec le moteur après 30 tours (combat de fumée)', () => {

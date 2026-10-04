@@ -27,10 +27,10 @@ import { CELL_COUNT, CELL_X, CELL_Y, distance, neighborsOf } from '../../map/geo
 import { hasLineOfSight } from '../../map/los'
 import type { ThetaJson as StrategyParams } from '../theta'
 import type { AIView, Perception, ReachInfo, ThreatModel } from '../types'
-import { castGeom, firstCastCell, LosOracle, levelFor, nextTurnStaticOk } from './castCells'
+import { castGeom, hitCastCell, LosOracle, levelFor, nextTurnStaticOk, selfZoneHits } from './castCells'
 import { createDptTable, DptFrame, type DptTableImpl } from './dpt'
 import { fnvInt, mobilityDigest, positionKey, stateSig } from './hash'
-import { buildOccupancy, cachedReach, canTackleNow } from './reach'
+import { buildOccupancy, cachedReach, canTackleNow, computeReachFor, createReachInfo } from './reach'
 import { phi, softmaxInto } from './rng'
 import type { SpellProfileX } from './spellProfile'
 import { SlotOrder } from './timeline'
@@ -511,12 +511,13 @@ export class ThreatModelImpl implements ThreatModel {
     }
   }
 
-  /** Case (de `reach`) d'où `e` peut lancer son i-ème sort sur `cell` au prochain tour, −1 sinon. */
+  /** Case (de `reach`) d'où `e` peut atteindre `cell` avec son i-ème sort au prochain tour, −1 sinon. */
   private castCell(s: FightState, e: Fighter, i: number, cell: number, reach: ReachInfo, los: LosOracle, ap: number): number {
     const ks = e.spells[i]
     const lvl = levelFor(e, ks)
     if (!nextTurnStaticOk(this.view.engine, e, ks, lvl, ap)) return -1
-    return firstCastCell(s, e, ks, lvl, cell, reach, los, true)
+    const p = this.dpt.profiles.ofFighter(e)[i]
+    return hitCastCell(s, e, ks, lvl, p?.zone ?? null, p?.zoneRadius ?? 0, cell, reach, los, true)
   }
 
   incoming(id: number): number {
@@ -618,6 +619,7 @@ export class ThreatModelImpl implements ThreatModel {
       const lvl = levelFor(e, ks)
       if (nextTurnStaticOk(engine, e, ks, lvl, row.ap)) {
         const g = castGeom(e, lvl)
+        const selfZone = g.max === 0 && p && p.zone && p.zoneRadius > 0 ? p : null
         const mp0 = reach.mpLeft[reach.cells[0]]
         // Case de lancer gardant le plus de PA (le tacle peut en coûter).
         for (let k = 0; k < reach.count; k++) {
@@ -625,7 +627,7 @@ export class ThreatModelImpl implements ThreatModel {
           if (mp0 - reach.mpLeft[c] > mpBudget) continue
           if (reach.apLeft[c] < lvl.apCost || (hit > 0 && reach.apLeft[c] <= apAt)) continue
           if (c === cell) continue
-          if (!inRangeLos(s, g, c, cell, lvl.castTestLos, this.occ, e.id, f.id)) continue
+          if (selfZone ? !selfZoneHits(selfZone.zone!, selfZone.zoneRadius, c, cell) : !inRangeLos(s, g, c, cell, lvl.castTestLos, this.occ, e.id, f.id)) continue
           hit = 1
           apAt = reach.apLeft[c]
           if (apAt >= row.ap) break
@@ -673,6 +675,8 @@ export class ThreatModelImpl implements ThreatModel {
     const ap0 = row.ap - apMinus
     if (ap0 >= lvl.apCost && nextTurnStaticOk(this.view.engine, e, ks, lvl, ap0)) {
       const g = castGeom(e, lvl)
+      const prof = this.dpt.profiles.ofFighter(e)[bi]
+      const selfZone = g.max === 0 && prof && prof.zone && prof.zoneRadius > 0 ? prof : null
       const mp0 = reach.mpLeft[reach.cells[0]]
       for (let k = 0; k < reach.count; k++) {
         const c = reach.cells[k]
@@ -680,7 +684,7 @@ export class ThreatModelImpl implements ThreatModel {
         const apc = reach.apLeft[c] - apMinus
         if (apc < lvl.apCost || (HIT.hit > 0 && apc <= HIT.apAt)) continue
         if (c === target) continue
-        if (!inRangeLos(s, g, c, target, lvl.castTestLos, this.occ, e.id, -1)) continue
+        if (selfZone ? !selfZoneHits(selfZone.zone!, selfZone.zoneRadius, c, target) : !inRangeLos(s, g, c, target, lvl.castTestLos, this.occ, e.id, -1)) continue
         HIT.hit = 1
         HIT.apAt = apc
         if (apc >= ap0) break
@@ -734,41 +738,167 @@ export class ThreatModelImpl implements ThreatModel {
   }
 
   /**
-   * Variation de l'incoming TOTAL de l'équipe si une entité alliée de `hp` PV (invocation, leurre) apparaissait sur
-   * `cell` : chaque ennemi qui l'atteint (sort principal, PM et LdV) la met en concurrence avec ses cibles (π
-   * recalculé sur les alliés + le leurre ; dégâts sur le leurre approchés par ceux sur sa cible prédite). Valeur
-   * négative = dégâts détournés des alliés. Les dégâts subis par le leurre lui-même ne sont pas comptés (une invocation
-   * joue juste après son invocateur : aucun ennemi ne joue avant son prochain tour, comme dans V).
+   * Variation de l'incoming TOTAL de l'équipe si une entité alliée de `hp` PV et de tacle `tackle` (invocation, leurre)
+   * apparaissait sur `cell` : (1) elle bloque la case et tacle — l'accessibilité des ennemis proches est recalculée,
+   * avec la ligne de vue ; (2) chaque ennemi qui l'atteint la met en concurrence avec ses cibles (π recalculé sur les
+   * alliés + le leurre ; dégâts sur le leurre approchés par ceux sur sa cible prédite). Valeur négative = dégâts
+   * détournés ou empêchés. Les dégâts subis par le leurre ne sont pas comptés (une invocation joue juste après son
+   * invocateur : aucun ennemi ne joue avant son prochain tour, comme dans V). Mémoïsé jusqu'au prochain `sync`.
    */
-  decoyDelta(cell: number, hp: number): number {
-    if (!this.s || cell < 0 || hp <= 0) return 0
-    const key = `d${cell}:${Math.round(hp)}`
-    const hit = this.deltaMemo.get(key)
-    if (hit !== undefined) return hit
+  decoyDelta(cell: number, hp: number, tackle = 0): number {
+    if (!this.s || cell < 0 || cell >= CELL_COUNT || hp <= 0) return 0
+    const key = `d${cell}:${Math.round(hp)}:${tackle}`
+    const memo = this.deltaMemo.get(key)
+    if (memo !== undefined) return memo
+    const s = this.s
+    const engine = this.view.engine
     const nA = this.allies.length
     const scores = this.tmpScores
     const pi = this.tmpPi
+    const dmg2 = this.tmpDmg
+    const dt = this.frame.s === s ? this.frame : this.dpt
+    const occ = MOVED_OCC
+    occ.set(this.occ)
+    occ[cell] = DECOY_ID
     let delta = 0
     for (const row of this.enemies) {
-      if (!row.active || !row.reachLo || row.target < 0) continue
-      const bi = row.best[row.target]
-      if (bi < 0) continue
-      const h = this.hitWithin(row, bi, cell, Math.floor(row.mp), 0)
-      if (h.hit <= 0) continue
-      const dmgC = row.full[row.target] * h.hit
-      for (let i = 0; i < nA; i++) scores[i] = row.score[i]
-      scores[nA] = Math.min(dmgC, hp) + (dmgC >= hp ? 0.5 * hp : 0)
+      if (!row.active || !row.reachLo) continue
+      const e = row.e
+      const eCell = believedCell(e, this.side)
+      // (1) Blocage et tacle : seulement pour les ennemis dont la marche peut passer par la case.
+      const near = distance(eCell, cell) <= Math.floor(row.mp) + 1
+      const reach = near
+        ? computeReachFor(engine, s, e, this.side, { mp: Math.floor(row.mp), ap: row.ap, occupancy: occ, out: MOVED_REACH, extraTackler: { cell, tackle } })
+        : row.reachLo
+      const los = new LosOracle(s, this.side, e.id, occ)
+      for (let i = 0; i < nA; i++) {
+        dmg2[i] = row.dmg[i]
+        scores[i] = row.score[i]
+        const bi = row.best[i]
+        if (bi < 0) continue
+        // Le blocage ne peut que retirer un coup : seules les lignes où le sort principal portait sont revues.
+        if (!near || row.hit[i] < 1) continue
+        const a = this.allies[i]
+        const ks = e.spells[bi]
+        const lvl = levelFor(e, ks)
+        let c1 = -1
+        if (nextTurnStaticOk(engine, e, ks, lvl, row.ap)) {
+          const pr = this.dpt.profiles.ofFighter(e)[bi]
+          c1 = hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, a.cell, reach, los, true)
+        }
+        const before = row.full[i] * row.hit[i]
+        const after = c1 >= 0 ? Math.min(before, dt.dpt(e, a, reach.apLeft[c1])) : row.full[i] * this.params.hitNextTurn
+        if (after === before) continue
+        dmg2[i] = Math.max(0, row.dmg[i] + after - before)
+        const he = hpEff(a)
+        scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
+      }
+      // (2) Leurre : cible concurrente.
+      let dmgC = 0
+      const t = row.target
+      if (t >= 0 && row.best[t] >= 0) {
+        const ks = e.spells[row.best[t]]
+        const lvl = levelFor(e, ks)
+        const pr = this.dpt.profiles.ofFighter(e)[row.best[t]]
+        if (nextTurnStaticOk(engine, e, ks, lvl, row.ap) && hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, cell, reach, los, true) >= 0) dmgC = row.full[t]
+      }
+      scores[nA] = Math.min(dmgC, hp) + (dmgC >= hp && dmgC > 0 ? 0.5 * hp : 0)
       let max = 0
       for (let i = 0; i <= nA; i++) if (scores[i] > max) max = scores[i]
-      if (max <= 0) continue
-      softmaxInto(scores, nA + 1, this.params.tauFrac * max, pi)
+      if (max <= 0) pi.fill(0, 0, nA + 1)
+      else softmaxInto(scores, nA + 1, this.params.tauFrac * max, pi)
       for (let i = 0; i < nA; i++) {
-        if (!this.order.before(row.e.id, this.allies[i].id)) continue
-        delta += row.weight * (pi[i] - row.pi[i]) * row.dmg[i]
+        if (!this.order.before(e.id, this.allies[i].id)) continue
+        delta += row.weight * (pi[i] * dmg2[i] - row.pi[i] * row.dmg[i])
       }
     }
     this.deltaMemo.set(key, delta)
     return delta
+  }
+
+  /**
+   * Part de l'incoming de l'équipe due à l'ennemi `e` (PVe) : ce qu'un Pacifiste (cantDealDamage couvrant son prochain
+   * tour) ou une mise hors de combat lui retirerait.
+   */
+  contribution(e: Fighter): number {
+    const row = this.rowOf(e)
+    if (!row || !row.active) return 0
+    let v = 0
+    for (let i = 0; i < this.allies.length; i++) {
+      if (!this.order.before(row.e.id, this.allies[i].id)) continue
+      v += row.weight * (row.pi[i] * row.dmg[i] + this.zoneShare(row, i))
+    }
+    return v
+  }
+
+  /**
+   * Baisse de l'incoming de l'équipe si un allié jouait juste après le combattant courant (nouvelle invocation) : les
+   * ennemis de poids ω = 1 (aucun allié ne joue avant eux) passent à `laterEnemyWeight` (§6.5).
+   */
+  allyInsertedGain(): number {
+    let g = 0
+    for (const row of this.enemies) if (row.active && row.weight >= 1) g += this.contribution(row.e)
+    return g * (1 - this.params.laterEnemyWeight)
+  }
+
+  /**
+   * Variation de l'incoming TOTAL de l'équipe si l'ennemi `e` se trouvait sur `cell` (poussée, attirance) : son
+   * accessibilité est recalculée depuis `cell` (tacle compris, occupation mise à jour), ses cases de lancer et sa cible
+   * prédite aussi ; mémoïsé jusqu'au prochain `sync`. Positif = plus de dégâts subis.
+   */
+  movedDelta(e: Fighter, cell: number): number {
+    const row = this.rowOf(e)
+    const eCell = believedCell(e, this.side)
+    if (!row || !row.active || cell === eCell || cell < 0 || cell >= CELL_COUNT) return 0
+    const key = `m${e.id}:${cell}`
+    const memo = this.deltaMemo.get(key)
+    if (memo !== undefined) return memo
+    const s = this.s
+    const engine = this.view.engine
+    const occ = MOVED_OCC
+    occ.set(this.occ)
+    if (eCell >= 0 && occ[eCell] === e.id) occ[eCell] = -1
+    occ[cell] = e.id
+    const reach = computeReachFor(engine, s, e, this.side, { mp: Math.floor(row.mp), ap: row.ap, occupancy: occ, start: cell, out: MOVED_REACH })
+    const los = new LosOracle(s, this.side, e.id, occ)
+    const nA = this.allies.length
+    const scores = this.tmpScores
+    const pi = this.tmpPi
+    const dmg2 = this.tmpDmg
+    const dt = this.frame.s === s ? this.frame : this.dpt
+    const P = this.params
+    const profiles = this.dpt.profiles.ofFighter(e)
+    let maxRange = 0
+    for (const p of profiles) if (p.damage.length && p.maxRange > maxRange) maxRange = p.maxRange
+    for (let i = 0; i < nA; i++) {
+      const a = this.allies[i]
+      const bi = row.best[i]
+      dmg2[i] = row.dmg[i]
+      scores[i] = row.score[i]
+      if (bi < 0) continue
+      const ks = e.spells[bi]
+      const lvl = levelFor(e, ks)
+      let c1 = -1
+      if (nextTurnStaticOk(engine, e, ks, lvl, row.ap)) {
+        const pr = this.dpt.profiles.ofFighter(e)[bi]
+        c1 = hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, a.cell, reach, los, true)
+      }
+      // Écart appliqué à la ligne (dégâts « avant » = ceux de la ligne sans la partie Pacifiste) : sort principal
+      // lançable ⇒ coup plein avec les PA de la case ; sinon tour d'après (si à distance), ou ligne inchangée si le
+      // sort principal ne portait déjà pas.
+      const before = row.full[i] * row.hit[i]
+      let after: number
+      if (c1 >= 0) after = dt.dpt(e, a, reach.apLeft[c1])
+      else if (row.hit[i] >= 1) after = distance(cell, a.cell) <= 2 * row.mp + maxRange + 1 ? row.full[i] * P.hitNextTurn : 0
+      else after = before
+      if (after === before) continue
+      dmg2[i] = Math.max(0, row.dmg[i] + after - before)
+      const he = hpEff(a)
+      scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
+    }
+    const r = this.reaggregate(row, scores, dmg2, pi, nA)
+    this.deltaMemo.set(key, r)
+    return r
   }
 
   /** Δ incoming de l'équipe pour une ligne dont les dégâts / scores par allié deviennent `dmg2` / `scores`. */
@@ -788,6 +918,11 @@ export class ThreatModelImpl implements ThreatModel {
 
 /** Résultat partagé de `hitWithin`. */
 const HIT = { hit: 0, apAt: 0 }
+/** Identifiant fictif d'un leurre dans une occupation (`decoyDelta`). */
+const DECOY_ID = 32000
+/** Tampons de `movedDelta`. */
+const MOVED_OCC = new Int16Array(CELL_COUNT)
+const MOVED_REACH = createReachInfo()
 
 function scoreOf(dmg: number, a: Fighter, threatA: number): number {
   const he = hpEff(a)

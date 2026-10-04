@@ -145,6 +145,25 @@ export function variantMarginals(summaries: readonly FightSummary[]): {
   return out.sort((a, b) => a.meanScore - a.baseMeanScore - (b.meanScore - b.baseMeanScore) || `${a.param}=${a.value}`.localeCompare(`${b.param}=${b.value}`))
 }
 
+/**
+ * Pire valeur INCERTAINE (« pire variante » lisible quand les paramètres sont tirés indépendamment, §1 point 10) : la
+ * valeur tirée au moins `minN` fois dont le taux de victoire est le plus bas (puis score moyen le plus bas, puis ordre
+ * de `variantMarginals`). `undefined` si aucune valeur n'atteint `minN`.
+ */
+export function worstMarginal(summaries: readonly FightSummary[], minN = 8): ReturnType<typeof variantMarginals>[number] | undefined {
+  let worst: ReturnType<typeof variantMarginals>[number] | undefined
+  for (const m of variantMarginals(summaries)) {
+    if (m.n < minN) continue
+    if (!worst || m.winRate < worst.winRate || (m.winRate === worst.winRate && m.meanScore < worst.meanScore)) worst = m
+  }
+  return worst
+}
+
+/** Effectif minimal d'une variante pour être citée comme « pire variante » d'un lot de n combats. */
+export function variantMinN(n: number): number {
+  return Math.max(5, Math.ceil(0.05 * n))
+}
+
 /** Causes d'échec regroupées (§15.2), triées par effectif décroissant puis libellé. */
 export function failReasons(summaries: readonly FightSummary[]): { reason: string; n: number }[] {
   const m = new Map<string, number>()

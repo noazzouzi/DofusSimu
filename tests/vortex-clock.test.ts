@@ -259,6 +259,24 @@ describe('T-clock : glyphes déclenchées (+1 heure chacune, au milieu du créne
 })
 
 describe('T-clock : personnage mort (paramètre deadPlayerAdvancesClock)', () => {
+  // k = 3 : P4 joue APRÈS le Vortex ; son tic (variante) tombe en fin de tour de jeu ou au créneau suivant.
+  for (const variant of [false, true]) {
+    it(`k = 3, P4 (après le Vortex) tué au tour 2 — deadPlayerAdvancesClock = ${variant}`, () => {
+      const params = { deadPlayerAdvancesClock: variant }
+      const s = setup({ initiative: 1000, params, seed: 22 })
+      const [p1, , , p4] = s.players
+      turnOf(s, p1, 2)
+      s.engine.kill(s.fight, p4, p1)
+      const slots = forecastHours(s.fight, 12, { ...VORTEX_DEFAULT_PARAMS, ...params })
+      const obs = run(s, 12)
+      expect(compare(slots, obs)).toBeGreaterThan(60)
+      for (const o of obs) if (s.players.some(p => p.id === o.fighterId)) expect(o.aurCell, `tour ${o.round} heure ${o.hour}`).toBe(HOUR_CELL[o.hour])
+      const vortexHours = new Set(hoursSeenBy(slots, vortexState(s.fight)!.vortexId))
+      if (variant) expect(vortexHours).toEqual(new Set([3, 7, 11]))
+      else expect(vortexHours.size).toBeGreaterThan(3)
+    })
+  }
+
   for (const variant of [false, true]) {
     it(`P2 tué au tour 2 — deadPlayerAdvancesClock = ${variant}`, () => {
       const params = { deadPlayerAdvancesClock: variant }
@@ -397,6 +415,51 @@ describe('T-clock : fenêtres d’étoile = pose réelle de « Même heure » (2
     // Le corrompu passe ses tours : aucun créneau joué observé pour lui.
     const obs = run(s, 4)
     expect(obs.some(o => o.fighterId === ika.id)).toBe(false)
+  })
+
+  it('mort sous l’étoile, prévision faite AVANT sa résurrection : aucune fenêtre, aucun créneau après le réveil (corrompu)', () => {
+    const s = setup({ initiative: 4000, seed: 6 })
+    const [p1] = s.players
+    const ika = s.fight.fighters.find(f => f.monsterId === IKARGN)!
+    turnOf(s, p1, 1)
+    s.engine.kill(s.fight, ika, p1)
+    turnOf(s, p1, 4)
+    expect(ika.states).toContain(SAME_HOUR)
+    s.engine.kill(s.fight, ika, p1)
+    // Mort avec l'étoile : corrompu au réveil (5002), donc ni fenêtre ni créneau joué.
+    const slots = forecastHours(s.fight, 3, VORTEX_DEFAULT_PARAMS)
+    expect(monsterStarWindows(slots, ika)).toEqual([])
+    expect(slots.some(sl => sl.fighterId === ika.id)).toBe(false)
+    s.engine.endTurn(s.fight, p1)
+    // La prévision reste exacte, index compris, sur les créneaux suivants (le réveillé corrompu passe ses tours).
+    expect(compareExact(slots, s, 3)).toBeGreaterThan(20)
+    expect(ika.states).toContain(6611)
+  })
+
+  it('monstre mort : seules comptent les fenêtres APRÈS sa résurrection (rezAllPerTurn = false : rang dans la file)', () => {
+    // k = 4, un seul mort ressuscité par tour du Vortex (le plus récent d'abord). P1 tue les 3 monstres à I au tour 1 ;
+    // deux glyphes de +2 (P2 et P3) feraient revenir I au créneau de P1 du tour 3, AVANT la résurrection du premier tué
+    // (3e tour du Vortex) : pas d'étoile pour lui à ce moment-là, alors que le dernier tué (ressuscité au tour 1) l'aurait.
+    const params = { rezAllPerTurn: false }
+    const s = setup({ initiative: 4000, seed: 9, params })
+    const [p1, p2, p3] = s.players
+    turnOf(s, p1, 1)
+    const wave = s.fight.fighters.filter(isWaveMonster)
+    for (const m of wave) s.engine.kill(s.fight, m, p1)
+    const plain = forecastHours(s.fight, 4, { ...VORTEX_DEFAULT_PARAMS, ...params })
+    const glyphs = new Map<number, number>()
+    for (const p of [p2, p3]) glyphs.set(plain.findIndex(sl => sl.round === 1 && sl.fighterId === p.id), 2)
+    const slots = forecastHours(s.fight, 4, { ...VORTEX_DEFAULT_PARAMS, ...params }, glyphs)
+    const back = slots.findIndex(sl => sl.round === 3 && sl.fighterId === p1.id)
+    expect(slots[back].hour).toBe(1)
+    const vortexSlots = slots.map((sl, i) => (sl.isVortex ? i : -1)).filter(i => i >= 0)
+    const [first, , last] = wave // ordre des morts : le dernier tué est ressuscité le premier
+    expect(monsterStarWindows(slots, last, s.fight).some(w => w.from === back)).toBe(true)
+    const firstWindows = monsterStarWindows(slots, first, s.fight)
+    expect(firstWindows.some(w => w.from === back)).toBe(false)
+    expect(firstWindows.every(w => w.from > vortexSlots[2])).toBe(true)
+    // Sans l'état du combat (rang inconnu) : résurrection supposée au premier tour du Vortex.
+    expect(monsterStarWindows(slots, first).some(w => w.from === back)).toBe(true)
   })
 })
 

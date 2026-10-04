@@ -70,6 +70,7 @@ import {
   VORTEX_SCENARIO_ID,
   VORTEX_STATE_KEY,
   WAVE_COUNT,
+  WAVE_MONSTER_IDS,
   waveComposition,
   type VortexParams,
 } from './constants'
@@ -162,6 +163,7 @@ export function createVortexFight(engine: Engine, team: Fighter[], o: FightSetup
     corruptedByRound: [],
     variant: extras.variant ?? variantKey(o.params),
     startingSpellFailures: [],
+    waveMonsterMaxHp: waveMonsterMaxHp(engine, p.monsterGrade),
   }
   fight.scenarioState[VORTEX_STATE_KEY] = state
   registerEngine(engine, fight, vortex)
@@ -188,6 +190,16 @@ export function createVortexFight(engine: Engine, team: Fighter[], o: FightSetup
   })
   if (failures.length) engine.log(fight, `Sorts de départ non lancés : ${failures.map(id => fight.fighters[id].name).join(', ')}`, 'warn')
   return fight
+}
+
+/** PV max (sans bonus) des monstres de vague au grade donné (fabrique du moteur : mêmes PV que les arrivants). */
+function waveMonsterMaxHp(engine: Engine, grade: number): Record<number, number> {
+  const out: Record<number, number> = {}
+  for (const monsterId of WAVE_MONSTER_IDS) {
+    if (!engine.data.monster(monsterId)) continue
+    out[monsterId] = createMonsterFighter(engine.data, { monsterId, grade, team: 1 }).baseMaxHp
+  }
+  return out
 }
 
 function checkPlacement(map: MapData, placement: readonly number[], n: number): void {
@@ -496,12 +508,23 @@ function vortexTurnStart(
   }
 }
 
+/**
+ * PV d'un ressuscité pour un jet de `pct` % : même règle que les données — 780 rend `pct` % des PV max HORS bonus,
+ * puis 5002 réapplique les bonus d'heures, dont la Vitalité de XI (1078, +30 % des PV de base) qui s'ajoute aux PV
+ * courants comme aux PV max (`Engine.applyPoolDelta`). Ex. Ikargn (6 600 PV) tué à XI, jet 50 % : 3 300 + 1 980.
+ */
+export function resurrectedHp(m: Fighter, pct: number): number {
+  const bonus = Math.max(0, m.stats.vitality - m.baseStats.vitality)
+  const base = Math.max(1, m.maxHp - bonus)
+  return Math.max(1, Math.min(m.maxHp, Math.floor((base * pct) / 100) + bonus))
+}
+
 /** Règles INCERTAINES de la résurrection (5003) appliquées au monstre qui vient d'être ressuscité. */
 function adjustResurrected(engine: Engine, fight: FightState, m: Fighter, vx: VortexParams, vortex: Fighter): void {
   const [lo, hi] = vx.rezHpPct
   if (lo !== DATA_REZ_HP_PCT[0] || hi !== DATA_REZ_HP_PCT[1]) {
     const pct = lo === hi ? lo : roll(fight, lo, hi)
-    const hp = Math.max(1, Math.min(m.maxHp, Math.floor((m.maxHp * pct) / 100)))
+    const hp = resurrectedHp(m, pct)
     if (hp > m.hp) engine.emit(fight, { t: 'heal', source: vortex.id, target: m.id, amount: hp - m.hp })
     else if (hp < m.hp) engine.emit(fight, { t: 'damage', source: vortex.id, target: m.id, amount: m.hp - hp, element: -1, kind: 'indirect' })
     m.hp = hp

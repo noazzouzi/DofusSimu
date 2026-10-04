@@ -269,9 +269,14 @@ export function resolveScenario(id: string): DungeonScenario {
   return getScenario(id) // erreur explicite (scénarios connus)
 }
 
-/** Paramètres effectifs d'un combat et clé de variante (`variantPolicy` 'sampled' : tirage par graine). */
+/**
+ * Paramètres effectifs d'un combat et clé de variante (`variantPolicy` 'sampled' : tirage par graine). Une clé de
+ * `spec.params` valant `undefined` (`Partial<ScenarioParams>`) est ignorée : elle n'écrase ni le défaut ni la variante
+ * tirée (et le cache, qui ignore aussi ces clés, reste cohérent).
+ */
 export function fightParams(scenario: DungeonScenario, spec: FightSpec, seed: number): { params: ScenarioParams; variant: string } {
-  const fixed = spec.params ?? {}
+  const fixed: Record<string, ScenarioParams[string]> = {}
+  for (const [k, v] of Object.entries(spec.params ?? {})) if (v !== undefined) fixed[k] = v
   const sampled = spec.variantPolicy === 'sampled' ? sampleVariant(scenario.uncertain, seed, new Set(Object.keys(fixed))).params : {}
   const params = { ...scenario.defaultParams, ...sampled, ...fixed } as ScenarioParams
   return { params, variant: variantKeyOf(scenario.uncertain, params) }
@@ -279,10 +284,19 @@ export function fightParams(scenario: DungeonScenario, spec: FightSpec, seed: nu
 
 // ───────────────────────────── équipe ─────────────────────────────
 
-/** Combattants des personnages d'une équipe (caractéristiques calculées par src/stats ; preset en `tags.presetId`). */
+/**
+ * Combattants des personnages d'une équipe (caractéristiques calculées par src/stats ; preset en `tags.presetId`).
+ * Un build irréalisable en jeu (`computeBuildStats(...).valid` faux : condition d'objet non remplie, emplacement,
+ * doublon de Dofus, points ou parchemins hors budget, forgemagie impossible…) est REFUSÉ : `computeBuildStats` somme
+ * quand même tous les objets, et l'optimiseur pourrait sinon « gagner » avec un personnage impossible.
+ */
 export function buildTeam(data: DataStore, members: readonly MemberSpec[]): Fighter[] {
   return members.map(m => {
     const res = computeBuildStats(m.build, data)
+    if (!res.valid) {
+      const errors = res.issues.filter(i => i.severity === 'error').map(i => i.message)
+      throw new Error(`Build invalide pour « ${m.name} » (${m.presetId}) : ${errors.join(' | ')}`)
+    }
     const variants = m.variants.length ? m.variants : m.build.spellVariants
     const f = createPlayerFighter(data, {
       name: m.name,

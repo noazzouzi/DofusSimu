@@ -281,7 +281,7 @@ describe('mort, heure de mort, résurrection', () => {
   // (src/engine/effects/buffs/states.ts) refuse toute cible `!alive` : l'état 233 de 5001 (masque C) n'est jamais posé,
   // puis le masque `a,E233,*E22h` de 5000 écarte le mourant. Le scénario pose l'état en repli (`markDeathHour`). Ce test
   // échouera (et devra être retiré) le jour où le moteur sera corrigé.
-  it.fails('diagnostic moteur : les données seules (sans le repli du scénario) marquent l’heure de mort', () => {
+  it('diagnostic moteur : les données seules (sans le repli du scénario) marquent l’heure de mort', () => {
     const engine = createEngine(data) // aucun hook de scénario : seules les données agissent
     const team = createSmokeTeam(data)
     team.forEach((f, i) => (f.cell = [424, 438, 441, 443][i]))
@@ -300,7 +300,7 @@ describe('mort, heure de mort, résurrection', () => {
   // Cause racine du défaut ci-dessus, isolée : 5001 (lancé par le mourant via le déclencheur X de 5002) cible bien le
   // mourant, mais l'effet 950 (état 233 « Mort latente ») n'est pas posé (`addState` : `!t.alive`). Attendu : un
   // événement `state` 233 ajouté sur le mourant avant son retrait à la mort (233 est désenvoûtable, 2).
-  it.fails('diagnostic moteur : 5001 effet 950 pose l’état 233 sur le mourant (déclencheur X)', () => {
+  it('diagnostic moteur : 5001 effet 950 pose l’état 233 sur le mourant (déclencheur X)', () => {
     const engine = createEngine(data)
     const team = createSmokeTeam(data)
     team.forEach((f, i) => (f.cell = [424, 438, 441, 443][i]))

@@ -14,6 +14,7 @@
  * facultatif après '@' : `iop:killer@unstuffed`) — src/optimizer/team/presets.ts.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import * as os from 'node:os'
 import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { loadTheta, type AIMode, type ThetaOverrides } from '../ai'
@@ -23,11 +24,11 @@ import { openCampaignCache, type FightCache } from '../optimizer/cache'
 import { notableSeeds, runBatch } from '../optimizer/montecarlo'
 import { createNodePool, defaultPoolSize } from '../optimizer/pool/node'
 import { createLocalPool, type ManagedPool } from '../optimizer/pool/pool'
-import { runOne, toReplay, type RunResult } from '../optimizer/runner'
+import { runMicro, runOne, toReplay, type RunResult } from '../optimizer/runner'
 import { campaignSeeds } from '../optimizer/seeds'
-import { failReasons, variantMarginals, worstVariant } from '../optimizer/stats'
+import { failReasons, variantMarginals, variantMinN, worstMarginal, worstVariant } from '../optimizer/stats'
 import { PRESETS, parseTeam, validatePreset, type StuffChoice } from '../optimizer/team/presets'
-import type { FightSpec, FightSummary, StopRule } from '../optimizer/types'
+import type { FightSpec, FightSummary, StopRule, WorkerTask } from '../optimizer/types'
 import type { TeamId } from '../core/types'
 import type { FightState } from '../engine/types'
 import type { Replay } from '../replay/types'
@@ -160,6 +161,8 @@ const pct = (x: number): string => `${(100 * x).toFixed(1)} %`
 
 /** Dossier des replays (`--replay-dir`, défaut web/public/replays). */
 const replayDirOf = (a: Args): string => resolve(str(a, 'replay-dir') ?? REPLAY_DIR)
+/** Dossier des données (`--data`, défaut 'data'), partagé par le processus principal et les workers. */
+const dataDirOf = (a: Args): string => str(a, 'data') ?? 'data'
 
 function describe(s: FightSummary): string {
   return [
@@ -245,9 +248,14 @@ function writeFightReplay(data: DataStore, spec: FightSpec, res: RunResult, out:
   })
 }
 
-/** Rejoue une graine avec enregistrement et écrit son replay. */
-function saveReplay(data: DataStore, spec: FightSpec, seed: number, out: string | undefined, label: string, dir = REPLAY_DIR, title?: string): string {
-  return writeFightReplay(data, spec, runOne(data, spec, seed, { record: true }), out, label, dir, title)
+/**
+ * Rejoue une graine avec enregistrement et écrit son replay (`kind` : combat complet, ou le micro-scénario du lot —
+ * le replay montre alors exactement ce qui a été évalué).
+ */
+function saveReplay(data: DataStore, spec: FightSpec, seed: number, out: string | undefined, label: string, dir = REPLAY_DIR, title?: string, kind: WorkerTask['kind'] = 'full'): string {
+  if (kind === 't0') throw new Error("Pas de replay pour une tâche 't0' (modèle analytique)")
+  const res = kind === 'full' ? runOne(data, spec, seed, { record: true }) : runMicro(data, spec, seed, kind, { record: true })
+  return writeFightReplay(data, spec, res, out, kind === 'full' ? label : `${kind}-${label}`, dir, title)
 }
 
 // ───────────────────────────── commandes ─────────────────────────────
@@ -274,8 +282,9 @@ function cmdFight(a: Args, data: DataStore): number {
   return 0
 }
 
-async function withPool<T>(workers: number, f: (pool: ManagedPool) => Promise<T>, data: DataStore): Promise<T> {
-  const pool = workers > 0 ? createNodePool(workers) : createLocalPool(data)
+async function withPool<T>(workers: number, f: (pool: ManagedPool) => Promise<T>, data: DataStore, dataDir = 'data'): Promise<T> {
+  // Les workers chargent le MÊME dossier de données que le processus principal (`--data`).
+  const pool = workers > 0 ? createNodePool(workers, { dataDir: resolve(dataDir) }) : createLocalPool(data)
   try {
     return await f(pool)
   } finally {
@@ -295,29 +304,38 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
     : undefined
   const campaign = str(a, 'campaign')
   const cache: FightCache | undefined = campaign ? openCampaignCache(campaign, join(REPO_ROOT, 'runs'), str(a, 'cache-version')) : undefined
+  const kind = (str(a, 'micro') as 'prefix12' | 'phase2' | 'poutch' | undefined) ?? 'full'
   const t0 = performance.now()
   let last = 0
+  let shown = 0
   const run = await withPool(
     workers,
     pool =>
       runBatch(spec, seeds, pool, {
         stop,
         cache,
-        kind: (str(a, 'micro') as 'prefix12' | 'phase2' | 'poutch' | undefined) ?? 'full',
+        kind,
         onProgress: (done, planned) => {
           const t = performance.now()
           if (!bool(a, 'json') && (t - last > 2000 || done === planned)) {
             last = t
+            shown = done
             process.stderr.write(`\r${done}/${planned} combats…`)
           }
         },
       }),
     data,
+    dataDirOf(a),
   )
   const ms = performance.now() - t0
-  if (!bool(a, 'json')) process.stderr.write('\n')
+  // Arrêt séquentiel : la dernière progression affichée peut précéder le N d'arrêt.
+  if (!bool(a, 'json')) process.stderr.write(shown !== run.computed + run.cached ? `\r${run.computed + run.cached} combats.\n` : '\n')
   const r = run.result
-  const worst = worstVariant(r)
+  // Pire variante : seulement une variante (ou une valeur INCERTAINE) observée assez souvent — avec 11 paramètres tirés
+  // indépendamment, presque chaque graine a sa propre variante et une variante vue une fois ne dit rien.
+  const minN = variantMinN(r.n)
+  const worst = worstVariant(r, minN)
+  const worstValue = worstMarginal(run.summaries, minN)
   const fails = failReasons(run.summaries)
   const out = {
     scenarioId,
@@ -328,6 +346,7 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
     masterSeed: master,
     result: r,
     worstVariant: worst,
+    worstValue,
     variantMarginals: variantMarginals(run.summaries),
     failReasons: fails,
     computed: run.computed,
@@ -335,7 +354,7 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
     seconds: ms / 1000,
     fightsPerSecond: run.computed / Math.max(1e-9, ms / 1000),
   }
-  const summaryFile = join(REPO_ROOT, 'runs', `${campaign ?? `batch-${scenarioId.replace(/[^A-Za-z0-9]+/g, '-')}-${spec.mode}`}.summary.json`)
+  const summaryFile = join(REPO_ROOT, 'runs', `${campaign ?? `batch-${scenarioId.replace(/[^A-Za-z0-9]+/g, '-')}-${spec.mode}${kind === 'full' ? '' : `-${kind}`}`}.summary.json`)
   mkdirSync(dirname(summaryFile), { recursive: true })
   writeFileSync(summaryFile, JSON.stringify({ ...out, summaries: run.summaries }, null, 1))
   if (bool(a, 'json')) console.log(JSON.stringify(out, null, 2))
@@ -353,6 +372,9 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
       }
     }
     if (worst && variants.length > 1) console.log(`  pire variante : ${worst.key} (${pct(worst.winRate)}, ${worst.n} combats)`)
+    if (worstValue && variants.length > 1) {
+      console.log(`  pire valeur INCERTAINE : ${worstValue.param}=${worstValue.value} (${pct(worstValue.winRate)} sur ${worstValue.n} combats, défaut ${pct(worstValue.baseWinRate)})`)
+    }
     for (const f of fails.slice(0, 6)) console.log(`  échec « ${f.reason} » : ${f.n}`)
     console.log(`Résumé : ${relative(process.cwd(), summaryFile)}`)
   }
@@ -360,7 +382,7 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
     const notable = notableSeeds(run.summaries)
     for (const [label, seed] of Object.entries(notable)) {
       if (seed === undefined) continue
-      const path = saveReplay(data, spec, seed, undefined, label, replayDirOf(a))
+      const path = saveReplay(data, spec, seed, undefined, label, replayDirOf(a), undefined, kind)
       console.log(`Replay ${label} (graine ${seed}) : ${relative(process.cwd(), path)}`)
     }
   }
@@ -373,14 +395,28 @@ async function cmdBench(a: Args, data: DataStore): Promise<number> {
   const runs = num(a, 'runs', 32)
   const sizes = (str(a, 'workers') ?? '1,2,4').split(',').map(Number).filter(n => n >= 0)
   const seeds = campaignSeeds(num(a, 'master-seed', 7) >>> 0, runs)
-  const rows: { workers: number; seconds: number; fightsPerSecond: number; winRate: number }[] = []
+  const rows: { workers: number; seconds: number; fightsPerSecond: number; winRate: number; warmupSeconds: number }[] = []
+  const warmSeeds = campaignSeeds(0x5eed, 64)
   for (const w of sizes) {
-    const t0 = performance.now()
-    const run = await withPool(w, pool => runBatch(spec, seeds, pool), data)
-    const s = (performance.now() - t0) / 1000
-    rows.push({ workers: w, seconds: s, fightsPerSecond: runs / s, winRate: run.result.winRate })
-    console.log(`${w} worker(s) : ${runs} combats ${spec.mode} en ${s.toFixed(2)} s → ${(runs / s).toFixed(2)} combats/s (victoires ${pct(run.result.winRate)})`)
+    await withPool(
+      w,
+      async pool => {
+        // Démarrage (fil, chargeur tsx, données) et préchauffage (conversions paresseuses, JIT) HORS mesure : une graine
+        // distincte par worker (§16.6 B6 mesure le débit d'un pool déjà démarré).
+        const t0 = performance.now()
+        await runBatch(spec, warmSeeds.slice(0, Math.max(1, pool.size) * 2), pool, { chunk: 1 })
+        const warm = (performance.now() - t0) / 1000
+        const t1 = performance.now()
+        const run = await runBatch(spec, seeds, pool)
+        const s = (performance.now() - t1) / 1000
+        rows.push({ workers: w, seconds: s, fightsPerSecond: runs / s, winRate: run.result.winRate, warmupSeconds: warm })
+        console.log(`${w} worker(s) : ${runs} combats ${spec.mode} en ${s.toFixed(2)} s → ${(runs / s).toFixed(2)} combats/s (victoires ${pct(run.result.winRate)} ; démarrage + préchauffage ${warm.toFixed(1)} s hors mesure)`)
+      },
+      data,
+      dataDirOf(a),
+    )
   }
+  if (os.loadavg()[0] > 0.5) console.log(`(charge moyenne de la machine ${os.loadavg()[0].toFixed(1)} sur ${os.availableParallelism()} cœurs : débit à 4 workers sous-estimé)`)
   if (bool(a, 'json')) console.log(JSON.stringify(rows, null, 2))
   return 0
 }
@@ -413,7 +449,7 @@ export async function main(argv: string[]): Promise<number> {
   }
   const a = parseArgs(rest)
   try {
-    const data = loadDataStore(str(a, 'data') ?? 'data')
+    const data = loadDataStore(dataDirOf(a))
     switch (cmd) {
       case 'fight':
         return cmdFight(a, data)

@@ -30,7 +30,8 @@ function sameStateBuff(ctx: EffectContext, t: Fighter, stateId: number): Buff | 
 
 /** Pose l'état `stateId` sur `t` (ou rafraîchit sa durée). Retourne vrai si l'état était absent avant. */
 export function addState(ctx: EffectContext, t: Fighter, stateId: number): boolean {
-  if (!t.alive || !stateId) return false
+  // Un mourant (déclencheur X, case encore connue) peut recevoir un état : ex. heure de mort du Vortex (5001/5000).
+  if ((!t.alive && t.cell < 0) || !stateId) return false
   const had = t.states.includes(stateId)
   const remaining = buffDuration(ctx.effect)
   const existing = sameStateBuff(ctx, t, stateId)

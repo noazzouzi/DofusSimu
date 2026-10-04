@@ -5,7 +5,8 @@
  * uniquement l'information publique (états affichés, PV, cases, tags du scénario), jamais `fight.events`.
  *
  * Statuts (`MonsterTrack.status`) :
- *  - `pending`      : monstre d'une vague future (id négatif −(10·vague + rang), composition N = `players`) ;
+ *  - `pending`      : monstre d'une vague future (id négatif −(10·vague + rang), composition N = `players`) ; `hp` 0,
+ *                     `maxHp` = PV du monstre au grade du scénario (`waveMonsterMaxHp`) : PV à son arrivée ;
  *  - `invulnerable` : vivant, invulnérable d'arrivée (`tags.arrivalInvulnerableUntil` > tour courant) ;
  *  - `alive`        : vivant, non corrompu ;
  *  - `dead`         : mort non corrompu (sera ressuscité au début du tour du Vortex, sauf après *Action !*) ;
@@ -36,6 +37,8 @@ export interface VortexMonsterTrack extends MonsterTrack {
   invulnerableUntil: number
   /** Nombre d'heures de mort distinctes. */
   hourCount: number
+  /** PV max hors bonus (début de combat) : base des résurrections (XI : +30 % de cette base, sans cumul). */
+  baseMaxHp: number
 }
 
 export interface VortexSnapshot {
@@ -104,6 +107,7 @@ export function trackVortex(fight: FightState, o: TrackOptions = {}): VortexSnap
       latentDeath: m.states.includes(LATENT_DEATH),
       invulnerableUntil: arrivalInvulnerableUntil(m),
       hourCount: hourCount(hours),
+      baseMaxHp: m.baseMaxHp,
     })
   }
   const spawned = tracks.length
@@ -118,13 +122,14 @@ export function trackVortex(fight: FightState, o: TrackOptions = {}): VortexSnap
     if (w < wavesSpawned) return
     mons.forEach((monsterId, i) => {
       pending++
+      const maxHp = vx?.waveMonsterMaxHp?.[monsterId] ?? 0
       tracks.push({
         fighterId: -(10 * (w + 1) + i),
         monsterId,
         wave: w + 1,
         status: 'pending',
         hp: 0,
-        maxHp: 0,
+        maxHp,
         hours: 0,
         star: false,
         arrivesRound: vx?.arrivalRounds[w],
@@ -135,6 +140,7 @@ export function trackVortex(fight: FightState, o: TrackOptions = {}): VortexSnap
         latentDeath: false,
         invulnerableUntil: 0,
         hourCount: 0,
+        baseMaxHp: maxHp,
       })
     })
   })

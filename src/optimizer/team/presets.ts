@@ -2,7 +2,7 @@
  * Presets de personnages niveau 200 (docs/design/ai.md §15.6) — WP4.
  *
  * Un preset = classe + rôle + élément + variantes des 22 paires de sorts + rotation `scripted` + stuff de départ. Les
- * données sont dans `data/ai/presets.json` (48 presets pour les 19 classes) :
+ * données sont dans `data/ai/presets.json` (49 presets pour les 19 classes, 2 ou 3 par classe) :
  *  - variantes et rotations tirées des fiches de classe (`data/research/class-mechanics/*.json` : `variantChoices`,
  *    `spellSets`, `recommendedSets`, `rotations`) ;
  *  - stuffs (`stuffs`) = stuffs méta PvM d'equipment.md §12 (objets réels, jets max, un exo PA et un exo PM placés sur

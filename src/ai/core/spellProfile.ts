@@ -54,7 +54,9 @@ export interface HealLineX { effectId: number; kind: 'boosted' | 'fixed' | 'pctM
 export interface ShieldLineX { effectId: number; kind: 'flat' | 'pctLevel' | 'pctMaxHp'; value: number; duration: number
   zone: ZoneSpec; mask: string; sides: MaskSides }
 export interface StatLineX { effectId: number; stat: keyof Stats; sign: 1 | -1; value: number; duration: number
-  zone: ZoneSpec; mask: string; sides: MaskSides }
+  zone: ZoneSpec; mask: string; sides: MaskSides
+  /** Vitalité en % des PV max de début de combat (1078, 1033). */
+  pctBaseLife?: boolean }
 export interface RemovalLineX { effectId: number; pool: 'ap' | 'mp'; value: number; dodgeable: boolean; steal: boolean
   duration: number; delay: number; zone: ZoneSpec; mask: string; sides: MaskSides }
 export interface MoveLineX { effectId: number; kind: DisplacementKind; cells: number; zone: ZoneSpec; mask: string; sides: MaskSides
@@ -295,7 +297,8 @@ function scanEffects(engine: Engine, acc: Acc, effects: readonly EffectData[], c
     const sd = statBuffDef(id)
     if (sd && sd.stat) {
       const v = prob * meanOf(e)
-      p.stats.push({ effectId: id, stat: sd.stat, sign: sd.sign, value: v, duration: e.duration, zone: e.zone, mask: e.targetMask, sides })
+      p.stats.push({ effectId: id, stat: sd.stat, sign: sd.sign, value: v, duration: e.duration, zone: e.zone, mask: e.targetMask, sides,
+        pctBaseLife: id === 1078 || id === 1033 })
       if (sd.sign > 0) {
         if (sides.selfOnly || (sides.self && !sides.ally && !sides.enemy)) p.selfBuff = true
         else if (sides.ally) {

@@ -47,6 +47,10 @@ export interface ReachOptions {
   out?: ReachInfo
   /** Occupation précalculée (`buildOccupancy`) pour plusieurs appels sur le même état. */
   occupancy?: Int16Array
+  /** Case de départ supposée (hypothèse « f déplacé ») au lieu de sa case crue ; à combiner avec `occupancy`. */
+  start?: number
+  /** Tacleur supplémentaire hypothétique (invocation à venir) : case (occupée dans `occupancy`) et tacle. */
+  extraTackler?: { cell: number; tackle: number }
 }
 
 /** Octets d'un ReachInfo (un seul tampon : mpLeft, apLeft, cells, prev, viaEvent). */
@@ -174,7 +178,7 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
     out.viaEvent[c] = 0
   }
   out.count = 0
-  const start = believedCell(f, team)
+  const start = opts.start ?? believedCell(f, team)
   if (!f.alive || start < 0 || start >= CELL_COUNT) return out
   const mp0 = Math.max(0, Math.floor(opts.mp ?? f.mp))
   const ap0 = opts.ap ?? f.ap
@@ -207,6 +211,11 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
       if (c < 0 || c >= CELL_COUNT || occ[c] !== e.id || !canTackleNow(engine, e)) continue
       LOCK[c] = e.stats.tackleBlock
       LOCK_LIST.push(c)
+    }
+    const x = opts.extraTackler
+    if (x && x.cell >= 0 && x.cell < CELL_COUNT && LOCK[x.cell] < 0) {
+      LOCK[x.cell] = x.tackle
+      LOCK_LIST.push(x.cell)
     }
   }
   const evade = f.stats.tackleEvade

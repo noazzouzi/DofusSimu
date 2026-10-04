@@ -189,6 +189,11 @@ export interface VortexRuntime {
   variant: string
   /** Sorts de départ qui n'ont pas pu être lancés (ids des combattants) — diagnostic. */
   startingSpellFailures: readonly number[]
+  /**
+   * PV max (sans bonus) de chaque monstre de vague au grade `monsterGrade` (clé = id du monstre) : PV des monstres des
+   * vagues à venir pour le suivi et le modèle abstrait. Objet immuable partagé par les clones.
+   */
+  waveMonsterMaxHp: Readonly<Record<number, number>>
 }
 
 export type VortexState = VortexParams & VortexRuntime

@@ -112,6 +112,13 @@ export class Engine {
   addFighter(fight: FightState, f: Fighter): Fighter {
     f.id = fight.fighters.length
     fight.fighters.push(f)
+    // Relance initiale (initialCooldown) : posée à l'entrée en combat, +1 car le décompte a lieu au début du tour.
+    // Activée par `options.initialCooldowns` (combats réels / scénarios) ; désactivée par défaut pour les bancs d'essai
+    // d'effets qui lancent un sort dès la création du combat.
+    if (fight.options.initialCooldowns) for (const sp of f.spells) {
+      const n = sp.level.initialCooldown
+      if (n > 0) f.cooldowns[sp.spellId] = Math.max(f.cooldowns[sp.spellId] ?? 0, n + 1)
+    }
     this.recomputeStats(f)
     fight.metrics[f.id] = emptyMetrics()
     return f
@@ -401,7 +408,11 @@ export class Engine {
     // comme le client (FightDeathStep → BuffManager.dispell + removeLinkedBuff). Les buffs « désenvoûtement fort »
     // (3) et indissipables (4) restent sur le mort (ex. états d'heure du Vortex, conservés à la résurrection).
     target.buffs = target.buffs.filter(b => b.effect.dispellable === 3 || b.effect.dispellable === 4)
+    const vitBefore = target.stats.vitality
     this.recomputeStats(target)
+    // Les bonus de Vitalité retirés à la mort ne survivent pas à une résurrection (pas de cumul de PV max).
+    const dVit = target.stats.vitality - vitBefore
+    if (dVit) target.maxHp = Math.max(1, target.maxHp + dVit)
     for (const f of fight.fighters) {
       if (!f.alive || f.id === target.id) continue
       for (const b of f.buffs.slice()) {

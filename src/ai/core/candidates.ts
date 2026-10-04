@@ -26,9 +26,13 @@ import { expectedApMpRemoved } from '../../damage/apmp'
 import { heal as healFormula } from '../../damage/heal'
 import type { ScenarioAIModel } from '../../dungeons/types'
 import { matchesTargetMask } from '../../engine/targetMask'
+import type { Engine } from '../../engine/engine'
+import { createMonsterFighter } from '../../engine/factory'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
-import { CELL_COUNT, distance } from '../../map/geometry'
-import { zoneEfficiency, zoneMembership } from '../../map/zones'
+import { CELL_COUNT, cellInDirection, distance } from '../../map/geometry'
+import { pullDirection, pushDirection } from '../../engine/effects/movement/drag'
+import { compileZone, zoneEfficiency, zoneMembership } from '../../map/zones'
+import type { ZoneSpec } from '../../data/model'
 import type { AIView, Blackboard, MacroAction, Perception, ReachInfo } from '../types'
 import { castCellsFor, castFailureStatic, castGeom, castGeometryOk, inverseRange, LosOracle, levelFor } from './castCells'
 import { calibrationOf, createDptTable, type DptTableImpl } from './dpt'
@@ -229,40 +233,58 @@ export function generateCasts(view: AIView, s: FightState, me: Fighter, opts: Ge
       continue
     }
 
-    // C3 : sorts de zone — centres qui touchent au moins une cible utile.
+    // C3 : sorts de zone — centres qui touchent au moins une cible utile. Zone orientée (ligne, cône, demi-cercle…) :
+    // l'orientation dépend de la case de lancer, les couples (centre, case de lancer) sont donc évalués ensemble.
     const r = prof.zoneRadius
+    const zc = prof.zone ? compileZone(prof.zone) : null
+    const directional = !!zc && (zc.orientation !== 0 || zc.shape === 'l')
+    const useful = fighters.filter(x => usefulTarget(prof, me, x.f) > 0)
     const centers = new Map<number, number>()
-    for (const { f, cell } of fighters) {
-      if (usefulTarget(prof, me, f) <= 0) continue
-      const around = inverseRange({ min: 0, max: r, line: false, diag: false }, cell)
+    for (const { cell } of useful) {
+      // Zones diagonales (« + », carrés…) : une case à r diagonales est à 2r pas ; l'appartenance est vérifiée ensuite.
+      const around = inverseRange({ min: 0, max: 2 * r, line: false, diag: false }, cell)
       for (let k = 0; k < around.length; k++) {
         const c = around[k]
         if (centers.has(c) || !s.map.cells[c]?.walkable) continue
-        centers.set(c, zoneWeight(prof, me, c, meCell, fighters, i, p))
+        if (!directional && !zoneMembership(prof.zone!, c, meCell)(cell)) continue
+        centers.set(c, directional ? 0 : zoneWeight(prof, me, c, meCell, fighters, i, p))
       }
     }
-    const ranked = [...centers.entries()].filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1] || a[0] - b[0])
-    // Couverture d'abord : chaque cible utile touchée par au moins un centre retenu, puis complément par poids.
-    const useful = fighters.filter(x => usefulTarget(prof, me, x.f) > 0)
+    // Options : (centre, case de lancer, poids, cibles utiles touchées). Zone non orientée : la case de lancer est
+    // choisie ensuite par `castFrom` (C7/C8).
+    const options: { c: number; from: number; w: number; touched: number[] }[] = []
+    for (const [c, w0] of centers) {
+      if (!directional) {
+        if (w0 <= 0) continue
+        const inZone = zoneMembership(prof.zone!, c, meCell)
+        options.push({ c, from: -1, w: w0, touched: useful.filter(x => inZone(x.cell)).map(x => x.f.id) })
+        continue
+      }
+      castCellsFor(s, me, ks, lvl, c, reach, los, Math.max(12, maxCells * 4), cells)
+      for (const from of cells) {
+        const w = zoneWeight(prof, me, c, from, fighters, i, p)
+        if (w <= 0) continue
+        const inZone = zoneMembership(prof.zone!, c, from)
+        options.push({ c, from, w, touched: useful.filter(x => x.f.id !== me.id && inZone(x.cell)).map(x => x.f.id) })
+      }
+    }
+    options.sort((a, b) => b.w - a.w || a.c - b.c || a.from - b.from)
+    // Couverture d'abord : chaque cible utile touchée par au moins une option retenue, puis complément par poids.
     const covered = new Set<number>()
     const chosen = new Set<number>()
     let kept = 0
     for (let pass = 0; pass < 2 && kept < maxCenters; pass++) {
-      for (const [c] of ranked) {
-        if (kept >= maxCenters) break
-        if (chosen.has(c)) continue
-        let touched: number[] = []
-        if (prof.zone) {
-          const inZone = zoneMembership(prof.zone, c, meCell)
-          touched = useful.filter(x => inZone(x.cell)).map(x => x.f.id)
-        }
-        if (pass === 0 && !touched.some(id => !covered.has(id))) continue
+      for (let oi = 0; oi < options.length && kept < maxCenters; oi++) {
+        const o = options[oi]
+        if (chosen.has(oi)) continue
+        if (pass === 0 && !o.touched.some(id => !covered.has(id))) continue
         const before = out.length
-        castFrom(ks, prof, c)
+        if (o.from < 0) castFrom(ks, prof, o.c)
+        else emit(ks, prof, o.c, o.from)
         if (out.length > before) {
-          chosen.add(c)
+          chosen.add(oi)
           kept++
-          for (const id of touched) covered.add(id)
+          for (const id of o.touched) covered.add(id)
         }
       }
     }
@@ -304,6 +326,80 @@ function buffValue(stat: string, value: number, f: Fighter, pot: number, inc: nu
   if (RES_STATS.has(stat)) return (0.5 * inc * value) / 100
   if (stat === 'range') return 0.05 * pot
   return 0.02 * pot
+}
+
+/**
+ * Case d'arrivée d'une entité en `pos` poussée (ou attirée) de `cells` cases par un sort lancé depuis `from` sur
+ * `target` : direction du moteur (`pushDirection`), arrêt avant une case non marchable ou occupée (vue de l'équipe ;
+ * le lanceur sur `from`). Les collisions ne sont pas valorisées ici (la simulation les voit).
+ */
+function displacedCell(s: FightState, team: TeamId, casterId: number, from: number, target: number, pos: number, push: boolean,
+                       cells: number): number {
+  const dir = push ? pushDirection(from, target, pos) : pullDirection(from, target, pos)
+  if (dir < 0) return pos
+  let cur = pos
+  for (let k = 0; k < cells; k++) {
+    const next = cellInDirection(cur, dir)
+    if (next < 0 || !s.map.cells[next]?.walkable) break
+    if (next === from) break
+    let busy = false
+    for (const o of s.fighters) {
+      if (!o.alive || o.carriedBy !== undefined || o.id === casterId) continue
+      if (believedCell(o, team) === next) {
+        busy = true
+        break
+      }
+    }
+    if (busy) break
+    cur = next
+  }
+  return cur
+}
+
+/** Invocation « gabarit » (caractéristiques avec la part de l'invocateur) par (invocateur, monstre, grade). */
+const SUMMON_TEMPLATES = new WeakMap<Fighter['stats'], Map<number, Fighter | null>>()
+function summonTemplate(engine: Engine, me: Fighter, monsterId: number, grade: number): Fighter | null {
+  if (!(monsterId > 0)) return null
+  let byMe = SUMMON_TEMPLATES.get(me.stats)
+  if (!byMe) SUMMON_TEMPLATES.set(me.stats, (byMe = new Map()))
+  const k = monsterId * 64 + grade
+  let t = byMe.get(k)
+  if (t === undefined) {
+    try {
+      t = engine.data.monster(monsterId)
+        ? createMonsterFighter(engine.data, { monsterId, grade, team: me.team, cell: -1, summonerId: me.id, summoner: me })
+        : null
+      if (t) t.id = 30000 + (k % 2000)
+    } catch {
+      t = null
+    }
+    byMe.set(k, t)
+  }
+  return t
+}
+
+/**
+ * Potentiel approché d'une invocation posée sur `cell` (§6.6, sans accessibilité exacte) : meilleur ennemi à distance
+ * ≤ PM + portée de ses sorts à dégâts, [min(DPT, PV effectifs)·v_e].
+ */
+function summonPotential(dpt: DptTableImpl, t: Fighter, cell: number, s: FightState, team: TeamId, w: ValueWeights,
+                         scenario?: ScenarioAIModel, bb?: Blackboard): number {
+  const profiles = dpt.profiles.ofFighter(t)
+  let range = -1
+  for (const p of profiles) if (p.damage.length && p.maxRange > range) range = p.maxRange
+  if (range < 0) return 0
+  const reachD = Math.max(0, t.stats.mp) + Math.max(1, range)
+  let best = 0
+  for (const e of s.fighters) {
+    if (!e.alive || e.team === team || e.carriedBy !== undefined) continue
+    const ec = believedCell(e, team)
+    if (ec < 0 || distance(ec, cell) > reachD) continue
+    const v = damageWeightOf(e, w, scenario, bb)
+    if (v <= 0) continue
+    const val = Math.min(dpt.dpt(t, e), hpEff(e)) * v
+    if (val > best) best = val
+  }
+  return best
 }
 
 /** Sort lancé par une macro (premier lancer) et sa case de lancer. */
@@ -350,28 +446,39 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
   }
   const potWeight = (f: Fighter): number =>
     topThreatId < 0 || threat.order.before(f.id, topThreatId) ? (w.potBefore ?? 0.35) : (w.potAfter ?? 0.15)
+  // Appartenance d'une cible à la zone d'UNE ligne (zone et masque propres à la ligne, centre = case ciblée) : 0 si
+  // non touchée, sinon l'efficacité de zone.
+  const zm = new Map<ZoneSpec, (cell: number) => boolean>()
+  const lineEff = (zone: ZoneSpec, mask: string, f: Fighter, cell: number): number => {
+    let mem = zm.get(zone)
+    if (!mem) zm.set(zone, (mem = zoneMembership(zone, c.cell, c.from)))
+    if (!mem(cell) || !matchesTargetMask(mask, me, f)) return 0
+    return zoneEfficiency(zone, c.cell, cell, c.from)
+  }
   let value = 0
   for (const f of s.fighters) {
     if (!f.alive || f.carriedBy !== undefined) continue
     const cell = f.id === me.id ? c.from : believedCell(f, view.team)
     if (cell < 0) continue
-    let eff = 1
-    if (inZone) {
-      if (!inZone(cell)) continue
-      eff = zoneEfficiency(zone!, c.cell, cell, c.from)
-    } else if (cell !== c.cell) continue
-    if (!someEffectAccepts(prof, me, f)) continue
     const enemy = f.team !== me.team
     const he = hpEff(f)
-    if (prof.damage.length) {
+    // Dégâts : zone principale du sort (masques appliqués ligne par ligne par `perCast`).
+    if (prof.damage.length && (inZone ? inZone(cell) : cell === c.cell)) {
+      const eff = inZone ? zoneEfficiency(zone!, c.cell, cell, c.from) : 1
       const cd = dpt.perCast(me, si, f)
-      const dmg = cd.mean * eff * calib
-      if (enemy) {
-        const v = damageWeightOf(f, w, scenario, bb)
-        const killValue = w.killKappa * f.maxHp + w.killTau * threat.threatOf(f)
-        value += Math.min(dmg, he) * v + killProbability(dmg, cd.variance * eff * eff, f.hp + f.shield) * killValue
-      } else {
-        value -= 0.6 * Math.min(dmg, he) + (dmg >= f.hp + f.shield ? f.baseMaxHp : 0)
+      // Placement de la cible : case d'impact (lignes qui touchent le centre) ou reste de la zone.
+      const atCenter = cell === c.cell
+      const mean = (atCenter ? cd.centerMean : cd.ringMean) ?? cd.mean
+      const variance = (atCenter ? cd.centerVar : cd.ringVar) ?? cd.variance
+      const dmg = mean * eff * calib
+      if (dmg > 0) {
+        if (enemy) {
+          const v = damageWeightOf(f, w, scenario, bb)
+          const killValue = w.killKappa * f.maxHp + w.killTau * threat.threatOf(f)
+          value += Math.min(dmg, he) * v + killProbability(dmg, variance * eff * eff, f.hp + f.shield) * killValue
+        } else {
+          value -= 0.6 * Math.min(dmg, he) + (dmg >= f.hp + f.shield ? f.baseMaxHp : 0)
+        }
       }
     }
     if (enemy) {
@@ -381,7 +488,7 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
       let dAp = 0
       let dMp = 0
       for (const r of prof.removals) {
-        if (!r.sides.enemy || r.delay > 0 || r.duration < 1) continue
+        if (r.delay > 0 || r.duration < 1 || !lineEff(r.zone, r.mask, f, cell)) continue
         const pool = r.pool
         const pts = Math.max(0, f.stats[pool] - (pool === 'ap' ? dAp : dMp))
         const removed = r.dodgeable
@@ -396,62 +503,80 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
         const alpha = row && row.hitsFromStart ? 0.15 : 0.6
         value += (w.control ?? 0.15) * (dAp * (th / Math.max(1, f.stats.ap)) + dMp * ((alpha * th) / Math.max(1, f.stats.mp)))
       }
+      let pacified = false
       for (const st of prof.states) {
-        if (st.remove || !st.sides.enemy) continue
+        if (st.remove || !lineEff(st.zone, st.mask, f, cell)) continue
         const data = view.engine.data.state(st.stateId)
-        if (data?.cantDealDamage) value += 0.9 * th
-        else if (data?.cantBeMoved || data?.cantSwitchPosition) value += 0.05 * th
+        if (data?.cantDealDamage && st.duration >= 1 && !pacified) {
+          // Pacifiste couvrant le prochain tour : sa part de l'incoming disparaît (comme dans V).
+          pacified = true
+          value += w.incoming * threat.contribution(f)
+        } else if (data?.cantBeMoved || data?.cantSwitchPosition) value += 0.05 * th
         else value += 0.02 * th
       }
+      // Poussée / attirance / échange : Δ incoming avec l'ennemi sur sa case d'arrivée (recalcul local de la menace).
+      let moved = false
       for (const mv of prof.moves) {
-        if (mv.onCaster || !mv.sides.enemy) continue
-        if (mv.kind === 'push' || mv.kind === 'pull') value += 0.15 * th * Math.min(mv.cells, 4) / 4
-      }
-      for (const rl of prof.received) if (rl.sides.enemy && rl.pct > 100) value += ((rl.pct - 100) / 100) * 0.5 * th
-      if (prof.removesStates && view.engine.stateFlag(f, 'invulnerable')) value += 0.3 * f.maxHp
-    } else {
-      // Retraits subis par un allié : potentiel perdu.
-      for (const r of prof.removals) {
-        if (!(r.sides.ally || (r.sides.self && f.id === me.id))) continue
-        const pot = potential.potential(f.id)
-        const pts = Math.max(0, f.stats[r.pool])
-        value -= Math.min(pts, r.value) * (r.pool === 'ap' ? pot / Math.max(1, f.stats.ap) : (0.3 * pot) / Math.max(1, f.stats.mp))
-      }
-      // Alliés (soi compris) : soins plafonnés aux PV manquants, boucliers utiles, buffs.
-      const missing = f.maxHp - f.hp
-      if (missing > 0) {
-        for (const h of prof.heals) {
-          if (!h.sides.ally && !(h.sides.self && f.id === me.id)) continue
-          const base = (h.min + h.max) / 2
-          const amount = h.kind === 'pctMax' ? (base * f.maxHp) / 100 : h.kind === 'fixed' ? base : healFormula(base, me.stats, { element: h.element >= 0 ? (h.element as 0) : undefined })
-          value += 0.9 * Math.min(amount * h.p * eff, missing) * (1 + (1 - f.hp / Math.max(1, f.maxHp)))
+        if (moved || !lineEff(mv.zone, mv.mask, f, cell)) continue
+        let dest = -1
+        if (mv.kind === 'push' || mv.kind === 'pull') dest = displacedCell(s, view.team, me.id, c.from, c.cell, cell, mv.kind === 'push', mv.cells)
+        else if (mv.kind === 'swap' && mv.onCaster && cell === c.cell) dest = c.from
+        if (dest >= 0 && dest !== cell) {
+          moved = true
+          value -= w.incoming * threat.movedDelta(f, dest)
         }
       }
-      const inc = threat.incoming(f.id)
-      for (const sh of prof.shields) {
-        if (!sh.sides.ally && !(sh.sides.self && f.id === me.id)) continue
-        const amount = sh.kind === 'pctLevel' ? (sh.value * me.level) / 100 : sh.kind === 'pctMaxHp' ? (sh.value * me.maxHp) / 100 : sh.value
-        // Même poids que V (allyLife : 0,8·bouclier).
-        value += 0.8 * amount * eff * (f.kind === 'summon' ? 0.4 : 1)
+      for (const rl of prof.received) if (rl.pct > 100 && lineEff(rl.zone, rl.mask, f, cell)) value += ((rl.pct - 100) / 100) * 0.5 * th
+      if (prof.removesStates && cell === c.cell && view.engine.stateFlag(f, 'invulnerable')) value += 0.3 * f.maxHp
+      continue
+    }
+    // Alliés (soi compris).
+    const pot = potential.potential(f.id)
+    const inc = threat.incoming(f.id)
+    // Même pondération que V : Δpotentiel × w_pot (selon que l'allié joue avant l'ennemi le plus menaçant).
+    const wPot = potWeight(f)
+    // Retraits subis : potentiel perdu (PA : proportionnel ; PM : la moitié au plus, la cible peut déjà être à portée).
+    for (const r of prof.removals) {
+      if (r.duration < 1 || (r.delay > 0 && !(f.id === me.id && r.delay <= 1)) || !lineEff(r.zone, r.mask, f, cell)) continue
+      const pts = Math.max(0, f.stats[r.pool])
+      const frac = Math.min(1, Math.min(pts, r.value) / Math.max(1, pts))
+      value -= wPot * pot * (r.pool === 'ap' ? frac : 0.5 * frac)
+    }
+    const missing = f.maxHp - f.hp
+    if (missing > 0) {
+      for (const h of prof.heals) {
+        const eff = lineEff(h.zone, h.mask, f, cell)
+        if (!eff) continue
+        const base = (h.min + h.max) / 2
+        const amount = h.kind === 'pctMax' ? (base * f.maxHp) / 100 : h.kind === 'fixed' ? base : healFormula(base, me.stats, { element: h.element >= 0 ? (h.element as 0) : undefined })
+        value += 0.9 * Math.min(amount * h.p * eff, missing) * (1 + (1 - f.hp / Math.max(1, f.maxHp)))
       }
-      const pot = potential.potential(f.id)
-      // Même pondération que V : Δpotentiel × w_pot (selon que l'allié joue avant l'ennemi le plus menaçant).
-      const wPot = potWeight(f)
-      for (const st of prof.stats) {
-        if (st.sign < 0) continue
-        if (!(st.sides.ally || (st.sides.self && f.id === me.id))) continue
-        if (st.stat === 'vitality') {
-          // PV gagnés (allyLife) : vitalité ⇒ PV et PV max.
-          value += st.value * (f.kind === 'summon' ? 0.4 : 1)
-          continue
-        }
-        value += wPot * buffValue(st.stat, st.value, f, pot, inc)
-        // PA/PM gagnés tout de suite par le lanceur : suite du tour (terme continuation de V).
-        if (f.id === me.id && (st.stat === 'ap' || st.stat === 'mp')) {
-          const per = pot / Math.max(1, st.stat === 'ap' ? f.stats.ap : 3 * f.stats.mp)
-          value += (w.continuation ?? 0.8) * per * Math.min(st.value, st.stat === 'ap' ? 6 : 3)
-        }
+    }
+    for (const sh of prof.shields) {
+      const eff = lineEff(sh.zone, sh.mask, f, cell)
+      if (!eff) continue
+      const amount = sh.kind === 'pctLevel' ? (sh.value * me.level) / 100 : sh.kind === 'pctMaxHp' ? (sh.value * me.maxHp) / 100 : sh.value
+      // Même poids que V (allyLife : 0,8·bouclier).
+      value += 0.8 * amount * eff * (f.kind === 'summon' ? 0.4 : 1)
+    }
+    for (const st of prof.stats) {
+      if (st.sign < 0 || !lineEff(st.zone, st.mask, f, cell)) continue
+      if (st.stat === 'vitality') {
+        // PV gagnés (allyLife) : vitalité ⇒ PV et PV max ; 1078/1033 en % des PV max de début de combat.
+        const hp = st.pctBaseLife ? (st.value * f.baseMaxHp) / 100 : st.value
+        value += hp * (f.kind === 'summon' ? 0.4 : 1)
+        continue
       }
+      value += wPot * buffValue(st.stat, st.value, f, pot, inc)
+      // PA/PM gagnés tout de suite par le lanceur : suite du tour (terme continuation de V).
+      if (f.id === me.id && (st.stat === 'ap' || st.stat === 'mp')) {
+        const per = pot / Math.max(1, st.stat === 'ap' ? f.stats.ap : 3 * f.stats.mp)
+        value += (w.continuation ?? 0.8) * per * Math.min(st.value, st.stat === 'ap' ? 6 : 3)
+      }
+    }
+    // Allié échangé (portage, Transposition) : il finit sur la case de lancer.
+    if (f.id !== me.id && cell === c.cell && prof.moves.some(mv => mv.kind === 'swap' && mv.onCaster && matchesTargetMask(mv.mask, me, f))) {
+      value -= w.incoming * threat.cellIncomingTeamDelta(f, c.from)
     }
   }
   // Déplacement du lanceur : case de lancer (chemin) puis téléportation éventuelle — Δ des dégâts attendus sur lui.
@@ -459,6 +584,7 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
   if (prof.moves.some(mv => mv.onCaster && (mv.kind === 'teleport' || mv.kind === 'swap' || mv.kind === 'symmetric'))) dest = c.cell
   if (dest !== meCell && dest >= 0 && dest < CELL_COUNT) value -= w.incoming * threat.cellIncomingTeamDelta(me, dest)
   const occupied = s.fighters.some(f => f.alive && f.carriedBy === undefined && (f.id === me.id ? c.from : believedCell(f, view.team)) === c.cell)
+  let summonedOnce = false
   if (prof.summonLines.length && !occupied) {
     // Même valeur que V : PV de l'invocation × ω (0,4) + menace détournée (leurre : `decoyDelta`, π recalculé).
     for (const sl of prof.summonLines) {
@@ -467,10 +593,14 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
         if (dead) value += 0.5 * me.baseMaxHp
         continue
       }
-      const mdata = sl.monsterId > 0 ? view.engine.data.monster(sl.monsterId) : undefined
-      const g = mdata?.grades.find(x => x.grade === sl.grade) ?? mdata?.grades[0]
-      const hp = g ? g.lifePoints + (g.stats.vitality ?? 0) + Math.floor((me.baseMaxHp * (g.summonerShare?.lifePct ?? 0)) / 100) : 0.3 * me.baseMaxHp
-      value += 0.4 * hp - w.incoming * threat.decoyDelta(c.cell, hp)
+      const tmpl = summonTemplate(view.engine, me, sl.monsterId, sl.grade)
+      const hp = tmpl ? tmpl.maxHp : 0.3 * me.baseMaxHp
+      value += 0.4 * hp - w.incoming * threat.decoyDelta(c.cell, hp, tmpl?.stats.tackleBlock ?? 0)
+      // Potentiel de l'invocation (elle joue juste après : w_pot « avant »), ennemis à portée de marche + sort.
+      if (tmpl) value += (w.potBefore ?? 0.35) * summonPotential(dpt, tmpl, c.cell, s, view.team, w, scenario, bb)
+      // L'invocation joue juste après son invocateur : les ennemis suivants passent à ω = 0,8 (comme dans V).
+      if (!summonedOnce) value += w.incoming * threat.allyInsertedGain()
+      summonedOnce = true
     }
   }
   if (prof.glyph || prof.trap) value += 100

@@ -7,10 +7,13 @@
  * version est ignorée (un changement de version invalide tout). `MemoryFightCache` : même interface, en mémoire.
  *
  * Version par défaut (`cacheVersion`) : `OPTIMIZER_CACHE_VERSION` + version du paquet + empreinte du manifeste des
- * données (data/dofusdb/manifest.json). Les changements de code de l'IA/du moteur ne sont pas détectés
- * automatiquement : incrémenter `OPTIMIZER_CACHE_VERSION` ou passer une version explicite (CLI `--cache-version`).
+ * données (data/dofusdb/manifest.json) + empreinte du CODE (`sourceFingerprint` : sources TypeScript de src/ hors CLI et
+ * paramètres data/ai/*.json — θ, presets, calibration). Toute modification du moteur, de l'IA, des scénarios ou de
+ * l'optimiseur invalide donc les résultats en cache (§15.2 : « un changement de version invalide tout ») : une
+ * campagne relancée après l'arrivée de l'IA réelle ne réutilise pas les combats joués par les bouchons. Une version
+ * explicite (CLI `--cache-version`) remplace ce calcul.
  */
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { thetaHash } from '../ai/theta'
@@ -21,6 +24,39 @@ import type { FightSpec, FightSummary, WorkerTask } from './types'
 export const OPTIMIZER_CACHE_VERSION = 1
 
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))
+
+const fingerprints = new Map<string, string>()
+
+/**
+ * Empreinte du code qui détermine un combat : sources TypeScript de `src/` (hors `src/cli`, sans effet sur un combat) et
+ * `data/ai/*.json` sous `root`, triés par chemin, chemin et contenu hachés (FNV-1a 2 × 32 bits). Calculée une fois par
+ * processus et par racine (≈ 2 Mo lus) ; '0' si `root` n'a pas de sources (code empaqueté).
+ */
+export function sourceFingerprint(root = REPO_ROOT): string {
+  const cached = fingerprints.get(root)
+  if (cached !== undefined) return cached
+  const files: string[] = []
+  const src = join(root, 'src')
+  if (existsSync(src)) {
+    for (const f of readdirSync(src, { recursive: true }) as string[]) {
+      const rel = f.split('\\').join('/')
+      if (rel.endsWith('.ts') && !rel.startsWith('cli/')) files.push(`src/${rel}`)
+    }
+  }
+  const ai = join(root, 'data', 'ai')
+  if (existsSync(ai)) for (const f of readdirSync(ai)) if (f.endsWith('.json')) files.push(`data/ai/${f}`)
+  files.sort()
+  let a = 0x811c9dc5
+  let b = 0x9e3779b9
+  for (const f of files) {
+    const text = `${f}\n${readFileSync(join(root, f), 'utf8')}\n`
+    a = fnv1a32(text, a)
+    b = fnv1a32(text, b)
+  }
+  const out = files.length ? `${(a >>> 0).toString(16).padStart(8, '0')}${(b >>> 0).toString(16).padStart(8, '0')}` : '0'
+  fingerprints.set(root, out)
+  return out
+}
 
 /** Version par défaut des entrées du cache (voir l'en-tête). */
 export function cacheVersion(dataDir = 'data'): string {
@@ -38,7 +74,7 @@ export function cacheVersion(dataDir = 'data'): string {
       break
     }
   }
-  return `v${OPTIMIZER_CACHE_VERSION}-${pkg}-${manifest.toString(16)}`
+  return `v${OPTIMIZER_CACHE_VERSION}-${pkg}-${manifest.toString(16)}-${sourceFingerprint()}`
 }
 
 /** JSON canonique (clés triées) d'une valeur. */
