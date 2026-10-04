@@ -35,5 +35,10 @@ npm run fetch:data   # (re)télécharge les données du jeu depuis l'API DofusDB
 
 Voir [`docs/ROADMAP.md`](docs/ROADMAP.md) pour l'avancement par checkpoint.
 
-Données : [DofusDB](https://dofusdb.fr) (fichiers du jeu), formules : [DoMath](https://domath.fr).
-Dofus est une marque d'Ankama ; projet non officiel à but d'analyse.
+## Sources et licences
+
+- **Données issues de DofusDB. Utilisation soumise à la LPNC-IA 1.0.** ([api.dofusdb.fr](https://api.dofusdb.fr/)) —
+  usage non commercial ; utilisation autorisée par DofusDB pour ce projet selon le propriétaire du dépôt.
+- Fichiers du jeu distribués par Ankama (via l'outil open source [doduda](https://github.com/dofusdude/doduda)) pour le recoupement.
+- Formules de combat : [DoMath](https://domath.fr) et code client décompilé (références détaillées dans `docs/research/formulas.md`).
+- Dofus est une marque d'Ankama Games ; projet non officiel, non commercial, à but d'analyse.

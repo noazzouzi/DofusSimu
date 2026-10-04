@@ -1,0 +1,348 @@
+{
+  "dungeonId": 87,
+  "note": "Succès du donjon 87 (Œil de Vortex). Critères : EM>monstre,0,d = avoir tué le monstre en donjon ; EH>challenge,0 = avoir réussi le challenge ; PL>189 = niveau > 189.",
+  "achievements": [
+    {
+      "id": 1156,
+      "name": {
+        "fr": "Œil de Vortex",
+        "en": "Eye of Vortex"
+      },
+      "description": {
+        "fr": "Vaincre Vortex dans son donjon.",
+        "en": "Defeat Vortex in this boss's dungeon."
+      },
+      "points": 10,
+      "level": 200,
+      "categoryId": 59,
+      "objectives": [
+        {
+          "id": 3574,
+          "order": 0,
+          "criterion": "(EM>3835,0,d)",
+          "name": {
+            "fr": "Vortex",
+            "en": "Vortex"
+          },
+          "readableCriterion": [
+            [
+              "Avoir tué ",
+              {
+                "id": 3835,
+                "name": "Vortex"
+              },
+              " en ",
+              "donjon"
+            ]
+          ]
+        },
+        {
+          "id": 3575,
+          "order": 1,
+          "criterion": "PL>189",
+          "name": {
+            "fr": "Niveau 190",
+            "en": "Level 190"
+          },
+          "readableCriterion": [
+            [
+              "Niveau > ",
+              "189"
+            ]
+          ]
+        }
+      ],
+      "rewardIds": [
+        2065,
+        2770,
+        4377
+      ]
+    },
+    {
+      "id": 1157,
+      "name": {
+        "fr": "Vortex (Focus)",
+        "en": "Vortex (Focus)"
+      },
+      "description": {
+        "fr": "Vaincre Vortex dans son donjon en validant le challenge [challenge,332].",
+        "en": "Defeat Vortex in this boss's dungeon while completing the [challenge,332] challenge."
+      },
+      "points": 10,
+      "level": 200,
+      "categoryId": 59,
+      "challengeId": 332,
+      "objectives": [
+        {
+          "id": 3576,
+          "order": 0,
+          "criterion": "(EH>332,0)",
+          "name": {
+            "fr": "Vortex",
+            "en": "Vortex"
+          },
+          "readableCriterion": [
+            [
+              "Avoir réussi le challenge ",
+              {
+                "id": 332,
+                "name": "Focus"
+              }
+            ]
+          ]
+        },
+        {
+          "id": 3577,
+          "order": 1,
+          "criterion": "PL>189",
+          "name": {
+            "fr": "Niveau 190",
+            "en": "Level 190"
+          },
+          "readableCriterion": [
+            [
+              "Niveau > ",
+              "189"
+            ]
+          ]
+        }
+      ],
+      "rewardIds": [
+        2066,
+        2772,
+        4379
+      ]
+    },
+    {
+      "id": 1158,
+      "name": {
+        "fr": "Vortex (Hardi)",
+        "en": "Vortex (Impertinence)"
+      },
+      "description": {
+        "fr": "Vaincre Vortex dans son donjon en validant le challenge [challenge,333].",
+        "en": "Defeat Vortex in this boss's dungeon while completing the [challenge,333] challenge."
+      },
+      "points": 10,
+      "level": 200,
+      "categoryId": 59,
+      "challengeId": 333,
+      "objectives": [
+        {
+          "id": 3578,
+          "order": 0,
+          "criterion": "(EH>333,0)",
+          "name": {
+            "fr": "Vortex",
+            "en": "Vortex"
+          },
+          "readableCriterion": [
+            [
+              "Avoir réussi le challenge ",
+              {
+                "id": 333,
+                "name": "Hardi"
+              }
+            ]
+          ]
+        },
+        {
+          "id": 3579,
+          "order": 1,
+          "criterion": "PL>189",
+          "name": {
+            "fr": "Niveau 190",
+            "en": "Level 190"
+          },
+          "readableCriterion": [
+            [
+              "Niveau > ",
+              "189"
+            ]
+          ]
+        }
+      ],
+      "rewardIds": [
+        2067,
+        2777,
+        4384
+      ]
+    },
+    {
+      "id": 1159,
+      "name": {
+        "fr": "Vortex (Trio)",
+        "en": "Vortex (Trio)"
+      },
+      "description": {
+        "fr": "Vaincre Vortex dans son donjon en validant le challenge [challenge,334].",
+        "en": "Defeat Vortex in this boss's dungeon while completing the [challenge,334] challenge."
+      },
+      "points": 20,
+      "level": 200,
+      "categoryId": 59,
+      "challengeId": 334,
+      "objectives": [
+        {
+          "id": 3580,
+          "order": 0,
+          "criterion": "(EH>334,0)",
+          "name": {
+            "fr": "Vortex",
+            "en": "Vortex"
+          },
+          "readableCriterion": [
+            [
+              "Avoir réussi le challenge ",
+              {
+                "id": 334,
+                "name": "Trio"
+              }
+            ]
+          ]
+        },
+        {
+          "id": 3581,
+          "order": 1,
+          "criterion": "PL>189",
+          "name": {
+            "fr": "Niveau 190",
+            "en": "Level 190"
+          },
+          "readableCriterion": [
+            [
+              "Niveau > ",
+              "189"
+            ]
+          ]
+        }
+      ],
+      "rewardIds": [
+        2068,
+        2778,
+        4385
+      ]
+    },
+    {
+      "id": 6243,
+      "name": {
+        "fr": "Vortex (Spécial)",
+        "en": "Vortex (Special)"
+      },
+      "description": {
+        "fr": "Vaincre Vortex dans son donjon en validant le challenge [challenge,1078].",
+        "en": "Defeat Vortex in this boss's dungeon while completing the [challenge,1078] challenge."
+      },
+      "points": 10,
+      "level": 200,
+      "categoryId": 59,
+      "challengeId": 1078,
+      "objectives": [
+        {
+          "id": 13975,
+          "order": 0,
+          "criterion": "(EH>1078,0)",
+          "name": {
+            "fr": "Vortex (Spécial)",
+            "en": "Vortex (Special)"
+          },
+          "readableCriterion": [
+            [
+              "Avoir réussi le challenge ",
+              {
+                "id": 1078,
+                "name": "Heure de la mort"
+              }
+            ]
+          ]
+        },
+        {
+          "id": 13976,
+          "order": 1,
+          "criterion": "PL>189",
+          "name": {
+            "fr": "Niveau 190",
+            "en": "Level 190"
+          },
+          "readableCriterion": [
+            [
+              "Niveau > ",
+              "189"
+            ]
+          ]
+        }
+      ],
+      "rewardIds": [
+        10946,
+        10947,
+        11084
+      ]
+    }
+  ],
+  "challenges": [
+    {
+      "id": 332,
+      "name": {
+        "fr": "Focus",
+        "en": "Focus"
+      },
+      "description": {
+        "fr": "Lorsqu'un ennemi est attaqué par un allié, il doit être achevé avant qu'un autre ennemi ne soit attaqué.",
+        "en": "Once an enemy has been attacked by an ally, it must be finished off before any other enemy is attacked."
+      },
+      "categoryId": 3,
+      "iconId": 31,
+      "completionCriterion": "SF=1",
+      "activationCriterion": "GM>0,3835,1&Gm=d&GN>1,1",
+      "targetMonsterId": 3835
+    },
+    {
+      "id": 333,
+      "name": {
+        "fr": "Hardi",
+        "en": "Impertinence"
+      },
+      "description": {
+        "fr": "Les combattants alliés doivent finir leur tour sur une cellule adjacente à celle d'un ennemi.",
+        "en": "Allied fighters must end their turn on a cell adjacent to an enemy."
+      },
+      "categoryId": 3,
+      "iconId": 36,
+      "completionCriterion": "TD<2,hc0,e1",
+      "activationCriterion": "GM>0,3835,1&Gm=d",
+      "targetMonsterId": 3835
+    },
+    {
+      "id": 334,
+      "name": {
+        "fr": "Trio",
+        "en": "Trio"
+      },
+      "description": {
+        "fr": "Vaincre tous les monstres avec 3 personnages maximum et en moins de {1} tours.",
+        "en": "Defeat all monsters with 3 characters maximum and in less than {1} turns."
+      },
+      "categoryId": 3,
+      "iconId": 10024,
+      "completionCriterion": "ST<80",
+      "activationCriterion": "GN<4,0&GM>0,3835,1&Gm=d",
+      "targetMonsterId": 3835
+    },
+    {
+      "id": 1078,
+      "name": {
+        "fr": "Heure de la mort",
+        "en": "Hour of Death"
+      },
+      "description": {
+        "fr": "Tous les ennemis doivent être achevés à la même heure.",
+        "en": "All enemies must be finished off at the same time."
+      },
+      "categoryId": 3,
+      "iconId": 977,
+      "completionCriterion": "Ma=1",
+      "activationCriterion": "GM>0,3835,1&Gm=d",
+      "targetMonsterId": 3835
+    }
+  ]
+}

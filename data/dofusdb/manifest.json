@@ -1,0 +1,375 @@
+{
+  "generatedBy": "scripts/fetch-dofusdb.mjs",
+  "fetchedAt": "2026-10-04T18:51:19.455Z",
+  "api": "https://api.dofusdb.fr",
+  "sourceServices": [
+    "https://api.dofusdb.fr/achievement-objectives",
+    "https://api.dofusdb.fr/achievements",
+    "https://api.dofusdb.fr/breed-roles",
+    "https://api.dofusdb.fr/breeds",
+    "https://api.dofusdb.fr/challenges",
+    "https://api.dofusdb.fr/characteristics",
+    "https://api.dofusdb.fr/dungeons",
+    "https://api.dofusdb.fr/effects",
+    "https://api.dofusdb.fr/item-sets",
+    "https://api.dofusdb.fr/item-super-types",
+    "https://api.dofusdb.fr/item-types",
+    "https://api.dofusdb.fr/items",
+    "https://api.dofusdb.fr/map-positions",
+    "https://api.dofusdb.fr/monster-races",
+    "https://api.dofusdb.fr/monster-super-races",
+    "https://api.dofusdb.fr/monsters",
+    "https://api.dofusdb.fr/spell-levels",
+    "https://api.dofusdb.fr/spell-states",
+    "https://api.dofusdb.fr/spell-variants",
+    "https://api.dofusdb.fr/spells",
+    "https://api.dofusdb.fr/subareas"
+  ],
+  "options": {
+    "monsterSpellsScope": "all",
+    "maxDepth": 20,
+    "pageSize": 50
+  },
+  "files": {
+    "effects.json": {
+      "bytes": 469259,
+      "count": 872
+    },
+    "characteristics.json": {
+      "bytes": 22345,
+      "count": 123
+    },
+    "item-types.json": {
+      "bytes": 37650,
+      "count": 239
+    },
+    "monsters.json": {
+      "bytes": 12698583,
+      "count": 5135
+    },
+    "monster-races.json": {
+      "bytes": 53454,
+      "count": 265
+    },
+    "breeds.json": {
+      "bytes": 67263,
+      "count": 19
+    },
+    "class-spells.json": {
+      "bytes": 9367492,
+      "count": 836
+    },
+    "equipment.json": {
+      "bytes": 2943646,
+      "count": 3826
+    },
+    "item-sets.json": {
+      "bytes": 647647,
+      "count": 521
+    },
+    "item-spells.json": {
+      "bytes": 939319,
+      "count": 260
+    },
+    "dungeons.json": {
+      "bytes": 339496,
+      "count": 187
+    },
+    "dungeon-maps.json": {
+      "bytes": 592144,
+      "count": 1788
+    },
+    "monster-spells.json": {
+      "bytes": 13462486,
+      "count": 4675
+    },
+    "spell-states.json": {
+      "bytes": 613890,
+      "count": 6375
+    },
+    "challenges.json": {
+      "bytes": 319821,
+      "count": 842
+    },
+    "achievements-vortex.json": {
+      "bytes": 8434,
+      "count": 5
+    }
+  },
+  "totalBytes": 42582929,
+  "counts": {
+    "breeds": 19,
+    "classSpells": 836,
+    "classLinkedSpells": 958,
+    "classSummonedMonsters": 83,
+    "equipment": 3826,
+    "itemSets": 521,
+    "itemSetsTotalInApi": 931,
+    "itemSetSummaryMismatches": 8,
+    "monsters": 5135,
+    "dungeons": 187,
+    "dungeonMaps": 1788,
+    "monsterSpells": 4675,
+    "itemSpells": 260,
+    "spellStatesWritten": 6375,
+    "spellStatesInApi": 6375
+  },
+  "effectDefaults": {
+    "baseEffectId": 0,
+    "targetId": 0,
+    "modificator": 0,
+    "effectElement": -1,
+    "effectTriggerDuration": 0,
+    "displayZero": false,
+    "visibleInTooltip": true,
+    "visibleInBuffUi": true,
+    "visibleInFightLog": true,
+    "visibleOnTerrain": true,
+    "forClientOnly": false,
+    "trigger": false
+  },
+  "spellRefEffects": {
+    "diceNumIsSpell": [
+      237,
+      280,
+      281,
+      282,
+      283,
+      284,
+      285,
+      286,
+      287,
+      288,
+      289,
+      290,
+      291,
+      292,
+      293,
+      294,
+      295,
+      296,
+      297,
+      298,
+      299,
+      314,
+      400,
+      401,
+      402,
+      792,
+      793,
+      798,
+      799,
+      814,
+      1017,
+      1018,
+      1019,
+      1035,
+      1036,
+      1045,
+      1084,
+      1091,
+      1160,
+      1161,
+      1165,
+      1175,
+      1187,
+      2017,
+      2018,
+      2022,
+      2160,
+      2792,
+      2793,
+      2794,
+      2795,
+      2880,
+      2905,
+      2906,
+      2908,
+      2909,
+      2910,
+      2911,
+      2914,
+      2932,
+      2933,
+      2934,
+      2935,
+      2960,
+      3281,
+      3282,
+      3285,
+      3287,
+      3289,
+      3290,
+      3293,
+      3296,
+      3333,
+      3935,
+      4040,
+      4052
+    ],
+    "spellModifiers": [
+      280,
+      281,
+      282,
+      283,
+      284,
+      285,
+      286,
+      287,
+      288,
+      289,
+      290,
+      291,
+      292,
+      293,
+      294,
+      295,
+      296,
+      297,
+      298,
+      299,
+      314,
+      798,
+      799,
+      1035,
+      1036,
+      1045,
+      2905,
+      2906,
+      2908,
+      2909,
+      2910,
+      2911,
+      2914,
+      2932,
+      2933,
+      2934,
+      2935,
+      3281,
+      3282,
+      3285,
+      3287,
+      3289,
+      3290,
+      3293,
+      3296,
+      3333,
+      3935,
+      4052
+    ],
+    "diceSideIsSpell": [],
+    "valueIsSpell": [
+      406,
+      722,
+      1026,
+      1406,
+      2997
+    ],
+    "diceSideIsSpellLevel": [
+      1181
+    ],
+    "summonDiceNumIsMonster": [
+      181,
+      405,
+      1008,
+      1011,
+      2796
+    ],
+    "stateValueIsState": [
+      950,
+      951,
+      952
+    ],
+    "notes": "diceNumIsSpell : diceNum = sort, diceSide = grade (modificateurs : value = valeur). valueIsSpell : value = sort ; pour 722/2997 et 1406, diceSide = grade/rang. 406/1406 étaient classés à tort en diceSideIsSpell avant la vérification du 2026-10-04 (diceSide de 1406 = rang 1..6, de 406 = 0). diceSideIsSpellLevel : diceSide = id de spell-levels. summonDiceNumIsMonster : diceNum = monstre, diceSide = grade. stateValueIsState : value = état."
+  },
+  "equipmentTypes": {
+    "1": "amulet",
+    "2": "weapon",
+    "3": "weapon",
+    "4": "weapon",
+    "5": "weapon",
+    "6": "weapon",
+    "7": "weapon",
+    "8": "weapon",
+    "9": "ring",
+    "10": "belt",
+    "11": "boots",
+    "16": "hat",
+    "17": "cloak",
+    "18": "pet",
+    "19": "weapon",
+    "20": "weapon",
+    "21": "weapon",
+    "22": "weapon",
+    "23": "dofus",
+    "82": "shield",
+    "114": "weapon",
+    "121": "petsmount",
+    "151": "trophy",
+    "217": "prysmaradite",
+    "271": "weapon",
+    "311": "mount",
+    "331": "mount",
+    "332": "mount",
+    "333": "mount"
+  },
+  "checks": {
+    "iopSpellCount": 44,
+    "iopPairs": 22,
+    "classSpellCount": 836,
+    "breedCount": 19,
+    "equipmentCount": 3826,
+    "vortexBossGrades": [
+      [
+        1,
+        220,
+        15000,
+        16,
+        5
+      ],
+      [
+        2,
+        220,
+        17000,
+        16,
+        5
+      ],
+      [
+        3,
+        220,
+        18000,
+        16,
+        5
+      ],
+      [
+        4,
+        220,
+        20000,
+        16,
+        5
+      ],
+      [
+        5,
+        220,
+        22000,
+        16,
+        5
+      ],
+      [
+        6,
+        220,
+        22000,
+        16,
+        5
+      ]
+    ],
+    "vortexSpellsPresent": true
+  },
+  "http": {
+    "requests": 163,
+    "cacheHits": 717,
+    "retries": 0,
+    "bytes": 47982854,
+    "seconds": 18
+  }
+}

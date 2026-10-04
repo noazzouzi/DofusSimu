@@ -1,0 +1,3215 @@
+{
+  "meta": {
+    "title": "Vecteurs de test — formules de combat Dofus (DoMath + client)",
+    "generatedBy": ".cache/domath/extract/gen-vectors.cjs (node v22.22.0)",
+    "generatedAt": "2026-10-04T18:55:25.025Z",
+    "domath": {
+      "url": "https://domath.fr",
+      "version": "1.3.3",
+      "mainBundle": "static/js/main.e2dd4684.js",
+      "workerChunk": "static/js/806.6ff2731e.chunk.js",
+      "helperChunk": "static/js/186.e615cf85.chunk.js"
+    },
+    "conventions": {
+      "statsShape": "Format DoMath (voir formulas.md §2) : {power, strength, intelligence, luck, agility, crit, damages:{fixed:{damages,neutral,earth,fire,water,air,critical}, percentage:{sustained(=100 par défaut),final,spell,weapon,range,melee}}, resistances:{fixed:{neutral,earth,fire,water,air,critical}, percentage:{neutral,earth,fire,water,air,spell,weapon,range,melee}}, hit:{type:'spell'|'weapon', distance:'range'|'melee'}, areaDistance, portal:{type:'none'|'normal', redirection}}. Champs absents = valeurs par défaut (0, sustained 100, hit spell/range, portal none).",
+      "expectedDamage": "expected.damage = sortie EXACTE de DoMath (flottants JS inclus). Si présent, expected.integerSafeDamage = même pipeline en arithmétique entière exacte.",
+      "sources": "Chaque cas indique 'source'. Catégories 'domath-*' = code DoMath exécuté ; 'client-*' = formules du client/patch notes (DoMath ne les couvre pas).",
+      "tackleFields": "domath-tackle : perCell[].remainingPercent est une FRACTION dans [0,1] (DoMath l'affiche ×100 avec 2 décimales) ; perCell[].ap/mp = valeurs après le tacle de la case et AVANT le coût du pas (tableau bk) ; afterPath = sortie de Ek (1 PM décompté par case, y compris la dernière ; une valeur négative = chemin impossible).",
+      "tackleMinFields": "domath-tackle-min : target = libellé DoMath ('11 AP', '3 MP') ; value = tacle (ou fuite) minimum. Pour un chemin d'une case, 'restant' = après tacle, avant le coût du pas."
+    },
+    "globalChecks": {
+      "percentResistStepFloatMismatches": "1653/402000 (r in 1..2000, res in -100..100)",
+      "areaStepFloatMismatches": "1234/20000 (r in 1..2000, sort, areaDistance 0..9)",
+      "portalStepFloatMismatches": "216/100000 (r in 1..2000, redirection 1..50)",
+      "trapSimErosionFloatMismatches": "47/153000 (dégâts 1..3000, érosion 0..50 : floor(v*(e/100)) vs floor(v*e/100))",
+      "dofus3PortFloat32StatStepMismatches": "23559/900300 (jet 1..300, X 0..3000 : floor(jet*f32((100+X)*0.01f)) vs floor(jet*(100+X)/100))",
+      "tackleDomathVsClientMismatches": "8/122412"
+    },
+    "caseCount": 99
+  },
+  "cases": [
+    {
+      "id": "domath-damage-001",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Jet de base seul, aucune stat (terre)",
+      "input": {
+        "stats": {},
+        "baseDamage": 20,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 20
+      }
+    },
+    {
+      "id": "domath-damage-002",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Force 300 : 20 * (1 + 300/100) = 80",
+      "input": {
+        "stats": {
+          "strength": 300
+        },
+        "baseDamage": 20,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 80
+      }
+    },
+    {
+      "id": "domath-damage-003",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Force 300 + Puissance 150 (additives) : 20 * 5.5 = 110",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "power": 150
+        },
+        "baseDamage": 20,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 110
+      }
+    },
+    {
+      "id": "domath-damage-004",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Force négative (-50) : max(0, puissance + carac) = 0 -> jet de base",
+      "input": {
+        "stats": {
+          "strength": -50
+        },
+        "baseDamage": 20,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 20
+      }
+    },
+    {
+      "id": "domath-damage-005",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Force -50 + Puissance 80 = 30 -> 20*1.3 = 26",
+      "input": {
+        "stats": {
+          "strength": -50,
+          "power": 80
+        },
+        "baseDamage": 20,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 26
+      }
+    },
+    {
+      "id": "domath-damage-006",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Neutre utilise la Force",
+      "input": {
+        "stats": {
+          "strength": 250,
+          "intelligence": 999
+        },
+        "baseDamage": 17,
+        "element": "neutral",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 59
+      }
+    },
+    {
+      "id": "domath-damage-007",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Feu utilise l'Intelligence",
+      "input": {
+        "stats": {
+          "strength": 999,
+          "intelligence": 437
+        },
+        "baseDamage": 23,
+        "element": "fire",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 123
+      }
+    },
+    {
+      "id": "domath-damage-008",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Eau utilise la Chance",
+      "input": {
+        "stats": {
+          "luck": 512,
+          "agility": 999
+        },
+        "baseDamage": 31,
+        "element": "water",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 189
+      }
+    },
+    {
+      "id": "domath-damage-009",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Air utilise l'Agilité",
+      "input": {
+        "stats": {
+          "agility": 389,
+          "luck": 999
+        },
+        "baseDamage": 27,
+        "element": "air",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 132
+      }
+    },
+    {
+      "id": "domath-damage-010",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Troncature après stats : 29 * (1 + 333/100) = 125.57 -> 125",
+      "input": {
+        "stats": {
+          "strength": 333
+        },
+        "baseDamage": 29,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 125
+      }
+    },
+    {
+      "id": "domath-damage-011",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Dommages fixes + dommages terre (ajoutés APRÈS le multiplicateur de stats)",
+      "input": {
+        "stats": {
+          "strength": 400,
+          "damages": {
+            "fixed": {
+              "damages": 50,
+              "earth": 30,
+              "fire": 999
+            }
+          }
+        },
+        "baseDamage": 25,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 205
+      }
+    },
+    {
+      "id": "domath-damage-012",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Dommages feu n'affectent pas un sort terre ; dommages critiques ignorés hors critique",
+      "input": {
+        "stats": {
+          "strength": 400,
+          "damages": {
+            "fixed": {
+              "damages": 50,
+              "fire": 80,
+              "critical": 60
+            }
+          }
+        },
+        "baseDamage": 25,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 175
+      }
+    },
+    {
+      "id": "domath-damage-013",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Coup critique : dommages critiques ajoutés",
+      "input": {
+        "stats": {
+          "strength": 400,
+          "damages": {
+            "fixed": {
+              "damages": 50,
+              "critical": 60
+            }
+          }
+        },
+        "baseDamage": 31,
+        "element": "earth",
+        "isCritical": true
+      },
+      "expected": {
+        "damage": 265
+      }
+    },
+    {
+      "id": "domath-damage-014",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Critique + résistance critique de la cible (soustraite avec la rés. fixe)",
+      "input": {
+        "stats": {
+          "strength": 400,
+          "damages": {
+            "fixed": {
+              "critical": 60
+            }
+          },
+          "resistances": {
+            "fixed": {
+              "earth": 20,
+              "critical": 45
+            }
+          }
+        },
+        "baseDamage": 31,
+        "element": "earth",
+        "isCritical": true
+      },
+      "expected": {
+        "damage": 150
+      }
+    },
+    {
+      "id": "domath-damage-015",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Résistance critique ignorée sur un coup normal",
+      "input": {
+        "stats": {
+          "strength": 400,
+          "resistances": {
+            "fixed": {
+              "earth": 20,
+              "critical": 45
+            }
+          }
+        },
+        "baseDamage": 25,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 105
+      }
+    },
+    {
+      "id": "domath-damage-016",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Résistance fixe supérieure aux dégâts -> 0 (pas de négatif)",
+      "input": {
+        "stats": {
+          "strength": 100,
+          "resistances": {
+            "fixed": {
+              "fire": 200
+            }
+          }
+        },
+        "baseDamage": 30,
+        "element": "fire",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 0
+      }
+    },
+    {
+      "id": "domath-damage-017",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Dommages fixes négatifs rendant le total < 0 -> 0",
+      "input": {
+        "stats": {
+          "damages": {
+            "fixed": {
+              "damages": -100
+            }
+          }
+        },
+        "baseDamage": 15,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 0
+      }
+    },
+    {
+      "id": "domath-damage-018",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% résistance élémentaire 25 %",
+      "input": {
+        "stats": {
+          "strength": 500,
+          "resistances": {
+            "percentage": {
+              "earth": 25
+            }
+          }
+        },
+        "baseDamage": 40,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 180
+      }
+    },
+    {
+      "id": "domath-damage-019",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% résistance élémentaire négative -20 % (dégâts augmentés)",
+      "input": {
+        "stats": {
+          "intelligence": 500,
+          "resistances": {
+            "percentage": {
+              "fire": -20
+            }
+          }
+        },
+        "baseDamage": 40,
+        "element": "fire",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 288
+      }
+    },
+    {
+      "id": "domath-damage-020",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Rés. fixe puis % rés. (ordre : fixe avant %)",
+      "input": {
+        "stats": {
+          "agility": 600,
+          "damages": {
+            "fixed": {
+              "damages": 100
+            }
+          },
+          "resistances": {
+            "fixed": {
+              "air": 50
+            },
+            "percentage": {
+              "air": 40
+            }
+          }
+        },
+        "baseDamage": 35,
+        "element": "air",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 177
+      }
+    },
+    {
+      "id": "domath-damage-021",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% résistance 100 % -> 0",
+      "input": {
+        "stats": {
+          "luck": 800,
+          "resistances": {
+            "percentage": {
+              "water": 100
+            }
+          }
+        },
+        "baseDamage": 50,
+        "element": "water",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 0
+      }
+    },
+    {
+      "id": "domath-damage-022",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% Dommages subis 130 (cible vulnérable)",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "damages": {
+            "percentage": {
+              "sustained": 130
+            }
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 156
+      }
+    },
+    {
+      "id": "domath-damage-023",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% Dommages subis 70 (cible sous réduction de dégâts subis)",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "damages": {
+            "percentage": {
+              "sustained": 70
+            }
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 84
+      }
+    },
+    {
+      "id": "domath-damage-024",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% Dommages finaux +15",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "damages": {
+            "percentage": {
+              "final": 15
+            }
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 138
+      }
+    },
+    {
+      "id": "domath-damage-025",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% Dommages finaux -25",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "damages": {
+            "percentage": {
+              "final": -25
+            }
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 90
+      }
+    },
+    {
+      "id": "domath-damage-026",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% Dommages aux sorts +20 (coup de type sort)",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "damages": {
+            "percentage": {
+              "spell": 20,
+              "weapon": 50
+            }
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 144
+      }
+    },
+    {
+      "id": "domath-damage-027",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% Dommages d'armes +15 (coup de type arme) ; % sorts ignoré",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "damages": {
+            "percentage": {
+              "spell": 20,
+              "weapon": 15
+            }
+          },
+          "hit": {
+            "type": "weapon"
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 138
+      }
+    },
+    {
+      "id": "domath-damage-028",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% Dommages mêlée +12 sur un coup en mêlée ; % distance ignoré",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "damages": {
+            "percentage": {
+              "melee": 12,
+              "range": 30
+            }
+          },
+          "hit": {
+            "distance": "melee"
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 134
+      }
+    },
+    {
+      "id": "domath-damage-029",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% Dommages distance +9 sur un coup à distance",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "damages": {
+            "percentage": {
+              "melee": 12,
+              "range": 9
+            }
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 130
+      }
+    },
+    {
+      "id": "domath-damage-030",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% rés. sorts 15 et % rés. distance 10 : multipliées ensemble puis UNE troncature",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "resistances": {
+            "percentage": {
+              "spell": 15,
+              "range": 10
+            }
+          }
+        },
+        "baseDamage": 37,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 113
+      }
+    },
+    {
+      "id": "domath-damage-031",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% rés. armes + % rés. mêlée (coup arme en mêlée)",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "resistances": {
+            "percentage": {
+              "weapon": 12,
+              "melee": 8
+            }
+          },
+          "hit": {
+            "type": "weapon",
+            "distance": "melee"
+          }
+        },
+        "baseDamage": 37,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 119
+      }
+    },
+    {
+      "id": "domath-damage-032",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Zone : distance au centre 2, sort (-10 %/case)",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "areaDistance": 2
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 96
+      }
+    },
+    {
+      "id": "domath-damage-033",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Zone : distance au centre 1, arme (-25 %/case)",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "areaDistance": 1,
+          "hit": {
+            "type": "weapon"
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 90
+      }
+    },
+    {
+      "id": "domath-damage-034",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Zone : distance 3 (sort) — 1 - 3*0.1 vaut le double 0.7 (≈0.69999999999999996) et 90*0.7 = 62.99999999999999 en flottant",
+      "input": {
+        "stats": {
+          "power": 0,
+          "areaDistance": 3,
+          "damages": {
+            "fixed": {
+              "damages": 70
+            }
+          }
+        },
+        "baseDamage": 20,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 62,
+        "integerSafeDamage": 63
+      },
+      "notes": "ARTEFACT FLOTTANT DoMath : le calcul en entiers exacts donne 63."
+    },
+    {
+      "id": "domath-damage-035",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Portail normal, redirection 3 -> +6 %",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "portal": {
+            "type": "normal",
+            "redirection": 3
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 127
+      }
+    },
+    {
+      "id": "domath-damage-036",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Portail type 'none' : redirection ignorée",
+      "input": {
+        "stats": {
+          "strength": 300,
+          "portal": {
+            "type": "none",
+            "redirection": 3
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 120
+      }
+    },
+    {
+      "id": "domath-damage-037",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Artefact flottant DoMath sur % résistance 80 %",
+      "input": {
+        "stats": {
+          "resistances": {
+            "percentage": {
+              "earth": 80
+            }
+          }
+        },
+        "baseDamage": 10,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 1,
+        "integerSafeDamage": 2
+      },
+      "notes": "ARTEFACT FLOTTANT DoMath : le calcul en entiers exacts donne 2."
+    },
+    {
+      "id": "domath-damage-038",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Jet de base 0 -> 0 (même avec dommages fixes)",
+      "input": {
+        "stats": {
+          "strength": 500,
+          "damages": {
+            "fixed": {
+              "damages": 100
+            }
+          }
+        },
+        "baseDamage": 0,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 0
+      }
+    },
+    {
+      "id": "domath-damage-039",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "% Dommages aux sorts -100 -> 0",
+      "input": {
+        "stats": {
+          "strength": 500,
+          "damages": {
+            "percentage": {
+              "spell": -100
+            }
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 0
+      }
+    },
+    {
+      "id": "domath-damage-040",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Valeur 0 pour % Dommages subis remplacée par la valeur par défaut 100 (opérateur || de Dg)",
+      "input": {
+        "stats": {
+          "strength": 100,
+          "damages": {
+            "percentage": {
+              "sustained": 0
+            }
+          }
+        },
+        "baseDamage": 30,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 60
+      },
+      "notes": "Quirk DoMath : Dg() utilise `x || défaut`, donc 0 % de dommages subis est traité comme 100 %."
+    },
+    {
+      "id": "domath-damage-041",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Build complet niveau 200 (sort, distance, critique) contre un monstre résistant",
+      "input": {
+        "stats": {
+          "strength": 1100,
+          "power": 180,
+          "damages": {
+            "fixed": {
+              "damages": 120,
+              "earth": 40,
+              "critical": 95
+            },
+            "percentage": {
+              "spell": 18,
+              "range": 12,
+              "final": 10
+            }
+          },
+          "resistances": {
+            "fixed": {
+              "earth": 25,
+              "critical": 30
+            },
+            "percentage": {
+              "earth": 35,
+              "spell": 10,
+              "range": 0
+            }
+          }
+        },
+        "baseDamage": 38,
+        "element": "earth",
+        "isCritical": true
+      },
+      "expected": {
+        "damage": 614
+      }
+    },
+    {
+      "id": "domath-damage-042",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Même build, coup normal (jet min du sort 31)",
+      "input": {
+        "stats": {
+          "strength": 1100,
+          "power": 180,
+          "damages": {
+            "fixed": {
+              "damages": 120,
+              "earth": 40,
+              "critical": 95
+            },
+            "percentage": {
+              "spell": 18,
+              "range": 12,
+              "final": 10
+            }
+          },
+          "resistances": {
+            "fixed": {
+              "earth": 25,
+              "critical": 30
+            },
+            "percentage": {
+              "earth": 35,
+              "spell": 10,
+              "range": 0
+            }
+          }
+        },
+        "baseDamage": 31,
+        "element": "earth",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 476
+      }
+    },
+    {
+      "id": "domath-damage-043",
+      "category": "domath-damage",
+      "source": "domath main.e2dd4684.js fn Rg (beautifié l.21058-21076) via Dg (l.20962)",
+      "fn": "domathDamageRoll(stats, baseDamage, element, isCritical)",
+      "description": "Jet non entier (moyenne du simulateur de pièges : (10+13)/2 = 11.5)",
+      "input": {
+        "stats": {
+          "intelligence": 250
+        },
+        "baseDamage": 11.5,
+        "element": "fire",
+        "isCritical": false
+      },
+      "expected": {
+        "damage": 40
+      },
+      "notes": "Le simulateur de pièges DoMath utilise realValue = (min+max)/2 sans arrondi pour le mode 'Dégâts moyens'."
+    },
+    {
+      "id": "domath-spell-001",
+      "category": "domath-spell",
+      "source": "domath main.e2dd4684.js fn jg/Mg (beautifié l.21021-21057) + composant nx l.32540-32574 (compteur)",
+      "fn": "domathSpellMinMax(stats, damageLines) ; total = résultat * counter",
+      "description": "Sort mono-ligne terre 29-33 (crit 35-40), Force 500, +60 dommages, +20 do crit",
+      "input": {
+        "statsPartial": {
+          "strength": 500,
+          "damages": {
+            "fixed": {
+              "damages": 60,
+              "critical": 20
+            }
+          }
+        },
+        "damageLines": [
+          {
+            "element": "earth",
+            "baseDamage": {
+              "normal": {
+                "min": 29,
+                "max": 33
+              },
+              "crit": {
+                "min": 35,
+                "max": 40
+              }
+            }
+          }
+        ],
+        "counter": 1
+      },
+      "expected": {
+        "perCast": {
+          "normal": {
+            "min": 234,
+            "max": 258
+          },
+          "crit": {
+            "min": 290,
+            "max": 320
+          }
+        },
+        "totalWithCounter": {
+          "normal": {
+            "min": 234,
+            "max": 258
+          },
+          "crit": {
+            "min": 290,
+            "max": 320
+          }
+        }
+      }
+    },
+    {
+      "id": "domath-spell-002",
+      "category": "domath-spell",
+      "source": "domath main.e2dd4684.js fn jg/Mg (beautifié l.21021-21057) + composant nx l.32540-32574 (compteur)",
+      "fn": "domathSpellMinMax(stats, damageLines) ; total = résultat * counter",
+      "description": "Sort bi-élément (eau 12-14 + air 12-14, crit 15-17), stats mixtes, 3 lancers",
+      "input": {
+        "statsPartial": {
+          "luck": 400,
+          "agility": 350,
+          "power": 50,
+          "damages": {
+            "fixed": {
+              "damages": 30,
+              "water": 10,
+              "air": 5,
+              "critical": 40
+            }
+          },
+          "resistances": {
+            "percentage": {
+              "water": 20,
+              "air": -10
+            }
+          }
+        },
+        "damageLines": [
+          {
+            "element": "water",
+            "baseDamage": {
+              "normal": {
+                "min": 12,
+                "max": 14
+              },
+              "crit": {
+                "min": 15,
+                "max": 17
+              }
+            }
+          },
+          {
+            "element": "air",
+            "baseDamage": {
+              "normal": {
+                "min": 12,
+                "max": 14
+              },
+              "crit": {
+                "min": 15,
+                "max": 17
+              }
+            }
+          }
+        ],
+        "counter": 3
+      },
+      "expected": {
+        "perCast": {
+          "normal": {
+            "min": 188,
+            "max": 208
+          },
+          "crit": {
+            "min": 294,
+            "max": 314
+          }
+        },
+        "totalWithCounter": {
+          "normal": {
+            "min": 564,
+            "max": 624
+          },
+          "crit": {
+            "min": 882,
+            "max": 942
+          }
+        }
+      }
+    },
+    {
+      "id": "domath-spell-003",
+      "category": "domath-spell",
+      "source": "domath main.e2dd4684.js fn jg/Mg (beautifié l.21021-21057) + composant nx l.32540-32574 (compteur)",
+      "fn": "domathSpellMinMax(stats, damageLines) ; total = résultat * counter",
+      "description": "Arme (marteau terre 30-40, crit 36-46) en mêlée, maîtrise via % dommages armes",
+      "input": {
+        "statsPartial": {
+          "strength": 700,
+          "power": 100,
+          "damages": {
+            "fixed": {
+              "damages": 80,
+              "critical": 30
+            },
+            "percentage": {
+              "weapon": 25,
+              "melee": 10
+            }
+          },
+          "hit": {
+            "type": "weapon",
+            "distance": "melee"
+          }
+        },
+        "damageLines": [
+          {
+            "element": "earth",
+            "baseDamage": {
+              "normal": {
+                "min": 30,
+                "max": 40
+              },
+              "crit": {
+                "min": 36,
+                "max": 46
+              }
+            }
+          }
+        ],
+        "counter": 1
+      },
+      "expected": {
+        "perCast": {
+          "normal": {
+            "min": 480,
+            "max": 605
+          },
+          "crit": {
+            "min": 596,
+            "max": 720
+          }
+        },
+        "totalWithCounter": {
+          "normal": {
+            "min": 480,
+            "max": 605
+          },
+          "crit": {
+            "min": 596,
+            "max": 720
+          }
+        }
+      }
+    },
+    {
+      "id": "domath-crit-chance-001",
+      "category": "domath-crit-chance",
+      "source": "domath static/js/806.6ff2731e.chunk.js (worker) : o = Math.min(100, Math.max(0, t.crit ? t.crit + l.crit : 0))",
+      "fn": "critChancePercent(spellBaseCrit, statCrit)",
+      "description": "15 % de base + 35 % de critique",
+      "input": {
+        "spellBaseCrit": 15,
+        "statCrit": 35
+      },
+      "expected": {
+        "critChancePercent": 50
+      }
+    },
+    {
+      "id": "domath-crit-chance-002",
+      "category": "domath-crit-chance",
+      "source": "domath static/js/806.6ff2731e.chunk.js (worker) : o = Math.min(100, Math.max(0, t.crit ? t.crit + l.crit : 0))",
+      "fn": "critChancePercent(spellBaseCrit, statCrit)",
+      "description": "Sort sans critique (crit de base 0) : 0 % quel que soit le bonus",
+      "input": {
+        "spellBaseCrit": 0,
+        "statCrit": 50
+      },
+      "expected": {
+        "critChancePercent": 0
+      }
+    },
+    {
+      "id": "domath-crit-chance-003",
+      "category": "domath-crit-chance",
+      "source": "domath static/js/806.6ff2731e.chunk.js (worker) : o = Math.min(100, Math.max(0, t.crit ? t.crit + l.crit : 0))",
+      "fn": "critChancePercent(spellBaseCrit, statCrit)",
+      "description": "Plafond 100 %",
+      "input": {
+        "spellBaseCrit": 25,
+        "statCrit": 90
+      },
+      "expected": {
+        "critChancePercent": 100
+      }
+    },
+    {
+      "id": "domath-crit-chance-004",
+      "category": "domath-crit-chance",
+      "source": "domath static/js/806.6ff2731e.chunk.js (worker) : o = Math.min(100, Math.max(0, t.crit ? t.crit + l.crit : 0))",
+      "fn": "critChancePercent(spellBaseCrit, statCrit)",
+      "description": "Plancher 0 % (malus critique). NB : le jeu officiel applique un plancher de 1 % (patch 2.29) — non implémenté par DoMath",
+      "input": {
+        "spellBaseCrit": 5,
+        "statCrit": -10
+      },
+      "expected": {
+        "critChancePercent": 0
+      }
+    },
+    {
+      "id": "domath-tackle-001",
+      "category": "domath-tackle",
+      "source": "domath main.e2dd4684.js composant bk (l.35204-35223) / fn Ek (l.35263-35295)",
+      "fn": "tackleRemaining(lockers, dodge, ap, mp, composition)",
+      "description": "1 tacleur, Fuite = Tacle (50 %) : 11 PA / 6 PM",
+      "input": {
+        "lockers": [
+          80
+        ],
+        "dodge": 80,
+        "ap": 11,
+        "mp": 6,
+        "composition": [
+          [
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "perCell": [
+          {
+            "remainingPercent": 0.5,
+            "ap": 5,
+            "mp": 3
+          }
+        ],
+        "afterPath": {
+          "ap": 5,
+          "mp": 2
+        }
+      }
+    },
+    {
+      "id": "domath-tackle-002",
+      "category": "domath-tackle",
+      "source": "domath main.e2dd4684.js composant bk (l.35204-35223) / fn Ek (l.35263-35295)",
+      "fn": "tackleRemaining(lockers, dodge, ap, mp, composition)",
+      "description": "1 tacleur, tacle 100 vs fuite 50, 12 PA / 6 PM",
+      "input": {
+        "lockers": [
+          100
+        ],
+        "dodge": 50,
+        "ap": 12,
+        "mp": 6,
+        "composition": [
+          [
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "perCell": [
+          {
+            "remainingPercent": 0.2549019607843137,
+            "ap": 3,
+            "mp": 2
+          }
+        ],
+        "afterPath": {
+          "ap": 3,
+          "mp": 1
+        }
+      }
+    },
+    {
+      "id": "domath-tackle-003",
+      "category": "domath-tackle",
+      "source": "domath main.e2dd4684.js composant bk (l.35204-35223) / fn Ek (l.35263-35295)",
+      "fn": "tackleRemaining(lockers, dodge, ap, mp, composition)",
+      "description": "Fuite >= 2*Tacle + 2 : aucune perte",
+      "input": {
+        "lockers": [
+          40
+        ],
+        "dodge": 82,
+        "ap": 12,
+        "mp": 6,
+        "composition": [
+          [
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "perCell": [
+          {
+            "remainingPercent": 1,
+            "ap": 12,
+            "mp": 6
+          }
+        ],
+        "afterPath": {
+          "ap": 12,
+          "mp": 5
+        }
+      }
+    },
+    {
+      "id": "domath-tackle-004",
+      "category": "domath-tackle",
+      "source": "domath main.e2dd4684.js composant bk (l.35204-35223) / fn Ek (l.35263-35295)",
+      "fn": "tackleRemaining(lockers, dodge, ap, mp, composition)",
+      "description": "Fuite négative traitée comme 0",
+      "input": {
+        "lockers": [
+          30
+        ],
+        "dodge": -20,
+        "ap": 10,
+        "mp": 5,
+        "composition": [
+          [
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "perCell": [
+          {
+            "remainingPercent": 0.03125,
+            "ap": 0,
+            "mp": 0
+          }
+        ],
+        "afterPath": {
+          "ap": 0,
+          "mp": -1
+        }
+      }
+    },
+    {
+      "id": "domath-tackle-005",
+      "category": "domath-tackle",
+      "source": "domath main.e2dd4684.js composant bk (l.35204-35223) / fn Ek (l.35263-35295)",
+      "fn": "tackleRemaining(lockers, dodge, ap, mp, composition)",
+      "description": "2 tacleurs adjacents à la même case (produit des pourcentages)",
+      "input": {
+        "lockers": [
+          60,
+          60
+        ],
+        "dodge": 60,
+        "ap": 12,
+        "mp": 6,
+        "composition": [
+          [
+            0,
+            1
+          ]
+        ]
+      },
+      "expected": {
+        "perCell": [
+          {
+            "remainingPercent": 0.25,
+            "ap": 3,
+            "mp": 1
+          }
+        ],
+        "afterPath": {
+          "ap": 3,
+          "mp": 0
+        }
+      }
+    },
+    {
+      "id": "domath-tackle-006",
+      "category": "domath-tackle",
+      "source": "domath main.e2dd4684.js composant bk (l.35204-35223) / fn Ek (l.35263-35295)",
+      "fn": "tackleRemaining(lockers, dodge, ap, mp, composition)",
+      "description": "3 tacleurs sur la même case",
+      "input": {
+        "lockers": [
+          50,
+          70,
+          90
+        ],
+        "dodge": 40,
+        "ap": 11,
+        "mp": 5,
+        "composition": [
+          [
+            0,
+            1,
+            2
+          ]
+        ]
+      },
+      "expected": {
+        "perCell": [
+          {
+            "remainingPercent": 0.026886496655518396,
+            "ap": 0,
+            "mp": 0
+          }
+        ],
+        "afterPath": {
+          "ap": 0,
+          "mp": -1
+        }
+      }
+    },
+    {
+      "id": "domath-tackle-007",
+      "category": "domath-tackle",
+      "source": "domath main.e2dd4684.js composant bk (l.35204-35223) / fn Ek (l.35263-35295)",
+      "fn": "tackleRemaining(lockers, dodge, ap, mp, composition)",
+      "description": "Chemin de 3 cases, un tacleur par case (configuration DoMath n°4)",
+      "input": {
+        "lockers": [
+          60,
+          40,
+          80
+        ],
+        "dodge": 70,
+        "ap": 11,
+        "mp": 5,
+        "composition": [
+          [
+            0
+          ],
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      },
+      "expected": {
+        "perCell": [
+          {
+            "remainingPercent": 0.5806451612903226,
+            "ap": 6,
+            "mp": 3
+          },
+          {
+            "remainingPercent": 0.8571428571428571,
+            "ap": 5,
+            "mp": 2
+          },
+          {
+            "remainingPercent": 0.43902439024390244,
+            "ap": 2,
+            "mp": 0
+          }
+        ],
+        "afterPath": {
+          "ap": 2,
+          "mp": -1
+        }
+      }
+    },
+    {
+      "id": "domath-tackle-008",
+      "category": "domath-tackle",
+      "source": "domath main.e2dd4684.js composant bk (l.35204-35223) / fn Ek (l.35263-35295)",
+      "fn": "tackleRemaining(lockers, dodge, ap, mp, composition)",
+      "description": "Chemin avec une case libre au milieu (configuration DoMath n°5)",
+      "input": {
+        "lockers": [
+          100,
+          20
+        ],
+        "dodge": 50,
+        "ap": 12,
+        "mp": 6,
+        "composition": [
+          [
+            0
+          ],
+          [],
+          [
+            1
+          ]
+        ]
+      },
+      "expected": {
+        "perCell": [
+          {
+            "remainingPercent": 0.2549019607843137,
+            "ap": 3,
+            "mp": 2
+          },
+          {
+            "remainingPercent": 1,
+            "ap": 3,
+            "mp": 1
+          },
+          {
+            "remainingPercent": 1,
+            "ap": 3,
+            "mp": 0
+          }
+        ],
+        "afterPath": {
+          "ap": 3,
+          "mp": -1
+        }
+      }
+    },
+    {
+      "id": "domath-tackle-009",
+      "category": "domath-tackle",
+      "source": "domath main.e2dd4684.js composant bk (l.35204-35223) / fn Ek (l.35263-35295)",
+      "fn": "tackleRemaining(lockers, dodge, ap, mp, composition)",
+      "description": "Arrondi .5 vers le bas : 3 PM * 0.5 = 1.5 -> 1 PM restant",
+      "input": {
+        "lockers": [
+          0
+        ],
+        "dodge": 0,
+        "ap": 7,
+        "mp": 3,
+        "composition": [
+          [
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "perCell": [
+          {
+            "remainingPercent": 0.5,
+            "ap": 3,
+            "mp": 1
+          }
+        ],
+        "afterPath": {
+          "ap": 3,
+          "mp": 0
+        }
+      }
+    },
+    {
+      "id": "domath-tackle-min-001",
+      "category": "domath-tackle-min",
+      "source": "domath main.e2dd4684.js composant wk (l.35338-35440) : tableaux 'Tacle min.' / 'Fuite min.'",
+      "fn": "minLockRows / minDodgeRows",
+      "description": "1 tacleur (tacle 100), fuyard fuite 50, 12 PA / 6 PM",
+      "input": {
+        "lockers": [
+          100
+        ],
+        "dodge": 50,
+        "ap": 12,
+        "mp": 6,
+        "composition": [
+          [
+            0
+          ]
+        ]
+      },
+      "expected": {
+        "minLockForRemainingAp": [
+          {
+            "target": "11 AP",
+            "value": 26
+          },
+          {
+            "target": "10 AP",
+            "value": 28
+          },
+          {
+            "target": "9 AP",
+            "value": 31
+          },
+          {
+            "target": "8 AP",
+            "value": 35
+          },
+          {
+            "target": "7 AP",
+            "value": 40
+          },
+          {
+            "target": "6 AP",
+            "value": 46
+          },
+          {
+            "target": "5 AP",
+            "value": 55
+          },
+          {
+            "target": "4 AP",
+            "value": 68
+          },
+          {
+            "target": "3 AP",
+            "value": 88
+          },
+          {
+            "target": "2 AP",
+            "value": 123
+          },
+          {
+            "target": "1 AP",
+            "value": 206
+          },
+          {
+            "target": "0 AP",
+            "value": 622
+          }
+        ],
+        "minLockForRemainingMp": [
+          {
+            "target": "5 MP",
+            "value": 27
+          },
+          {
+            "target": "4 MP",
+            "value": 33
+          },
+          {
+            "target": "3 MP",
+            "value": 43
+          },
+          {
+            "target": "2 MP",
+            "value": 61
+          },
+          {
+            "target": "1 MP",
+            "value": 102
+          },
+          {
+            "target": "0 MP",
+            "value": 310
+          }
+        ],
+        "minDodgeToKeepAp": [
+          {
+            "target": "1 AP",
+            "value": 7
+          },
+          {
+            "target": "2 AP",
+            "value": 24
+          },
+          {
+            "target": "3 AP",
+            "value": 41
+          },
+          {
+            "target": "4 AP",
+            "value": 58
+          },
+          {
+            "target": "5 AP",
+            "value": 75
+          },
+          {
+            "target": "6 AP",
+            "value": 92
+          },
+          {
+            "target": "7 AP",
+            "value": 109
+          },
+          {
+            "target": "8 AP",
+            "value": 126
+          },
+          {
+            "target": "9 AP",
+            "value": 143
+          },
+          {
+            "target": "10 AP",
+            "value": 160
+          },
+          {
+            "target": "11 AP",
+            "value": 177
+          },
+          {
+            "target": "12 AP",
+            "value": 194
+          }
+        ],
+        "minDodgeToKeepMp": [
+          {
+            "target": "1 MP",
+            "value": 16
+          },
+          {
+            "target": "2 MP",
+            "value": 50
+          },
+          {
+            "target": "3 MP",
+            "value": 84
+          },
+          {
+            "target": "4 MP",
+            "value": 118
+          },
+          {
+            "target": "5 MP",
+            "value": 152
+          },
+          {
+            "target": "6 MP",
+            "value": 186
+          }
+        ]
+      }
+    },
+    {
+      "id": "domath-tackle-min-002",
+      "category": "domath-tackle-min",
+      "source": "domath main.e2dd4684.js composant wk (l.35338-35440) : tableaux 'Tacle min.' / 'Fuite min.'",
+      "fn": "minLockRows / minDodgeRows",
+      "description": "Chemin 3 cases (tacles 60/40/80), fuyard fuite 70, 11 PA / 5 PM (recherche dichotomique xk)",
+      "input": {
+        "lockers": [
+          60,
+          40,
+          80
+        ],
+        "dodge": 70,
+        "ap": 11,
+        "mp": 5,
+        "composition": [
+          [
+            0
+          ],
+          [
+            1
+          ],
+          [
+            2
+          ]
+        ]
+      },
+      "expected": {
+        "minLockForRemainingAp": [
+          {
+            "target": "10 AP",
+            "value": 0
+          },
+          {
+            "target": "9 AP",
+            "value": 0
+          },
+          {
+            "target": "8 AP",
+            "value": 0
+          },
+          {
+            "target": "7 AP",
+            "value": 0
+          },
+          {
+            "target": "6 AP",
+            "value": 0
+          },
+          {
+            "target": "5 AP",
+            "value": 0
+          },
+          {
+            "target": "4 AP",
+            "value": 0
+          },
+          {
+            "target": "3 AP",
+            "value": 45
+          },
+          {
+            "target": "2 AP",
+            "value": 59
+          },
+          {
+            "target": "1 AP",
+            "value": 86
+          },
+          {
+            "target": "0 AP",
+            "value": 262
+          }
+        ],
+        "minLockForRemainingMp": [
+          {
+            "target": "4 MP",
+            "value": 0
+          },
+          {
+            "target": "3 MP",
+            "value": 0
+          },
+          {
+            "target": "2 MP",
+            "value": 50
+          },
+          {
+            "target": "1 MP",
+            "value": 118
+          },
+          {
+            "target": "0 MP",
+            "value": 358
+          }
+        ],
+        "minDodgeToKeepAp": [
+          {
+            "target": "1 AP",
+            "value": 40
+          },
+          {
+            "target": "2 AP",
+            "value": 60
+          },
+          {
+            "target": "3 AP",
+            "value": 72
+          },
+          {
+            "target": "4 AP",
+            "value": 81
+          },
+          {
+            "target": "5 AP",
+            "value": 91
+          },
+          {
+            "target": "6 AP",
+            "value": 99
+          },
+          {
+            "target": "7 AP",
+            "value": 106
+          },
+          {
+            "target": "8 AP",
+            "value": 117
+          },
+          {
+            "target": "9 AP",
+            "value": 125
+          },
+          {
+            "target": "10 AP",
+            "value": 140
+          },
+          {
+            "target": "11 AP",
+            "value": 155
+          }
+        ],
+        "minDodgeToKeepMp": [
+          {
+            "target": "1 MP",
+            "value": 11
+          },
+          {
+            "target": "2 MP",
+            "value": 41
+          },
+          {
+            "target": "3 MP",
+            "value": 81
+          },
+          {
+            "target": "4 MP",
+            "value": 110
+          },
+          {
+            "target": "5 MP",
+            "value": 135
+          }
+        ]
+      }
+    },
+    {
+      "id": "domath-trap-apply-001",
+      "category": "domath-trap-apply",
+      "source": "domath main.e2dd4684.js fn HT (l.41108-41136) / uj (l.42511-42523)",
+      "fn": "applyDamageToEntity(entity, damage)",
+      "description": "Dégâts sans bouclier, érosion de base 10 %",
+      "input": {
+        "entity": {
+          "health": 3000,
+          "maxHealth": 3000,
+          "shield": 0,
+          "erosion": 10
+        },
+        "damage": 457
+      },
+      "expected": {
+        "lifeLost": 457,
+        "health": 2543,
+        "maxHealth": 2955,
+        "shield": 0,
+        "lastDamage": 457
+      }
+    },
+    {
+      "id": "domath-trap-apply-002",
+      "category": "domath-trap-apply",
+      "source": "domath main.e2dd4684.js fn HT (l.41108-41136) / uj (l.42511-42523)",
+      "fn": "applyDamageToEntity(entity, damage)",
+      "description": "Bouclier partiel : le bouclier absorbe, l'érosion porte sur la valeur TOTALE (avant bouclier)",
+      "input": {
+        "entity": {
+          "health": 3000,
+          "maxHealth": 3000,
+          "shield": 200,
+          "erosion": 10
+        },
+        "damage": 457
+      },
+      "expected": {
+        "lifeLost": 257,
+        "health": 2743,
+        "maxHealth": 2955,
+        "shield": 0,
+        "lastDamage": 257
+      }
+    },
+    {
+      "id": "domath-trap-apply-003",
+      "category": "domath-trap-apply",
+      "source": "domath main.e2dd4684.js fn HT (l.41108-41136) / uj (l.42511-42523)",
+      "fn": "applyDamageToEntity(entity, damage)",
+      "description": "Bouclier supérieur aux dégâts : 0 PV perdu mais érosion quand même",
+      "input": {
+        "entity": {
+          "health": 2500,
+          "maxHealth": 3000,
+          "shield": 600,
+          "erosion": 25
+        },
+        "damage": 457
+      },
+      "expected": {
+        "lifeLost": 0,
+        "health": 2500,
+        "maxHealth": 2886,
+        "shield": 143,
+        "lastDamage": null
+      }
+    },
+    {
+      "id": "domath-trap-apply-004",
+      "category": "domath-trap-apply",
+      "source": "domath main.e2dd4684.js fn HT (l.41108-41136) / uj (l.42511-42523)",
+      "fn": "applyDamageToEntity(entity, damage)",
+      "description": "Érosion qui fait passer les PV max sous les PV actuels (PV ramenés aux PV max)",
+      "input": {
+        "entity": {
+          "health": 2990,
+          "maxHealth": 3000,
+          "shield": 0,
+          "erosion": 30
+        },
+        "damage": 99
+      },
+      "expected": {
+        "lifeLost": 99,
+        "health": 2891,
+        "maxHealth": 2971,
+        "shield": 0,
+        "lastDamage": 99
+      }
+    },
+    {
+      "id": "domath-trap-apply-005",
+      "category": "domath-trap-apply",
+      "source": "domath main.e2dd4684.js fn HT (l.41108-41136) / uj (l.42511-42523) (vol de vie : k = Math.floor(E / 2))",
+      "fn": "lifeSteal(lifeLostByTarget)",
+      "description": "Vol de vie = moitié (arrondie à l'inférieur) des PV réellement perdus par la cible, plafonné aux PV max du lanceur",
+      "input": {
+        "lifeLostByTarget": 457,
+        "casterHealth": 1000,
+        "casterMaxHealth": 3000
+      },
+      "expected": {
+        "heal": 228,
+        "casterHealthAfter": 1228
+      }
+    },
+    {
+      "id": "domath-trap-apply-006",
+      "category": "domath-trap-apply",
+      "source": "domath main.e2dd4684.js fn HT (l.41108-41136) / uj (l.42511-42523) (vol de vie : k = Math.floor(E / 2))",
+      "fn": "lifeSteal(lifeLostByTarget)",
+      "description": "Vol de vie = moitié (arrondie à l'inférieur) des PV réellement perdus par la cible, plafonné aux PV max du lanceur",
+      "input": {
+        "lifeLostByTarget": 333,
+        "casterHealth": 2990,
+        "casterMaxHealth": 3000
+      },
+      "expected": {
+        "heal": 166,
+        "casterHealthAfter": 3000
+      }
+    },
+    {
+      "id": "domath-trap-apply-007",
+      "category": "domath-trap-apply",
+      "source": "domath main.e2dd4684.js fn HT (l.41108-41136) / uj (l.42511-42523) (HEAL_LAST_DAMAGE : Math.floor(g.value / 100 * L.lastDamage))",
+      "fn": "healLastDamage(percent, lastDamage)",
+      "description": "Soin de X % des derniers dégâts subis par le lanceur",
+      "input": {
+        "percent": 50,
+        "lastDamage": 457
+      },
+      "expected": {
+        "heal": 228
+      }
+    },
+    {
+      "id": "domath-trap-apply-008",
+      "category": "domath-trap-apply",
+      "source": "domath main.e2dd4684.js fn HT (l.41108-41136) / uj (l.42511-42523) (HEAL_LAST_DAMAGE : Math.floor(g.value / 100 * L.lastDamage))",
+      "fn": "healLastDamage(percent, lastDamage)",
+      "description": "Soin de X % des derniers dégâts subis par le lanceur",
+      "input": {
+        "percent": 30,
+        "lastDamage": 333
+      },
+      "expected": {
+        "heal": 99
+      }
+    },
+    {
+      "id": "client-push-damage-001",
+      "category": "client-push-damage",
+      "source": "AS3 client Dofus 2 DamageUtil.as l.1221-1224 (Romain-P/d2gen) ; C# OtomAICLIP/otomai libs/Bubble.DamageCalculation/DamageManagement/PushUtils.cs GetCollisionDamage ; patch 2.17 (millenium.org/news/141219.html)",
+      "fn": "pushDamage(level, pushDamageBonus, targetPushResistance, remainingCells, collisionIndex)",
+      "description": "Niveau 200, 1 case restante, sans bonus",
+      "input": {
+        "casterLevel": 200,
+        "pushDamageBonus": 0,
+        "targetPushResistance": 0,
+        "remainingCells": 1,
+        "collisionIndex": 0
+      },
+      "expected": {
+        "dofus2Client": 33,
+        "dofus3Haxe": 33
+      },
+      "notes": "Avant résistances : les dégâts de poussée ignorent % et fixes élémentaires et les bonus de dégâts ; seuls les multiplicateurs de dégâts subis de la cible s'appliquent (cf. formulas.md)."
+    },
+    {
+      "id": "client-push-damage-002",
+      "category": "client-push-damage",
+      "source": "AS3 client Dofus 2 DamageUtil.as l.1221-1224 (Romain-P/d2gen) ; C# OtomAICLIP/otomai libs/Bubble.DamageCalculation/DamageManagement/PushUtils.cs GetCollisionDamage ; patch 2.17 (millenium.org/news/141219.html)",
+      "fn": "pushDamage(level, pushDamageBonus, targetPushResistance, remainingCells, collisionIndex)",
+      "description": "Niveau 200, 3 cases restantes",
+      "input": {
+        "casterLevel": 200,
+        "pushDamageBonus": 0,
+        "targetPushResistance": 0,
+        "remainingCells": 3,
+        "collisionIndex": 0
+      },
+      "expected": {
+        "dofus2Client": 99,
+        "dofus3Haxe": 99
+      },
+      "notes": "Avant résistances : les dégâts de poussée ignorent % et fixes élémentaires et les bonus de dégâts ; seuls les multiplicateurs de dégâts subis de la cible s'appliquent (cf. formulas.md)."
+    },
+    {
+      "id": "client-push-damage-003",
+      "category": "client-push-damage",
+      "source": "AS3 client Dofus 2 DamageUtil.as l.1221-1224 (Romain-P/d2gen) ; C# OtomAICLIP/otomai libs/Bubble.DamageCalculation/DamageManagement/PushUtils.cs GetCollisionDamage ; patch 2.17 (millenium.org/news/141219.html)",
+      "fn": "pushDamage(level, pushDamageBonus, targetPushResistance, remainingCells, collisionIndex)",
+      "description": "Niveau 200, +100 dommages de poussée, 2 cases",
+      "input": {
+        "casterLevel": 200,
+        "pushDamageBonus": 100,
+        "targetPushResistance": 0,
+        "remainingCells": 2,
+        "collisionIndex": 0
+      },
+      "expected": {
+        "dofus2Client": 116,
+        "dofus3Haxe": 116
+      },
+      "notes": "Avant résistances : les dégâts de poussée ignorent % et fixes élémentaires et les bonus de dégâts ; seuls les multiplicateurs de dégâts subis de la cible s'appliquent (cf. formulas.md)."
+    },
+    {
+      "id": "client-push-damage-004",
+      "category": "client-push-damage",
+      "source": "AS3 client Dofus 2 DamageUtil.as l.1221-1224 (Romain-P/d2gen) ; C# OtomAICLIP/otomai libs/Bubble.DamageCalculation/DamageManagement/PushUtils.cs GetCollisionDamage ; patch 2.17 (millenium.org/news/141219.html)",
+      "fn": "pushDamage(level, pushDamageBonus, targetPushResistance, remainingCells, collisionIndex)",
+      "description": "Niveau 200, cible avec 50 résistances poussée, 1 case",
+      "input": {
+        "casterLevel": 200,
+        "pushDamageBonus": 0,
+        "targetPushResistance": 50,
+        "remainingCells": 1,
+        "collisionIndex": 0
+      },
+      "expected": {
+        "dofus2Client": 20,
+        "dofus3Haxe": 20
+      },
+      "notes": "Avant résistances : les dégâts de poussée ignorent % et fixes élémentaires et les bonus de dégâts ; seuls les multiplicateurs de dégâts subis de la cible s'appliquent (cf. formulas.md)."
+    },
+    {
+      "id": "client-push-damage-005",
+      "category": "client-push-damage",
+      "source": "AS3 client Dofus 2 DamageUtil.as l.1221-1224 (Romain-P/d2gen) ; C# OtomAICLIP/otomai libs/Bubble.DamageCalculation/DamageManagement/PushUtils.cs GetCollisionDamage ; patch 2.17 (millenium.org/news/141219.html)",
+      "fn": "pushDamage(level, pushDamageBonus, targetPushResistance, remainingCells, collisionIndex)",
+      "description": "Niveau 200, 2 cases, 1re cible percutée (index 1, /8)",
+      "input": {
+        "casterLevel": 200,
+        "pushDamageBonus": 0,
+        "targetPushResistance": 0,
+        "remainingCells": 2,
+        "collisionIndex": 1
+      },
+      "expected": {
+        "dofus2Client": 33,
+        "dofus3Haxe": 33
+      },
+      "notes": "Avant résistances : les dégâts de poussée ignorent % et fixes élémentaires et les bonus de dégâts ; seuls les multiplicateurs de dégâts subis de la cible s'appliquent (cf. formulas.md)."
+    },
+    {
+      "id": "client-push-damage-006",
+      "category": "client-push-damage",
+      "source": "AS3 client Dofus 2 DamageUtil.as l.1221-1224 (Romain-P/d2gen) ; C# OtomAICLIP/otomai libs/Bubble.DamageCalculation/DamageManagement/PushUtils.cs GetCollisionDamage ; patch 2.17 (millenium.org/news/141219.html)",
+      "fn": "pushDamage(level, pushDamageBonus, targetPushResistance, remainingCells, collisionIndex)",
+      "description": "Niveau 200, 2 cases, 2e cible percutée (index 2, /16)",
+      "input": {
+        "casterLevel": 200,
+        "pushDamageBonus": 0,
+        "targetPushResistance": 0,
+        "remainingCells": 2,
+        "collisionIndex": 2
+      },
+      "expected": {
+        "dofus2Client": 16,
+        "dofus3Haxe": 16
+      },
+      "notes": "Avant résistances : les dégâts de poussée ignorent % et fixes élémentaires et les bonus de dégâts ; seuls les multiplicateurs de dégâts subis de la cible s'appliquent (cf. formulas.md)."
+    },
+    {
+      "id": "client-push-damage-007",
+      "category": "client-push-damage",
+      "source": "AS3 client Dofus 2 DamageUtil.as l.1221-1224 (Romain-P/d2gen) ; C# OtomAICLIP/otomai libs/Bubble.DamageCalculation/DamageManagement/PushUtils.cs GetCollisionDamage ; patch 2.17 (millenium.org/news/141219.html)",
+      "fn": "pushDamage(level, pushDamageBonus, targetPushResistance, remainingCells, collisionIndex)",
+      "description": "Niveau 199 (impair), 8 cases : AS3 (lvl/2 = 99.5) et Haxe (floor) divergent",
+      "input": {
+        "casterLevel": 199,
+        "pushDamageBonus": 0,
+        "targetPushResistance": 0,
+        "remainingCells": 8,
+        "collisionIndex": 0
+      },
+      "expected": {
+        "dofus2Client": 263,
+        "dofus3Haxe": 262
+      },
+      "notes": "Avant résistances : les dégâts de poussée ignorent % et fixes élémentaires et les bonus de dégâts ; seuls les multiplicateurs de dégâts subis de la cible s'appliquent (cf. formulas.md)."
+    },
+    {
+      "id": "client-push-damage-008",
+      "category": "client-push-damage",
+      "source": "AS3 client Dofus 2 DamageUtil.as l.1221-1224 (Romain-P/d2gen) ; C# OtomAICLIP/otomai libs/Bubble.DamageCalculation/DamageManagement/PushUtils.cs GetCollisionDamage ; patch 2.17 (millenium.org/news/141219.html)",
+      "fn": "pushDamage(level, pushDamageBonus, targetPushResistance, remainingCells, collisionIndex)",
+      "description": "Résistances poussée > bonus : dégâts bornés à 0",
+      "input": {
+        "casterLevel": 120,
+        "pushDamageBonus": 0,
+        "targetPushResistance": 200,
+        "remainingCells": 4,
+        "collisionIndex": 0
+      },
+      "expected": {
+        "dofus2Client": 0,
+        "dofus3Haxe": 0
+      },
+      "notes": "Avant résistances : les dégâts de poussée ignorent % et fixes élémentaires et les bonus de dégâts ; seuls les multiplicateurs de dégâts subis de la cible s'appliquent (cf. formulas.md)."
+    },
+    {
+      "id": "client-push-damage-009",
+      "category": "client-push-damage",
+      "source": "AS3 client Dofus 2 DamageUtil.as l.1221-1224 (Romain-P/d2gen) ; C# OtomAICLIP/otomai libs/Bubble.DamageCalculation/DamageManagement/PushUtils.cs GetCollisionDamage ; patch 2.17 (millenium.org/news/141219.html)",
+      "fn": "pushDamage(level, pushDamageBonus, targetPushResistance, remainingCells, collisionIndex)",
+      "description": "Niveau 150, +40 do pou, cible 10 ré pou, 4 cases, index 0",
+      "input": {
+        "casterLevel": 150,
+        "pushDamageBonus": 40,
+        "targetPushResistance": 10,
+        "remainingCells": 4,
+        "collisionIndex": 0
+      },
+      "expected": {
+        "dofus2Client": 137,
+        "dofus3Haxe": 137
+      },
+      "notes": "Avant résistances : les dégâts de poussée ignorent % et fixes élémentaires et les bonus de dégâts ; seuls les multiplicateurs de dégâts subis de la cible s'appliquent (cf. formulas.md)."
+    },
+    {
+      "id": "client-ap-mp-removal-001",
+      "category": "client-ap-mp-removal",
+      "source": "Note de version 1.25.0 (https://dofus.jeuxonline.info/article/6152/version-1250-23-09-08) : P = Ea/Ec * Pr/2 bornée [10 %, 90 %] ; tirage séquentiel point par point comme dans les émulateurs (Stump FightActor.RollAPLose, Giny Fighter.RollAPLose, OtomAI FightActor.RollApLose)",
+      "fn": "apMpRemovalDistribution(retrait, esquive, currentPoints, maxPoints, attempted)",
+      "description": "Retrait = Esquive, cible pleine (12/12 PA), 1 PA tenté : 50 %",
+      "input": {
+        "retrait": 100,
+        "esquive": 100,
+        "currentPoints": 12,
+        "maxPoints": 12,
+        "attempted": 1
+      },
+      "expected": {
+        "firstPointProbability": 0.5,
+        "distribution": {
+          "0": 0.5,
+          "1": 0.5
+        },
+        "expectedRemoved": 0.5
+      },
+      "notes": "Probabilité du k-ième point = clamp((cur - déjàRetirés)/max * ra/es / 2). Retrait/Esquive < 1 ramenés à 1. INCERTAIN : max = PA/PM max de base du tour (TotalMax) selon OtomAI/Stump ; Giny utilise le total courant."
+    },
+    {
+      "id": "client-ap-mp-removal-002",
+      "category": "client-ap-mp-removal",
+      "source": "Note de version 1.25.0 (https://dofus.jeuxonline.info/article/6152/version-1250-23-09-08) : P = Ea/Ec * Pr/2 bornée [10 %, 90 %] ; tirage séquentiel point par point comme dans les émulateurs (Stump FightActor.RollAPLose, Giny Fighter.RollAPLose, OtomAI FightActor.RollApLose)",
+      "fn": "apMpRemovalDistribution(retrait, esquive, currentPoints, maxPoints, attempted)",
+      "description": "Retrait = Esquive, 3 PA tentés",
+      "input": {
+        "retrait": 100,
+        "esquive": 100,
+        "currentPoints": 12,
+        "maxPoints": 12,
+        "attempted": 3
+      },
+      "expected": {
+        "firstPointProbability": 0.5,
+        "distribution": {
+          "0": 0.125,
+          "1": 0.407118055556,
+          "2": 0.372395833333,
+          "3": 0.095486111111
+        },
+        "expectedRemoved": 1.438368055556
+      },
+      "notes": "Probabilité du k-ième point = clamp((cur - déjàRetirés)/max * ra/es / 2). Retrait/Esquive < 1 ramenés à 1. INCERTAIN : max = PA/PM max de base du tour (TotalMax) selon OtomAI/Stump ; Giny utilise le total courant."
+    },
+    {
+      "id": "client-ap-mp-removal-003",
+      "category": "client-ap-mp-removal",
+      "source": "Note de version 1.25.0 (https://dofus.jeuxonline.info/article/6152/version-1250-23-09-08) : P = Ea/Ec * Pr/2 bornée [10 %, 90 %] ; tirage séquentiel point par point comme dans les émulateurs (Stump FightActor.RollAPLose, Giny Fighter.RollAPLose, OtomAI FightActor.RollApLose)",
+      "fn": "apMpRemovalDistribution(retrait, esquive, currentPoints, maxPoints, attempted)",
+      "description": "Retrait 2x l'esquive, cible pleine : plafonné à 90 %",
+      "input": {
+        "retrait": 200,
+        "esquive": 100,
+        "currentPoints": 6,
+        "maxPoints": 6,
+        "attempted": 2
+      },
+      "expected": {
+        "firstPointProbability": 0.9,
+        "distribution": {
+          "0": 0.01,
+          "1": 0.24,
+          "2": 0.75
+        },
+        "expectedRemoved": 1.74
+      },
+      "notes": "Probabilité du k-ième point = clamp((cur - déjàRetirés)/max * ra/es / 2). Retrait/Esquive < 1 ramenés à 1. INCERTAIN : max = PA/PM max de base du tour (TotalMax) selon OtomAI/Stump ; Giny utilise le total courant."
+    },
+    {
+      "id": "client-ap-mp-removal-004",
+      "category": "client-ap-mp-removal",
+      "source": "Note de version 1.25.0 (https://dofus.jeuxonline.info/article/6152/version-1250-23-09-08) : P = Ea/Ec * Pr/2 bornée [10 %, 90 %] ; tirage séquentiel point par point comme dans les émulateurs (Stump FightActor.RollAPLose, Giny Fighter.RollAPLose, OtomAI FightActor.RollApLose)",
+      "fn": "apMpRemovalDistribution(retrait, esquive, currentPoints, maxPoints, attempted)",
+      "description": "Retrait faible (20) vs esquive 150 : plancher 10 %",
+      "input": {
+        "retrait": 20,
+        "esquive": 150,
+        "currentPoints": 11,
+        "maxPoints": 11,
+        "attempted": 2
+      },
+      "expected": {
+        "firstPointProbability": 0.1,
+        "distribution": {
+          "0": 0.81,
+          "1": 0.18,
+          "2": 0.01
+        },
+        "expectedRemoved": 0.2
+      },
+      "notes": "Probabilité du k-ième point = clamp((cur - déjàRetirés)/max * ra/es / 2). Retrait/Esquive < 1 ramenés à 1. INCERTAIN : max = PA/PM max de base du tour (TotalMax) selon OtomAI/Stump ; Giny utilise le total courant."
+    },
+    {
+      "id": "client-ap-mp-removal-005",
+      "category": "client-ap-mp-removal",
+      "source": "Note de version 1.25.0 (https://dofus.jeuxonline.info/article/6152/version-1250-23-09-08) : P = Ea/Ec * Pr/2 bornée [10 %, 90 %] ; tirage séquentiel point par point comme dans les émulateurs (Stump FightActor.RollAPLose, Giny Fighter.RollAPLose, OtomAI FightActor.RollApLose)",
+      "fn": "apMpRemovalDistribution(retrait, esquive, currentPoints, maxPoints, attempted)",
+      "description": "Cible déjà entamée (4/12 PA), retrait 120 vs esquive 80, 2 PA tentés",
+      "input": {
+        "retrait": 120,
+        "esquive": 80,
+        "currentPoints": 4,
+        "maxPoints": 12,
+        "attempted": 2
+      },
+      "expected": {
+        "firstPointProbability": 0.25,
+        "distribution": {
+          "0": 0.5625,
+          "1": 0.390625,
+          "2": 0.046875
+        },
+        "expectedRemoved": 0.484375
+      },
+      "notes": "Probabilité du k-ième point = clamp((cur - déjàRetirés)/max * ra/es / 2). Retrait/Esquive < 1 ramenés à 1. INCERTAIN : max = PA/PM max de base du tour (TotalMax) selon OtomAI/Stump ; Giny utilise le total courant."
+    },
+    {
+      "id": "client-ap-mp-removal-006",
+      "category": "client-ap-mp-removal",
+      "source": "Note de version 1.25.0 (https://dofus.jeuxonline.info/article/6152/version-1250-23-09-08) : P = Ea/Ec * Pr/2 bornée [10 %, 90 %] ; tirage séquentiel point par point comme dans les émulateurs (Stump FightActor.RollAPLose, Giny Fighter.RollAPLose, OtomAI FightActor.RollApLose)",
+      "fn": "apMpRemovalDistribution(retrait, esquive, currentPoints, maxPoints, attempted)",
+      "description": "Retrait PM : 6/6 PM, retrait 90 vs esquive 60, 4 PM tentés (cas typique Enutrof)",
+      "input": {
+        "retrait": 90,
+        "esquive": 60,
+        "currentPoints": 6,
+        "maxPoints": 6,
+        "attempted": 4
+      },
+      "expected": {
+        "firstPointProbability": 0.75,
+        "distribution": {
+          "0": 0.00390625,
+          "1": 0.09521484375,
+          "2": 0.40283203125,
+          "3": 0.41015625,
+          "4": 0.087890625
+        },
+        "expectedRemoved": 2.48291015625
+      },
+      "notes": "Probabilité du k-ième point = clamp((cur - déjàRetirés)/max * ra/es / 2). Retrait/Esquive < 1 ramenés à 1. INCERTAIN : max = PA/PM max de base du tour (TotalMax) selon OtomAI/Stump ; Giny utilise le total courant."
+    },
+    {
+      "id": "client-heal-001",
+      "category": "client-heal",
+      "source": "AS3 client Dofus 2 DamageUtil.as getHeal()/getHealEffectDamage() l.891-932, 2619-2622 (Romain-P/d2gen)",
+      "fn": "healAmount(baseHeal, intelligence, healBonus)",
+      "description": "Soin 20, Intelligence 400, +50 soins",
+      "input": {
+        "baseHeal": 20,
+        "intelligence": 400,
+        "healBonus": 50
+      },
+      "expected": {
+        "heal": 150
+      },
+      "notes": "Avant plafonnement aux PV manquants de la cible. Dofus 3 (module Haxe) ajoute le bonus 'damagePercentSpell' (98) et applique dealtHealMultiplier (143) — voir formulas.md (INCERTAIN)."
+    },
+    {
+      "id": "client-heal-002",
+      "category": "client-heal",
+      "source": "AS3 client Dofus 2 DamageUtil.as getHeal()/getHealEffectDamage() l.891-932, 2619-2622 (Romain-P/d2gen)",
+      "fn": "healAmount(baseHeal, intelligence, healBonus)",
+      "description": "Soin 37, Intelligence 813, +120 soins (troncature)",
+      "input": {
+        "baseHeal": 37,
+        "intelligence": 813,
+        "healBonus": 120
+      },
+      "expected": {
+        "heal": 457
+      },
+      "notes": "Avant plafonnement aux PV manquants de la cible. Dofus 3 (module Haxe) ajoute le bonus 'damagePercentSpell' (98) et applique dealtHealMultiplier (143) — voir formulas.md (INCERTAIN)."
+    },
+    {
+      "id": "client-heal-003",
+      "category": "client-heal",
+      "source": "AS3 client Dofus 2 DamageUtil.as getHeal()/getHealEffectDamage() l.891-932, 2619-2622 (Romain-P/d2gen)",
+      "fn": "healAmount(baseHeal, intelligence, healBonus)",
+      "description": "Intelligence négative : remplacée par 1",
+      "input": {
+        "baseHeal": 20,
+        "intelligence": -50,
+        "healBonus": 10
+      },
+      "expected": {
+        "heal": 30
+      },
+      "notes": "Avant plafonnement aux PV manquants de la cible. Dofus 3 (module Haxe) ajoute le bonus 'damagePercentSpell' (98) et applique dealtHealMultiplier (143) — voir formulas.md (INCERTAIN)."
+    },
+    {
+      "id": "client-heal-004",
+      "category": "client-heal",
+      "source": "AS3 client Dofus 2 DamageUtil.as getHeal()/getHealEffectDamage() l.891-932, 2619-2622 (Romain-P/d2gen)",
+      "fn": "healAmount(baseHeal, intelligence, healBonus)",
+      "description": "Soin de base 0 : les soins fixes ne s'ajoutent pas",
+      "input": {
+        "baseHeal": 0,
+        "intelligence": 500,
+        "healBonus": 80
+      },
+      "expected": {
+        "heal": 0
+      },
+      "notes": "Avant plafonnement aux PV manquants de la cible. Dofus 3 (module Haxe) ajoute le bonus 'damagePercentSpell' (98) et applique dealtHealMultiplier (143) — voir formulas.md (INCERTAIN)."
+    },
+    {
+      "id": "client-area-efficiency-001",
+      "category": "client-area-efficiency",
+      "source": "OtomAICLIP/otomai Tools/SpellZone.cs GetAoeMalus (Dofus 3) ; AS3 DamageUtil.getSimpleEfficiency (Dofus 2) ; défauts : 10 %/case, 4 paliers max",
+      "fn": "areaEfficiency(distance, minRadius, degressionPercent, maxTicks)",
+      "description": "Centre de la zone : 100 %",
+      "input": {
+        "distance": 0,
+        "minRadius": 0,
+        "degressionPercent": 10,
+        "maxTicks": 4
+      },
+      "expected": {
+        "efficiency": 1
+      }
+    },
+    {
+      "id": "client-area-efficiency-002",
+      "category": "client-area-efficiency",
+      "source": "OtomAICLIP/otomai Tools/SpellZone.cs GetAoeMalus (Dofus 3) ; AS3 DamageUtil.getSimpleEfficiency (Dofus 2) ; défauts : 10 %/case, 4 paliers max",
+      "fn": "areaEfficiency(distance, minRadius, degressionPercent, maxTicks)",
+      "description": "2 cases du centre, -10 %/case : 80 %",
+      "input": {
+        "distance": 2,
+        "minRadius": 0,
+        "degressionPercent": 10,
+        "maxTicks": 4
+      },
+      "expected": {
+        "efficiency": 0.8
+      }
+    },
+    {
+      "id": "client-area-efficiency-003",
+      "category": "client-area-efficiency",
+      "source": "OtomAICLIP/otomai Tools/SpellZone.cs GetAoeMalus (Dofus 3) ; AS3 DamageUtil.getSimpleEfficiency (Dofus 2) ; défauts : 10 %/case, 4 paliers max",
+      "fn": "areaEfficiency(distance, minRadius, degressionPercent, maxTicks)",
+      "description": "6 cases du centre, plafond 4 paliers : 60 %",
+      "input": {
+        "distance": 6,
+        "minRadius": 0,
+        "degressionPercent": 10,
+        "maxTicks": 4
+      },
+      "expected": {
+        "efficiency": 0.6
+      }
+    },
+    {
+      "id": "client-area-efficiency-004",
+      "category": "client-area-efficiency",
+      "source": "OtomAICLIP/otomai Tools/SpellZone.cs GetAoeMalus (Dofus 3) ; AS3 DamageUtil.getSimpleEfficiency (Dofus 2) ; défauts : 10 %/case, 4 paliers max",
+      "fn": "areaEfficiency(distance, minRadius, degressionPercent, maxTicks)",
+      "description": "Dégressivité 25 % (armes), 3 cases : 25 %",
+      "input": {
+        "distance": 3,
+        "minRadius": 0,
+        "degressionPercent": 25,
+        "maxTicks": 4
+      },
+      "expected": {
+        "efficiency": 0.25
+      }
+    },
+    {
+      "id": "client-area-efficiency-005",
+      "category": "client-area-efficiency",
+      "source": "OtomAICLIP/otomai Tools/SpellZone.cs GetAoeMalus (Dofus 3) ; AS3 DamageUtil.getSimpleEfficiency (Dofus 2) ; défauts : 10 %/case, 4 paliers max",
+      "fn": "areaEfficiency(distance, minRadius, degressionPercent, maxTicks)",
+      "description": "Zone avec rayon min 1 : distance 1 -> 100 %",
+      "input": {
+        "distance": 1,
+        "minRadius": 1,
+        "degressionPercent": 10,
+        "maxTicks": 4
+      },
+      "expected": {
+        "efficiency": 1
+      }
+    },
+    {
+      "id": "client-misc-001",
+      "category": "client-misc",
+      "source": "AS3 client Dofus 2 DamageUtil.computeDamage l.2353-2356 ; port C# Dofus 3 HaxeFighter.GetElementMainResist (MaxResistHuman=50, MaxResistMonster=100)",
+      "fn": "effectiveResistPercent(resist, isMonster)",
+      "description": "Plafond des % de résistance : 50 % pour un joueur, pas de plafond (100) pour un monstre ; pas de plancher",
+      "input": {
+        "cases": [
+          [
+            70,
+            false
+          ],
+          [
+            70,
+            true
+          ],
+          [
+            -40,
+            false
+          ],
+          [
+            120,
+            true
+          ]
+        ]
+      },
+      "expected": {
+        "values": [
+          50,
+          70,
+          -40,
+          100
+        ],
+        "dofus2ClientValues": [
+          50,
+          70,
+          -40,
+          120
+        ]
+      },
+      "notes": "expected.values = port Dofus 3 (monstres plafonnés à 100). Dofus 2 AS3 : resistPercent = min(resist, 50) si la cible n'est pas un monstre ; aucun plafond monstre (expected.dofus2ClientValues). Dans les deux cas une rés. >= 100 donne 0 dégât après clamp."
+    },
+    {
+      "id": "client-misc-002",
+      "category": "client-misc",
+      "source": "AS3 client Dofus 2 DamageUtil.computeDamage l.2407-2411 ; DoMath trap sim (érosion par défaut 10)",
+      "fn": "erosionPercent(bonusErosion) ; erodedMaxHp = floor(damage * erosion / 100)",
+      "description": "Érosion totale = min(50, 10 + bonus) ; PV max perdus = floor(dégâts * érosion / 100)",
+      "input": {
+        "cases": [
+          [
+            0,
+            457
+          ],
+          [
+            15,
+            457
+          ],
+          [
+            60,
+            457
+          ]
+        ]
+      },
+      "expected": {
+        "values": [
+          {
+            "erosionPercent": 10,
+            "maxHpLost": 45
+          },
+          {
+            "erosionPercent": 25,
+            "maxHpLost": 114
+          },
+          {
+            "erosionPercent": 50,
+            "maxHpLost": 228
+          }
+        ]
+      }
+    },
+    {
+      "id": "client-misc-003",
+      "category": "client-misc",
+      "source": "Client Dofus 2 TackleUtil.getTackle + FightTurnFrame (mpLost = int(mp*(1-tackle)+0.5)) ; devblog tacle déterministe (dofus.jeuxonline.info/actualite/30452)",
+      "fn": "officialTackleLoss(mp, tacklePercent)",
+      "description": "PM perdus selon le client officiel = arrondi (x.5 vers le haut) de mp*(1-p) ; équivalent à DoMath restant = -round(-mp*p)",
+      "input": {
+        "cases": [
+          [
+            6,
+            0.2549019607843137
+          ],
+          [
+            3,
+            0.5
+          ],
+          [
+            5,
+            0.5806451612903226
+          ]
+        ]
+      },
+      "expected": {
+        "values": [
+          {
+            "lost": 4,
+            "remainingDomath": 2
+          },
+          {
+            "lost": 2,
+            "remainingDomath": 1
+          },
+          {
+            "lost": 2,
+            "remainingDomath": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "client-misc-004",
+      "category": "client-misc",
+      "source": "Comparaison DoMath (bk/Ek : -Math.round(-mp*p)) vs client Dofus 2 FightTurnFrame (mpLost = int(mp*(1-p)+0.5))",
+      "fn": "tackleTieCase(dodge, lock, mp)",
+      "description": "Cas d'égalité exacte mp*p = x.5 : DoMath arrondit vers le bas (6), le client officiel garde 7 à cause d'un artefact flottant (1-p)",
+      "input": {
+        "dodge": 24,
+        "lock": 12,
+        "mp": 7
+      },
+      "expected": {
+        "remainingDomath": 6,
+        "remainingDofus2Client": 7
+      },
+      "notes": "Seuls 8 cas sur 122 412 combinaisons testées divergent (globalChecks). Recommandation moteur : suivre DoMath (round half down) sauf preuve contraire en jeu."
+    },
+    {
+      "id": "domath-distribution-001",
+      "category": "domath-distribution",
+      "source": "domath static/js/806.6ff2731e.chunk.js (Web Worker exécuté tel quel dans node:vm, cf. .cache/domath/extract/worker-runner.cjs)",
+      "fn": "damageDistribution(spells) -> [{value, probability}]",
+      "description": "Sort terre 10-12 / crit 13-15, Force 100, crit 15 % + 35 % = 50 %",
+      "input": {
+        "statsPartial": {
+          "strength": 100,
+          "crit": 35
+        },
+        "damageLines": [
+          {
+            "element": "earth",
+            "baseDamage": {
+              "normal": {
+                "min": 10,
+                "max": 12
+              },
+              "crit": {
+                "min": 13,
+                "max": 15
+              }
+            }
+          }
+        ],
+        "spellBaseCrit": 15,
+        "counter": 1
+      },
+      "expected": {
+        "distribution": [
+          {
+            "value": 20,
+            "probability": 0.166666666667
+          },
+          {
+            "value": 22,
+            "probability": 0.166666666667
+          },
+          {
+            "value": 24,
+            "probability": 0.166666666667
+          },
+          {
+            "value": 26,
+            "probability": 0.166666666667
+          },
+          {
+            "value": 28,
+            "probability": 0.166666666667
+          },
+          {
+            "value": 30,
+            "probability": 0.166666666667
+          }
+        ],
+        "expectedDamage": 25,
+        "decreasingCurvePercent": [
+          {
+            "x": 20,
+            "y": 100
+          },
+          {
+            "x": 22,
+            "y": 83.333333333
+          },
+          {
+            "x": 24,
+            "y": 66.666666667
+          },
+          {
+            "x": 26,
+            "y": 50
+          },
+          {
+            "x": 28,
+            "y": 33.333333333
+          },
+          {
+            "x": 30,
+            "y": 16.666666667
+          }
+        ]
+      },
+      "notes": "Jets uniformes sur [min, max] entiers ; P(crit) = min(100, max(0, critSort + critStats))/100 ; lancers indépendants convolés."
+    },
+    {
+      "id": "domath-distribution-002",
+      "category": "domath-distribution",
+      "source": "domath static/js/806.6ff2731e.chunk.js (Web Worker exécuté tel quel dans node:vm, cf. .cache/domath/extract/worker-runner.cjs)",
+      "fn": "damageDistribution(spells) -> [{value, probability}]",
+      "description": "Deux lancers d'un sort feu 18-22 / crit 22-26 (Int 600, +40 do, +50 do crit, crit 20+30 %), cible 25 % rés. feu",
+      "input": {
+        "statsPartial": {
+          "intelligence": 600,
+          "crit": 30,
+          "damages": {
+            "fixed": {
+              "damages": 40,
+              "critical": 50
+            }
+          },
+          "resistances": {
+            "percentage": {
+              "fire": 25
+            }
+          }
+        },
+        "damageLines": [
+          {
+            "element": "fire",
+            "baseDamage": {
+              "normal": {
+                "min": 18,
+                "max": 22
+              },
+              "crit": {
+                "min": 22,
+                "max": 26
+              }
+            }
+          }
+        ],
+        "spellBaseCrit": 20,
+        "counter": 2
+      },
+      "expected": {
+        "distribution": [
+          {
+            "value": 248,
+            "probability": 0.01
+          },
+          {
+            "value": 253,
+            "probability": 0.02
+          },
+          {
+            "value": 258,
+            "probability": 0.01
+          },
+          {
+            "value": 259,
+            "probability": 0.02
+          },
+          {
+            "value": 264,
+            "probability": 0.04
+          },
+          {
+            "value": 269,
+            "probability": 0.04
+          },
+          {
+            "value": 270,
+            "probability": 0.01
+          },
+          {
+            "value": 274,
+            "probability": 0.02
+          },
+          {
+            "value": 275,
+            "probability": 0.02
+          },
+          {
+            "value": 280,
+            "probability": 0.03
+          },
+          {
+            "value": 285,
+            "probability": 0.02
+          },
+          {
+            "value": 290,
+            "probability": 0.01
+          },
+          {
+            "value": 307,
+            "probability": 0.02
+          },
+          {
+            "value": 312,
+            "probability": 0.04
+          },
+          {
+            "value": 317,
+            "probability": 0.04
+          },
+          {
+            "value": 318,
+            "probability": 0.02
+          },
+          {
+            "value": 322,
+            "probability": 0.04
+          },
+          {
+            "value": 323,
+            "probability": 0.04
+          },
+          {
+            "value": 327,
+            "probability": 0.02
+          },
+          {
+            "value": 328,
+            "probability": 0.08
+          },
+          {
+            "value": 333,
+            "probability": 0.08
+          },
+          {
+            "value": 338,
+            "probability": 0.04
+          },
+          {
+            "value": 339,
+            "probability": 0.02
+          },
+          {
+            "value": 343,
+            "probability": 0.02
+          },
+          {
+            "value": 344,
+            "probability": 0.02
+          },
+          {
+            "value": 349,
+            "probability": 0.02
+          },
+          {
+            "value": 366,
+            "probability": 0.01
+          },
+          {
+            "value": 371,
+            "probability": 0.02
+          },
+          {
+            "value": 376,
+            "probability": 0.03
+          },
+          {
+            "value": 381,
+            "probability": 0.04
+          },
+          {
+            "value": 386,
+            "probability": 0.03
+          },
+          {
+            "value": 387,
+            "probability": 0.02
+          },
+          {
+            "value": 391,
+            "probability": 0.02
+          },
+          {
+            "value": 392,
+            "probability": 0.02
+          },
+          {
+            "value": 396,
+            "probability": 0.01
+          },
+          {
+            "value": 397,
+            "probability": 0.02
+          },
+          {
+            "value": 402,
+            "probability": 0.02
+          },
+          {
+            "value": 408,
+            "probability": 0.01
+          }
+        ],
+        "expectedDamage": 327.8,
+        "decreasingCurvePercent": [
+          {
+            "x": 248,
+            "y": 100
+          },
+          {
+            "x": 253,
+            "y": 99
+          },
+          {
+            "x": 258,
+            "y": 97
+          },
+          {
+            "x": 259,
+            "y": 96
+          },
+          {
+            "x": 264,
+            "y": 94
+          },
+          {
+            "x": 269,
+            "y": 90
+          },
+          {
+            "x": 270,
+            "y": 86
+          },
+          {
+            "x": 274,
+            "y": 85
+          },
+          {
+            "x": 275,
+            "y": 83
+          },
+          {
+            "x": 280,
+            "y": 81
+          },
+          {
+            "x": 285,
+            "y": 78
+          },
+          {
+            "x": 290,
+            "y": 76
+          },
+          {
+            "x": 307,
+            "y": 75
+          },
+          {
+            "x": 312,
+            "y": 73
+          },
+          {
+            "x": 317,
+            "y": 69
+          },
+          {
+            "x": 318,
+            "y": 65
+          },
+          {
+            "x": 322,
+            "y": 63
+          },
+          {
+            "x": 323,
+            "y": 59
+          },
+          {
+            "x": 327,
+            "y": 55
+          },
+          {
+            "x": 328,
+            "y": 53
+          },
+          {
+            "x": 333,
+            "y": 45
+          },
+          {
+            "x": 338,
+            "y": 37
+          },
+          {
+            "x": 339,
+            "y": 33
+          },
+          {
+            "x": 343,
+            "y": 31
+          },
+          {
+            "x": 344,
+            "y": 29
+          },
+          {
+            "x": 349,
+            "y": 27
+          },
+          {
+            "x": 366,
+            "y": 25
+          },
+          {
+            "x": 371,
+            "y": 24
+          },
+          {
+            "x": 376,
+            "y": 22
+          },
+          {
+            "x": 381,
+            "y": 19
+          },
+          {
+            "x": 386,
+            "y": 15
+          },
+          {
+            "x": 387,
+            "y": 12
+          },
+          {
+            "x": 391,
+            "y": 10
+          },
+          {
+            "x": 392,
+            "y": 8
+          },
+          {
+            "x": 396,
+            "y": 6
+          },
+          {
+            "x": 397,
+            "y": 5
+          },
+          {
+            "x": 402,
+            "y": 3
+          },
+          {
+            "x": 408,
+            "y": 1
+          }
+        ]
+      },
+      "notes": "Jets uniformes sur [min, max] entiers ; P(crit) = min(100, max(0, critSort + critStats))/100 ; lancers indépendants convolés."
+    }
+  ],
+  "informative": [
+    {
+      "description": "Comparaison d'ordre d'application : DoMath vs ordre du module Haxe Dofus 3 (port C# OtomAI). NON utilisé comme test strict.",
+      "input": {
+        "base": 38,
+        "stat": 1100,
+        "power": 180,
+        "flat": 120,
+        "elemFlat": 40,
+        "critFlat": 95,
+        "isCrit": true,
+        "fixedRes": 25,
+        "critRes": 30,
+        "pctRes": 35,
+        "dealtSpells": 118,
+        "dealtRange": 112,
+        "recvSpells": 90,
+        "recvRange": 100,
+        "dealtFinal": 110,
+        "recvMult": 100
+      },
+      "expected": {
+        "domath": 614,
+        "haxeOrderDouble": 613
+      }
+    },
+    {
+      "description": "Comparaison d'ordre d'application : DoMath vs ordre du module Haxe Dofus 3 (port C# OtomAI). NON utilisé comme test strict.",
+      "input": {
+        "base": 31,
+        "stat": 1100,
+        "power": 180,
+        "flat": 120,
+        "elemFlat": 40,
+        "critFlat": 95,
+        "isCrit": false,
+        "fixedRes": 25,
+        "critRes": 30,
+        "pctRes": 35,
+        "dealtSpells": 118,
+        "dealtRange": 112,
+        "recvSpells": 90,
+        "recvRange": 100,
+        "dealtFinal": 110,
+        "recvMult": 100
+      },
+      "expected": {
+        "domath": 476,
+        "haxeOrderDouble": 475
+      }
+    }
+  ]
+}

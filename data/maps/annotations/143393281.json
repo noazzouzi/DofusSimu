@@ -1,0 +1,18 @@
+{
+  "description": "Annotations manuelles de la salle unique de l'Œil de Vortex (Salle des heures perdues). Voir docs/research/maps.md.",
+  "clockPositions": {"1":215,"2":218,"3":263,"4":334,"5":418,"6":487,"7":526,"8":523,"9":479,"10":407,"11":323,"12":255},
+  "clockPositionsNote": "Cases des 12 heures de l'horloge parcourues par l'Auroraire (1 = I ... 12 = XII). Relevées sur le schéma du guide JOL (Dofus 2) puis vérifiées : elles tombent exactement sur les chiffres romains I-XII peints au sol du rendu Dofus 3 (api.dofusdb.fr/img/maps/1/143393281.jpg) et sont symétriques autour du centre logique (x=20, y=-6). Toutes marchables et sans obstacle de LdV.",
+  "clockCenterPoint": {"x": 20, "y": -6},
+  "waveSpawnRule": "Selon JOL : les monstres des vagues suivantes apparaissent là où les monstres de la première vague ont commencé le combat (cases bleues de départ), pas au hasard.",
+  "observedStartExample": {"monsters": [268, 270, 272, 274], "bossVortex": 270, "note": "Exemple à 4 joueurs observé sur deux captures du guide JOL (Dofus 2) : monstres sur une case bleue sur deux, Vortex sur la 3e. Non garanti (placement serveur) — INCERTAIN."},
+  "playersTeam": "red",
+  "playersTeamNote": "Convention : en PvM l'équipe des joueurs (challengers) se place sur les cases rouges, les monstres (défenseurs) sur les bleues (cf. émulateur Stump FightManager.CreatePvMFight ; schémas JOL : monstres sur la ligne bleue). Le serveur officiel envoie les positions possibles (GameFightPlacementPossiblePositions) — très probable mais non vérifié sur Dofus 3.",
+  "sources": [
+    "https://api.dofusdb.fr/maps/143393281.json",
+    "https://api.dofusdb.fr/img/maps/1/143393281.jpg",
+    "https://dofus.jeuxonline.info/article/13603/il-vortex",
+    "https://jolstatic.fr/dofus/equipe/226595/Articles/Vortex/Aurorairee.bmp",
+    "https://jolstatic.fr/dofus/equipe/226595/Articles/Vortex/Vortex200.png",
+    "https://github.com/745c5412/Stump/blob/master/Server/Stump.Server.WorldServer/Game/Fights/FightManager.cs"
+  ]
+}
