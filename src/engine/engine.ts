@@ -221,10 +221,17 @@ export class Engine {
   }
 
   private emitStateChanges(fight: FightState, f: Fighter, had: Set<number>): void {
-    if (!fight.options.record) return
     const now = new Set(f.states)
-    for (const s of now) if (!had.has(s)) this.emit(fight, { t: 'state', target: f.id, stateId: s, name: this.data.state(s)?.name ?? `État ${s}`, added: true })
-    for (const s of had) if (!now.has(s)) this.emit(fight, { t: 'state', target: f.id, stateId: s, name: this.data.state(s)?.name ?? `État ${s}`, added: false })
+    for (const s of now) {
+      if (had.has(s)) continue
+      if (fight.options.record) this.emit(fight, { t: 'state', target: f.id, stateId: s, name: this.data.state(s)?.name ?? `État ${s}`, added: true })
+      this.trigger(fight, f, { type: 'EON', stateId: s })
+    }
+    for (const s of had) {
+      if (now.has(s)) continue
+      if (fight.options.record) this.emit(fight, { t: 'state', target: f.id, stateId: s, name: this.data.state(s)?.name ?? `État ${s}`, added: false })
+      this.trigger(fight, f, { type: 'EOFF', stateId: s })
+    }
   }
 
   // ───────────────────────────── PV : dégâts, soins, boucliers ─────────────────────────────
@@ -240,7 +247,7 @@ export class Engine {
     amount: number,
     element: Element | -1,
     kind: DamageKind,
-    opts: { crit?: boolean; melee?: boolean } = {},
+    opts: { crit?: boolean; melee?: boolean; isWeapon?: boolean } = {},
   ): number {
     if (!target.alive || amount <= 0) return 0
     if (this.scenario?.canBeDamaged && !this.scenario.canBeDamaged(fight, target, source)) {
@@ -279,6 +286,7 @@ export class Engine {
     if (source) fight.metrics[source.id].damageDealt += lost
     fight.metrics[target.id].damageTaken += lost
     if (target.hp <= 0) this.kill(fight, target, source)
+    this.hooks.onDamaged?.(fight, target, source, lost + absorbed, { element, kind, melee: opts.melee, isWeapon: opts.isWeapon })
     return lost
   }
 
@@ -290,6 +298,8 @@ export class Engine {
     target.hp += healed
     this.emit(fight, { t: 'heal', source: source?.id ?? -1, target: target.id, amount: healed })
     if (source) fight.metrics[source.id].healingDone += healed
+    this.trigger(fight, target, { type: 'H', source, amount: healed })
+    if (source && source.alive) this.trigger(fight, source, { type: 'CH', source, amount: healed })
     return healed
   }
 
@@ -315,6 +325,8 @@ export class Engine {
     }
     this.emit(fight, { t: 'death', target: target.id, killer: killer?.id })
     if (killer && killer.team !== target.team) fight.metrics[killer.id].kills++
+    this.trigger(fight, target, { type: 'X', source: killer, killed: true })
+    if (killer && killer.alive && killer.id !== target.id) this.trigger(fight, killer, { type: 'K', source: killer })
     target.cell = -1
     // Les invocations meurent avec leur invocateur.
     for (const f of fight.fighters) if (f.alive && f.summonerId === target.id) this.kill(fight, f, killer)
@@ -444,8 +456,20 @@ export class Engine {
     /** Entrée d'un combattant sur une cellule (pièges, glyphes d'entrée). */
     onEnterCell?: (fight: FightState, f: Fighter, cell: number) => void
     /** Après des dommages subis (déclencheurs de buffs réactifs). */
-    onDamaged?: (fight: FightState, target: Fighter, source: Fighter | undefined, amount: number) => void
+    onDamaged?: (
+      fight: FightState,
+      target: Fighter,
+      source: Fighter | undefined,
+      amount: number,
+      info?: { element: number; kind: DamageKind; melee?: boolean; isWeapon?: boolean },
+    ) => void
   } = {}
+
+  /**
+   * Déclenche les buffs réactifs d'un porteur (installé par effects/core.ts ; no-op sinon).
+   * `ev.type` suit les codes de docs/research/effects.md §6 (TB, TE, D, PD, X, H, EON, ...).
+   */
+  trigger: (fight: FightState, holder: Fighter, ev: { type: string; source?: Fighter; [k: string]: unknown }) => void = () => {}
 
   private decrementCastedBuffs(fight: FightState, caster: Fighter): void {
     for (const target of fight.fighters) {
@@ -454,9 +478,10 @@ export class Engine {
         if (b.sourceId !== caster.id) continue
         if (b.delay > 0) {
           b.delay--
-          if (b.delay === 0) this.recomputeStats(target)
+          if (b.delay === 0 && b.kind !== 'delayed') this.recomputeStats(target)
           continue
         }
+        if (b.kind === 'delayed') continue
         if (b.remaining < 0) continue
         b.remaining--
         if (b.remaining <= 0) this.removeBuff(fight, target, b.uid)

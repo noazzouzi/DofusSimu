@@ -39,6 +39,8 @@ export interface EffectData {
   /** Élément (-1 = aucun). */
   element: number
   zone: ZoneSpec
+  /** Durée (tours) d'un buff déclencheur (triggers ≠ 'I') : effectTriggerDuration DofusDB. */
+  triggerDuration?: number
 }
 
 export interface SpellLevelData {

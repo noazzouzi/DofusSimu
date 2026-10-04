@@ -42,6 +42,15 @@ export interface Buff {
   triggers?: string
   /** Libellé lisible pour l'interface. */
   label: string
+  /** Nature du buff : modification de stats/état, déclencheur réactif, effet différé, autre. */
+  kind?: 'stat' | 'trigger' | 'delayed' | 'special'
+  /** Lancé en coup critique (hérité par les effets déclenchés). */
+  crit?: boolean
+  /** Nombre de déclenchements déjà effectués / maximum autorisé. */
+  triggerCount?: number
+  maxTriggers?: number
+  /** Garde de réentrance pendant l'exécution du déclencheur. */
+  firing?: boolean
 }
 
 export interface Fighter {

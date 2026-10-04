@@ -2,14 +2,13 @@
  * Lancement de sorts : validation (PA, portée, ligne, diagonale, ligne de vue, relances, états),
  * jet de coup critique, calcul des zones et des cibles, puis application ordonnée des effets.
  */
-import type { EffectData, SpellLevelData } from '../data/model'
+import type { SpellLevelData } from '../data/model'
 import { distance, inDiagonal, inLine } from '../map/geometry'
 import { hasLineOfSight } from '../map/los'
-import { zoneCells, zoneEfficiency } from '../map/zones'
+import { zoneCells } from '../map/zones'
 import type { Engine } from './engine'
-import { getEffectHandler, noteUnknownEffect, type EffectContext } from './effects/registry'
+import { applyEffects } from './effects/core'
 import { nextRandom } from './random'
-import { matchesTargetMask } from './targetMask'
 import type { Fighter, FightState, KnownSpell } from './types'
 
 export type CastFailure =
@@ -156,81 +155,11 @@ export function castSpell(engine: Engine, fight: FightState, caster: Fighter, sp
     // uniquement pour les effets de dommages/soins ; les autres effets sont appliqués une fois (normaux).
     caster.tags.critWeight = pCrit
   }
+  if (crit) engine.trigger(fight, caster, { type: 'CC', source: caster })
   applyEffects(engine, fight, caster, spell, spellId, effects, cell, casterCell, crit, false, 0)
   delete caster.tags.critWeight
   engine.checkEnd(fight)
   return { ok: true, crit }
 }
 
-/**
- * Applique une liste d'effets (sort, glyphe, piège, sort déclenché) sur une cellule cible.
- * Gère les effets aléatoires (random/group), les zones, masques et l'efficacité de zone.
- */
-export function applyEffects(
-  engine: Engine,
-  fight: FightState,
-  caster: Fighter,
-  spell: KnownSpell | null,
-  spellId: number,
-  effects: EffectData[],
-  cell: number,
-  casterCell: number,
-  crit: boolean,
-  indirect: boolean,
-  depth: number,
-): void {
-  if (depth > 6) return
-  const ordered = [...effects].sort((a, b) => a.order - b.order)
-  // Effets aléatoires : parmi les effets d'un même groupe avec random > 0, un seul est tiré.
-  const randomPicks = new Map<number, EffectData>()
-  const groups = new Map<number, EffectData[]>()
-  for (const e of ordered) if (e.random > 0) groups.set(e.group, [...(groups.get(e.group) ?? []), e])
-  for (const [g, list] of groups) {
-    let r = nextRandom(fight) * list.reduce((s, e) => s + e.random, 0)
-    for (const e of list) {
-      r -= e.random
-      if (r <= 0) {
-        randomPicks.set(g, e)
-        break
-      }
-    }
-  }
-  for (const effect of ordered) {
-    if (fight.ended && depth === 0) break
-    if (effect.random > 0 && randomPicks.get(effect.group) !== effect) continue
-    const entry = getEffectHandler(effect.effectId)
-    if (!entry) {
-      noteUnknownEffect(effect.effectId)
-      continue
-    }
-    const cells = zoneCells(effect.zone, cell, casterCell)
-    const targets: EffectContext['targets'] = []
-    const efficiency = new Map<number, number>()
-    for (const c of cells) {
-      const f = engine.fighterAt(fight, c)
-      if (!f || !f.alive) continue
-      if (!matchesTargetMask(effect.targetMask, caster, f)) continue
-      targets.push(f)
-      efficiency.set(f.id, zoneEfficiency(effect.zone, cell, c))
-    }
-    // Les cibles sont traitées de la plus proche à la plus éloignée du centre.
-    targets.sort((a, b) => distance(cell, a.cell) - distance(cell, b.cell))
-    const ctx: EffectContext = {
-      engine,
-      fight,
-      caster,
-      spell,
-      spellId,
-      effect,
-      targetCell: cell,
-      casterCell,
-      cells,
-      targets,
-      efficiency,
-      crit,
-      indirect,
-      depth,
-    }
-    entry.handler(ctx)
-  }
-}
+export { applyEffects } from './effects/core'
