@@ -11,7 +11,7 @@
  *  - Calibration : bornes [0,5 ; 2], défaut 1.
  */
 import { describe, expect, it } from 'vitest'
-import { calibrationOf, castDamage, createDptTable, createSpellProfileIndex, isMeleeSpell, levelFor } from '../src/ai/core'
+import { calibrationOf, castDamage, createDptTable, createSpellProfileIndex, isMeleeSpell, levelFor, selfZoneHits } from '../src/ai/core'
 import { canCast, castSpell } from '../src/engine/cast'
 import type { Engine } from '../src/engine/engine'
 import type { Fighter, FightState } from '../src/engine/types'
@@ -46,25 +46,37 @@ function nearestFree(fight: FightState, to: number, minDist: number): number {
 }
 
 /**
- * Place le lanceur sur une case d'où `spellId` est lançable sur la cible ; faux si aucune. Comme le DPT (sort « de
- * mêlée » = portée ≤ 1, `isMeleeSpell`), un sort à distance est lancé à distance ≥ 2 quand c'est possible : le moteur
- * applique les bonus/résistances de mêlée selon la distance réelle.
+ * Place le lanceur sur une case d'où `spellId` touche la cible et renvoie la case à viser (−1 si aucune). Comme le DPT
+ * (sort « de mêlée » = portée ≤ 1, `isMeleeSpell`), un sort à distance est lancé à distance ≥ 2 quand c'est possible :
+ * le moteur applique les bonus/résistances de mêlée selon la distance réelle. Sort de portée 0 à zone (Transfusion) :
+ * lancé sur la case du lanceur, la cible dans sa zone.
  */
-function placeFor(engine: Engine, fight: FightState, me: Fighter, spellId: number, target: number): boolean {
+function placeFor(engine: Engine, fight: FightState, me: Fighter, spellId: number, target: number): number {
   const ks = me.spells.find(s => s.spellId === spellId)!
   const lvl = levelFor(me, ks)
-  const want = lvl.range + (lvl.rangeBoostable ? me.stats.range : 0) <= 1 ? 1 : 2
+  const prof = createSpellProfileIndex(engine).ofSpell(me, ks.level)
+  const free = [...Array(CELL_COUNT).keys()].filter(c => fight.map.cells[c]?.walkable && !fight.fighters.some(f => f.alive && f.cell === c && f.id !== me.id))
+  const max = lvl.range + (lvl.rangeBoostable ? me.stats.range : 0)
+  if (max === 0 && prof.zone && prof.zoneRadius > 0) {
+    free.sort((a, b) => distance(a, target) - distance(b, target) || a - b)
+    for (const c of free) {
+      if (!selfZoneHits(prof.zone, prof.zoneRadius, c, target)) continue
+      me.cell = c
+      if (canCast(engine, fight, me, ks, c) === null) return c
+    }
+    return -1
+  }
+  const want = max <= 1 ? 1 : 2
   const ok = (c: number) => (want === 1 ? distance(c, target) <= 1 : distance(c, target) >= 2 || lvl.range < 2)
-  if (ok(me.cell) && canCast(engine, fight, me, ks, target) === null) return true
-  const cells = [...Array(CELL_COUNT).keys()].filter(c => fight.map.cells[c]?.walkable && !fight.fighters.some(f => f.alive && f.cell === c))
-  cells.sort((a, b) => Math.abs(distance(a, target) - want) - Math.abs(distance(b, target) - want) || a - b)
-  for (const c of cells) {
+  if (ok(me.cell) && canCast(engine, fight, me, ks, target) === null) return target
+  free.sort((a, b) => Math.abs(distance(a, target) - want) - Math.abs(distance(b, target) - want) || a - b)
+  for (const c of free) {
     if (canCast(engine, fight, me, ks, target, { fromCell: c }) === null) {
       me.cell = c
-      return true
+      return target
     }
   }
-  return false
+  return -1
 }
 
 describe('T-dpt : DPT analytique contre 3 tours simulés (average)', () => {
@@ -86,9 +98,10 @@ describe('T-dpt : DPT analytique contre 3 tours simulés (average)', () => {
         const plan = dpt.turn(me, dummy, me.ap, 'now')
         analytic += plan.mean
         for (const spellId of plan.casts) {
-          expect(placeFor(engine, fight, me, spellId, dummy.cell), `placement ${spellId}`).toBe(true)
+          const cell = placeFor(engine, fight, me, spellId, dummy.cell)
+          expect(cell, `placement ${spellId}`).toBeGreaterThanOrEqual(0)
           const before = dummy.hp + dummy.shield
-          const r = castSpell(engine, fight, me, spellId, dummy.cell)
+          const r = castSpell(engine, fight, me, spellId, cell)
           expect(r.ok, `lancer ${spellId} (${r.failure})`).toBe(true)
           const got = before - (dummy.hp + dummy.shield)
           if (process.env.DPT_DEBUG) console.log(`  tour ${turn} ${spellId} ${me.spells.find(x => x.spellId === spellId)?.name} : ${got}`)
@@ -120,13 +133,14 @@ describe('castDamage = moteur (un lancer, average)', () => {
         const { fight, me, dummy } = dummyFight(engine, breedId)
         engine.nextTurn(fight)
         const ks = me.spells[i]
-        if (!placeFor(engine, fight, me, ks.spellId, dummy.cell)) continue
+        const cell = placeFor(engine, fight, me, ks.spellId, dummy.cell)
+        if (cell < 0) continue
         me.ap = 99
         const lvl = levelFor(me, ks)
         // Analytique AVANT le lancer (un sort peut se buffer lui-même après ses dégâts : Opportunité, Épée Divine).
         const ana = castDamage(me, dummy, profiles.ofFighter(me)[i], ks.isWeapon === true, 1, isMeleeSpell(profiles.ofFighter(me)[i])).centerMean ?? 0
         const before = dummy.hp + dummy.shield
-        if (!castSpell(engine, fight, me, ks.spellId, dummy.cell).ok) continue
+        if (!castSpell(engine, fight, me, ks.spellId, cell).ok) continue
         const sim = before - (dummy.hp + dummy.shield)
         if (sim <= 0 && ana <= 0) continue
         const gap = Math.abs(sim - ana) / Math.max(1, sim)

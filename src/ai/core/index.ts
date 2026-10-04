@@ -18,6 +18,7 @@
  *  value.ts        V(s) → `EvalBreakdown` (`valueOf`)
  *  candidates.ts   candidats génériques C1-C8 (`generateCasts`) et préfiltre `quickEstimate`
  *  perception.ts   `createPerception` (DPT + profils + potentiel + menace synchronisés)
+ *  calibrate.ts    mesure de la calibration du DPT (`measureCalibration`, data/ai/calibration.json)
  */
 import type { Engine } from '../../engine/engine'
 import type { Fighter, FightState } from '../../engine/types'
@@ -36,8 +37,8 @@ export {
   escapeRatioAt, mpSpent, reachPath, type ReachOptions,
 } from './reach'
 export {
-  castCellsFor, castFailureStatic, castGeom, castGeometryOk, firstCastCell, inverseRange, levelFor, LosOracle,
-  nextTurnStaticOk, occupantAfterMove, type CastGeom,
+  castCellsFor, castFailureStatic, castGeom, castGeometryOk, firstCastCell, hitCastCell, inverseRange, levelFor, LosOracle,
+  nextTurnStaticOk, occupantAfterMove, selfZoneHits, type CastGeom,
 } from './castCells'
 export {
   createSpellProfileIndex, maskSides, zoneRadius, type DamageLineX, type HealLineX, type MaskSides, type MoveLineX,
@@ -45,7 +46,7 @@ export {
   type StateLineX,
 } from './spellProfile'
 export {
-  calibrationOf, castDamage, castsAvailable, createDptTable, DptTableImpl, isMeleeSpell, lineDamage, receivedMods,
+  calibrationOf, castDamage, castsAvailable, createDptTable, DptFrame, DptTableImpl, isMeleeSpell, lineDamage, receivedMods,
   spellCritPct, zoneHitsCenter, type CalibrationTable, type CastDamage, type TurnDamage, type TurnMode,
 } from './dpt'
 export {
@@ -56,6 +57,7 @@ export { canKillNow, killProbability, lethalSplit, lifeToKill } from './kill'
 export { bestDpt, enemyThreatIn, pendingDotOn, restOfTurn, valueOf, type ValueOptions } from './value'
 export { generateCasts, quickEstimate, type GenerateOptions } from './candidates'
 export { createPerception, type PerceptionX } from './perception'
+export { CALIBRATION_BOUNDS, measureCalibration, placeForCast, type CalibrationMeasure, type CalibrationOptions } from './calibrate'
 
 /** Chemin vers une case atteignable (accessibilité avec tacle, positions vues par l'équipe de `f`), ou null. */
 export function simplePath(engine: Engine, s: FightState, f: Fighter, to: number): number[] | null {
