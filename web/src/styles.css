@@ -1385,6 +1385,9 @@ body.dragging .drop-hint {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .stat b {
   font-size: 15px;
@@ -1786,5 +1789,12 @@ body.dragging .drop-hint {
   .result-table th,
   .result-table td {
     padding: 3px 2px;
+  }
+  .stat {
+    padding: 6px 6px;
+  }
+  .stat small {
+    font-size: 9.5px;
+    letter-spacing: 0;
   }
 }

@@ -8,7 +8,9 @@ import {
   breedCostTiers,
   costToRaise,
   DEFAULT_STAT_POINT_COSTS,
+  investPoints,
   pointsForStatValue,
+  pointsToReach,
   PRIMARY_STATS,
   statLevel,
   statValueFromPoints,
@@ -136,6 +138,16 @@ describe('stats/characteristicPoints — paliers des classes', () => {
       }, b.id)
       for (const s of PRIMARY_STATS) expect(breedCostTiers(breed, s), `${b.shortName.fr} ${s}`).toEqual(DEFAULT_STAT_POINT_COSTS[s])
     }
+  })
+
+  it('raccourcis par classe : pointsToReach / investPoints', () => {
+    const breed = breedWith({ strength: [[0, 1], [100, 2], [200, 3], [300, 4]], wisdom: [[0, 3]] })
+    expect(pointsToReach(breed, 'strength', 398)).toBe(992)
+    expect(pointsToReach(breed, 'strength', 300, 200)).toBe(300)
+    expect(pointsToReach(breed, 'wisdom', 100)).toBe(300)
+    expect(investPoints(breed, 'strength', 995)).toEqual({ value: 398, spent: 992, leftover: 3 })
+    expect(investPoints(breed, 'wisdom', 10)).toEqual({ value: 3, spent: 9, leftover: 1 })
+    expect(investPoints(undefined, 'vitality', 7, 50)).toEqual({ value: 7, spent: 7, leftover: 0 })
   })
 
   it('accepte les conventions de clés de BreedData.statPointCosts et retombe sur les paliers par défaut', () => {

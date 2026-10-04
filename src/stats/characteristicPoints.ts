@@ -162,6 +162,16 @@ export function statValueFromPoints(tiers: CostTiers, points: number, from = 0):
   return { value: value - Math.max(0, from), spent: invested - remaining, leftover: remaining }
 }
 
+/** Coût (en points) pour faire passer une caractéristique de `from` à `value` pour une classe. */
+export function pointsToReach(breed: BreedData | undefined, stat: PrimaryStat, value: number, from = 0): number {
+  return costToRaise(breedCostTiers(breed, stat), from, value)
+}
+
+/** Gain obtenu en investissant `points` dans une caractéristique d'une classe (depuis la base `from`). */
+export function investPoints(breed: BreedData | undefined, stat: PrimaryStat, points: number, from = 0): StatFromPoints {
+  return statValueFromPoints(breedCostTiers(breed, stat), points, from)
+}
+
 export interface AllocationOptions {
   /**
    * Valeur de base maximale visée dans la caractéristique principale (ex. 300 pour la variante
