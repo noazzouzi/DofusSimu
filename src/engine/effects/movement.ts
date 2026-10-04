@@ -68,11 +68,12 @@ function register(ids: number | number[], handler: (ctx: EffectContext) => void,
 
 /**
  * Les masques T (téléfragué) et W (téléporté sur une case invalide) valent pour le lancer en cours, sous-sorts compris
- * (port : `PendingEffects` de l'exécution du sort). Un lancer de premier niveau est repéré par le nombre de sorts déjà
- * lancés ce tour par le combattant qui joue (`castSpell` l'incrémente avant d'appliquer les effets ; les sous-sorts,
- * déclenchements et marques ne le modifient pas) : au premier effet de déplacement d'un NOUVEAU lancer — quelle que
- * soit sa profondeur (ex. 1099 du sous-sort de *Rembobinage* suivi de 2160 « T ») — les marqueurs du lancer précédent
- * sont effacés (ils le sont aussi à chaque début de tour). Sans allocation (chemin critique de l'IA).
+ * (port : `PendingEffects` de l'exécution du sort). Un lancer de premier niveau est repéré par le nombre total de sorts
+ * lancés depuis le début du tour (`castSpell` incrémente `castsThisTurn` du lanceur avant d'appliquer les effets ; les
+ * sous-sorts, déclenchements et marques ne le modifient pas ; il ne peut que croître pendant un tour) : au premier
+ * effet de déplacement d'un NOUVEAU lancer — quelle que soit sa profondeur (ex. 1099 du sous-sort de *Rembobinage*
+ * suivi de 2160 « T ») — les marqueurs du lancer précédent sont effacés (ils le sont aussi à chaque début de tour).
+ * Sans allocation (chemin critique de l'IA).
  */
 interface CastGeneration {
   round: number
@@ -82,14 +83,14 @@ interface CastGeneration {
 
 const lastCast = new WeakMap<FightState, CastGeneration>()
 
-/** Nombre de sorts lancés ce tour par le combattant qui joue. */
-function castsOfPlayingFighter(fight: FightState): number {
-  const id = fight.timeline[fight.turnIndex]
-  const f = id === undefined ? undefined : fight.fighters[id]
-  if (f === undefined) return 0
+/** Nombre de sorts lancés ce tour (compteurs `castsThisTurn` de tous les combattants). */
+function castsThisTurn(fight: FightState): number {
   let n = 0
-  const casts = f.castsThisTurn
-  for (const k in casts) n += casts[k]
+  const fs = fight.fighters
+  for (let i = 0; i < fs.length; i++) {
+    const casts = fs[i].castsThisTurn
+    for (const k in casts) n += casts[k]
+  }
   return n
 }
 
@@ -104,7 +105,7 @@ function beginMovementEffect(ctx: EffectContext): void {
   const fight = ctx.fight
   const round = fight.round
   const turn = fight.turnIndex
-  const casts = castsOfPlayingFighter(fight)
+  const casts = castsThisTurn(fight)
   const g = lastCast.get(fight)
   if (g === undefined) lastCast.set(fight, { round, turn, casts })
   else if (g.round === round && g.turn === turn && g.casts === casts) return

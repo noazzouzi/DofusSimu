@@ -196,6 +196,26 @@ describe('dommages basés sur les PV érodés', () => {
   })
 })
 
+describe("mode 'average' : critique pondéré seulement là où il existe", () => {
+  it('Morfaille (Vortex 5070, 20 % CC) : le sous-sort 5069 sans liste critique n’ajoute pas de bonus critique', () => {
+    const vortex = createMonsterFighter(data, { monsterId: 3835, grade: 1, cell: CENTER })
+    vortex.baseStats = { ...vortex.baseStats, criticalDamage: 300 }
+    const p1 = player('Cible', 8, [], at(CENTER, 1, 3), {}, { maxHp: 9000 })
+    const p2 = player('Voisin', 8, [], at(p1.cell, 3, 1), { neutralResPct: 10 }, { maxHp: 9000 })
+    const { engine, fight } = setup([vortex, p1, p2], 'average')
+    expect(vortex.stats.criticalDamage).toBe(300)
+    expect(castSpell(engine, fight, vortex, 5070, p1.cell).ok).toBe(true)
+    expect(vortex.tags.critWeight).toBeUndefined()
+    // Anneau C2,1 autour de la cible : le voisin à 1 case prend 100 % des dégâts Neutre (100) et Eau (96).
+    const mean = (el: Element) => {
+      let s = 0
+      for (let r = 41; r <= 50; r++) s += damageRoll(input(vortex, p2, el), r)
+      return Math.round(s / 10)
+    }
+    expect(damages(fight, p2.id).map(e => e.amount)).toEqual([mean(Element.Neutral), mean(Element.Water)])
+  })
+})
+
 describe('nature des dommages', () => {
   it('sous-sort lancé par un effet instantané : dommages directs (DS déclenché), pas indirects', () => {
     const vortex = createMonsterFighter(data, { monsterId: 3835, grade: 1, cell: CENTER })

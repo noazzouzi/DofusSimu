@@ -467,9 +467,26 @@ function reviveHandler(ctx: EffectContext): void {
   }
 }
 
-registerEffect([181, 1011, 1008], 'summons', summonHandler, false)
-registerEffect([180, 1189], 'summons', doubleHandler, false)
+/**
+ * Enregistre un interprète de la famille. Les effets `forClientOnly` (« info-bulle uniquement » : ligne affichée d'un
+ * sort dont l'effet réel est porté par un sous-sort ou exécuté côté serveur) sont ignorés, comme dans les familles
+ * dégâts, déplacements et buffs : les appliquer doublerait l'effet réel (ex. aura 1091 et invocation 181 de
+ * *Barricade*, rune 2022 de *Lance-flamme* — la vraie est posée par le sous-sort 13687 —, portails 1181 de *Stupeur*).
+ */
+function register(ids: number | number[], handler: (ctx: EffectContext) => void, perTarget: boolean): void {
+  registerEffect(
+    ids,
+    'summons',
+    ctx => {
+      if (!ctx.effect.clientOnly) handler(ctx)
+    },
+    perTarget,
+  )
+}
+
+register([181, 1011, 1008], summonHandler, false)
+register([180, 1189], doubleHandler, false)
 // 1024 « Crée des illusions » (4 sorts de monstres) : traité comme 1097 — INCERTAIN.
-registerEffect([1097, 1024], 'summons', illusionsHandler, false)
-registerEffect([405, 2796], 'summons', killAndSummonHandler, true)
-registerEffect([780, 1034, 147], 'summons', reviveHandler, false)
+register([1097, 1024], illusionsHandler, false)
+register([405, 2796], killAndSummonHandler, true)
+register([780, 1034, 147], reviveHandler, false)

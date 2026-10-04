@@ -125,5 +125,22 @@ function castSpellHandler(ctx: EffectContext): void {
   }
 }
 
-registerEffect([...CAST_SPELL_EFFECTS].filter(id => id !== 2960), 'castspell', castSpellHandler, true)
-registerEffect(2960, 'castspell', castSpellHandler, false)
+/**
+ * Enregistre un interprète de la famille. Les effets `forClientOnly` (« info-bulle uniquement » : ligne affichée d'un
+ * sort dont l'effet réel est porté par un sous-sort ou exécuté côté serveur) sont ignorés, comme dans les familles
+ * dégâts, déplacements et buffs : les appliquer doublerait l'effet réel (ex. aura 1091 et invocation 181 de
+ * *Barricade*, rune 2022 de *Lance-flamme* — la vraie est posée par le sous-sort 13687 —, portails 1181 de *Stupeur*).
+ */
+function register(ids: number | number[], handler: (ctx: EffectContext) => void, perTarget: boolean): void {
+  registerEffect(
+    ids,
+    'castspell',
+    ctx => {
+      if (!ctx.effect.clientOnly) handler(ctx)
+    },
+    perTarget,
+  )
+}
+
+register([...CAST_SPELL_EFFECTS].filter(id => id !== 2960), castSpellHandler, true)
+register(2960, castSpellHandler, false)

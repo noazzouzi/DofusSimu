@@ -611,14 +611,31 @@ function usePortalHandler(ctx: EffectContext): void {
 
 // ───────────────────────────── enregistrement ─────────────────────────────
 
-registerEffect(400, 'marks', trapHandler, false)
-registerEffect([401, 402, 4040, 1165], 'marks', glyphHandler, false)
-registerEffect(1091, 'marks', auraHandler, false)
-registerEffect(2022, 'marks', runeHandler, false)
-registerEffect(2023, 'marks', forceRuneHandler, false)
-registerEffect(1026, 'marks', forceGlyphHandler, false)
-registerEffect(1025, 'marks', forceTrapHandler, false)
-registerEffect([2018, 2019, 2024], 'marks', dispelMarksHandler, false)
-registerEffect(1181, 'marks', portalHandler, false)
-registerEffect(1182, 'marks', usePortalHandler, false)
-registerEffect(1183, 'marks', disablePortalHandler, false)
+/**
+ * Enregistre un interprète de la famille. Les effets `forClientOnly` (« info-bulle uniquement » : ligne affichée d'un
+ * sort dont l'effet réel est porté par un sous-sort ou exécuté côté serveur) sont ignorés, comme dans les familles
+ * dégâts, déplacements et buffs : les appliquer doublerait l'effet réel (ex. aura 1091 et invocation 181 de
+ * *Barricade*, rune 2022 de *Lance-flamme* — la vraie est posée par le sous-sort 13687 —, portails 1181 de *Stupeur*).
+ */
+function register(ids: number | number[], handler: (ctx: EffectContext) => void, perTarget: boolean): void {
+  registerEffect(
+    ids,
+    'marks',
+    ctx => {
+      if (!ctx.effect.clientOnly) handler(ctx)
+    },
+    perTarget,
+  )
+}
+
+register(400, trapHandler, false)
+register([401, 402, 4040, 1165], glyphHandler, false)
+register(1091, auraHandler, false)
+register(2022, runeHandler, false)
+register(2023, forceRuneHandler, false)
+register(1026, forceGlyphHandler, false)
+register(1025, forceTrapHandler, false)
+register([2018, 2019, 2024], dispelMarksHandler, false)
+register(1181, portalHandler, false)
+register(1182, usePortalHandler, false)
+register(1183, disablePortalHandler, false)

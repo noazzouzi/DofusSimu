@@ -233,8 +233,8 @@ export function teleportFighter(
     other.tags.telefragged = true
   }
   // Marques : celles du déplacé d'abord (sauf échanges 8 / 1023), puis celles du partenaire (ordre du port).
-  if (other !== undefined) arrive(engine, fight, other, caster)
   if (!isExchange(effectId) && mover.cell === dest) arrive(engine, fight, mover, caster)
+  if (other !== undefined) arrive(engine, fight, other, caster)
   if (other !== undefined) {
     fireMoveTriggers(engine, fight, other, 'MS', caster)
     fireMoveTriggers(engine, fight, mover, 'MS', caster)

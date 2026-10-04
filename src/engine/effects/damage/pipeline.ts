@@ -146,10 +146,28 @@ interface EffectInfo {
   crit: boolean
   /** Effet homologue dans l'autre liste (normal ↔ critique), ou null. */
   counterpart: EffectData | null
+  /**
+   * Le spell-level n'a pas de liste critique : un lancer critique (flag hérité par un sous-sort) y joue les effets
+   * NORMAUX, sans bonus critique (`critApplies` faux) — l'espérance 'average' ne doit donc rien ajouter.
+   */
+  noCritList?: boolean
 }
 
 const EFFECT_INFO = new WeakMap<EffectData, EffectInfo>()
 const NO_INFO: EffectInfo = { crit: false, counterpart: null }
+
+/**
+ * Variante critique d'un effet NORMAL pour l'espérance du mode 'average' : homologue critique (jets critiques +
+ * bonus critiques), `undefined` si un critique ne change rien (spell-level sans liste critique, ex. sous-sort lancé
+ * par un lanceur dont le sort parent peut critiquer : effets normaux, sans bonus). Sans homologue dans une liste
+ * critique (élément remplacé : *Éclair en Série* 99 → 98, *Déchiquetage* 97 → 92) ou effet introuvable : l'effet
+ * lui-même avec les bonus critiques (approximation).
+ */
+function critVariant(ctx: EffectContext, effect: EffectData): EffectData | undefined {
+  const info = effectInfo(ctx, effect)
+  if (info.counterpart) return info.counterpart
+  return info.noCritList ? undefined : effect
+}
 
 /** k-ième effet de même effectId : homologue dans l'autre liste (normal ↔ critique). */
 function homologue(from: readonly EffectData[], index: number, to: readonly EffectData[]): EffectData | null {
@@ -167,7 +185,7 @@ function sameEffect(a: EffectData, b: EffectData): boolean {
 function findInfo(levels: readonly SpellLevelData[], effect: EffectData, eq: (a: EffectData, b: EffectData) => boolean): EffectInfo | undefined {
   for (const lvl of levels) {
     const i = lvl.effects.findIndex(e => eq(e, effect))
-    if (i >= 0) return { crit: false, counterpart: homologue(lvl.effects, i, lvl.criticalEffects) }
+    if (i >= 0) return { crit: false, counterpart: homologue(lvl.effects, i, lvl.criticalEffects), noCritList: lvl.criticalEffects.length === 0 }
     const j = lvl.criticalEffects.findIndex(e => eq(e, effect))
     if (j >= 0) return { crit: true, counterpart: homologue(lvl.criticalEffects, j, lvl.effects) }
   }
@@ -612,8 +630,8 @@ function computeBoosted(ctx: EffectContext, target: Fighter, effect: EffectData,
   if (fight.options.rollMode === 'average') {
     let mean = meanPrepared(p, lo, hi)
     const w = critWeightOf(ctx)
-    if (w > 0) {
-      const cp = effectInfo(ctx, effect).counterpart ?? effect
+    const cp = w > 0 ? critVariant(ctx, effect) : undefined
+    if (cp) {
       input.crit = true
       const pc = prepareDamage(input, PREP_C)
       mean = (1 - w) * mean + w * meanPrepared(pc, diceMin(cp), diceMax(cp))
@@ -688,8 +706,8 @@ function computeUnboosted(ctx: EffectContext, target: Fighter, effect: EffectDat
     for (let v = lo; v <= hi; v++) sum += unboostedOne(spec, v, ref, false)
     let mean = sum / (hi - lo + 1)
     const w = critWeightOf(ctx)
-    if (w > 0) {
-      const cp = effectInfo(ctx, effect).counterpart ?? effect
+    const cp = w > 0 ? critVariant(ctx, effect) : undefined
+    if (cp) {
       const clo = diceMin(cp)
       const chi = diceMax(cp)
       let cs = 0
@@ -862,10 +880,12 @@ export function computeAndApplyDamage(ctx: EffectContext, target: Fighter, effec
   // Les modificateurs sont lus avant l'application : on copie ce qui sert après (les déclencheurs les réécrivent).
   const reflectFlat = mods.reflectFlat
   const reflectBoosted = mods.reflectBoosted
+  // Dommage converti en soin (1164) : ni vol de vie ni renvoi (port D3 : la branche soin n'atteint pas ReceiveDamage).
+  const converted = mods.healRatio > 0
   const lost = deliverDamage(ctx, target, amount, mods, d)
   // Vol de vie : la moitié des PV réellement perdus (× soins finaux), sans déclencher les buffs H (OTOMAI HaxeBuff).
   if (s.steal && target !== caster && lost > 0 && caster.alive) engine.heal(ctx.fight, caster, caster, lifeStealAmount(caster, lost), { noTrigger: true })
-  if (reflectBase > 0 && kind !== 'reflect') {
+  if (reflectBase > 0 && !converted && kind !== 'reflect') {
     MODS.reflectFlat = reflectFlat
     MODS.reflectBoosted = reflectBoosted
     reflect(ctx, target, reflectBase, MODS, element)
@@ -930,8 +950,8 @@ export function computeHeal(ctx: EffectContext, target: Fighter, effect: EffectD
     for (let v = lo; v <= hi; v++) sum += healFormula(v + bonus, caster.stats, o)
     let mean = sum / (hi - lo + 1)
     const w = critWeightOf(ctx)
-    if (w > 0) {
-      const cp = effectInfo(ctx, effect).counterpart ?? effect
+    const cp = w > 0 ? critVariant(ctx, effect) : undefined
+    if (cp) {
       const clo = diceMin(cp)
       const chi = diceMax(cp)
       let cs = 0
@@ -958,8 +978,8 @@ export function rollEffectValue(ctx: EffectContext, effect: EffectData = ctx.eff
   if (ctx.fight.options.rollMode === 'average') {
     let v = (lo + hi) / 2
     const w = critWeightOf(ctx)
-    if (w > 0) {
-      const cp = effectInfo(ctx, effect).counterpart ?? effect
+    const cp = w > 0 ? critVariant(ctx, effect) : undefined
+    if (cp) {
       v = (1 - w) * v + (w * (diceMin(cp) + diceMax(cp))) / 2
     }
     return v
