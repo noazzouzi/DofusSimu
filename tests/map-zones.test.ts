@@ -127,7 +127,7 @@ describe('zones : formes non orientées', () => {
   it('bords de carte : seules les cellules valides, centre invalide → aucune', () => {
     const corner = zoneCells(z('C2,0,10,4'), 0, 14)
     expect(corner.every(c => c >= 0 && c < CELL_COUNT && distance(0, c) <= 2)).toBe(true)
-    expect(corner.length).toBe(6) // (0,0) en coin : x+y ≥ 0 et x−y ≥ 0
+    expect(corner.length).toBe(5) // (0,0) en coin : x ≥ |y| → (0,0), (1,0), (1,±1), (2,0)
     expect(zoneCells(z('C2,0,10,4'), -1, 14)).toEqual([])
     expect(zoneCells(z('C2,0,10,4'), 560, 14)).toEqual([])
   })
@@ -244,7 +244,9 @@ describe('zones : filtres (LdV, cellules marchables)', () => {
     expect(cells).toContain(wall) // la case de l'obstacle elle-même n'a pas d'intermédiaire
     expect(cells).not.toContain(at(2, 0))
     expect(cells).not.toContain(at(5, 0))
-    expect(cells).toContain(at(2, 1))
+    expect(cells).not.toContain(at(2, 1)) // la ligne (0,0)→(2,1) traverse (1,0)
+    expect(cells).toContain(at(0, 2))
+    expect(cells).toContain(at(-3, 0))
     expect(cells).toContain(CENTER)
     expect(isCellInZone(zone, at(3, 0), CENTER, WEST, { blocksLos: c => c === wall })).toBe(false)
   })

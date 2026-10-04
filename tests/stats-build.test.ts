@@ -744,6 +744,22 @@ describe('stats/build — chemin rapide (contributions pré-calculées) et chemi
   })
 })
 
+describe('stats/build — intégration avec le DataStore officiel (src/data/node.ts)', () => {
+  it('mêmes résultats qu\'avec le chargeur local (vecteur Terre §12.2)', async () => {
+    const { loadDataStore } = await import('../src/data/node')
+    const store: BuildDataSource = loadDataStore()
+    const ids = [21235, 19246, 18693, 21229, KOKULTE, 19244, 13115, 22205, 13114, 19245, 18043, OCRE, VULBIS, GLACES, TURQUOISE, 29136]
+    const build = strengthBuild(ids.map(itemId => ({ itemId })))
+    const official = computeBuildStats(build, store)
+    const local = computeBuildStats(build, DATA)
+    expect(official.stats).toEqual(local.stats)
+    expect(official.maxHp).toBe(local.maxHp)
+    expect(official.issues.map(i => i.code)).toEqual(local.issues.map(i => i.code))
+    expect(official.stats.range).toBe(6)
+    expect(store.breed(IOP)?.statPointCosts?.strength).toEqual([[0, 1], [100, 2], [200, 3], [300, 4]])
+  })
+})
+
 describe('stats/build — performance', () => {
   it('agrège un stuff complet de 16 objets rapidement', () => {
     const ids = [21235, 19246, 18693, 21229, KOKULTE, 19244, 13115, 22205, 13114, 19245, 18043, OCRE, VULBIS, GLACES, TURQUOISE, 29136]
