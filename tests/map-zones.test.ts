@@ -14,6 +14,8 @@ import {
   zoneEfficiency,
   zoneMalusPct,
   zoneMembership,
+  zoneTargetsCarried,
+  zoneTargetsDead,
 } from '../src/map/zones'
 
 // Centre de référence au milieu de la carte : (17, −4) = cellule 300.
@@ -299,6 +301,15 @@ describe('zones : ordre, cohérence et API', () => {
     }
     const line = zoneCells(z('l1,63,0,0', 's'), CENTER, WEST)
     expect(line.map(c => distance(WEST, c))).toEqual([1, 2, 3])
+  })
+
+  it('entités portées et mortes : formes a / A et drapeau includeCarried', () => {
+    expect(zoneTargetsCarried(z('a1,0,10,4'))).toBe(true)
+    expect(zoneTargetsCarried(z('A1,0,10,4'))).toBe(true)
+    expect(zoneTargetsCarried(z('C2,0,10,4'))).toBe(false)
+    expect(zoneTargetsCarried(z('P1,0,10,4', 'c'))).toBe(true)
+    expect(zoneTargetsDead(z('A1,0,10,4'))).toBe(true)
+    expect(zoneTargetsDead(z('a1,0,10,4'))).toBe(false)
   })
 
   it('zoneCellsInto réutilise le tableau ; zoneCells renvoie un nouveau tableau', () => {

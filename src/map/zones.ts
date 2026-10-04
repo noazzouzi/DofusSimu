@@ -28,8 +28,10 @@
  *  port ; 5. sinon direction de déplacement la plus proche (`lookDirection4`). Écart assumé : sur un lancer non aligné,
  *  le port renvoie la direction −1 et produit des zones incohérentes (artefact) ; on oriente sur l'axe le plus proche.
  *
- * Performances : zones compilées et mises en cache par objet `ZoneSpec` ; les cellules sont parcourues dans un
- * ordre précalculé (distance croissante à l'origine de la zone) avec arrêt anticipé : pas de tri ni de Set.
+ * Performances : zones compilées et mises en cache par objet `ZoneSpec` ; les formes en rayons (lignes, croix,
+ * étoiles, T, U, B) génèrent leurs candidats le long des directions (O(r)), les autres parcourent un ordre
+ * précalculé (distance croissante à l'origine de la zone) avec arrêt anticipé. Le prédicat d'appartenance reste
+ * l'unique définition de chaque forme (`isCellInZone` ⇔ `zoneCells`, vérifié par les tests).
  */
 import type { ZoneSpec } from '../data/model'
 import {
@@ -463,6 +465,112 @@ function cellsByDistance(origin: number): Int16Array {
   return order
 }
 
+/** Directions des rayons des formes en étoile / croix (relatives ou absolues). */
+const ORTHO_DIRS = [1, 3, 5, 7]
+const DIAG_DIRS = [0, 2, 4, 6]
+const ALL_DIRS = [0, 1, 2, 3, 4, 5, 6, 7]
+/** Clés de tri (aucun rappel extérieur pendant son utilisation). */
+const sortScratch = new Int32Array(CELL_COUNT)
+
+/**
+ * Formes « en rayons » (lignes, croix, étoiles, demi-cercles) : candidats générés le long des directions (O(r))
+ * au lieu d'un balayage ; chaque candidat est ensuite validé par le prédicat (`inFrame`), qui reste la seule
+ * définition de la zone. Résultat trié par (distance à l'origine, id). Renvoie false si la forme n'est pas
+ * concernée.
+ */
+function collectRays(f: Frame, out: number[]): boolean {
+  const z = f.z
+  let dirs: readonly number[]
+  let ox = f.cx
+  let oy = f.cy
+  let from = 1
+  let to = z.radius
+  switch (z.shape) {
+    case 'L':
+    case '/':
+      dirs = [f.dir]
+      from = 0
+      to = f.lineMax
+      break
+    case 'l':
+      dirs = [f.dir]
+      ox = f.kx
+      oy = f.ky
+      to = f.lineMax
+      break
+    case 'T':
+    case '-':
+      dirs = [(f.dir + 2) & 7, (f.dir + 6) & 7]
+      break
+    case 'U':
+      dirs = [(f.dir + 3) & 7, (f.dir + 5) & 7]
+      break
+    case 'X':
+    case 'Q':
+      dirs = ORTHO_DIRS
+      break
+    case '+':
+    case '#':
+      dirs = DIAG_DIRS
+      break
+    case '*':
+      dirs = ALL_DIRS
+      break
+    case 'B':
+      for (const c of f.list!) if (inFrame(f, c)) out.push(c)
+      sortByOrigin(f, out)
+      return true
+    default:
+      return false
+  }
+  if (to > WHOLE_MAP_SPAN) to = WHOLE_MAP_SPAN
+  // Candidats ajoutés directement à `out` : les rappels (LdV, filtre) peuvent réentrer dans ce module.
+  if (z.shape !== 'l' && z.shape !== 'L' && z.shape !== '/' && inFrame(f, f.center)) out.push(f.center)
+  for (const d of dirs) {
+    if (d < 0) continue
+    for (let k = from; k <= to; k++) {
+      const c = pointToCell(ox + DIRECTION_DX[d] * k, oy + DIRECTION_DY[d] * k)
+      if (c < 0) break // la carte est convexe : un rayon sorti n'y revient pas
+      if (inFrame(f, c)) out.push(c)
+    }
+  }
+  sortByOrigin(f, out)
+  return true
+}
+
+/** Trie `out` par (distance de Manhattan à l'origine de la zone, id) et retire les doublons. */
+function sortByOrigin(f: Frame, out: number[]): void {
+  const ox = CELL_X[f.origin]
+  const oy = CELL_Y[f.origin]
+  const n = out.length
+  for (let i = 0; i < n; i++) sortScratch[i] = (Math.abs(CELL_X[out[i]] - ox) + Math.abs(CELL_Y[out[i]] - oy)) * 1024 + out[i]
+  const keys = sortScratch.subarray(0, n).sort()
+  out.length = 0
+  let prev = -1
+  for (let i = 0; i < n; i++) {
+    const c = keys[i] & 1023
+    if (keys[i] !== prev) out.push(c)
+    prev = keys[i]
+  }
+}
+
+/** Distance de Manhattan maximale possible d'une cellule de la zone à son origine (balayage). */
+function maxScanDistance(z: CompiledZone): number {
+  if (z.span >= WHOLE_MAP_SPAN) return Infinity
+  switch (z.shape) {
+    case 'P':
+      return 0
+    case 'C':
+    case 'O':
+    case 'D':
+      return z.radius
+    case 'R':
+      return z.radius + z.minRadius
+    default:
+      return 2 * z.span
+  }
+}
+
 function collect(f: Frame, out: number[]): number[] {
   const z = f.z
   if (z.shape === ';') {
@@ -470,9 +578,18 @@ function collect(f: Frame, out: number[]): number[] {
     return out
   }
   if (z.shape === ' ') return out
+  if (z.shape === 'P') {
+    if (inFrame(f, f.center)) out.push(f.center)
+    return out
+  }
   const order = cellsByDistance(f.origin)
-  // Toute cellule de la zone vérifie max(|dx|, |dy|) ≤ span depuis l'origine, donc d ≤ 2·span.
-  const maxD = z.span >= WHOLE_MAP_SPAN ? Infinity : 2 * z.span
+  if ((z.shape === 'A' || z.shape === 'a') && !f.blocksLos && !f.cellFilter) {
+    for (let i = 0; i < CELL_COUNT; i++) out.push(order[i])
+    return out
+  }
+  if (collectRays(f, out)) return out
+  // Balayage par distance croissante à l'origine, arrêté dès que la distance dépasse le maximum de la forme.
+  const maxD = maxScanDistance(z)
   const ox = CELL_X[f.origin]
   const oy = CELL_Y[f.origin]
   for (let i = 0; i < CELL_COUNT; i++) {
@@ -521,6 +638,20 @@ export function zoneMembership(
   if (center < 0 || center >= CELL_COUNT) return () => false
   const f = makeFrame(compileZone(zone), center, casterCell, opts)
   return cell => cell >= 0 && cell < CELL_COUNT && inFrame(f, cell)
+}
+
+/**
+ * La zone peut-elle toucher une entité PORTÉE (état 8, sur la case du porteur) ? Le port l'exclut de toutes les
+ * zones sauf la forme « a » (et « A ») ; le drapeau `includeCarried` des données l'autorise aussi (mechanics.md §12).
+ */
+export function zoneTargetsCarried(zone: ZoneSpec): boolean {
+  const s = compileZone(zone).shape
+  return s === 'a' || s === 'A' || !!zone.includeCarried
+}
+
+/** La zone touche-t-elle aussi les combattants MORTS ? Seule la forme « A » (résurrections, effets globaux). */
+export function zoneTargetsDead(zone: ZoneSpec): boolean {
+  return compileZone(zone).shape === 'A'
 }
 
 // ───────────────────────────── dégressivité ─────────────────────────────

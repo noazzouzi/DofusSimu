@@ -121,6 +121,85 @@ function randomInput(rng: Rng): DamageInput {
   }
 }
 
+/**
+ * Stats DoMath tirées sur tout le domaine de saisie de l'interface (bornes `ss`, main.e2dd4684.js l.24400),
+ * sauf puissance/caracs limitées à 3000 (l'interface accepte 999 999). `area` = bornes de la distance au centre.
+ */
+function uiDomainStats(rng: Rng, weapon: boolean, area: [number, number]): DomathStats {
+  const i = (a: number, b: number) => rng.int(a, b)
+  const fixed = () => i(-999, 999)
+  return normalizeDomathStats({
+    power: i(-500, 3000),
+    strength: i(-500, 3000),
+    intelligence: i(-500, 3000),
+    luck: i(-500, 3000),
+    agility: i(-500, 3000),
+    damages: {
+      fixed: { damages: fixed(), neutral: fixed(), earth: fixed(), fire: fixed(), water: fixed(), air: fixed(), critical: fixed() },
+      percentage: { sustained: rng.chance(0.5) ? 100 : i(0, 9999), final: i(-100, 9999), spell: i(-100, 999), weapon: i(-100, 999), range: i(-100, 999), melee: i(-100, 999) },
+    },
+    resistances: {
+      fixed: { neutral: fixed(), earth: fixed(), fire: fixed(), water: fixed(), air: fixed(), critical: fixed() },
+      percentage: {
+        neutral: i(-9999, 100),
+        earth: i(-9999, 100),
+        fire: i(-9999, 100),
+        water: i(-9999, 100),
+        air: i(-9999, 100),
+        spell: i(-999, 100),
+        weapon: i(-999, 100),
+        range: i(-999, 100),
+        melee: i(-999, 100),
+      },
+    },
+    hit: { type: weapon ? 'weapon' : 'spell', distance: rng.chance(0.5) ? 'range' : 'melee' },
+    areaDistance: i(area[0], area[1]),
+    portal: { type: rng.chance(0.5) ? 'none' : 'normal', redirection: i(0, 999) },
+  })
+}
+
+const MAIN_STAT = ['strength', 'strength', 'intelligence', 'chance', 'agility'] as const
+const FIXED_DAMAGE = ['neutralDamage', 'earthDamage', 'fireDamage', 'waterDamage', 'airDamage'] as const
+const FIXED_RES = ['neutralRes', 'earthRes', 'fireRes', 'waterRes', 'airRes'] as const
+const RES_PCT = ['neutralResPct', 'earthResPct', 'fireResPct', 'waterResPct', 'airResPct'] as const
+
+/**
+ * Ordre du module Haxe de Dofus 3 (formulas.md §3.5) en rationnels exacts, écrit indépendamment de src/damage :
+ * étapes (1)-(5) communes, puis sorts|armes, distance|mêlée, reçus sorts|armes, reçus distance|mêlée, finaux,
+ * subis — une troncature par facteur. Couvre les options d'entrée utilisées par `randomInput`.
+ */
+function exactHaxeOrder(input: DamageInput, roll: number): number {
+  const B = BigInt
+  const a = input.attacker
+  const d = input.defender
+  const el = input.element
+  const { crit, isWeapon: weapon, isMelee: melee } = input
+  const base = roll + (input.baseDamageBonus ?? 0) + (crit && weapon ? (input.weaponCritBonus ?? 0) : 0)
+  if (base <= 0) return 0
+  const power = Math.max(0, a.power + a[MAIN_STAT[el]] + (weapon ? (input.weaponPower ?? 0) : (input.spellPower ?? 0)))
+  let r = (B(base) * B(100 + power)) / 100n
+  r += B(a[FIXED_DAMAGE[el]] + a.damage + (crit ? a.criticalDamage : 0))
+  if (r < 0n) return 0
+  if (weapon) r = (r * B(100 + (input.weaponSkillPct ?? a.weaponSkillPct))) / 100n
+  const area = Math.max(0, 100 - (input.areaSteps ?? 0) * (input.areaStepPct ?? (weapon ? 25 : 10)))
+  r = (r * B(area) * B(100 + 2 * (input.portalCells ?? 0))) / 10000n
+  r -= B(d[FIXED_RES[el]] + (crit ? d.criticalRes : 0) + (input.armorReduction ?? 0))
+  if (r < 0n) return 0
+  const res = Math.min(d[RES_PCT[el]], input.defenderIsPlayer ? 50 : (input.monsterResCap ?? 100))
+  r = (r * B(100 - res)) / 100n
+  if (r < 0n) r = 0n
+  const factors = [
+    100 + (weapon ? a.weaponDamagePct : a.spellDamagePct),
+    100 + (melee ? a.meleeDamagePct : a.rangedDamagePct),
+    100 - (weapon ? d.weaponResPct : d.spellResPct),
+    100 - (melee ? d.meleeResPct : d.rangedResPct),
+    100 + a.finalDamagePct,
+    input.sustainedPct ?? 100,
+  ]
+  for (const m of factors) r = (r * B(m)) / 100n
+  return r > 0n ? Number(r) : 0
+}
+
 const withStat = (s: Stats, patch: Partial<Stats>): Stats => ({ ...s, ...patch })
 
 // ───────────────────────────── équivalences ─────────────────────────────
@@ -162,6 +241,53 @@ describe('équivalence avec DoMath et avec l’arithmétique exacte', () => {
       expect(Math.abs(a - b)).toBeLessThanOrEqual(Math.max(3, Math.ceil(b * 0.02)))
     }
     expect(diffs / n).toBeLessThan(0.1)
+  })
+
+  it('mode domath = Rg sur tout le domaine saisissable de DoMath (bornes `ss`), jets entiers et « moyens » (x,5)', () => {
+    const rng = new Rng(31337)
+    for (let k = 0; k < 20000; k++) {
+      const weapon = rng.chance(0.4)
+      const s = uiDomainStats(rng, weapon, weapon ? [0, 4] : [0, 9])
+      const el = rng.pick(ELEMENT_KEYS)
+      const crit = rng.chance(0.5)
+      // Mode « dégâts moyens » du simulateur de pièges : jet (min + max) / 2 non arrondi (vecteur domath-damage-043).
+      const base = rng.chance(0.15) ? rng.int(0, 200) + 0.5 : rng.int(0, 300)
+      const expected = Math.max(0, literalRg(s, base, el, crit))
+      expect(domathDamageRoll(s, base, el, crit)).toBe(expected === 0 ? 0 : expected)
+    }
+  })
+
+  it('écart documenté : arme à 5..9 cases du centre (facteur DoMath négatif) — facteur de zone borné à 0', () => {
+    const rng = new Rng(2718)
+    let divergent = 0
+    for (let k = 0; k < 5000; k++) {
+      const s = uiDomainStats(rng, true, [5, 9])
+      const el = rng.pick(ELEMENT_KEYS)
+      const crit = rng.chance(0.5)
+      const base = rng.int(1, 300)
+      const ours = domathDamageRoll(s, base, el, crit)
+      // Toujours le dégât d'une efficacité nulle…
+      expect(ours).toBe(damageRoll({ ...domathToDamageInput(s, el, crit), efficiency: 0 }, base))
+      // … identique à DoMath dès que les résistances fixes soustraites sont ≥ 0 (cas réel).
+      const fixedRes = s.resistances.fixed[el] + (crit ? s.resistances.fixed.critical : 0)
+      const literal = Math.max(0, literalRg(s, base, el, crit))
+      if (fixedRes >= 0) expect(ours).toBe(literal === 0 ? 0 : literal)
+      else if (ours !== literal) divergent++
+    }
+    expect(divergent).toBeGreaterThan(0) // l'écart existe bien (rés. fixes négatives), il est voulu
+  })
+
+  it('ordre Dofus 3 (mode integer) = référence rationnelle exacte (BigInt) de formulas.md §3.5', () => {
+    const rng = new Rng(1618)
+    for (let k = 0; k < 10000; k++) {
+      const input = randomInput(rng)
+      input.order = 'dofus3'
+      input.mode = 'integer'
+      if (rng.chance(0.3)) input.weaponSkillPct = rng.int(-10, 40)
+      if (rng.chance(0.3)) input.armorReduction = rng.int(0, 120)
+      const base = rng.int(0, 120)
+      expect(damageRoll(input, base)).toBe(exactHaxeOrder(input, base))
+    }
   })
 
   it('artefacts documentés (formulas.md §3.4) : zone, %rés, portail', () => {
@@ -268,6 +394,29 @@ describe('plafonds de résistance et bornes', () => {
     expect(damageRoll(base({ ...emptyStats(), earthResPct: 100 }, false), 30)).toBe(0)
     expect(damageRoll(base({ ...emptyStats(), earthResPct: 150 }, false), 30)).toBe(0)
     expect(damageRoll({ ...base({ ...emptyStats(), earthResPct: 150 }, false), monsterResCap: Infinity }, 30)).toBe(0)
+  })
+
+  it('« % Résistance » à tous les éléments (101) : ajoutée AVANT le plafond, visible dans l’explication', () => {
+    const at = (earthResPct: number, isPlayer: boolean, allResPct?: number) =>
+      damageRoll({ ...base({ ...emptyStats(), earthResPct }, isPlayer), allResPct }, 30)
+    expect(at(40, true, 20)).toBe(at(50, true)) // 60 plafonné à 50
+    expect(at(40, true, 5)).toBe(at(45, true))
+    expect(at(40, false, 20)).toBe(at(60, false))
+    expect(at(90, false, 30)).toBe(0) // 120 plafonné à 100 (monstre)
+    expect(at(-20, true, -10)).toBe(at(-30, true)) // pas de plancher
+    const ex = explainDamage({ ...base({ ...emptyStats(), earthResPct: 40 }, true), allResPct: 20 }, 30)
+    expect(ex.params.rawResPct).toBe(60)
+    expect(ex.params.resPct).toBe(50)
+    expect(ex.steps.find(s => s.id === 'percentRes')!.label).toContain('brut 60 %')
+  })
+
+  it('élément non résolu (meilleur / pire / aucun) : erreur explicite au lieu de 0 dégât silencieux', () => {
+    for (const el of [-1, 5, 6, 7, 1.5]) {
+      const input = { ...base(emptyStats(), false), element: el as Element }
+      expect(() => damageRoll(input, 30), `élément ${el}`).toThrow(RangeError)
+      expect(() => explainDamage(input, 30)).toThrow(RangeError)
+      expect(() => expectedDamage(input, null, { min: 1, max: 2 }, 50)).toThrow(RangeError)
+    }
   })
 
   it('pas de plancher : une résistance négative augmente les dégâts, sans plafond pour % sorts/distance', () => {
@@ -377,6 +526,21 @@ describe('plage, espérance et explication', () => {
       const range = damageRange(normal, rolls.min, rolls.max)
       expect(meanN).toBeGreaterThanOrEqual(range.min)
       expect(meanN).toBeLessThanOrEqual(range.max)
+    }
+  })
+
+  it('critInput null ⇒ variante critique de l’entrée normale (tous les champs dépendant du CC)', () => {
+    const rng = new Rng(14)
+    for (let k = 0; k < 2000; k++) {
+      const input = { ...randomInput(rng), crit: false }
+      if (rng.chance(0.5)) input.weaponCritBonus = rng.int(0, 20) // jet + bonus critique (arme)
+      input.attacker.criticalDamage = rng.int(0, 150)
+      input.defender.criticalRes = rng.int(-20, 80)
+      const rolls = { min: rng.int(1, 30), max: 0 }
+      rolls.max = rolls.min + rng.int(0, 10)
+      const c = rng.int(1, 100)
+      expect(expectedDamage(input, null, rolls, c)).toBe(expectedDamage(input, { ...input, crit: true }, rolls, c))
+      expect(input.crit).toBe(false) // l'entrée n'est pas modifiée
     }
   })
 

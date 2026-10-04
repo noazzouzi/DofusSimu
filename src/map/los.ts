@@ -118,14 +118,17 @@ export function lineCells(a: number, b: number): number[] {
  * Ligne de vue de `a` vers `b` : vraie si aucune cellule intermédiaire ne bloque.
  * `blocks` n'est appelé que sur les cellules intermédiaires (obstacles ET entités) ; `targetBlocks`, optionnel,
  * teste la cellule cible (seulement son drapeau `los` : l'entité ciblée ne bloque pas).
- * a == b → vrai.
+ * a == b → vrai. Aucune allocation (lecture directe du cache).
  */
 export function hasLineOfSight(a: number, b: number, blocks: BlocksLos, targetBlocks?: BlocksLos): boolean {
   if (a === b) return !targetBlocks || !targetBlocks(b)
-  const line = losLine(a, b)
-  const last = line.length - 1
-  for (let i = 0; i < last; i++) if (blocks(line[i])) return false
-  return !targetBlocks || last < 0 || !targetBlocks(line[last])
+  if (a < 0 || a >= CELL_COUNT || b < 0 || b >= CELL_COUNT) return false
+  if (!LINE_OFFSETS[a]) linesFrom(a)
+  const off = LINE_OFFSETS[a]!
+  const data = LINE_DATA[a]!
+  const end = off[b + 1] - 1 // index de la cible
+  for (let i = off[b]; i < end; i++) if (blocks(data[i])) return false
+  return !targetBlocks || !targetBlocks(b)
 }
 
 /**
@@ -150,11 +153,14 @@ export function hasLineOfSightOnMap(
   occupied?: (cellId: number) => boolean,
 ): boolean {
   if (a === b) return true
-  const line = losLine(a, b)
-  const last = line.length - 1
-  for (let i = 0; i < last; i++) {
-    const c = line[i]
+  if (a < 0 || a >= CELL_COUNT || b < 0 || b >= CELL_COUNT) return false
+  if (!LINE_OFFSETS[a]) linesFrom(a)
+  const off = LINE_OFFSETS[a]!
+  const data = LINE_DATA[a]!
+  const end = off[b + 1] - 1
+  for (let i = off[b]; i < end; i++) {
+    const c = data[i]
     if (opaque[c] || (occupied && occupied(c))) return false
   }
-  return last < 0 || !opaque[line[last]]
+  return !opaque[b]
 }

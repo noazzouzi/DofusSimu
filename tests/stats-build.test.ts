@@ -1,9 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { emptyStats } from '../src/core/types'
+import { Rng } from '../src/core/rng'
+import { emptyStats, STAT_KEYS, type Stats } from '../src/core/types'
+import { itemSetBonusesFor } from '../src/data/convert'
 import type { BreedData, EquipmentSlot, ItemData, ItemSetData } from '../src/data/model'
 import {
   allocateAll,
+  applyItemEffect,
   baseActionPoints,
   baseLifePoints,
   baseProspecting,
@@ -659,6 +662,12 @@ describe('stats/build — points, parchemins, variantes de sorts, panoplies', ()
 
   it('parchemins plafonnés à 100', () => {
     const r = computeBuildStats({ ...nakedBuild(IOP), scrolls: { chance: 150, wisdom: -1 } }, DATA)
+    const frac = computeBuildStats({ ...nakedBuild(IOP), scrolls: { agility: 12.5, strength: NaN } }, DATA)
+    expect(frac.issues.map(i => [i.code, i.severity])).toEqual([
+      ['scroll', 'error'],
+      ['scroll', 'error'],
+    ])
+    expect(frac.stats.agility).toBe(0)
     expect(r.stats.chance).toBe(100)
     expect(r.additional.chance).toBe(100)
     expect(r.issues.map(i => [i.code, i.severity])).toEqual([
@@ -757,6 +766,226 @@ describe('stats/build — intégration avec le DataStore officiel (src/data/node
     expect(official.issues.map(i => i.code)).toEqual(local.issues.map(i => i.code))
     expect(official.stats.range).toBe(6)
     expect(store.breed(IOP)?.statPointCosts?.strength).toEqual([[0, 1], [100, 2], [200, 3], [300, 4]])
+  })
+})
+
+describe('stats/build — régressions (revue adverse)', () => {
+  it("un `kind: 'over'` déclaré sur une ligne absente ne contourne pas la limite d'un exo PA par personnage", () => {
+    const r = computeBuildStats(
+      strengthBuild([
+        { itemId: HAREBOURG.ring, exos: [{ stat: 'ap', value: 1, kind: 'over' }] },
+        { itemId: HAREBOURG.boots, exos: [{ stat: 'ap', value: 1, kind: 'over' }] },
+        { itemId: HAREBOURG.hat, exos: [{ stat: 'ap', value: 1, kind: 'over' }] },
+      ]),
+      DATA,
+    )
+    expect(r.raw.ap).toBe(7 + 1 + 1) // base + panoplie 3 + UN seul exo
+    expect(r.issues.filter(i => i.code === 'exoLimit')).toHaveLength(2)
+    expect(r.warnings.filter(w => w.includes('exo PA ignoré'))).toHaveLength(2)
+  })
+
+  it('jets invalides (NaN, négatif, non entier) : erreur, jet de la politique retenu, stats finies', () => {
+    for (const bad of [NaN, -3, 80.5, Infinity]) {
+      const r = computeBuildStats(strengthBuild([{ itemId: HAREBOURG.hat, rolls: { 118: bad } }]), DATA)
+      expect(r.valid, String(bad)).toBe(false)
+      expect(r.issues.some(i => i.code === 'rolls' && i.severity === 'error')).toBe(true)
+      expect(r.stats.strength).toBe(398 + 100 + 100) // jet max (politique par défaut)
+      for (const k of STAT_KEYS) expect(Number.isFinite(r.stats[k]), k).toBe(true)
+    }
+  })
+
+  it('niveau de familier invalide : erreur et bonus pleins ; sur un objet non familier : ignoré', () => {
+    for (const bad of [NaN, -1, 101, 50.5]) {
+      const r = computeBuildStats(strengthBuild([{ itemId: KOKULTE, petLevel: bad }]), DATA)
+      expect(r.issues.map(i => [i.code, i.severity]), String(bad)).toEqual([['petLevel', 'error']])
+      expect(r.stats.critical).toBe(15)
+    }
+    const zero = computeBuildStats(strengthBuild([{ itemId: KOKULTE, petLevel: 0 }]), DATA)
+    expect(zero.valid).toBe(true)
+    expect(zero.stats.critical).toBe(0)
+    const notPet = computeBuildStats(strengthBuild([{ itemId: HAREBOURG.hat, petLevel: 10 }]), DATA)
+    expect(notPet.issues.map(i => [i.code, i.severity])).toEqual([['petLevel', 'warning']])
+    expect(notPet.stats.strength).toBe(398 + 100 + 100)
+  })
+
+  it('exos invalides (non entiers, clé inconnue) : refusés et jamais sommés', () => {
+    const r = computeBuildStats(
+      strengthBuild([
+        { itemId: HAREBOURG.ring, exos: [{ stat: 'ap', value: 0.5 }] },
+        { itemId: HAREBOURG.boots, exos: [{ stat: 'nimporte' as never, value: 3 }, { stat: 'agility', value: NaN }] },
+      ]),
+      DATA,
+    )
+    expect(r.valid).toBe(false)
+    expect(r.raw.ap).toBe(7)
+    expect(r.raw.agility).toBe(100)
+    expect(Object.keys(r.stats).sort()).toEqual([...STAT_KEYS].sort())
+    for (const k of STAT_KEYS) expect(Number.isFinite(r.stats[k]), k).toBe(true)
+  })
+
+  it('stats dérivées : arrondi inférieur ⌊x/10⌋ (DofusDB Math.floor), y compris pour un total négatif', () => {
+    // Malus d'Agilité (154), de Sagesse (156) et de Chance (152) sans base : totaux négatifs.
+    const data = synthetic([
+      {
+        id: 1,
+        effects: [
+          { effectId: 154, min: 25, max: 25 },
+          { effectId: 156, min: 1, max: 1 },
+          { effectId: 152, min: 5, max: 5 },
+        ],
+      },
+    ])
+    const r = computeBuildStats({ ...nakedBuild(IOP), items: [{ itemId: 1 }] }, data)
+    expect(r.stats.agility).toBe(-25)
+    expect(r.stats.tackleBlock).toBe(-3) // ⌊−2,5⌋ (la troncature donnerait −2)
+    expect(r.stats.tackleEvade).toBe(-3)
+    expect(r.stats.apParry).toBe(-1) // ⌊−0,1⌋
+    expect(r.stats.mpReduction).toBe(-1)
+    expect(r.stats.prospecting).toBe(99) // 100 + ⌊−0,5⌋
+    expect(r.stats.initiative).toBe(-30)
+  })
+})
+
+// ───────────── implémentation de référence indépendante (algorithme DofusDB de equipment.md §13, écrit littéralement)
+
+/** Valeur de base obtenue avec `p` points (formule de coût de la doc, recherche linéaire). */
+function refBase(stat: 'vitality' | 'wisdom' | 'element', p: number): number {
+  if (stat === 'vitality') return p
+  if (stat === 'wisdom') return Math.floor(p / 3)
+  const cost = (x: number) => (x <= 100 ? x : x <= 200 ? 100 + 2 * (x - 100) : x <= 300 ? 300 + 3 * (x - 200) : 600 + 4 * (x - 300))
+  let x = 0
+  while (cost(x + 1) <= p) x++
+  return x
+}
+
+const REF_CAP_CHARACTERISTICS: Record<number, 'ap' | 'mp' | 'range' | 'summons'> = { 1: 'ap', 23: 'mp', 19: 'range', 26: 'summons' }
+
+function referenceStats(build: CharacterBuild, policy: 'max' | 'min'): { stats: Stats; maxHp: number } {
+  const d = emptyStats()
+  const pts = build.characteristicPoints
+  d.vitality += refBase('vitality', pts.vitality ?? 0)
+  d.wisdom += refBase('wisdom', pts.wisdom ?? 0)
+  for (const k of ['strength', 'intelligence', 'chance', 'agility'] as const) d[k] += refBase('element', pts[k] ?? 0)
+  for (const [k, v] of Object.entries(build.scrolls)) d[k as keyof Stats] += Math.min(100, v)
+  const caps: Partial<Record<'ap' | 'mp' | 'range' | 'summons', number>> = {}
+  const cap = (e: { min: number; max: number }) => {
+    const k = REF_CAP_CHARACTERISTICS[e.min]
+    if (k) caps[k] = Math.min(caps[k] ?? Infinity, e.max)
+  }
+  const setCount = new Map<number, Set<number>>()
+  for (const eq of build.items) {
+    const item = ITEMS.get(eq.itemId)!
+    for (const e of item.effects) {
+      if (e.effectId === 2897) cap(e)
+      else applyItemEffect(d, e.effectId, policy === 'max' ? Math.max(e.min, e.max) : e.min)
+    }
+    if (item.setId !== null) setCount.set(item.setId, (setCount.get(item.setId) ?? new Set()).add(item.id))
+  }
+  for (const [setId, ids] of setCount) {
+    const set = SETS.get(setId)
+    if (!set) continue
+    for (const e of itemSetBonusesFor(set, ids.size)) {
+      if (e.effectId === 2897) cap(e)
+      else applyItemEffect(d, e.effectId, Math.max(e.min, e.max))
+    }
+  }
+  const s = { ...d }
+  s.ap = Math.min(7 + d.ap, caps.ap ?? Infinity, 12)
+  s.mp = Math.min(3 + d.mp, caps.mp ?? Infinity, 6)
+  s.range = Math.min(d.range, caps.range ?? Infinity, 6)
+  s.summons = Math.min(1 + d.summons, caps.summons ?? Infinity, 6)
+  s.initiative = d.initiative + d.agility + d.chance + d.intelligence + d.strength
+  s.prospecting = 100 + Math.floor(d.chance / 10) + d.prospecting
+  s.tackleBlock = Math.floor(d.agility / 10) + d.tackleBlock
+  s.tackleEvade = Math.floor(d.agility / 10) + d.tackleEvade
+  for (const k of ['apParry', 'mpParry', 'apReduction', 'mpReduction'] as const) s[k] = Math.floor(d.wisdom / 10) + d[k]
+  return { stats: s, maxHp: 55 + 5 * 199 + d.vitality }
+}
+
+describe('stats/build — comparaison exhaustive avec une implémentation de référence', () => {
+  const naked = computeBuildStats(nakedBuild(IOP), DATA, { checkConditions: false }).raw
+
+  it('chaque équipement des données, seul : contribution = Σ lignes signées ; chemins rapide et détaillé identiques', () => {
+    let n = 0
+    for (const item of ITEMS.values()) {
+      for (const rollPolicy of ['max', 'min'] as const) {
+        const build = { ...nakedBuild(IOP), items: [{ itemId: item.id }] }
+        const fast = computeBuildStats(build, DATA, { rollPolicy, checkConditions: false })
+        const expected = { ...naked }
+        for (const e of item.effects) {
+          if (e.effectId !== 2897) applyItemEffect(expected, e.effectId, rollPolicy === 'max' ? Math.max(e.min, e.max) : e.min)
+        }
+        // Une panoplie à 1 objet peut donner un bonus (palier « 1 »).
+        const set = item.setId !== null ? SETS.get(item.setId) : undefined
+        if (set) for (const e of itemSetBonusesFor(set, 1)) if (e.effectId !== 2897) applyItemEffect(expected, e.effectId, Math.max(e.min, e.max))
+        expect(fast.raw, `${item.name} (${item.id}) ${rollPolicy}`).toEqual(expected)
+        const slow = computeBuildStats({ ...build, items: [{ itemId: item.id, rolls: {} }] }, DATA, { rollPolicy, checkConditions: false })
+        expect(slow.raw).toEqual(fast.raw)
+        expect(slow.passiveSpells).toEqual(fast.passiveSpells)
+        n++
+      }
+    }
+    expect(n).toBe(2 * ITEMS.size)
+  })
+
+  it('chaque panoplie des données, de 1 à n objets : bonus du palier non cumulatif (src/data itemSetBonusesFor)', () => {
+    let n = 0
+    for (const set of SETS.values()) {
+      const ids = set.items.filter(id => ITEMS.get(id)?.setId === set.id)
+      for (let k = 1; k <= ids.length; k++) {
+        const chosen = ids.slice(0, k)
+        const r = computeBuildStats({ ...nakedBuild(IOP), items: chosen.map(itemId => ({ itemId })) }, DATA, { checkConditions: false })
+        const expected = { ...naked }
+        for (const id of chosen) for (const e of ITEMS.get(id)!.effects) if (e.effectId !== 2897) applyItemEffect(expected, e.effectId, Math.max(e.min, e.max))
+        for (const e of itemSetBonusesFor(set, k)) if (e.effectId !== 2897) applyItemEffect(expected, e.effectId, Math.max(e.min, e.max))
+        expect(r.raw, `${set.name} (${set.id}) × ${k}`).toEqual(expected)
+        expect(r.setBonusCount).toBe(k - 1)
+        n++
+      }
+    }
+    expect(n).toBeGreaterThan(1500)
+  })
+
+  it('500 stuffs aléatoires (panoplies + objets niv. ≥ 150 + familier/monture, jets max et min) : stats finales et PV identiques', () => {
+    const rng = new Rng(20261004)
+    const pick = <T>(a: readonly T[]): T => a[rng.int(0, a.length - 1)]
+    const bySlot = new Map<EquipmentSlot, ItemData[]>()
+    for (const it of ITEMS.values()) {
+      // Familiers/montures : niv. 20-60 dans les données, pas de filtre de niveau.
+      if ((it.level < 150 && it.slot !== 'pet') || it.slot === 'other') continue
+      const list = bySlot.get(it.slot) ?? []
+      list.push(it)
+      bySlot.set(it.slot, list)
+    }
+    const highSets = [...SETS.values()].filter(s => s.items.some(id => (ITEMS.get(id)?.level ?? 0) >= 150))
+    const singleSlots: EquipmentSlot[] = ['amulet', 'belt', 'boots', 'hat', 'cloak', 'shield', 'weapon', 'pet']
+    let capped = 0
+    for (let t = 0; t < 500; t++) {
+      const items: EquippedItem[] = []
+      const used = new Map<EquipmentSlot, number>()
+      const add = (it: ItemData) => {
+        const cap = it.slot === 'ring' ? 2 : it.slot === 'dofus' ? 6 : 1
+        if ((used.get(it.slot) ?? 0) >= cap || items.some(e => e.itemId === it.id && it.slot === 'dofus')) return
+        used.set(it.slot, (used.get(it.slot) ?? 0) + 1)
+        items.push({ itemId: it.id })
+      }
+      // 0 à 3 panoplies (complètes ou partielles), puis complément aléatoire.
+      for (let k = rng.int(0, 3); k > 0; k--) {
+        const set = pick(highSets)
+        for (const id of set.items) if (ITEMS.has(id) && rng.chance(0.8)) add(ITEMS.get(id)!)
+      }
+      for (const slot of singleSlots) if (rng.chance(0.85)) add(pick(bySlot.get(slot)!))
+      for (let k = 0; k < 2; k++) add(pick(bySlot.get('ring')!))
+      for (let k = 0; k < 6; k++) add(pick(bySlot.get('dofus')!))
+      const policy = t % 2 === 0 ? 'max' : 'min'
+      const build = strengthBuild(items, { characteristicPoints: { strength: 600, vitality: 395 } })
+      const r = computeBuildStats(build, DATA, { rollPolicy: policy, checkConditions: false })
+      const ref = referenceStats(build, policy)
+      expect(r.stats, `stuff ${t} : ${items.map(i => i.itemId).join(',')}`).toEqual(ref.stats)
+      expect(r.maxHp).toBe(ref.maxHp)
+      if (r.raw.ap > 12 || r.raw.mp > 6 || r.raw.range > 6) capped++
+    }
+    expect(capped).toBeGreaterThan(20) // les plafonds sont réellement exercés
   })
 })
 

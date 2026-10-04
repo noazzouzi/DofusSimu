@@ -103,6 +103,28 @@ export function targetMaskStates(mask: string): number[] {
 }
 
 /**
+ * États cités par des déclencheurs (`triggers`, séparés par `|`) : `EON#` / `EOFF#` / `EACT#` (le porteur gagne /
+ * perd / active l'état #) et les masques de `EK:<masque>` / `EC:<op><n>:<masque>` (ex. `EK:i,F3833,E234`).
+ * Les autres paramètres (`TR#` = sort, `EC:=n` = nombre) ne sont pas des états.
+ */
+export function triggerStates(triggers: string): number[] {
+  const out: number[] = []
+  if (!triggers || triggers === 'I') return out
+  for (const code of triggers.split('|')) {
+    let ids: number[] = []
+    const st = /^E(?:ON|OFF|ACT)(\d+)$/.exec(code)
+    if (st) ids = [Number(st[1])]
+    else if (code.startsWith('EK:')) ids = targetMaskStates(code.slice(3))
+    else if (code.startsWith('EC:')) {
+      const m = /^EC:[^:]*:(.*)$/.exec(code)
+      if (m) ids = targetMaskStates(m[1])
+    }
+    for (const s of ids) if (!out.includes(s)) out.push(s)
+  }
+  return out
+}
+
+/**
  * Sort référencé par un effet d'objet / de panoplie (1175 sort passif : `min` = sort, `max` = grade ;
  * 722 / 2997 sort temporaire : `value` = sort). Les modificateurs de sort de classe (281-297…) sont ignorés.
  */
@@ -119,6 +141,7 @@ export function effectRefs(e: EffectData): {
   summon?: { monsterId: number; grade: number }
   state?: number
   maskStates: number[]
+  triggerStates: number[]
 } {
   return {
     spell: effectSpellRef(e),
@@ -126,5 +149,6 @@ export function effectRefs(e: EffectData): {
     summon: effectSummonRef(e),
     state: effectStateRef(e),
     maskStates: targetMaskStates(e.targetMask),
+    triggerStates: triggerStates(e.triggers),
   }
 }

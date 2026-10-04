@@ -21,8 +21,9 @@
  *    V#/v# PV < #% / PV ≥ #% · R/r sort lancé / non lancé à travers un portail · Q/q nombre max d'invocations
  *    atteint / non atteint · PB/pb a / n'a pas de bouclier (INCERTAIN) · PR/pr INCERTAIN (rappel `custom`).
  *    Les jetons B#, F#, Z# d'une même famille forment un groupe OU (F3112,F3113 = l'un ou l'autre).
- *  - '*' + lettre d'inclusion (*h, *i, *m, *d, *j, *l, *s) : le LANCEUR est de ce type (écart assumé : le port
- *    ne gère que *h (toujours vrai) et *l, et rejette les autres ; voir le rapport).
+ *  - '*' + lettre d'inclusion (*h, *i, *m, *d, *j, *l, *s) : le LANCEUR est de ce type, ex. « C,*h,e3536 »
+ *    (Potion Magique : le lanceur est un joueur non invoqué) — INCERTAIN ; écart assumé : le port évalue *h comme
+ *    toujours vrai, gère *l et rejette les autres lettres (l'effet ne s'appliquerait jamais).
  *  - Jetons reconnus mais sans effet, comme dans le port : Sce, Atq, Def (INCERTAIN, sorts de monstres hors Vortex).
  * Masque vide : toutes les entités de la zone.
  *
@@ -120,7 +121,11 @@ export interface CompiledMask {
   addsTriggering: boolean
   /** L'entité portée par le lanceur est ajoutée (K). */
   addsCarried: boolean
-  /** Cibles à recalculer au moment de l'effet et non au lancer (U, u, T, W, V, v — effects.md §2.1). */
+  /**
+   * Cibles à recalculer au moment de l'effet et non au lancer : jetons U, u, T, W (effects.md §2.1). Le port teste
+   * aussi « V » / « v » par égalité exacte de jeton : les jetons réels V50, *v50... ne déclenchent donc PAS de
+   * recalcul (INCERTAIN pour le jeu, vérification du 2026-10-04).
+   */
   lateTargeting: boolean
   /** Jetons reconnus mais sans effet (Sce, Atq, Def). */
   ignored: string[]
@@ -133,7 +138,7 @@ export interface CompiledMask {
 const IGNORED_TOKENS = new Set(['Sce', 'Atq', 'Def'])
 const CONDITION_LETTERS = 'EeFfBbZzPpKOoTWUuVvRrQq'
 const OR_FAMILIES = 'BFZ'
-const LATE_CODES = new Set(['U', 'u', 'T', 'W', 'V', 'v'])
+const LATE_CODES = new Set(['U', 'u', 'T', 'W'])
 
 const cache = new Map<string, CompiledMask>()
 
@@ -194,7 +199,7 @@ function buildMask(mask: string): CompiledMask {
     // '*' + lettre d'inclusion : type du lanceur.
     if (onCaster && body.length === 1 && body in INC && !CONDITION_LETTERS.includes(body)) {
       m.casterConditions.push({ code: 'type', value: 0, onCaster, letter: body, group: -1, raw: tok })
-      if (body !== 'h' && body !== 'l') m.uncertain.push(tok)
+      m.uncertain.push(tok)
       continue
     }
     const cond = parseCondition(body, onCaster, tok)
@@ -216,7 +221,7 @@ function buildMask(mask: string): CompiledMask {
       if (cond.code === 'O') m.addsTriggering = true
       if (cond.code === 'K') m.addsCarried = true
     }
-    if (LATE_CODES.has(cond.code)) m.lateTargeting = true
+    if (!onCaster && (LATE_CODES.has(cond.code) || ((cond.code === 'V' || cond.code === 'v') && body.length === 1))) m.lateTargeting = true
     ;(onCaster ? m.casterConditions : m.targetConditions).push(cond)
   }
   m.groupCount = groups.size

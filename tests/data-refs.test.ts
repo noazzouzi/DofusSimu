@@ -14,6 +14,7 @@ import {
   effectSummonRef,
   itemEffectSpellRef,
   targetMaskStates,
+  triggerStates,
 } from '../src/data/refs'
 
 const manifest = JSON.parse(readFileSync('data/dofusdb/manifest.json', 'utf8')) as RawManifest
@@ -58,6 +59,18 @@ describe('effets référents', () => {
     expect(targetMaskStates('a,A,*E4254')).toEqual([4254])
     expect(targetMaskStates('c,E234,e12,E234,F3833')).toEqual([234, 12])
     expect(targetMaskStates('')).toEqual([])
+  })
+
+  it('états cités par les déclencheurs', () => {
+    expect(triggerStates('I')).toEqual([])
+    expect(triggerStates('')).toEqual([])
+    expect(triggerStates('TB|D')).toEqual([])
+    expect(triggerStates('EON99')).toEqual([99])
+    expect(triggerStates('EOFF8|EON98|EACT5|EON98')).toEqual([8, 98, 5])
+    expect(triggerStates('EK:i,F3833,E234')).toEqual([234])
+    expect(triggerStates('EK:a,F12')).toEqual([])
+    expect(triggerStates('EC:=2:m,h,e6611')).toEqual([6611])
+    expect(triggerStates('TR13115|EC:>1:g')).toEqual([]) // TR# = sort, EC:>n = nombre
   })
 
   it('sort référencé par un effet d’objet', () => {

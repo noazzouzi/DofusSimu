@@ -262,6 +262,11 @@ describe('masques : compilation', () => {
     expect(odd.uncertain).toEqual(['Def', 'x', 'u', 'pb'])
     expect(compileTargetMask('').empty).toBe(true)
     expect(compileTargetMask('A').lateTargeting).toBe(false)
-    expect(compileTargetMask('a,A,v50').lateTargeting).toBe(true)
+    // Recalcul tardif : U, u, T, W ; V/v seulement en jeton littéral (comme le port), pas V50 / *v50.
+    expect(compileTargetMask('a,A,v50').lateTargeting).toBe(false)
+    expect(compileTargetMask('a,A,T').lateTargeting).toBe(true)
+    expect(compileTargetMask('A,W').lateTargeting).toBe(true)
+    expect(compileTargetMask('a,A,V').lateTargeting).toBe(true)
+    expect(compileTargetMask('C,*h,e3536').uncertain).toEqual(['*h'])
   })
 })

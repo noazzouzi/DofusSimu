@@ -21,6 +21,7 @@ import type {
   MonsterGrade,
   SpellData,
   SpellLevelData,
+  SummonerShare,
   WeaponData,
   ZoneSpec,
 } from './model'
@@ -118,32 +119,72 @@ export function parseZone(zone: string | undefined, flags = '', cells?: readonly
 const RAW_ZONE_MIN_SIZE_SHAPES = '#+CQRXl'
 
 /**
- * Zone texte Dofus 2 (`item-types.rawZone`, zones d'armes) : `<forme><p0>[,<p1>[,<p2>[,<p3>[,<p4>]]]]`.
- * Formes à taille minimale (# + C Q R X l) : p1 = taille min, p2 = % dégressif, p3 = nb max ;
- * autres : p1 = % dégressif, p2 = nb max. p4 = stopAtTarget. Défauts 10 % / 4 (effects.md §4.1).
- * Ex. Bâton `"T1,10,1"`, Marteau `"X1,0,10,1"`, Pelle `"V1,10,2"`, Lance `"L3,10,3"`, `"P"`.
- * (L'inversion p0/p1 de la forme `l` en Dofus 2 n'est pas gérée : aucune arme ne l'utilise.)
+ * Zone texte Dofus 2 (`item-types.rawZone`, zones d'armes) : `<forme><p0>[,<p1>[,<p2>[,<p3>[,<p4>]]]]`, lue comme
+ * OTOMAI `SpellZone.FromRawZone` : paramètres vides ignorés ; p0 = taille ; formes à taille minimale
+ * (# + C Q R X l) : p1 = taille min, p2 = % dégressif ; autres : p1 = % dégressif, p2 = nb max ; p3 (toutes formes)
+ * = nb max ; p4 = stopAtTarget (1). Défauts du client : taille 1, min 0, 10 %, 4 paliers. Forme `;` : liste de
+ * cellules. Ex. Bâton `"T1,10,1"`, Marteau `"X1,0,10,1"`, Pelle `"V1,10,2"`, Lance `"L3,10,3"`, `"P"`.
+ * Pour `l`, OTOMAI échange p0/p1 pour obtenir (rayon, rayon min) ; ZoneSpec garde l'ordre des données Dofus 3
+ * (size = param1 = distance min, minSize = param2 = longueur), qui est déjà celui de la chaîne : pas d'échange ici.
  */
 export function parseRawZone(raw: string | undefined): ZoneSpec {
-  if (!raw) return POINT_ZONE
+  if (!raw || !raw.trim()) return POINT_ZONE
   return internZone(`raw:${raw}`, () => {
     const shape = raw[0]
-    const p = raw.length > 1 ? raw.slice(1).split(',').map(v => num(v, 0)) : []
+    const p = raw
+      .slice(1)
+      .split(',')
+      .filter(v => v.length > 0)
+      .map(v => num(v, 0))
+    const base = { shape, includeCarried: false, onlyIfInSight: false, forcedDirection: false }
+    if (shape === ';')
+      return { ...base, size: 1, minSize: 0, decreaseStepPct: 10, maxDecreaseCount: 4, stopAtTarget: false, cells: Object.freeze(p) as number[] }
     const withMin = RAW_ZONE_MIN_SIZE_SHAPES.includes(shape)
-    const at = (i: number, def: number) => (i < p.length ? p[i] : def)
+    let minSize = 0
+    let decreaseStepPct = 10
+    let maxDecreaseCount = 4
+    if (withMin) {
+      if (p.length > 1) minSize = p[1]
+      if (p.length > 2) decreaseStepPct = p[2]
+    } else {
+      if (p.length > 1) decreaseStepPct = p[1]
+      if (p.length > 2) maxDecreaseCount = p[2]
+    }
+    if (p.length > 3) maxDecreaseCount = p[3]
     return {
-      shape,
-      size: at(0, shape === 'P' ? 1 : 0),
-      minSize: withMin ? at(1, 0) : 0,
-      decreaseStepPct: at(withMin ? 2 : 1, 10),
-      maxDecreaseCount: at(withMin ? 3 : 2, 4),
-      stopAtTarget: at(4, 0) === 1,
-      includeCarried: false,
-      onlyIfInSight: false,
-      forcedDirection: false,
+      ...base,
+      size: p.length > 0 ? p[0] : 1,
+      minSize,
+      decreaseStepPct,
+      maxDecreaseCount,
+      stopAtTarget: p.length > 4 && p[4] === 1,
       cells: undefined,
     }
   })
+}
+
+/**
+ * Version partagée et gelée d'une zone équivalente (mêmes paramètres, drapeaux et cellules). Une zone déjà gelée
+ * (issue de parseZone / parseRawZone) est renvoyée telle quelle. Sert à ré-interner les zones d'un lot relu depuis
+ * JSON (MemoryDataStore) : le moteur met en cache la compilation des zones par objet (src/map/zones.ts).
+ */
+export function internZoneSpec(z: ZoneSpec): ZoneSpec {
+  if (Object.isFrozen(z)) return z
+  const flags = (z.includeCarried ? 'c' : '') + (z.stopAtTarget ? 's' : '') + (z.forcedDirection ? 'd' : '') + (z.onlyIfInSight ? 'v' : '')
+  const cells = z.cells && z.cells.length ? z.cells : undefined
+  const key = `spec:${z.shape}|${z.size}|${z.minSize}|${z.decreaseStepPct}|${z.maxDecreaseCount}|${flags}|${cells ? cells.join(',') : ''}`
+  return internZone(key, () => ({
+    shape: z.shape,
+    size: z.size,
+    minSize: z.minSize,
+    decreaseStepPct: z.decreaseStepPct,
+    maxDecreaseCount: z.maxDecreaseCount,
+    stopAtTarget: !!z.stopAtTarget,
+    includeCarried: !!z.includeCarried,
+    onlyIfInSight: !!z.onlyIfInSight,
+    forcedDirection: !!z.forcedDirection,
+    cells: cells ? (Object.freeze(cells.slice()) as number[]) : undefined,
+  }))
 }
 
 /** Paramètre numérique de zone ; absent ou invalide => `def`. */
@@ -177,7 +218,8 @@ export function convertEffect(e: RawSpellEffect, defaults: RawEffectDefaults = D
     triggers: e.triggers ?? '',
     dispellable: e.dispellable,
     element: e.effectElement ?? defaults.effectElement,
-    zone: parseZone(e.zone, e.zoneFlags, e.zoneCells),
+    // `rawZone` (texte Dofus 2) seulement si la zone compacte manque (jamais observé dans les données Dofus 3)
+    zone: e.zone || !e.rawZone ? parseZone(e.zone, e.zoneFlags, e.zoneCells) : parseRawZone(e.rawZone),
     triggerDuration: e.effectTriggerDuration ?? defaults.effectTriggerDuration,
     uid: e.effectUid,
     clientOnly: e.forClientOnly ?? defaults.forClientOnly,
@@ -447,8 +489,9 @@ const GRADE_STAT_FIELDS: readonly (readonly [keyof RawMonsterGrade, StatKey])[] 
 ]
 
 /**
- * Clés de `bonusCharacteristics` -> caractéristique runtime (ajoutées aux valeurs du grade).
- * `lifePoints` est traité à part (ajouté aux PV du grade). Les clés inconnues sont ignorées.
+ * Clés de `bonusCharacteristics` -> caractéristique runtime de l'invocateur dont l'invocation reçoit un
+ * pourcentage (MonsterGrade.summonerShare.stats). `lifePoints` est traité à part (`summonerShare.lifePct`).
+ * Les clés inconnues sont ignorées.
  */
 export const MONSTER_BONUS_STATS: Readonly<Record<string, StatKey>> = {
   vitality: 'vitality',
@@ -482,6 +525,32 @@ export const MONSTER_BONUS_STATS: Readonly<Record<string, StatKey>> = {
 /** Résolution d'un id de spell-level (sort de départ) en sort + grade. */
 export type SpellLevelResolver = (levelId: number) => { spellId: number; grade: number } | undefined
 
+/**
+ * `bonusCharacteristics` d'un grade -> part (%) des caractéristiques de l'invocateur (undefined si vide).
+ * Ce ne sont PAS des bonus fixes : ex. `neutralResistance: 100` = 100 % des résistances de l'invocateur, pas
+ * 100 % de résistance (l'invocation serait immunisée) ; `lifePoints: 90` avec des PV de base à 0 = 90 % des PV.
+ */
+export function convertSummonerShare(bonus: RawMonsterGrade['bonusCharacteristics']): SummonerShare | undefined {
+  if (!bonus) return undefined
+  let lifePct = 0
+  let any = false
+  const stats: Partial<Stats> = {}
+  for (const k in bonus) {
+    const v = bonus[k]
+    if (!v) continue
+    if (k === 'lifePoints') {
+      lifePct += v
+      any = true
+      continue
+    }
+    const key = MONSTER_BONUS_STATS[k]
+    if (!key) continue
+    stats[key] = (stats[key] ?? 0) + v
+    any = true
+  }
+  return any ? { lifePct, stats } : undefined
+}
+
 export function convertMonsterGrade(g: RawMonsterGrade, resolveLevel?: SpellLevelResolver): MonsterGrade {
   const stats: Partial<Stats> = {}
   const add = (k: StatKey, v: number | undefined) => {
@@ -490,27 +559,16 @@ export function convertMonsterGrade(g: RawMonsterGrade, resolveLevel?: SpellLeve
   add('ap', g.actionPoints)
   add('mp', g.movementPoints)
   for (const [field, key] of GRADE_STAT_FIELDS) add(key, g[field] as number | undefined)
-  let lifePoints = g.lifePoints ?? 0
-  const bonus = g.bonusCharacteristics
-  if (bonus) {
-    for (const k in bonus) {
-      const v = bonus[k]
-      if (!v) continue
-      if (k === 'lifePoints') lifePoints += v
-      else {
-        const key = MONSTER_BONUS_STATS[k]
-        if (key) add(key, v)
-      }
-    }
-  }
   const out: MonsterGrade = {
     grade: g.grade,
     level: g.level,
-    lifePoints,
+    lifePoints: g.lifePoints ?? 0,
     ap: stats.ap ?? 0,
     mp: stats.mp ?? 0,
     stats,
   }
+  const share = convertSummonerShare(g.bonusCharacteristics)
+  if (share) out.summonerShare = share
   if (g.startingSpellId) {
     out.startingSpellLevelId = g.startingSpellId
     const ref = resolveLevel?.(g.startingSpellId)
@@ -521,7 +579,8 @@ export function convertMonsterGrade(g: RawMonsterGrade, resolveLevel?: SpellLeve
 
 /**
  * Monstre. Les ids de sorts invalides (sentinelle -1) sont retirés avec leur ligne de `spellGrades`.
- * `resolveLevel` résout les sorts de départ (id de spell-level -> sort + grade).
+ * `resolveLevel` résout les sorts de départ (id de spell-level -> sort + grade). `bonusCharacteristics` devient
+ * `summonerShare` (part des caractéristiques de l'invocateur), sans être ajouté aux PV / caractéristiques du grade.
  */
 export function convertMonster(raw: RawMonster, resolveLevel?: SpellLevelResolver): MonsterData {
   const spells: number[] = []
@@ -531,7 +590,7 @@ export function convertMonster(raw: RawMonster, resolveLevel?: SpellLevelResolve
     spells.push(id)
     spellGrades.push((raw.spellGrades[i] ?? []).slice())
   })
-  return {
+  const out: MonsterData = {
     id: raw.id,
     name: textFr(raw.name) || `Monstre ${raw.id}`,
     nameEn: textEn(raw.name),
@@ -554,6 +613,9 @@ export function convertMonster(raw: RawMonster, resolveLevel?: SpellLevelResolve
     useBombSlot: !!raw.useBombSlot,
     summonCost: raw.summonCost ?? 0,
   }
+  if (raw.characRatios?.length) out.characRatios = raw.characRatios.map(([c, r]) => [c, r] as [number, number])
+  if (raw.scaleGradeRef !== undefined) out.scaleGradeRef = raw.scaleGradeRef
+  return out
 }
 
 // ───────────────────────────── cartes ─────────────────────────────

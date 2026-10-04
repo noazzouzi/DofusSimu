@@ -190,10 +190,11 @@ export function criterionValue(code: string, ctx: CriterionContext): number | un
         return raw.ap
       case 'CM':
         return raw.mp
+      // Tacle / Fuite totaux = ⌊Agilité/10⌋ + bonus (arrondi inférieur, comme finalizeStats).
       case 'CT':
-        return Math.trunc(raw.agility / 10) + raw.tackleBlock
+        return Math.floor(raw.agility / 10) + raw.tackleBlock
       case 'Ct':
-        return Math.trunc(raw.agility / 10) + raw.tackleEvade
+        return Math.floor(raw.agility / 10) + raw.tackleEvade
     }
     return undefined
   }

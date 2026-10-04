@@ -5,8 +5,9 @@
  * les effets, invocations, sorts de départ, états).
  */
 import { BaseDataStore, type DataKind } from './base'
+import { internZoneSpec } from './convert'
 import { statesOfCondition } from './criteria'
-import type { BreedData, ItemData, ItemSetData, MapData, MonsterData, SpellData, SpellLevelData } from './model'
+import type { BreedData, EffectData, ItemData, ItemSetData, MapData, MonsterData, SpellData, SpellLevelData } from './model'
 import {
   effectSpellLevelRef,
   effectSpellRef,
@@ -14,11 +15,16 @@ import {
   effectSummonRef,
   itemEffectSpellRef,
   targetMaskStates,
+  triggerStates,
 } from './refs'
 import type { DataStore, GameDataStore, SpellStateData } from './store'
 
 export const BUNDLE_FORMAT = 'dofussimu-data'
-export const BUNDLE_VERSION = 1
+/**
+ * Version du format des lots. 2 : `MonsterGrade.lifePoints` / `stats` sans `bonusCharacteristics` (devenu
+ * `summonerShare`) — les lots de version 1 sont refusés (à régénérer) plutôt que mal interprétés.
+ */
+export const BUNDLE_VERSION = 2
 
 /** Lot de données runtime (tableaux triés par id). */
 export interface DataBundle {
@@ -53,18 +59,35 @@ export class MemoryDataStore extends BaseDataStore {
     this.add(bundle)
   }
 
-  /** Ajoute (ou remplace, à id égal) les données d'un lot. Les objets sont référencés, pas copiés. */
+  /**
+   * Ajoute (ou remplace, à id égal) les données d'un lot. Les objets sont référencés, pas copiés ; seules les
+   * zones relues depuis JSON (non gelées) sont remplacées par leur version partagée (cf. internZoneSpec), pour que
+   * le cache de compilation des zones du moteur reste petit.
+   */
   add(bundle: Partial<DataBundle>): this {
     if (bundle.format !== undefined && bundle.format !== BUNDLE_FORMAT) throw new Error(`Format de lot inconnu : ${bundle.format}`)
-    if (bundle.version !== undefined && bundle.version > BUNDLE_VERSION) throw new Error(`Version de lot non prise en charge : ${bundle.version}`)
+    if (bundle.version !== undefined && bundle.version !== BUNDLE_VERSION)
+      throw new Error(`Version de lot non prise en charge : ${bundle.version} (attendue : ${BUNDLE_VERSION} ; régénérer le lot)`)
     for (const s of bundle.spells ?? []) {
+      const old = this.spells.get(s.id)
+      if (old) for (const l of old.levels) if (l.levelId !== undefined && this.levels.get(l.levelId) === l) this.levels.delete(l.levelId)
       this.spells.set(s.id, s)
-      for (const l of s.levels) if (l.levelId !== undefined) this.levels.set(l.levelId, l)
+      for (const l of s.levels) {
+        if (l.levelId !== undefined) this.levels.set(l.levelId, l)
+        internEffectZones(l.effects)
+        internEffectZones(l.criticalEffects)
+      }
     }
     for (const s of bundle.states ?? []) this.states.set(s.id, s)
     for (const m of bundle.monsters ?? []) this.monsters.set(m.id, m)
     for (const b of bundle.breeds ?? []) this.breeds.set(b.id, b)
-    for (const it of bundle.items ?? []) this.items.set(it.id, it)
+    for (const it of bundle.items ?? []) {
+      if (it.weaponZone) {
+        const z = internZoneSpec(it.weaponZone)
+        if (z !== it.weaponZone) it.weaponZone = z
+      }
+      this.items.set(it.id, it)
+    }
     for (const s of bundle.itemSets ?? []) this.itemSets.set(s.id, s)
     for (const m of bundle.maps ?? []) this.maps.set(m.id, m)
     if (bundle.breeds?.length) this.breedList = undefined
@@ -137,6 +160,14 @@ function sortedValues<T extends { id: number }>(m: Map<number, T>): T[] {
   return [...m.values()].sort((a, b) => a.id - b.id)
 }
 
+/** Remplace les zones non gelées (relues depuis JSON) par leur version internée. */
+function internEffectZones(effects: readonly EffectData[]): void {
+  for (const e of effects) {
+    const z = internZoneSpec(e.zone)
+    if (z !== e.zone) e.zone = z
+  }
+}
+
 // ───────────────────────────── extraction d'un lot ─────────────────────────────
 
 export interface BundleRequest {
@@ -151,7 +182,8 @@ export interface BundleRequest {
   /**
    * Fermeture transitive (défaut : true) : sorts référencés par les effets (lancers, glyphes, pièges, sorts
    * passifs d'objets, portails 1181…), monstres invoqués et leurs sorts, sorts de départ des monstres, états
-   * (effets 950-952, masques E#/e#, conditions de lancer), panoplies des objets.
+   * (effets 950-952, masques E#/e#, déclencheurs EON#/EOFF#/EACT#/EK:/EC:, conditions de lancer), panoplies des
+   * objets.
    */
   closure?: boolean
 }
@@ -258,6 +290,7 @@ export function createBundle(source: DataStore, request: BundleRequest): DataBun
             const state = effectStateRef(e)
             if (state !== undefined) visitState(state)
             for (const ms of targetMaskStates(e.targetMask)) visitState(ms)
+            for (const ts of triggerStates(e.triggers)) visitState(ts)
           }
       }
       continue

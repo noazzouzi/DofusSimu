@@ -245,9 +245,10 @@ export interface RawSpellStatesFile {
 // ───────────────────────────── monstres ─────────────────────────────
 
 /**
- * Bonus de caractéristiques d'un grade (surtout des invocations : bombes, Arakne, poupées…), à ajouter aux
- * valeurs du grade. Clés observées : lifePoints, strength, intelligence, chance, agility, wisdom,
- * <élément>Resistance, bonus<Élément>Damage, tackleEvade, tackleBlock (+ aPRemoval selon la doc API).
+ * Part EN % des caractéristiques de l'invocateur reçue par une invocation (bombes, tourelles, arbres, poupées…) —
+ * pas un bonus fixe (valeurs 50/75/100/200, PV de base à 0) ; cf. model.ts SummonerShare. Clés observées :
+ * lifePoints, strength, intelligence, chance, agility, wisdom, <élément>Resistance, bonus<Élément>Damage,
+ * tackleEvade, tackleBlock (+ aPRemoval selon la doc API).
  */
 export type RawMonsterBonusCharacteristics = Partial<Record<string, number>>
 
@@ -278,6 +279,7 @@ export interface RawMonsterGrade {
   /** Id de SPELL-LEVEL (pas de sort) lancé automatiquement à l'apparition. */
   startingSpellId?: number
   hiddenLevel?: number
+  /** Part (%) des caractéristiques de l'invocateur (cf. RawMonsterBonusCharacteristics). */
   bonusCharacteristics?: RawMonsterBonusCharacteristics
 }
 

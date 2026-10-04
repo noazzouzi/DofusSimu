@@ -91,6 +91,11 @@ export interface DamageInput {
   weaponCritBonus?: number
   /** Réduction fixe d'armure déjà mise à l'échelle (`armorReduction`), soustraite avec les résistances fixes. */
   armorReduction?: number
+  /**
+   * « % Résistance » à tous les éléments de la cible (carac 101, effets 1076/1077), absente de `Stats` :
+   * ajoutée à la % élémentaire AVANT plafonnement (port D3 `HaxeFighter.GetElementMainResist`).
+   */
+  allResPct?: number
   /** Plafond de % résistance d'un monstre (défaut 100 ; `Infinity` = client D2). */
   monsterResCap?: number
   /** Arithmétique : `domath` (défaut, flottants DoMath) ou `integer` (entiers exacts). */
@@ -191,14 +196,29 @@ export function areaEfficiency(
 }
 
 /**
+ * Vérifie qu'un élément est résolu (0..4). Un élément « meilleur » / « pire » (effets 2822/2828/2832, codé 5, 6
+ * ou 7 selon les sources) ou « aucun » (-1) donnerait sinon des NaN, ramenés silencieusement à 0 dégât.
+ */
+export function assertResolvedElement(el: number): asserts el is Element {
+  if (ELEMENT_MAIN_STAT[el as Element] === undefined) {
+    throw new RangeError(`Élément de dégât non résolu : ${el} (attendu 0..4 ; utiliser bestElement / worstElement)`)
+  }
+}
+
+/**
  * Résout les caractéristiques d'un dégât dans `out` (réutilisé si fourni) : aucune allocation.
- * L'élément doit être 0..4 (les éléments « meilleur » / « pire » sont résolus par l'appelant).
+ * L'élément doit être 0..4 (les éléments « meilleur » / « pire » sont résolus par l'appelant) ; sinon RangeError.
  */
 export function prepareDamage(input: DamageInput, out: PreparedDamage = createPreparedDamage()): PreparedDamage {
+  return prepareWithCrit(input, input.crit, out)
+}
+
+/** `prepareDamage` avec le drapeau critique imposé (évite de copier l'entrée pour la variante critique). */
+function prepareWithCrit(input: DamageInput, crit: boolean, out: PreparedDamage): PreparedDamage {
   const a = input.attacker
   const d = input.defender
   const el = input.element
-  const crit = input.crit
+  assertResolvedElement(el)
   const weapon = input.isWeapon
   const melee = input.isMelee
   out.domath = input.mode !== 'integer'
@@ -236,6 +256,9 @@ export function prepareDamage(input: DamageInput, out: PreparedDamage = createPr
     if (steps < 0) steps = 0
     if (input.areaMaxSteps !== undefined && steps > input.areaMaxSteps) steps = input.areaMaxSteps
     // Même expression flottante que DoMath : `1 - areaDistance * .1` (10/100 et .1 sont le même double).
+    // Écart volontaire : facteur borné à 0. DoMath le laisse devenir négatif (arme à 5..9 cases du centre,
+    // saisissable dans son interface) ; avec des résistances fixes négatives, DoMath rend alors 0 là où l'on
+    // rend le dégât d'une efficacité nulle (comme le malus plafonné à 100 % des clients D2/D3).
     const f = 1 - steps * (stepPct / 100)
     out.areaFactor = f > 0 ? f : 0
     const pct = 100 - steps * stepPct
@@ -249,7 +272,7 @@ export function prepareDamage(input: DamageInput, out: PreparedDamage = createPr
 
   // ── Cible ──
   out.fixedRes = d[ELEMENT_RES_FIXED[el]] + (crit ? d.criticalRes : 0) + (input.armorReduction ?? 0)
-  const rawRes = d[ELEMENT_RES_PCT[el]]
+  const rawRes = d[ELEMENT_RES_PCT[el]] + (input.allResPct ?? 0)
   out.rawResPct = rawRes
   out.resPct = effectiveResistPercent(rawRes, input.defenderIsPlayer, input.monsterResCap ?? MONSTER_RES_CAP)
   out.sustainedPct = input.sustainedPct ?? 100
@@ -541,7 +564,8 @@ export function expectedDamage(
   let mean = 0
   if (o < 100) mean += meanPrepared(prepareDamage(normalInput, SCRATCH_A), rolls.min, rolls.max) * (1 - o / 100)
   if (o > 0) {
-    const p = prepareDamage(critInput ?? { ...normalInput, crit: true }, SCRATCH_B)
+    // Variante critique sans copier l'entrée (fonction appelée en boucle par l'IA).
+    const p = critInput !== null ? prepareDamage(critInput, SCRATCH_B) : prepareWithCrit(normalInput, true, SCRATCH_B)
     mean += meanPrepared(p, rolls.critMin ?? rolls.min, rolls.critMax ?? rolls.max) * (o / 100)
   }
   return mean

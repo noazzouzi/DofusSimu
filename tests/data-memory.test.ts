@@ -12,8 +12,9 @@ import {
   mergeBundles,
   type DataBundle,
 } from '../src/data/memory'
+import { statesOfCondition } from '../src/data/criteria'
 import { loadDataStore } from '../src/data/node'
-import { effectSpellRef, effectSummonRef } from '../src/data/refs'
+import { effectSpellRef, effectStateRef, effectSummonRef, targetMaskStates, triggerStates } from '../src/data/refs'
 
 const source = loadDataStore()
 
@@ -71,6 +72,34 @@ describe('createBundle', () => {
       for (const id of m.spells) if (source.spell(id)) expect(spells.has(id)).toBe(true)
       for (const g of m.grades) if (g.startingSpell) expect(spells.has(g.startingSpell.spellId)).toBe(true)
     }
+  })
+
+  it('la fermeture inclut tous les états cités (950-952, masques, déclencheurs EON/EOFF/EACT/EK, conditions)', () => {
+    const states = new Set(fightBundle.states.map(s => s.id))
+    const cited = new Set<number>()
+    for (const s of fightBundle.spells)
+      for (const l of s.levels) {
+        for (const st of statesOfCondition(l.statesCondition)) cited.add(st)
+        for (const e of [...l.effects, ...l.criticalEffects]) {
+          const st = effectStateRef(e)
+          if (st !== undefined) cited.add(st)
+          for (const x of targetMaskStates(e.targetMask)) cited.add(x)
+          for (const x of triggerStates(e.triggers)) cited.add(x)
+        }
+      }
+    let checked = 0
+    for (const id of cited)
+      if (source.state(id)) {
+        expect(states.has(id), `état ${id}`).toBe(true)
+        checked++
+      }
+    expect(checked).toBeGreaterThan(30)
+    // Sadida : l'état 5423 n'est cité que par un déclencheur (EON/EOFF) du sort 13549
+    expect(source.state(5423)).toBeDefined()
+    const sadida = createBundle(source, { breedIds: [10] })
+    const triggers = sadida.spells.find(s => s.id === 13549)!.levels.flatMap(l => [...l.effects, ...l.criticalEffects].flatMap(e => triggerStates(e.triggers)))
+    expect(triggers).toContain(5423)
+    expect(sadida.states.map(s => s.id)).toContain(5423)
   })
 
   it('reste compact (une fraction des données complètes)', () => {
@@ -164,9 +193,39 @@ describe('MemoryDataStore', () => {
     expect(merged.maps).toHaveLength(1)
   })
 
+  it('zones ré-internées après relecture JSON (objets partagés, gelés, identiques en valeur)', () => {
+    const couperet = mem.spellLevel(13115, { grade: 3 })!
+    const [dmg, mp] = couperet.effects
+    expect(Object.isFrozen(dmg.zone)).toBe(true)
+    expect(mp.zone).toBe(dmg.zone) // même zone L3 partagée, comme dans le store Node
+    expect(dmg.zone).toEqual(source.spellLevel(13115, { grade: 3 })!.effects[0].zone)
+    const distinct = new Set(roundTrip.spells.flatMap(s => s.levels.flatMap(l => [...l.effects, ...l.criticalEffects].map(e => e.zone))))
+    const effects = roundTrip.spells.reduce((n, s) => n + s.levels.reduce((k, l) => k + l.effects.length + l.criticalEffects.length, 0), 0)
+    expect(distinct.size).toBeLessThan(effects / 10)
+    expect(Object.isFrozen(mem.item(140)!.weaponZone)).toBe(true)
+    expect(mem.item(140)!.weaponZone).toEqual(source.item(140)!.weaponZone)
+    // objets du store Node (zones déjà internées) : inchangés
+    const s = source.spell(13115)!
+    const before = s.levels[2].effects[0].zone
+    new MemoryDataStore({ spells: [s] })
+    expect(s.levels[2].effects[0].zone).toBe(before)
+  })
+
+  it('remplacer un sort retire ses anciens niveaux de l’index spellLevelById', () => {
+    const store = new MemoryDataStore({ spells: [source.spell(13115)!] })
+    expect(store.spellLevelById(78999)?.grade).toBe(3)
+    const trimmed = { ...source.spell(13115)!, levels: source.spell(13115)!.levels.slice(0, 2) }
+    store.add({ spells: [trimmed] })
+    expect(store.spellLevelById(78999)).toBeUndefined()
+    expect(store.spellLevel(13115, {})?.grade).toBe(2)
+    expect(store.spellLevelById(trimmed.levels[0].levelId!)).toBe(trimmed.levels[0])
+  })
+
   it('refuse un lot d’un autre format ou d’une version future', () => {
     expect(() => new MemoryDataStore({ format: 'autre' as typeof BUNDLE_FORMAT })).toThrow(/Format/)
     expect(() => new MemoryDataStore({ format: BUNDLE_FORMAT, version: BUNDLE_VERSION + 1 })).toThrow(/Version/)
+    // version 1 : PV / caractéristiques des invocations fusionnés avec bonusCharacteristics -> à régénérer
+    expect(() => new MemoryDataStore({ format: BUNDLE_FORMAT, version: 1 })).toThrow(/régénérer/)
   })
 })
 

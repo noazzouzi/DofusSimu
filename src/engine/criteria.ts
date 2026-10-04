@@ -16,7 +16,7 @@
  * ── triggers ──
  *   liste séparée par '|' (OU). 'I' = instantané. Codes sans préfixe C : événement SUBI par le porteur ; codes
  *   « causés » (CC, CI, CD…, K…) : événement CAUSÉ par le porteur. Préfixe X (XD, XPD…) : vaut aussi si
- *   l'événement tue le porteur. Codes paramétrés : EON#, EOFF#, EACT# (état), TR# (seuil du sort #),
+ *   l'événement tue le porteur (INCERTAIN : absent d'OTOMAI, déduit des paires « D|XD »). Codes paramétrés : EON#, EOFF#, EACT# (état), TR# (seuil du sort #),
  *   EK:<masque> (une entité correspondant au masque meurt), EC:<op><n>:<masque> (nombre d'entités).
  */
 import type { StatesClause } from '../data/model'
@@ -367,7 +367,7 @@ const TRIGGER_TABLE: Record<string, Base> = {
   CMPAS: { event: 'mpRemovalSuccess', side: 'caster', label: 'le porteur réussit un retrait de PM' },
   CPD: { event: 'causePushDamage', side: 'caster', label: 'le porteur occasionne des dommages de poussée' },
   PO: { event: 'moveEntity', side: 'caster', label: 'le porteur déplace une entité' },
-  CPT: { event: 'entityPortal', side: 'caster', uncertain: true, label: 'une entité traverse un portail du porteur (INCERTAIN)' },
+  CPT: { event: 'entityPortal', side: 'caster', label: 'une entité traverse un portail (probable)' },
   PST: { event: 'spellThroughPortal', side: 'caster', label: 'sort lancé à travers un portail' },
   PDT: { event: 'damageThroughPortal', side: 'caster', label: 'dommages à travers un portail' },
   CION: { event: 'invisibleOn', side: 'caster', label: 'le porteur devient invisible' },
@@ -377,7 +377,7 @@ const TRIGGER_TABLE: Record<string, Base> = {
   CMPDEP: { event: 'mpUsed', side: 'caster', uncertain: true, label: 'le porteur dépense des PM (INCERTAIN)' },
   CCMPDEP: { event: 'mpUsed', side: 'caster', perMp: true, uncertain: true, label: 'pour chaque PM dépensé par le porteur (INCERTAIN)' },
   CAP: { event: 'apUsed', side: 'caster', uncertain: true, label: 'le porteur utilise des PA (INCERTAIN)' },
-  CT: { event: 'tackle', side: 'caster', uncertain: true, label: 'le porteur tacle (INCERTAIN)' },
+  CT: { event: 'tackle', side: 'caster', label: 'le porteur tacle un ennemi (probable : Grimace, Masque Grimaçant)' },
 }
 
 const VICTIM_TYPES: Record<string, TriggerDescriptor['victimType']> = { H: 'human', M: 'monster', I: 'summon' }
@@ -413,7 +413,8 @@ export function parseTrigger(token: string): TriggerDescriptor | null {
   // Préfixe X : même déclencheur, valable aussi si l'événement tue le porteur.
   if (tok.length > 1 && tok[0] === 'X') {
     const inner = parseTrigger(tok.slice(1))
-    if (inner && inner.event !== 'instant' && !inner.lethal) return { ...inner, raw: tok, lethal: true }
+    // Préfixe absent d'OTOMAI : sens déduit des paires « D|XD », « PD|XPD »... (INCERTAIN).
+    if (inner && inner.event !== 'instant' && !inner.lethal) return { ...inner, raw: tok, lethal: true, uncertain: true }
   }
   let m: RegExpExecArray | null
   if ((m = /^(EON|EOFF|EACT)(\d+)$/.exec(tok))) {

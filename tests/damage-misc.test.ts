@@ -28,6 +28,7 @@ import {
   hpReference,
   initiative,
   lifeSteal,
+  lifeStealHeal,
   midLifeMultiplier,
   pushDamage,
   reflectedDamage,
@@ -101,6 +102,11 @@ describe('soins', () => {
     expect(capHeal(50, 900, 1000)).toBe(50)
     expect(lifeSteal(457)).toBe(228)
     expect(lifeSteal(-10)).toBe(0)
+    // vol élémentaire : dégât (bouclier déduit) puis soin de la moitié, plafonné aux PV manquants du lanceur
+    const hit = applyDamageToPool({ health: 2000, maxHealth: 3000, shield: 100, erosion: 10 }, 457)
+    expect(lifeStealHeal(hit.lifeLost, 1000, 3000)).toBe(178)
+    expect(lifeStealHeal(hit.lifeLost, 2950, 3000)).toBe(50)
+    expect(lifeStealHeal(0, 1000, 3000)).toBe(0)
     expect(healPercentMaxHp(3333, 10)).toBe(333)
     expect(shieldFromMaxHp(3333, 15)).toBe(499)
     expect(shieldFromLevel(200, 125)).toBe(250)
@@ -150,6 +156,16 @@ describe('dégâts basés sur les PV', () => {
     expect(hpBasedDamage({ ...base, element: -1 })).toBe(300)
     expect(hpBasedDamage({ ...base, referenceHp: 0 })).toBe(0)
   })
+  it('armure, « % Résistance » à tous les éléments, élément non résolu', () => {
+    expect(hpBasedDamage({ ...base, armorReduction: 30 })).toBe(187) // 300 − 20 − 30 = 250 × 0,75
+    expect(hpBasedDamage({ ...base, armorReduction: 400 })).toBe(0)
+    expect(hpBasedDamage({ ...base, element: -1, armorReduction: 30 })).toBe(270)
+    expect(hpBasedDamage({ ...base, ignoreResistances: true, armorReduction: 30 })).toBe(300) // 1048 ignore tout
+    expect(hpBasedDamage({ ...base, allResPct: 10 })).toBe(182) // 280 × 0,65
+    expect(hpBasedDamage({ ...base, allResPct: 40, defenderIsPlayer: true })).toBe(140) // 65 plafonné à 50
+    expect(() => hpBasedDamage({ ...base, element: 6 as Element })).toThrow(RangeError)
+  })
+
   it('PV de référence par source et multiplicateur « milieu de vie » (672)', () => {
     const s: HpSnapshot = { casterHp: 1500, casterMaxHp: 2800, casterBaseMaxHp: 3000, targetHp: 900, targetMaxHp: 1800, targetBaseMaxHp: 2000 }
     expect(hpReference('casterLife', s)).toBe(1500)

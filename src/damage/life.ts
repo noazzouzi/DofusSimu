@@ -4,7 +4,7 @@
  * port D3 `DamageSender.GetDamageBasedOnCasterLife` / `DamageReceiver.GetDamageBasedOnTargetLife`.
  */
 import { Element, ELEMENT_RES_FIXED, ELEMENT_RES_PCT, type Stats } from '../core/types'
-import { effectiveResistPercent, MONSTER_RES_CAP } from './damage'
+import { assertResolvedElement, effectiveResistPercent, MONSTER_RES_CAP } from './damage'
 import type { DamageMode } from './math'
 
 /** Érosion de base de tout combattant (%). */
@@ -203,6 +203,10 @@ export interface HpBasedDamageInput {
   defenderIsPlayer: boolean
   /** Coup critique : soustrait aussi les résistances critiques (port D3 `GetFlatResistance`). */
   crit?: boolean
+  /** Réduction d'armure déjà mise à l'échelle (`armorReduction`) : le port D3 l'applique à tout dégât hors poussée. */
+  armorReduction?: number
+  /** « % Résistance » à tous les éléments (carac 101), ajoutée avant plafonnement (cf. `DamageInput.allResPct`). */
+  allResPct?: number
   /** Efficacité de zone (0..1, client D2 ; 672 n'en tient pas compte). Défaut 1. */
   efficiency?: number
   /** Ignore toutes les résistances et multiplicateurs (1048). */
@@ -219,9 +223,11 @@ export interface HpBasedDamageInput {
 }
 
 /**
- * Dégâts basés sur les PV : `trunc(% × PV / 100 × efficacité)` puis − rés. fixes (≥ 0), × (1 − %rés), puis les
- * multiplicateurs choisis (ordre DoMath : subis, finaux, sorts|armes, distance|mêlée, reçus). Non boostés par
- * les caractéristiques ni les dommages fixes. INCERTAIN : multiplicateurs (D2 ≠ D3), cf. formulas.md §5.
+ * Dégâts basés sur les PV : `trunc(% × PV / 100 × efficacité)` puis − rés. fixes (+ critiques, + armure ; ≥ 0),
+ * × (1 − %rés), puis les multiplicateurs choisis (ordre DoMath : subis, finaux, sorts|armes, distance|mêlée,
+ * reçus). Non boostés par les caractéristiques ni les dommages fixes. INCERTAIN : multiplicateurs (D2 ≠ D3), et
+ * rés. fixes pour 1092-1096 (le client D2 ne les soustrait pas, le port D3 si), cf. formulas.md §5.
+ * L'élément doit être 0..4 ou -1 (aucun) ; sinon RangeError.
  */
 export function hpBasedDamage(input: HpBasedDamageInput): number {
   const domath = input.mode !== 'integer'
@@ -233,11 +239,16 @@ export function hpBasedDamage(input: HpBasedDamageInput): number {
   if (input.ignoreResistances) return r
   const d = input.defender
   const el = input.element
-  if (el >= 0) {
-    r -= d[ELEMENT_RES_FIXED[el as Element]] + (input.crit ? d.criticalRes : 0)
+  if (el !== -1) {
+    assertResolvedElement(el)
+    r -= d[ELEMENT_RES_FIXED[el]] + (input.crit ? d.criticalRes : 0) + (input.armorReduction ?? 0)
     if (r <= 0) return 0
-    const res = effectiveResistPercent(d[ELEMENT_RES_PCT[el as Element]], input.defenderIsPlayer, input.monsterResCap ?? MONSTER_RES_CAP)
+    const raw = d[ELEMENT_RES_PCT[el]] + (input.allResPct ?? 0)
+    const res = effectiveResistPercent(raw, input.defenderIsPlayer, input.monsterResCap ?? MONSTER_RES_CAP)
     r = domath ? Math.trunc(r * (1 - res / 100)) : Math.trunc((r * (100 - res)) / 100)
+  } else if (input.armorReduction) {
+    r -= input.armorReduction
+    if (r <= 0) return 0
   }
   r = Math.trunc((r * (input.sustainedPct ?? 100)) / 100)
   const multipliers = input.multipliers ?? 'none'

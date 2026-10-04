@@ -192,15 +192,35 @@ export interface ItemSetData {
   level?: number
 }
 
+/**
+ * Part (en %) des caractéristiques de l'INVOCATEUR reçue par une invocation (DofusDB `bonusCharacteristics`).
+ * Ex. Explobombe 3112 : 90 % des PV, 100 % de Force/Intelligence/Chance/Agilité/Sagesse et des dommages élémentaires ;
+ * tourelles Steamer : 180 % des PV ; Arbre 5894 : 60 % des PV ; Aiguille 8186 : 200 % du Tacle et de la Fuite.
+ * Ce sont des pourcentages, pas des bonus fixes (valeurs 50/75/100/200, PV de base 0 : cf. docs/research/classes/
+ * roublard.md, steamer.md, sadida.md, zobal.md, sacrieur.md, forgelance.md) ; base exacte des PV (PV de base ou max
+ * de l'invocateur) INCERTAINE.
+ */
+export interface SummonerShare {
+  /** % des PV de l'invocateur (0 si absent). */
+  lifePct: number
+  /** % de chaque caractéristique de l'invocateur (clés runtime : strength, earthDamage, tackleBlock, earthResPct…). */
+  stats: Partial<Stats>
+}
+
 export interface MonsterGrade {
   grade: number
   level: number
-  /** PV du grade (bonusCharacteristics.lifePoints inclus ; la vitalité éventuelle est dans `stats.vitality`). */
+  /**
+   * PV propres du grade (la vitalité éventuelle est dans `stats.vitality`). Les PV hérités de l'invocateur
+   * (`summonerShare.lifePct`) n'y sont PAS inclus.
+   */
   lifePoints: number
   ap: number
   mp: number
-  /** Caractéristiques non nulles du grade (bonusCharacteristics fusionnés), `ap`/`mp` inclus. */
+  /** Caractéristiques non nulles propres au grade, `ap`/`mp` inclus (hors part héritée de l'invocateur). */
   stats: Partial<Stats>
+  /** Part des caractéristiques de l'invocateur (bonusCharacteristics), présente seulement si non vide. */
+  summonerShare?: SummonerShare
   /** Id de spell-level brut du sort de départ (DofusDB `startingSpellId`). */
   startingSpellLevelId?: number
   /** Sort de départ résolu (absent si le spell-level n'est pas dans les données extraites). */
@@ -233,6 +253,13 @@ export interface MonsterData {
   canUsePortal?: boolean
   useBombSlot?: boolean
   summonCost?: number
+  /**
+   * Paramètres bruts de mise à l'échelle (DofusDB `characRatios` `[[characteristicId, ratio], …]` : 0 = PV,
+   * 10-15 = caractéristiques, 19 PO, 23 PM, 25 puissance ; et `scaleGradeRef`). Sens exact INCERTAIN
+   * (dofusdb-api.md §5.1, mechanics.md §11) : non appliqués par la couche de données.
+   */
+  characRatios?: [number, number][]
+  scaleGradeRef?: number
 }
 
 export interface BreedData {

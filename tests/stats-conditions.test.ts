@@ -143,6 +143,10 @@ describe('stats/conditions — évaluation', () => {
     c.raw.tackleEvade = 3
     expect(criterionValue('CT', c)).toBe(30)
     expect(criterionValue('Ct', c)).toBe(23)
+    // Agilité totale négative : arrondi inférieur (⌊−2,5⌋ = −3), cohérent avec finalizeStats.
+    c.raw.agility = -25
+    expect(criterionValue('CT', c)).toBe(-3 + 10)
+    expect(criterionValue('Ct', c)).toBe(-3 + 3)
   })
 
   it('bonus de panoplie (Pk), niveau, classe', () => {

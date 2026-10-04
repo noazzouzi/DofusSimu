@@ -156,8 +156,44 @@ describe('stats/forgemagie — options réalistes par objet', () => {
     expect(ids).not.toContain('over:wisdom') // 60 Sagesse = 180 de poids
     const so = opts.find(o => o.id === 'transcendence:20613')!
     expect(so).toMatchObject({ kind: 'transcendence', stat: 'spellDamagePct', value: 1, costTier: 4, oncePerCharacter: false })
-    // Meilleur palier par caractéristique seulement (Rata Vi +100).
-    expect(opts.filter(o => o.kind === 'transcendence' && o.stat === 'vitality').map(o => o.value)).toEqual([100])
+    // Ligne existante déjà au plafond (Vitalité 500, plafond 505 ; Force 100, plafond 101) : aucune transcendance
+    // ne passe (Ta Vi +50 ⇒ 550 > 505), même la plus faible — l'option serait refusée par checkItemForgemagie.
+    expect(opts.filter(o => o.kind === 'transcendence' && o.stat === 'vitality')).toEqual([])
+    expect(opts.filter(o => o.kind === 'transcendence' && o.stat === 'strength')).toEqual([])
+    // Anneau Harebourg (Vitalité 350) : meilleur palier qui tient sous 505 = Rata Vi +100 (450), un seul par stat.
+    const ringOpts = listExoOptions(item(RING_HAREBOURG))
+    expect(ringOpts.filter(o => o.kind === 'transcendence' && o.stat === 'vitality').map(o => o.value)).toEqual([100])
+    // Force 50 : Rata Fo +20 ⇒ 70 ≤ 101.
+    expect(ringOpts.filter(o => o.kind === 'transcendence' && o.stat === 'strength').map(o => o.value)).toEqual([20])
+  })
+
+  it('chaque option proposée, seule sur un objet au jet parfait, est acceptée par checkItemForgemagie (tous les objets)', () => {
+    // Propriété : listExoOptions ne propose que des lignes réalisables (cohérence avec le contrôle, plafond de 101 de
+    // poids inclus pour les transcendances qui s'ajoutent à une ligne existante).
+    let n = 0
+    for (const it of items.values()) {
+      if (!isForgeable(it)) continue
+      const rolls = maxRolls(it)
+      for (const o of listExoOptions(it, { anySlot: true })) {
+        expect(checkItemForgemagie(it, rolls, [o.exo]), `${it.name} (${it.id}) ${o.id}`).toEqual([])
+        expect(o.weight).toBe(lineWeight(o.stat, o.value))
+        expect(o.value).toBeGreaterThanOrEqual(o.minValue)
+        n++
+      }
+    }
+    expect(n).toBeGreaterThan(50000)
+  })
+
+  it('transcendance plafonnée : palier inférieur retenu quand le meilleur dépasse 101 de poids', () => {
+    // Objet synthétique niv. 200 : Puissance 40 (poids 80) ⇒ marge 10 : Rata Pui +12 refusée, Pata Pui +9 retenue.
+    const synthetic: ItemData = {
+      id: 1, name: 'test', typeId: 1, slot: 'amulet', level: 200, setId: null, conditions: '',
+      effects: [{ effectId: 138, min: 31, max: 40 }],
+    }
+    const trans = listExoOptions(synthetic).filter(o => o.kind === 'transcendence' && o.stat === 'power')
+    expect(trans.map(o => o.value)).toEqual([9])
+    expect(checkItemForgemagie(synthetic, [40], [{ stat: 'power', value: 12, kind: 'transcendence' }])).toHaveLength(1)
+    expect(checkItemForgemagie(synthetic, [40], [{ stat: 'power', value: 9, kind: 'transcendence' }])).toEqual([])
   })
 
   it('filtre de coût, emplacements typiques et objets non forgeables', () => {
@@ -249,6 +285,14 @@ describe('stats/forgemagie — contrôle d\'un objet forgemagé', () => {
     expect(checkItemForgemagie(ocre, maxRolls(ocre), [{ stat: 'mp', value: 1 }]).length).toBeGreaterThan(0)
     expect(checkItemForgemagie(ring, maxRolls(ring), [{ stat: 'spellResPct', value: 1 }]).length).toBeGreaterThan(0)
     expect(checkItemForgemagie(ring, maxRolls(ring), [{ stat: 'power', value: 0 }]).length).toBeGreaterThan(0)
+    // Valeurs non entières ou non finies (exos et jets).
+    expect(checkItemForgemagie(ring, maxRolls(ring), [{ stat: 'ap', value: 0.5 }]).length).toBeGreaterThan(0)
+    expect(checkItemForgemagie(ring, maxRolls(ring), [{ stat: 'power', value: NaN }]).length).toBeGreaterThan(0)
+    const rolls = maxRolls(ring)
+    rolls[0] = NaN
+    expect(checkItemForgemagie(ring, rolls, undefined).length).toBeGreaterThan(0)
+    rolls[0] = 340.5
+    expect(checkItemForgemagie(ring, rolls, undefined).length).toBeGreaterThan(0)
   })
 
   it('type de ligne et paliers de coût', () => {
@@ -256,6 +300,10 @@ describe('stats/forgemagie — contrôle d\'un objet forgemagé', () => {
     expect(forgeKind(hat, { stat: 'ap', value: 1 })).toBe('exo')
     expect(forgeKind(hat, { stat: 'earthResPct', value: 3 })).toBe('exo') // seule une ligne malus existe
     expect(forgeKind(hat, { stat: 'vitality', value: 50, kind: 'transcendence' })).toBe('transcendence')
+    // exo / over toujours déduits de l'objet : un `kind` déclaré incohérent est ignoré.
+    expect(forgeKind(hat, { stat: 'ap', value: 1, kind: 'over' })).toBe('exo')
+    expect(forgeKind(hat, { stat: 'strength', value: 1, kind: 'exo' })).toBe('over')
+    expect(exoCostTier(hat, { stat: 'ap', value: 1, kind: 'over' })).toBe(5)
     expect(exoCostTier(hat, { stat: 'ap', value: 1 })).toBe(5)
     expect(exoCostTier(hat, { stat: 'mp', value: 1 })).toBe(5)
     expect(exoCostTier(ring, { stat: 'range', value: 1 })).toBe(4)

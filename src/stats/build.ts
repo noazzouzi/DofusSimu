@@ -32,7 +32,7 @@ import {
 import { evaluateCriterion, explainCriterion, parseCriterion, type ConditionProfile, type CriterionContext } from './conditions'
 import { EFFECT_PASSIVE_SPELL, EFFECT_STAT_CAP, itemEffectSign, itemEffectStatIndex, STAT_BY_CHARACTERISTIC_ID } from './effects'
 import { copyStats, STAT_COUNT, STAT_INDEX, statsFromArray } from './fastStats'
-import { checkItemForgemagie, forgeKind, ONCE_PER_CHARACTER_EXO_STATS, type ExoLine } from './forgemagie'
+import { checkItemForgemagie, forgeKind, isValidForgeValue, ONCE_PER_CHARACTER_EXO_STATS, type ExoLine } from './forgemagie'
 
 // ───────────────────────────── types ─────────────────────────────
 
@@ -48,7 +48,10 @@ export interface EquippedItem {
   rolls?: Record<number, number>
   /** Lignes de forgemagie : exos (ligne absente), overs (ligne existante), transcendances. */
   exos?: ExoLine[]
-  /** Niveau du familier (0-100, type 18) : bonus au prorata, `round(max × niveau / 100)` (INCERTAIN). Défaut 100. */
+  /**
+   * Niveau du familier (entier 0-100, type 18 seulement) : bonus au prorata, `round(jet × niveau / 100)` (INCERTAIN).
+   * Défaut 100. Hors plage ⇒ erreur `petLevel` (bonus pleins) ; sur un objet qui n'est pas un familier ⇒ ignoré.
+   */
   petLevel?: number
 }
 
@@ -125,6 +128,7 @@ export type BuildIssueCode =
   | 'cap'
   | 'spellVariants'
   | 'rolls'
+  | 'petLevel'
 
 export interface BuildIssue {
   /** `error` : build impossible en jeu ; `warning` : build valide mais sous-optimal / à vérifier. */
@@ -209,6 +213,9 @@ const EQUIPMENT_SLOTS = Object.keys(SLOT_CAPACITY) as EquipmentSlot[]
 
 const SPELL_PAIR_COUNT = 22
 
+/** Noms des exos limités à un par personnage (messages). */
+const ONCE_EXO_NAMES_FR = { ap: 'PA', mp: 'PM', range: 'PO' } as const
+
 /** PA de base : 6, +1 dès le niveau 100. */
 export function baseActionPoints(level: number): number {
   return statLevel(level) >= 100 ? 7 : 6
@@ -227,9 +234,13 @@ export function baseProspecting(breedId: number): number {
   return breedId === BREED_ENUTROF ? 120 : 100
 }
 
-/** Division entière façon serveur (troncature vers 0) pour les stats dérivées (⌊Agilité/10⌋…). */
+/**
+ * ⌊v/10⌋ des stats dérivées (Tacle/Fuite = ⌊Agilité/10⌋, Esquive/Retrait = ⌊Sagesse/10⌋, Prospection ⌊Chance/10⌋).
+ * Arrondi INFÉRIEUR (et non troncature) comme le stuff creator DofusDB (`Math.floor`, module `b9bf`) et
+ * equipment.md §3.2 / mechanics.md §6-7 : diffère de la troncature pour une caractéristique totale négative.
+ */
 function div10(v: number): number {
-  return Math.trunc(v / 10)
+  return Math.floor(v / 10)
 }
 
 // ───────────────────────────── jets ─────────────────────────────
@@ -443,7 +454,7 @@ export function computeBuildStats(
   for (let k = 0; k < PRIMARY_STATS.length; k++) {
     const s = PRIMARY_STATS[k]
     const v = build.scrolls[s] ?? 0
-    if (!(v >= 0)) {
+    if (!Number.isInteger(v) || v < 0) {
       error('scroll', `Parchemin invalide en ${PRIMARY_STAT_NAMES_FR[s]} : ${v}`)
       continue
     }
@@ -518,7 +529,16 @@ export function computeBuildStats(
   for (const { eq, item } of resolved) {
     const rolls = eq.rolls
     const exos = eq.exos
-    const petFactor = item.typeId === ITEM_TYPE_PET && eq.petLevel !== undefined ? Math.max(0, Math.min(100, eq.petLevel)) : 100
+    let petFactor = 100
+    if (eq.petLevel !== undefined) {
+      if (item.typeId !== ITEM_TYPE_PET) {
+        warn('petLevel', `${item.name} : niveau de familier ignoré (pas un familier)`, item.id)
+      } else if (!Number.isInteger(eq.petLevel) || eq.petLevel < 0 || eq.petLevel > 100) {
+        error('petLevel', `${item.name} : niveau de familier invalide (${eq.petLevel}, attendu 0-100)`, item.id)
+      } else {
+        petFactor = eq.petLevel
+      }
+    }
     if (!rolls && !exos?.length && petFactor === 100) {
       // Chemin rapide : contributions pré-calculées (cas courant de l'optimiseur).
       const c = compileItem(item)
@@ -542,8 +562,15 @@ export function computeBuildStats(
           addCap(line)
           continue
         }
-        const override = rolls?.[id]
-        if (override !== undefined) usedRolls++
+        let override = rolls?.[id]
+        if (override !== undefined) {
+          usedRolls++
+          if (!Number.isInteger(override) || override < 0) {
+            // Jet invalide (NaN, négatif, non entier) : signalé, remplacé par le jet de la politique (stats finies).
+            error('rolls', `${item.name} : jet invalide (${override}) sur la ligne ${id}`, item.id)
+            override = undefined
+          }
+        }
         let v = override ?? rollEffect(line, policy)
         lineBuffer[i] = v
         if (petFactor !== 100) v = Math.round((v * petFactor) / 100)
@@ -563,15 +590,19 @@ export function computeBuildStats(
     }
     if (exos) {
       for (const line of exos) {
-        if (!(line.value > 0)) continue
+        // Valeur ou caractéristique invalide : signalée par checkItemForgemagie, jamais sommée (stats finies, et pas
+        // d'écriture hors index dans l'accumulateur pour une clé inconnue venue d'un JSON).
+        const index: unknown = STAT_INDEX[line.stat]
+        if (!isValidForgeValue(line.value) || typeof index !== 'number') continue
         if (ONCE_PER_CHARACTER_EXO_STATS.has(line.stat) && forgeKind(item, line) === 'exo') {
           if (onceExoCounted.has(line.stat)) {
-            warn('exoLimit', `${item.name} : exo ${line.stat} ignoré (un seul exo de ce type compté par personnage)`, item.id)
+            const label = ONCE_EXO_NAMES_FR[line.stat as keyof typeof ONCE_EXO_NAMES_FR] ?? line.stat
+            warn('exoLimit', `${item.name} : exo ${label} ignoré (un seul exo de ce type compté par personnage)`, item.id)
             continue
           }
           onceExoCounted.add(line.stat)
         }
-        acc[STAT_INDEX[line.stat]] += line.value
+        acc[index] += line.value
       }
     }
 

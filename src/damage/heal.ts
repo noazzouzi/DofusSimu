@@ -49,6 +49,15 @@ export function lifeSteal(lifeLost: number): number {
   return lifeLost > 0 ? Math.floor(lifeLost / 2) : 0
 }
 
+/**
+ * Soin réellement reçu par le lanceur d'un vol de vie élémentaire : `capHeal(lifeSteal(PV perdus), PV, PV max)`.
+ * `lifeLost` = PV perdus par la cible après bouclier (`applyDamageToPool(...).lifeLost`, DoMath et port D3 ;
+ * le client D2 borne en plus aux PV de la cible : `hpLost`).
+ */
+export function lifeStealHeal(lifeLost: number, casterHp: number, casterMaxHp: number): number {
+  return capHeal(lifeSteal(lifeLost), casterHp, casterMaxHp)
+}
+
 /** Soin de X % des derniers dégâts subis (DoMath `HEAL_LAST_DAMAGE` : `floor(X / 100 × dernierDégât)`). */
 export function healLastDamage(percent: number, lastDamage: number, mode: DamageMode = 'domath'): number {
   const v = mode === 'domath' ? Math.floor((percent / 100) * lastDamage) : Math.floor((percent * lastDamage) / 100)

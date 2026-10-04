@@ -13,7 +13,9 @@ import {
   convertSpell,
   convertSpellLevel,
   convertState,
+  convertSummonerShare,
   expandEffectDefaults,
+  internZoneSpec,
   itemSetBonusesFor,
   parseRawZone,
   parseZone,
@@ -113,6 +115,48 @@ describe('zones', () => {
     // défauts Dofus 3 (10 % × 4) si la dégressivité est omise ; taille min. pour C
     expect(parseRawZone('C2,1')).toMatchObject({ shape: 'C', size: 2, minSize: 1, decreaseStepPct: 10, maxDecreaseCount: 4 })
     expect(parseRawZone(undefined)).toBe(POINT_ZONE)
+    expect(parseRawZone('  ')).toBe(POINT_ZONE)
+  })
+
+  it('zones d’armes : lecture identique à OTOMAI SpellZone.FromRawZone', () => {
+    // taille par défaut 1 pour toutes les formes (DefaultRadius)
+    expect(parseRawZone('X')).toMatchObject({ shape: 'X', size: 1, minSize: 0, decreaseStepPct: 10, maxDecreaseCount: 4 })
+    // p3 = nombre max de paliers pour toutes les formes (écrase p2 pour les formes sans taille min.)
+    expect(parseRawZone('T1,10,1,3')).toMatchObject({ shape: 'T', size: 1, decreaseStepPct: 10, maxDecreaseCount: 3 })
+    expect(parseRawZone('X1,0,25,2')).toMatchObject({ shape: 'X', size: 1, minSize: 0, decreaseStepPct: 25, maxDecreaseCount: 2 })
+    // paramètres vides ignorés (décalage des suivants)
+    expect(parseRawZone('C2,,1')).toMatchObject({ shape: 'C', size: 2, minSize: 1, decreaseStepPct: 10, maxDecreaseCount: 4 })
+    // p4 = stopAtTarget ; `l` garde l'ordre des données (size = distance min., minSize = longueur)
+    expect(parseRawZone('l1,63,0,0,1')).toMatchObject({ shape: 'l', size: 1, minSize: 63, decreaseStepPct: 0, maxDecreaseCount: 0, stopAtTarget: true })
+    expect(parseRawZone('L3,10,3,4,0').stopAtTarget).toBe(false)
+    // liste de cellules
+    const list = parseRawZone(';27,41')
+    expect(list).toMatchObject({ shape: ';', cells: [27, 41] })
+    expect(Object.isFrozen(list.cells)).toBe(true)
+    expect(parseRawZone('T1,10,1')).toBe(parseRawZone('T1,10,1'))
+  })
+
+  it('internZoneSpec : zone relue depuis JSON -> objet partagé et gelé', () => {
+    const z = parseZone('C2,1,10,4', 'cv')
+    expect(internZoneSpec(z)).toBe(z) // déjà interné
+    const copy = JSON.parse(JSON.stringify(z))
+    const a = internZoneSpec(copy)
+    expect(a).not.toBe(copy)
+    expect(a).toEqual(z)
+    expect(Object.isFrozen(a)).toBe(true)
+    expect(internZoneSpec(JSON.parse(JSON.stringify(z)))).toBe(a)
+    // paramètres ou drapeaux différents : objets différents
+    expect(internZoneSpec({ ...copy, onlyIfInSight: false })).not.toBe(a)
+    expect(internZoneSpec({ ...copy, size: 3 })).not.toBe(a)
+    const cells = internZoneSpec({ shape: ';', size: 1, minSize: 0, decreaseStepPct: 10, maxDecreaseCount: 4, stopAtTarget: false, cells: [3, 4] })
+    expect(cells.cells).toEqual([3, 4])
+    expect(internZoneSpec({ shape: ';', size: 1, minSize: 0, decreaseStepPct: 10, maxDecreaseCount: 4, stopAtTarget: false, cells: [3, 5] })).not.toBe(cells)
+    // drapeaux optionnels absents = faux
+    expect(internZoneSpec({ shape: 'P', size: 1, minSize: 0, decreaseStepPct: 10, maxDecreaseCount: 4, stopAtTarget: false })).toMatchObject({
+      includeCarried: false,
+      onlyIfInSight: false,
+      forcedDirection: false,
+    })
   })
 })
 
@@ -138,6 +182,10 @@ describe('effets et sorts', () => {
     expect(poison.clientOnly).toBe(true)
     // défauts d'un autre fichier
     expect(convertEffect(effect(), { ...DEFAULT_EFFECT_DEFAULTS, effectElement: 4 }).element).toBe(4)
+    // zone absente : point ; ancienne zone texte Dofus 2 seulement à défaut de zone compacte
+    expect(convertEffect(effect({ zone: undefined })).zone).toBe(POINT_ZONE)
+    expect(convertEffect(effect({ zone: undefined, rawZone: 'X1,0,10,1' })).zone).toBe(parseRawZone('X1,0,10,1'))
+    expect(convertEffect(effect({ rawZone: 'X1,0,10,1' })).zone).toBe(parseZone('L3,0,10,4'))
   })
 
   it('convertit un grade de sort (critiques, condition d’états compilée, champs additionnels)', () => {
@@ -327,38 +375,74 @@ describe('objets et panoplies', () => {
 })
 
 describe('monstres', () => {
-  it('fusionne les caractéristiques du grade et ses bonusCharacteristics', () => {
+  it('caractéristiques propres du grade ; bonusCharacteristics = part (%) de l’invocateur, non fusionnée', () => {
     const g = convertMonsterGrade({
       grade: 2,
       level: 50,
       lifePoints: 0,
       actionPoints: 6,
       movementPoints: 3,
+      vitality: 10,
       strength: 100,
       earthResistance: 10,
       paDodge: 5,
       pmDodge: 7,
       damageReflect: 12,
       bonusRange: 1,
-      bonusCharacteristics: { lifePoints: 30, strength: 50, earthResistance: 5, tackleBlock: 20, bonusFireDamage: 15, aPRemoval: 4, unknownKey: 99 },
+      bonusCharacteristics: { lifePoints: 30, strength: 50, earthResistance: 5, tackleBlock: 20, bonusFireDamage: 15, aPRemoval: 4, unknownKey: 99, agility: 0 },
     })
-    expect(g.lifePoints).toBe(30)
+    expect(g.lifePoints).toBe(0) // les 30 % de PV de l'invocateur ne sont pas des PV fixes
     expect(g.ap).toBe(6)
     expect(g.mp).toBe(3)
-    expect(g.stats).toEqual({
-      ap: 6,
-      mp: 3,
-      strength: 150,
-      earthResPct: 15,
-      apParry: 5,
-      mpParry: 7,
-      reflect: 12,
-      range: 1,
-      tackleBlock: 20,
-      fireDamage: 15,
-      apReduction: 4,
+    expect(g.stats).toEqual({ ap: 6, mp: 3, vitality: 10, strength: 100, earthResPct: 10, apParry: 5, mpParry: 7, reflect: 12, range: 1 })
+    expect(g.summonerShare).toEqual({
+      lifePct: 30,
+      stats: { strength: 50, earthResPct: 5, tackleBlock: 20, fireDamage: 15, apReduction: 4 },
     })
     expect(g.startingSpellLevelId).toBeUndefined()
+  })
+
+  it('summonerShare : absente sans bonus utile, PV seuls ou caractéristiques seules', () => {
+    const base = { grade: 1, level: 1, lifePoints: 0, actionPoints: 0, movementPoints: 0 }
+    expect(convertSummonerShare(undefined)).toBeUndefined()
+    expect(convertSummonerShare({})).toBeUndefined()
+    expect(convertSummonerShare({ lifePoints: 0, unknownKey: 5 })).toBeUndefined()
+    expect(convertMonsterGrade(base).summonerShare).toBeUndefined()
+    expect(convertMonsterGrade({ ...base, bonusCharacteristics: {} }).summonerShare).toBeUndefined()
+    expect(convertSummonerShare({ lifePoints: 60 })).toEqual({ lifePct: 60, stats: {} })
+    expect(convertSummonerShare({ tackleEvade: 200, tackleBlock: 200 })).toEqual({ lifePct: 0, stats: { tackleEvade: 200, tackleBlock: 200 } })
+    // 100 % des résistances de l'invocateur (et non 100 % de résistance : l'invocation serait immunisée)
+    const res = convertMonsterGrade({ ...base, neutralResistance: 15, bonusCharacteristics: { neutralResistance: 100 } })
+    expect(res.stats.neutralResPct).toBe(15)
+    expect(res.summonerShare?.stats.neutralResPct).toBe(100)
+  })
+
+  it('conserve les paramètres bruts de mise à l’échelle (characRatios, scaleGradeRef)', () => {
+    const raw: RawMonster = {
+      id: 2,
+      name: null,
+      race: 1,
+      isBoss: false,
+      isMiniBoss: false,
+      canPlay: true,
+      canTackle: true,
+      canBePushed: true,
+      canSwitchPos: true,
+      useSummonSlot: false,
+      spells: [],
+      spellGrades: [],
+      grades: [],
+      characRatios: [[0, 1.1], [10, 0.929735]],
+      scaleGradeRef: 6,
+    }
+    const m = convertMonster(raw)
+    expect(m.characRatios).toEqual([[0, 1.1], [10, 0.929735]])
+    expect(m.characRatios).not.toBe(raw.characRatios)
+    expect(m.scaleGradeRef).toBe(6)
+    expect(m.name).toBe('Monstre 2')
+    const bare = convertMonster({ ...raw, characRatios: undefined, scaleGradeRef: undefined })
+    expect('characRatios' in bare).toBe(false)
+    expect('scaleGradeRef' in bare).toBe(false)
   })
 
   it('résout le sort de départ (id de spell-level) et filtre les sorts invalides', () => {

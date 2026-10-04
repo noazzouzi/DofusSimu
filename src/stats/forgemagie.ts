@@ -122,8 +122,9 @@ export const TYPICAL_EXO_SLOTS: ReadonlySet<EquipmentSlot> = new Set<EquipmentSl
 export type ForgeKind = 'exo' | 'over' | 'transcendence'
 
 /**
- * Ligne de forgemagie ajoutée à un objet (`EquippedItem.exos`). `kind` est déduit si absent :
- * `over` si l'objet possède déjà une ligne bonus de cette caractéristique, sinon `exo`.
+ * Ligne de forgemagie ajoutée à un objet (`EquippedItem.exos`). Seul `kind: 'transcendence'` est significatif ;
+ * exo / over sont toujours déduits de l'objet (`over` s'il possède déjà une ligne bonus de cette caractéristique,
+ * sinon `exo`), cf. `forgeKind`.
  */
 export interface ExoLine {
   stat: StatKey
@@ -297,10 +298,20 @@ function naturalLine(item: ItemData, stat: StatKey): { max: number; hasMalus: bo
   return { max, hasMalus, hasLine }
 }
 
-/** Type de ligne d'un exo sur un objet (`kind` explicite, sinon over si la ligne bonus existe déjà). */
+/**
+ * Type de ligne d'un exo sur un objet. Seule la transcendance est prise telle que déclarée (elle ne se déduit pas
+ * de l'objet) ; exo / over sont TOUJOURS déduits des données : over si l'objet possède déjà une ligne bonus de cette
+ * caractéristique, exo sinon. Un `kind: 'over'` déclaré sur une ligne absente ne doit pas permettre de contourner
+ * la limite d'un exo PA/PM/PO par personnage.
+ */
 export function forgeKind(item: ItemData, line: ExoLine): ForgeKind {
-  if (line.kind) return line.kind
+  if (line.kind === 'transcendence') return 'transcendence'
   return naturalLine(item, line.stat).max > 0 ? 'over' : 'exo'
+}
+
+/** Montant de forgemagie valide : entier strictement positif. */
+export function isValidForgeValue(v: number): boolean {
+  return Number.isInteger(v) && v > 0
 }
 
 /** Palier de coût (0-5) d'une ligne de forgemagie sur un objet. */
@@ -387,9 +398,19 @@ export function listExoOptions(item: ItemData, filter: ExoOptionsFilter = {}): E
   }
 
   if (filter.transcendence ?? true) {
+    // Meilleur palier par caractéristique parmi les runes de niveau ≤ objet ET compatibles avec le plafond de 101 de
+    // poids quand la rune s'ajoute à une ligne bonus existante (jet parfait supposé, cf. checkItemForgemagie).
     const best = new Map<StatKey, TranscendenceRune>()
+    const room = new Map<StatKey, number>()
     for (const rune of TRANSCENDENCE_RUNES) {
       if (rune.level > item.level) continue
+      let r = room.get(rune.stat)
+      if (r === undefined) {
+        const nat = naturalLine(item, rune.stat).max
+        r = nat > 0 ? maxLineValue(rune.stat, nat) - nat : Infinity
+        room.set(rune.stat, r)
+      }
+      if (rune.value > r) continue
       const cur = best.get(rune.stat)
       if (!cur || rune.value > cur.value) best.set(rune.stat, rune)
     }
@@ -430,14 +451,14 @@ export function checkItemForgemagie(
     const stat = itemEffectStat(e.effectId)
     if (!stat) continue
     const v = lineValues[i]
-    if (v < 0) errors.push(`${name} : jet négatif (${v}) sur la ligne ${e.effectId}`)
+    if (!(v >= 0) || !Number.isInteger(v)) errors.push(`${name} : jet invalide (${v}) sur la ligne ${e.effectId}`)
     if (itemEffectSign(e.effectId) > 0 && v > Math.max(e.min, e.max)) forged = true
   }
 
   if (hasExos) {
     if (!isForgeable(item)) errors.push(`${name} : objet non forgemageable (exo/over/transcendance impossible)`)
     for (const line of exos) {
-      if (!(line.value > 0)) errors.push(`${name} : valeur d'exo invalide (${line.stat} ${line.value})`)
+      if (!isValidForgeValue(line.value)) errors.push(`${name} : valeur d'exo invalide (${line.stat} ${line.value})`)
       const kind = forgeKind(item, line)
       if (kind === 'transcendence') {
         transcendences++

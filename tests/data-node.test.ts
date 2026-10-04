@@ -207,6 +207,47 @@ describe('classes et sorts', () => {
           seen.add(e.zone.shape)
         }
     expect(seen.size).toBeGreaterThan(20)
+    // Chaque effet de chaque fichier : même lecture que src/map/zones parseZoneString (parseur dupliqué)
+    let compared = 0
+    const mismatches: string[] = []
+    for (const file of ['class-spells.json', 'monster-spells.json', 'item-spells.json'] as const) {
+      const raw = data.rawFile(file)
+      const lists = 'linkedSpells' in raw ? [raw.spells, raw.linkedSpells] : [raw.spells]
+      for (const list of lists)
+        for (const s of list) {
+          const conv = data.spell(s.id)!
+          for (const rl of s.levels) {
+            const l = conv.levels.find(x => x.levelId === rl.id)!
+            const pairs: [typeof rl.effects, typeof l.effects][] = [
+              [rl.effects, l.effects],
+              [rl.criticalEffect, l.criticalEffects],
+            ]
+            for (const [rawList, list] of pairs)
+              rawList.forEach((re, i) => {
+                // effets triés par order (déjà triés dans les données : même index)
+                const e = list[i]
+                const z = e.zone
+                const ref = parseZoneString(re.zone ?? '', re.zoneFlags, re.zoneCells)
+                const same =
+                  e.uid === re.effectUid &&
+                  z.shape === ref.shape &&
+                  z.size === ref.size &&
+                  z.minSize === ref.minSize &&
+                  z.decreaseStepPct === ref.decreaseStepPct &&
+                  z.maxDecreaseCount === ref.maxDecreaseCount &&
+                  z.stopAtTarget === ref.stopAtTarget &&
+                  !!z.includeCarried === !!ref.includeCarried &&
+                  !!z.onlyIfInSight === !!ref.onlyIfInSight &&
+                  !!z.forcedDirection === !!ref.forcedDirection &&
+                  (z.cells ?? []).join() === (ref.cells ?? []).join()
+                if (!same) mismatches.push(`${s.id}:${rl.grade} ${re.zone}|${re.zoneFlags ?? ''}`)
+                compared++
+              })
+          }
+        }
+    }
+    expect(compared).toBeGreaterThan(50_000)
+    expect(mismatches.slice(0, 10)).toEqual([])
     const z = data.spellLevel(13115, { grade: 3 })!.effects[0].zone
     const ref = parseZoneString('L3,0,10,4')
     for (const k of ['shape', 'size', 'minSize', 'decreaseStepPct', 'maxDecreaseCount', 'stopAtTarget'] as const) expect(z[k]).toBe(ref[k])
@@ -303,8 +344,64 @@ describe('monstres', () => {
     for (const m of data.rawFile('monsters.json'))
       for (const g of m.grades)
         for (const k of Object.keys(g.bonusCharacteristics ?? {})) expect(k === 'lifePoints' || k in MONSTER_BONUS_STATS, k).toBe(true)
-    // Arakne (246) : PV de base 0 + 30 de bonus
-    expect(data.monster(246)!.grades[0].lifePoints).toBe(30)
+  })
+
+  it('bonusCharacteristics = part (%) des caractéristiques de l’invocateur, jamais ajoutée au grade', () => {
+    // Explobombe (Roublard) : 90 % des PV, 100 % des caractéristiques et dommages élémentaires de l'invocateur
+    const bomb = data.monster(3112)!.grades[0]
+    expect(bomb.lifePoints).toBe(0)
+    expect(bomb.stats.strength).toBeUndefined()
+    expect(bomb.stats.earthDamage).toBeUndefined()
+    expect(bomb.summonerShare).toEqual({
+      lifePct: 90,
+      stats: { strength: 100, wisdom: 100, chance: 100, agility: 100, intelligence: 100, earthDamage: 100, fireDamage: 100, waterDamage: 100, airDamage: 100 },
+    })
+    // Harponneuse (tourelle Steamer) : 180 % des PV et 100 % du tacle
+    expect(data.monster(5836)!.grades[0].summonerShare).toMatchObject({ lifePct: 180, stats: { tackleBlock: 100 } })
+    // Arbre (Sadida) : 60 % des PV aux grades 1-3, 30 % aux grades 4-6
+    expect(data.monster(5894)!.grades.map(g => g.summonerShare?.lifePct)).toEqual([60, 60, 60, 30, 30, 30])
+    // Arakne : PV de base 0, 30 % des PV de l'invocateur
+    expect(data.monster(246)!.grades[0]).toMatchObject({ lifePoints: 0, summonerShare: { lifePct: 30, stats: {} } })
+    // Monstre sans bonus (Vortex) : pas de summonerShare
+    expect(data.monster(3835)!.grades.every(g => g.summonerShare === undefined)).toBe(true)
+    // Sur toutes les données : PV et caractéristiques du grade = valeurs brutes propres du grade
+    let withShare = 0
+    for (const raw of data.rawFile('monsters.json')) {
+      const m = data.monster(raw.id)!
+      raw.grades.forEach(rg => {
+        const g = m.grades.find(x => x.grade === rg.grade)!
+        expect(g.lifePoints).toBe(rg.lifePoints)
+        expect(g.stats.strength ?? 0).toBe(rg.strength ?? 0)
+        expect(g.stats.neutralResPct ?? 0).toBe(rg.neutralResistance ?? 0)
+        expect(g.stats.tackleBlock).toBeUndefined() // n'existe que dans bonusCharacteristics
+        if (g.summonerShare) withShare++
+      })
+    }
+    expect(withShare).toBeGreaterThan(400)
+  })
+
+  it('characRatios / scaleGradeRef conservés (Ikargn)', () => {
+    const ik = data.monster(3834)!
+    expect(ik.scaleGradeRef).toBe(6)
+    expect(ik.characRatios?.[0]).toEqual([0, 1.1])
+    expect(ik.characRatios?.find(([c]) => c === 23)).toEqual([23, 1])
+  })
+
+  it('tables startingSpellLevels des fichiers de sorts = spellLevelById ; sorts de départ des grades résolus', () => {
+    const tables = [data.rawFile('class-spells.json').startingSpellLevels, data.rawFile('monster-spells.json').startingSpellLevels]
+    let n = 0
+    for (const t of tables)
+      for (const [levelId, spellId] of Object.entries(t)) {
+        const lvl = data.spellLevelById(Number(levelId))
+        expect(lvl?.spellId, `niveau ${levelId}`).toBe(spellId)
+        expect(lvl?.levelId).toBe(Number(levelId))
+        n++
+      }
+    expect(n).toBeGreaterThan(400)
+    // tout sort de départ résolu pointe vers un grade existant du bon sort
+    for (const id of [3833, 3834, 3835, 3836, 3837, 3838, 3839, 3112, 5894])
+      for (const g of data.monster(id)!.grades)
+        if (g.startingSpell) expect(data.spellLevelById(g.startingSpellLevelId!)).toBe(data.spellLevel(g.startingSpell.spellId, { grade: g.startingSpell.grade }))
   })
 })
 
