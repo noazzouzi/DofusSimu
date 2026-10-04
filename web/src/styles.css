@@ -1747,3 +1747,24 @@ body.dragging .drop-hint {
   background: var(--surface-2);
   color: var(--text);
 }
+
+/* très petits écrans (≤ 360 px) : les 7 boutons de lecture et le tableau de résultat tiennent */
+@media (max-width: 360px) {
+  .btn-group {
+    gap: 2px;
+  }
+  .ctl {
+    width: 32px;
+    height: 34px;
+  }
+  .result-card {
+    padding: 14px 12px 10px;
+  }
+  .result-table {
+    font-size: 11.5px;
+  }
+  .result-table th,
+  .result-table td {
+    padding: 3px 4px;
+  }
+}

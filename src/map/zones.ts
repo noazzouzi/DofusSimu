@@ -1,136 +1,633 @@
 /**
- * Zones d'effet des sorts (zoneDescr DofusDB). Les formes sont décrites par un caractère :
- *  P point · C cercle · X croix · L ligne · T ligne perpendiculaire · D damier · O anneau ·
- *  Q croix sans centre · G carré · # / + croix diagonale · U demi-cercle · V cône · W bord de carré ·
- *  R rectangle · A / a toute la carte · - ligne perpendiculaire (alias) · / ligne depuis le lanceur.
- * `size` = param1, `minSize` = param2 (rayon intérieur exclu pour les formes pleines).
+ * Zones d'effet des sorts (zoneDescr DofusDB) : cellules couvertes et dégressivité.
+ *
+ * Référence : portage C# du code Haxe de combat de Dofus 3 (`SpellZone.cs`, .cache/domath/haxe/Tools/),
+ * en suivant les fonctions `IsCellInXxxZone` (celles que le port utilise pour CIBLER : appelées avec
+ * (case testée, case d'impact, case du lanceur)), complétées par les `FillXxx` quand le port est incohérent.
+ * Voir docs/research/effects.md §4 et data/research/zone-and-mask-grammar.json#/zone.
+ *
+ * Paramètres (`ZoneSpec.size` = param1, `ZoneSpec.minSize` = param2) — rayon r, rayon minimal m :
+ *  P point (r = 0) · C cercle m ≤ d ≤ r · O anneau d = r · I tout sauf le losange d < param1 ·
+ *  D damier m ≤ d ≤ r et d ≡ r (mod 2) · X croix (axes) · Q croix sans centre (m ≥ 1) ·
+ *  + croix diagonale · # croix diagonale sans centre (m ≥ 1) · * étoile 8 directions ·
+ *  G carré (Chebyshev ≤ r) · W carré sans ses diagonales (ni le centre) · Z hors du cercle euclidien de rayon r ·
+ *  L ligne depuis l'impact en s'éloignant du lanceur · / idem (dégressivité ÷2) ·
+ *  l ligne depuis le LANCEUR (m = param1, r = param2 : cases à m..r du lanceur ; stopAtTarget = jusqu'à la case
+ *  ciblée) · T / - ligne perpendiculaire à lanceur→impact · U demi-cercle (branches dir ± 3, vers le lanceur) ·
+ *  V cône (profondeur ≤ r, largeur ≤ profondeur, orientation 4 directions) · F fourche (3 dents, orientation
+ *  4 directions) · R rectangle (demi-largeur param1, profondeur param2) · B boomerang · A / a toute la carte ·
+ *  ; liste explicite de cellules (`ZoneSpec.cells`).
+ *
+ * Distances : d = Manhattan |dx| + |dy| depuis l'impact ; le long d'une diagonale logique (direction paire),
+ * les formes orientées comptent des PAS diagonaux (d >> 1), comme le client.
+ *
+ * Orientation (formes L, l, /, T, -, U, R, B : 8 directions ; V, F : 4 directions comme le port) :
+ *  1. `opts.direction` si fourni ; 2. `forcedDirection` : direction = `maxDecreaseCount` (le port lit la direction
+ *  forcée dans le même paramètre que le nombre de paliers — INCERTAIN, seulement des sorts de monstres hors Vortex) ;
+ *  3. direction exacte lanceur → impact s'ils sont alignés ; 4. lanceur = impact : 1 (8 dir.) / 3 (4 dir.), comme le
+ *  port ; 5. sinon direction de déplacement la plus proche (`lookDirection4`). Écart assumé : sur un lancer non aligné,
+ *  le port renvoie la direction −1 et produit des zones incohérentes (artefact) ; on oriente sur l'axe le plus proche.
+ *
+ * Performances : zones compilées et mises en cache par objet `ZoneSpec` ; les cellules sont parcourues dans un
+ * ordre précalculé (distance croissante à l'origine de la zone) avec arrêt anticipé : pas de tri ni de Set.
  */
 import type { ZoneSpec } from '../data/model'
-import { CELL_COUNT, cellToPoint, distance, pointToCell, type Point } from './geometry'
+import {
+  CELL_COUNT,
+  CELL_X,
+  CELL_Y,
+  DIRECTION_DX,
+  DIRECTION_DY,
+  directionBetween,
+  directionBetweenXY,
+  isValidDirection,
+  lookDirection4,
+  pointToCell,
+  type Point,
+} from './geometry'
+import { hasLineOfSight, type BlocksLos } from './los'
 
-/** Direction unitaire (dans le repère logique) du lanceur vers la cible ; à défaut (+1, 0). */
+/** Rayon au-delà duquel le client n'applique plus de dégressivité (C63, l…,63, I...). */
+export const MAX_RADIUS_DEGRESSION = 50
+
+export interface ZoneOptions {
+  /** Orientation imposée (0..7), prioritaire sur `forcedDirection` et sur la direction lanceur → impact. */
+  direction?: number
+  /**
+   * Blocage de la ligne de vue (obstacle ou entité) pour les zones `onlyIfInSight` : seules les cellules en
+   * LdV depuis le centre de la zone sont gardées. Sans ce rappel, le drapeau est ignoré.
+   */
+  blocksLos?: BlocksLos
+  /**
+   * Optionnel, hors règle du client : coupe les lignes `stopAtTarget` (l, L, /) à la première cellule occupée
+   * (incluse). Le client arrête `stopAtTarget` à la case CIBLÉE (toujours appliqué) ; ce rappel sert aux effets
+   * « jusqu'à la première entité » (poussée/attirance « jusqu'à », téléportation sur la première case libre).
+   */
+  stopAtOccupied?: (cellId: number) => boolean
+  /** Filtre final des cellules (ex. seulement les cellules marchables). */
+  cellFilter?: (cellId: number) => boolean
+}
+
+/** Forme normalisée et paramètres effectifs d'une zone (après les ajustements du client). */
+export interface CompiledZone {
+  readonly shape: string
+  /** Rayon effectif (O : param1 ; I : 63 ; l : param2 ; P : 0 ; R : ≥ 1). */
+  readonly radius: number
+  /** Rayon minimal effectif (O : param1 ; I : param1 ; l : param1 ; Q/# : ≥ 1 ; R : profondeur ≥ 1). */
+  readonly minRadius: number
+  readonly step: number
+  readonly maxTicks: number
+  readonly stopAtTarget: boolean
+  readonly onlyIfInSight: boolean
+  /** Direction forcée (0..7) ou −1. */
+  readonly forcedDirection: number
+  /** Orientation : aucune, 8 directions (lanceur → impact exacte), 4 directions (axes). */
+  readonly orientation: 0 | 8 | 4
+  /** Demi-côté de la boîte englobante autour de l'origine (en pas). */
+  readonly span: number
+  /** Liste explicite (forme ';'). */
+  readonly cells?: readonly number[]
+}
+
+const WHOLE_MAP_SPAN = 64
+const SHAPES_8 = 'LlT-U/RB'
+const SHAPES_4 = 'VF'
+
+/** Caractère de forme (`shape` peut être un code ASCII dans les données brutes). */
+export function shapeChar(shape: number | string): string {
+  return typeof shape === 'number' ? String.fromCharCode(shape) : shape
+}
+
+const compiledCache = new WeakMap<ZoneSpec, CompiledZone>()
+
+/** Compile (et met en cache par objet) une zone : forme normalisée, rayons effectifs, orientation. */
+export function compileZone(zone: ZoneSpec): CompiledZone {
+  let c = compiledCache.get(zone)
+  if (!c) {
+    c = buildCompiledZone(zone)
+    compiledCache.set(zone, c)
+  }
+  return c
+}
+
+function buildCompiledZone(zone: ZoneSpec): CompiledZone {
+  let shape = shapeChar(zone.shape as number | string)
+  if (!shape) shape = 'P'
+  const p1 = Math.max(0, zone.size | 0)
+  const p2 = Math.max(0, zone.minSize | 0)
+  let radius = p1
+  let minRadius = 0
+  switch (shape) {
+    case 'P':
+      radius = 0
+      break
+    case 'C':
+    case 'X':
+    case '+':
+    case 'D':
+      minRadius = shape === 'D' ? 0 : p2
+      break
+    case 'Q':
+    case '#':
+      minRadius = Math.max(1, p2)
+      break
+    case 'O':
+      minRadius = p1
+      break
+    case 'I':
+      minRadius = p1
+      radius = 63
+      break
+    case 'l':
+      minRadius = p1
+      radius = p2
+      break
+    case 'R':
+      radius = Math.max(1, p1)
+      minRadius = Math.max(1, p2)
+      break
+    case 'A':
+    case 'a':
+    case ';':
+    case ' ':
+      radius = 63
+      break
+    case '*':
+    case 'L':
+    case '/':
+    case 'T':
+    case '-':
+    case 'U':
+    case 'V':
+    case 'F':
+    case 'G':
+    case 'W':
+    case 'B':
+    case 'Z':
+      break
+    default:
+      // Forme inconnue : traitée comme un point (comportement historique du module).
+      shape = 'P'
+      radius = 0
+  }
+  const orientation: 0 | 8 | 4 = SHAPES_8.includes(shape) ? 8 : SHAPES_4.includes(shape) ? 4 : 0
+  let forcedDirection = -1
+  if (zone.forcedDirection) {
+    const d = zone.maxDecreaseCount | 0
+    if (isValidDirection(d)) forcedDirection = d
+  }
+  let span = Math.max(radius, minRadius)
+  if (shape === 'A' || shape === 'a' || shape === 'I' || shape === 'Z' || span >= WHOLE_MAP_SPAN) span = WHOLE_MAP_SPAN
+  return {
+    shape,
+    radius,
+    minRadius,
+    step: Math.max(0, zone.decreaseStepPct | 0),
+    maxTicks: Math.max(0, zone.maxDecreaseCount | 0),
+    stopAtTarget: !!zone.stopAtTarget,
+    onlyIfInSight: !!zone.onlyIfInSight,
+    forcedDirection,
+    orientation,
+    span,
+    cells: zone.cells,
+  }
+}
+
+// ───────────────────────────── orientation ─────────────────────────────
+
+/**
+ * Direction (0..7) utilisée par une zone orientée lancée de `casterCell` sur `center`, ou −1 si la forme
+ * n'est pas orientée. Voir l'en-tête pour l'ordre de priorité.
+ */
+export function zoneDirection(zone: ZoneSpec | CompiledZone, center: number, casterCell: number, opts?: ZoneOptions): number {
+  const z = isCompiled(zone) ? zone : compileZone(zone)
+  return orientationOf(z, center, casterCell, opts?.direction)
+}
+
+function isCompiled(z: ZoneSpec | CompiledZone): z is CompiledZone {
+  return (z as CompiledZone).orientation !== undefined
+}
+
+function orientationOf(z: CompiledZone, center: number, caster: number, forced: number | undefined): number {
+  if (z.orientation === 0) return -1
+  if (z.orientation === 4) {
+    if (forced !== undefined && isValidDirection(forced) && (forced & 1) === 1) return forced
+    if (z.forcedDirection >= 0 && (z.forcedDirection & 1) === 1) return z.forcedDirection
+    return lookDirection4(caster, center)
+  }
+  if (forced !== undefined && isValidDirection(forced)) return forced
+  if (z.forcedDirection >= 0) return z.forcedDirection
+  if (caster === center) return 1
+  const exact = directionBetween(caster, center)
+  return exact >= 0 ? exact : lookDirection4(caster, center)
+}
+
+/** Direction unitaire (dans le repère logique) du lanceur vers la cible ; à défaut (+1, 0). @deprecated `zoneDirection` */
 export function castDirection(from: number, to: number): Point {
-  const a = cellToPoint(from)
-  const b = cellToPoint(to)
-  const dx = b.x - a.x
-  const dy = b.y - a.y
+  const dx = CELL_X[to] - CELL_X[from]
+  const dy = CELL_Y[to] - CELL_Y[from]
   if (dx === 0 && dy === 0) return { x: 1, y: 0 }
   if (Math.abs(dx) >= Math.abs(dy)) return { x: Math.sign(dx), y: 0 }
   return { x: 0, y: Math.sign(dy) }
 }
 
-export function shapeChar(shape: number | string): string {
-  return typeof shape === 'number' ? String.fromCharCode(shape) : shape
+// ───────────────────────────── cadre d'évaluation ─────────────────────────────
+
+/** Paramètres dynamiques d'une zone posée (centre, lanceur, orientation, coupures). */
+interface Frame {
+  z: CompiledZone
+  center: number
+  caster: number
+  cx: number
+  cy: number
+  kx: number
+  ky: number
+  dir: number
+  /** Lignes : distance maximale effective (en pas). */
+  lineMax: number
+  /** Boomerang : cellules précalculées. */
+  list: number[] | null
+  /** Origine du parcours (lanceur pour 'l', centre sinon). */
+  origin: number
+  blocksLos: BlocksLos | undefined
+  cellFilter: ((cellId: number) => boolean) | undefined
 }
 
-/**
- * Cellules couvertes par une zone centrée sur `center`, lancée depuis `casterCell`.
- * Les cellules hors carte sont ignorées ; l'appelant filtre les cellules non marchables si besoin.
- */
-export function zoneCells(zone: ZoneSpec, center: number, casterCell: number): number[] {
-  const shape = shapeChar(zone.shape)
-  const size = Math.max(0, zone.size | 0)
-  const min = Math.max(0, zone.minSize | 0)
-  const c = cellToPoint(center)
-  const dir = castDirection(casterCell, center)
-  const out: number[] = []
-  const push = (x: number, y: number) => {
-    const id = pointToCell(x, y)
-    if (id >= 0 && !out.includes(id)) out.push(id)
+function makeFrame(z: CompiledZone, center: number, caster: number, opts: ZoneOptions | undefined): Frame {
+  const casterCell = caster >= 0 && caster < CELL_COUNT ? caster : center
+  const f: Frame = {
+    z,
+    center,
+    caster: casterCell,
+    cx: CELL_X[center],
+    cy: CELL_Y[center],
+    kx: CELL_X[casterCell],
+    ky: CELL_Y[casterCell],
+    dir: orientationOf(z, center, casterCell, opts?.direction),
+    lineMax: z.radius,
+    list: null,
+    origin: z.shape === 'l' ? casterCell : center,
+    blocksLos: z.onlyIfInSight ? opts?.blocksLos : undefined,
+    cellFilter: opts?.cellFilter,
   }
-  switch (shape) {
-    case 'P':
-      push(c.x, c.y)
-      break
-    case 'C': // cercle (losange de distance de Manhattan)
-      for (let dx = -size; dx <= size; dx++)
-        for (let dy = -size; dy <= size; dy++) {
-          const d = Math.abs(dx) + Math.abs(dy)
-          if (d <= size && d >= min) push(c.x + dx, c.y + dy)
-        }
-      break
-    case 'O': // anneau
-      for (let dx = -size; dx <= size; dx++)
-        for (let dy = -size; dy <= size; dy++) if (Math.abs(dx) + Math.abs(dy) === size) push(c.x + dx, c.y + dy)
-      break
-    case 'D': // damier
-      for (let dx = -size; dx <= size; dx++)
-        for (let dy = -size; dy <= size; dy++) {
-          const d = Math.abs(dx) + Math.abs(dy)
-          if (d <= size && d % 2 === 0) push(c.x + dx, c.y + dy)
-        }
-      break
-    case 'X': // croix
-    case 'Q': // croix sans centre
-      if (shape === 'X' && min === 0) push(c.x, c.y)
-      for (let i = Math.max(1, min); i <= size; i++) {
-        push(c.x + i, c.y)
-        push(c.x - i, c.y)
-        push(c.x, c.y + i)
-        push(c.x, c.y - i)
+  if (z.shape === 'l' && z.stopAtTarget) {
+    // Client (port D3 et D2 Line) : distance de Manhattan lanceur → impact, non divisée en diagonale.
+    const d = Math.abs(f.cx - f.kx) + Math.abs(f.cy - f.ky)
+    if (d < f.lineMax) f.lineMax = d
+  }
+  if (z.stopAtTarget && opts?.stopAtOccupied && (z.shape === 'l' || z.shape === 'L' || z.shape === '/')) {
+    const ox = z.shape === 'l' ? f.kx : f.cx
+    const oy = z.shape === 'l' ? f.ky : f.cy
+    for (let k = 1; k <= f.lineMax; k++) {
+      const c = pointToCell(ox + DIRECTION_DX[f.dir] * k, oy + DIRECTION_DY[f.dir] * k)
+      if (c < 0) break
+      if (opts.stopAtOccupied(c)) {
+        f.lineMax = k
+        break
       }
-      break
-    case '+': // croix diagonale
-    case '#':
-      if (min === 0) push(c.x, c.y)
-      for (let i = Math.max(1, min); i <= size; i++) {
-        push(c.x + i, c.y + i)
-        push(c.x - i, c.y - i)
-        push(c.x + i, c.y - i)
-        push(c.x - i, c.y + i)
-      }
-      break
-    case 'G': // carré
-      for (let dx = -size; dx <= size; dx++) for (let dy = -size; dy <= size; dy++) push(c.x + dx, c.y + dy)
-      break
-    case 'W': // bord de carré
-      for (let dx = -size; dx <= size; dx++)
-        for (let dy = -size; dy <= size; dy++) if (Math.max(Math.abs(dx), Math.abs(dy)) === size) push(c.x + dx, c.y + dy)
-      break
-    case 'L': // ligne dans la direction du lancer, à partir du centre
-      for (let i = min; i <= size; i++) push(c.x + dir.x * i, c.y + dir.y * i)
-      break
-    case '/': // ligne depuis le lanceur
-      for (let i = 0; i <= size; i++) push(c.x + dir.x * i, c.y + dir.y * i)
-      break
-    case 'T': // ligne perpendiculaire
-    case '-':
-      push(c.x, c.y)
-      for (let i = 1; i <= size; i++) {
-        push(c.x + dir.y * i, c.y + dir.x * i)
-        push(c.x - dir.y * i, c.y - dir.x * i)
-      }
-      break
-    case 'R': // rectangle : longueur size dans la direction, largeur min de chaque côté
-      for (let i = 0; i <= size; i++)
-        for (let j = -min; j <= min; j++) push(c.x + dir.x * i + dir.y * j, c.y + dir.y * i + dir.x * j)
-      break
-    case 'U': // demi-cercle tourné vers le lanceur
-    case 'V': // cône s'ouvrant dans la direction du lancer
-      for (let i = 0; i <= size; i++)
-        for (let j = -i; j <= i; j++) {
-          const s = shape === 'U' ? -1 : 1
-          push(c.x + s * dir.x * i + dir.y * j, c.y + s * dir.y * i + dir.x * j)
-        }
-      break
-    case 'A':
-    case 'a':
-      for (let id = 0; id < CELL_COUNT; id++) out.push(id)
-      break
-    default:
-      push(c.x, c.y)
+    }
+  }
+  if (z.shape === 'B') f.list = boomerangCells(f)
+  return f
+}
+
+/** Boomerang (port `FillBoomerang`) : bras perpendiculaires de r − 1 cases puis un crochet (dir ± 3) vers le lanceur. */
+function boomerangCells(f: Frame): number[] {
+  const out: number[] = []
+  const z = f.z
+  const p1 = (f.dir + 2) & 7
+  const p2 = (f.dir + 6) & 7
+  const h1 = (f.dir + 3) & 7
+  const h2 = (f.dir + 5) & 7
+  let minRadius = z.minRadius
+  if (minRadius === 0) {
+    minRadius = 1
+    out.push(f.center)
+  }
+  let x1 = f.cx
+  let y1 = f.cy
+  let x2 = f.cx
+  let y2 = f.cy
+  for (let r = minRadius; r < z.radius; r++) {
+    x1 += DIRECTION_DX[p1]
+    y1 += DIRECTION_DY[p1]
+    x2 += DIRECTION_DX[p2]
+    y2 += DIRECTION_DY[p2]
+    pushValid(out, x1, y1)
+    pushValid(out, x2, y2)
+  }
+  if (z.radius !== 0) {
+    pushValid(out, x1 + DIRECTION_DX[h1], y1 + DIRECTION_DY[h1])
+    pushValid(out, x2 + DIRECTION_DX[h2], y2 + DIRECTION_DY[h2])
   }
   return out
 }
 
-/**
- * Efficacité d'un effet sur une cellule de la zone : baisse de `decreaseStepPct` % par cellule
- * d'éloignement du centre, au plus `maxDecreaseCount` paliers.
- */
-export function zoneEfficiency(zone: ZoneSpec, center: number, cell: number): number {
-  if (!zone.decreaseStepPct) return 1
-  const shape = shapeChar(zone.shape)
-  if (shape === 'P' || shape === 'A' || shape === 'a') return 1
-  const steps = Math.min(distance(center, cell), zone.maxDecreaseCount || Infinity)
-  return Math.max(0, 1 - (steps * zone.decreaseStepPct) / 100)
+function pushValid(out: number[], x: number, y: number): void {
+  const c = pointToCell(x, y)
+  if (c >= 0 && !out.includes(c)) out.push(c)
 }
+
+/** Distance « en pas » le long d'une direction : Manhattan, divisée par 2 sur une diagonale logique. */
+function steps(dir: number, d: number): number {
+  return (dir & 1) === 1 ? d : d >> 1
+}
+
+/** Appartenance géométrique (sans filtre) d'une cellule de coordonnées (x, y) à la zone. */
+function inShape(f: Frame, cell: number, x: number, y: number): boolean {
+  const z = f.z
+  const dx = x - f.cx
+  const dy = y - f.cy
+  const adx = dx < 0 ? -dx : dx
+  const ady = dy < 0 ? -dy : dy
+  const d = adx + ady
+  const r = z.radius
+  switch (z.shape) {
+    case 'P':
+      return d === 0
+    case 'C':
+    case 'O':
+    case 'I':
+      return d >= z.minRadius && d <= r
+    case 'D':
+      return d >= z.minRadius && d <= r && ((r - d) & 1) === 0
+    case 'X':
+    case 'Q':
+      return (dx === 0 || dy === 0) && d >= z.minRadius && d <= r
+    case '+':
+    case '#':
+      return adx === ady && adx >= z.minRadius && adx <= r
+    case '*':
+      return ((dx === 0 || dy === 0) && d <= r) || (adx === ady && adx <= r)
+    case 'G':
+      return adx <= r && ady <= r
+    case 'W':
+      return adx <= r && ady <= r && adx !== ady
+    case 'Z':
+      return dx * dx + dy * dy >= r * r
+    case 'A':
+    case 'a':
+      return true
+    case ';':
+      return !!z.cells && z.cells.includes(cell)
+    case ' ':
+      return false
+    case 'L':
+    case '/': {
+      if (x === f.kx && y === f.ky) return false // la case du lanceur n'est jamais dans une ligne (port)
+      if (d === 0) return z.minRadius === 0
+      const dir = directionBetweenXY(f.cx, f.cy, x, y)
+      if (dir !== f.dir) return false
+      const k = steps(dir, d)
+      return k >= z.minRadius && k <= f.lineMax
+    }
+    case 'l': {
+      if (x === f.kx && y === f.ky) return false
+      const dir = directionBetweenXY(f.kx, f.ky, x, y)
+      if (dir !== f.dir) return false
+      const k = steps(dir, Math.abs(x - f.kx) + Math.abs(y - f.ky))
+      return k >= z.minRadius && k <= f.lineMax
+    }
+    case 'T':
+    case '-': {
+      if (d === 0) return true
+      const dir = directionBetweenXY(f.cx, f.cy, x, y)
+      if (dir !== ((f.dir + 2) & 7) && dir !== ((f.dir + 6) & 7)) return false
+      return steps(dir, d) <= r
+    }
+    case 'U': {
+      if (d === 0) return true
+      const dir = directionBetweenXY(f.cx, f.cy, x, y)
+      if (dir !== ((f.dir + 3) & 7) && dir !== ((f.dir + 5) & 7)) return false
+      return steps(dir, d) <= r
+    }
+    case 'V':
+      switch (f.dir) {
+        case 1:
+          return dx >= 0 && dx <= r && ady <= dx
+        case 3:
+          return dy <= 0 && dy >= -r && adx <= -dy
+        case 5:
+          return dx <= 0 && dx >= -r && ady <= -dx
+        case 7:
+          return dy >= 0 && dy <= r && adx <= dy
+        default:
+          return false
+      }
+    case 'F': {
+      // Fourche orientée à l'opposé du lanceur (port IsCellInForkZone), profondeur 0..r (port FillForkCells).
+      const sign = f.dir === 5 || f.dir === 3 ? -1 : 1
+      const along = f.dir === 1 || f.dir === 5
+      const a = (along ? dx : dy) * sign
+      const b = along ? dy : dx
+      return a >= 0 && a <= r && (b === a || b === 0 || b === -a)
+    }
+    case 'R': {
+      // Rectangle : demi-largeur r perpendiculaire, profondeur 0..m depuis l'impact (port IsCellInRectangleZone).
+      const sign = f.dir === 5 || f.dir === 3 ? -1 : 1
+      const lateral = f.dir === 7 || f.dir === 3 ? adx : ady
+      const depth = (f.dir === 7 || f.dir === 3 ? dy : dx) * sign
+      return lateral <= r && depth >= 0 && depth <= z.minRadius
+    }
+    case 'B':
+      return f.list!.includes(cell)
+    default:
+      return d === 0
+  }
+}
+
+function inFrame(f: Frame, cell: number): boolean {
+  if (!inShape(f, cell, CELL_X[cell], CELL_Y[cell])) return false
+  if (f.blocksLos && cell !== f.center && !hasLineOfSight(f.center, cell, f.blocksLos)) return false
+  return !f.cellFilter || f.cellFilter(cell)
+}
+
+// ───────────────────────────── ordre de parcours ─────────────────────────────
+
+/** Pour chaque origine : toutes les cellules triées par (distance de Manhattan, id), calculées à la demande. */
+const BY_DISTANCE: (Int16Array | undefined)[] = new Array(CELL_COUNT)
+const DIST_KEYS = new Int32Array(CELL_COUNT)
+
+function cellsByDistance(origin: number): Int16Array {
+  let order = BY_DISTANCE[origin]
+  if (!order) {
+    for (let c = 0; c < CELL_COUNT; c++) {
+      const d = Math.abs(CELL_X[c] - CELL_X[origin]) + Math.abs(CELL_Y[c] - CELL_Y[origin])
+      DIST_KEYS[c] = d * 1024 + c
+    }
+    const sorted = DIST_KEYS.slice().sort()
+    order = new Int16Array(CELL_COUNT)
+    for (let i = 0; i < CELL_COUNT; i++) order[i] = sorted[i] & 1023
+    BY_DISTANCE[origin] = order
+  }
+  return order
+}
+
+function collect(f: Frame, out: number[]): number[] {
+  const z = f.z
+  if (z.shape === ';') {
+    for (const c of z.cells ?? []) if (c >= 0 && c < CELL_COUNT && !out.includes(c) && inFrame(f, c)) out.push(c)
+    return out
+  }
+  if (z.shape === ' ') return out
+  const order = cellsByDistance(f.origin)
+  // Toute cellule de la zone vérifie max(|dx|, |dy|) ≤ span depuis l'origine, donc d ≤ 2·span.
+  const maxD = z.span >= WHOLE_MAP_SPAN ? Infinity : 2 * z.span
+  const ox = CELL_X[f.origin]
+  const oy = CELL_Y[f.origin]
+  for (let i = 0; i < CELL_COUNT; i++) {
+    const c = order[i]
+    if (Math.abs(CELL_X[c] - ox) + Math.abs(CELL_Y[c] - oy) > maxD) break
+    if (inFrame(f, c)) out.push(c)
+  }
+  return out
+}
+
+// ───────────────────────────── API ─────────────────────────────
+
+/**
+ * Cellules couvertes par une zone centrée sur `center` (case d'impact), lancée depuis `casterCell`.
+ * Ordre : distance de Manhattan croissante à l'origine de la zone (le lanceur pour 'l', l'impact sinon), puis id.
+ * Les cellules hors carte sont ignorées ; aucun filtre de marchabilité sauf `opts.cellFilter`. Nouveau tableau.
+ */
+export function zoneCells(zone: ZoneSpec, center: number, casterCell: number, opts?: ZoneOptions): number[] {
+  if (center < 0 || center >= CELL_COUNT) return []
+  return collect(makeFrame(compileZone(zone), center, casterCell, opts), [])
+}
+
+/** Comme `zoneCells` mais remplit `out` (vidé au préalable) pour éviter une allocation. */
+export function zoneCellsInto(zone: ZoneSpec, center: number, casterCell: number, out: number[], opts?: ZoneOptions): number[] {
+  out.length = 0
+  if (center < 0 || center >= CELL_COUNT) return out
+  return collect(makeFrame(compileZone(zone), center, casterCell, opts), out)
+}
+
+/** La cellule `cell` est-elle dans la zone ? (même règle que `zoneCells`, en O(1) hors LdV) */
+export function isCellInZone(zone: ZoneSpec, cell: number, center: number, casterCell: number, opts?: ZoneOptions): boolean {
+  if (cell < 0 || cell >= CELL_COUNT || center < 0 || center >= CELL_COUNT) return false
+  return inFrame(makeFrame(compileZone(zone), center, casterCell, opts), cell)
+}
+
+/**
+ * Prédicat d'appartenance réutilisable pour une zone posée (une seule préparation pour tester plusieurs
+ * cellules, ex. les positions des combattants) : `const inZone = zoneMembership(...); inZone(f.cell)`.
+ */
+export function zoneMembership(
+  zone: ZoneSpec,
+  center: number,
+  casterCell: number,
+  opts?: ZoneOptions,
+): (cellId: number) => boolean {
+  if (center < 0 || center >= CELL_COUNT) return () => false
+  const f = makeFrame(compileZone(zone), center, casterCell, opts)
+  return cell => cell >= 0 && cell < CELL_COUNT && inFrame(f, cell)
+}
+
+// ───────────────────────────── dégressivité ─────────────────────────────
+
+/**
+ * Distance de dégressivité selon la forme (port `SpellZone.GetAoeMalus`, D2 `getShapeEfficiency`) :
+ * G/R/W Chebyshev ; # + - / U Manhattan >> 1 ; V/F profondeur selon la direction lanceur → impact
+ * (axe d'un lancer en ligne ; Chebyshev sur une diagonale, 0 si non aligné comme le port) ; ; A a I : 0 ;
+ * autres : Manhattan.
+ */
+export function zoneDistance(zone: ZoneSpec, center: number, cell: number, casterCell: number = center): number {
+  return shapeDistance(compileZone(zone), center, cell, casterCell)
+}
+
+function shapeDistance(z: CompiledZone, center: number, cell: number, caster: number): number {
+  const adx = Math.abs(CELL_X[cell] - CELL_X[center])
+  const ady = Math.abs(CELL_Y[cell] - CELL_Y[center])
+  switch (z.shape) {
+    case ';':
+    case 'A':
+    case 'a':
+    case 'I':
+      return 0
+    case 'G':
+    case 'R':
+    case 'W':
+      return Math.max(adx, ady)
+    case '#':
+    case '+':
+    case '-':
+    case '/':
+    case 'U':
+      return (adx + ady) >> 1
+    case 'F':
+    case 'V': {
+      // Lanceur = impact : le port obtient la direction 1 (quirk de GetLookDirection8Exact) → axe x.
+      const dir = caster === center ? 1 : directionBetween(caster, center)
+      if (dir < 0) return 0
+      if (dir === 1 || dir === 5) return adx
+      if (dir === 3 || dir === 7) return ady
+      return Math.max(adx, ady)
+    }
+    default:
+      return adx + ady
+  }
+}
+
+/**
+ * Malus de zone en % (0..100) pour la cellule `cell` : min(min(max(d − rayonMin, 0), paliers) × pas, 100),
+ * rayonMin ignoré pour R ; aucun malus si le rayon effectif dépasse 50 (C63, l1,63...) ou si le pas est nul.
+ */
+export function zoneMalusPct(zone: ZoneSpec, center: number, cell: number, casterCell: number = center): number {
+  const z = compileZone(zone)
+  if (z.step <= 0 || z.radius > MAX_RADIUS_DEGRESSION) return 0
+  const minEff = z.shape === 'R' ? 0 : z.minRadius
+  const d = Math.max(shapeDistance(z, center, cell, casterCell) - minEff, 0)
+  return Math.min(Math.min(d, z.maxTicks) * z.step, 100)
+}
+
+/**
+ * Efficacité d'un effet de zone sur la cellule `cell` (1 = 100 %) : (100 − malus) / 100.
+ * `casterCell` n'est utile qu'aux cônes / fourches (profondeur selon la direction du lancer).
+ */
+export function zoneEfficiency(zone: ZoneSpec, center: number, cell: number, casterCell: number = center): number {
+  return (100 - zoneMalusPct(zone, center, cell, casterCell)) / 100
+}
+
+// ───────────────────────────── chaîne de zone ─────────────────────────────
+
+const zoneStringCache = new Map<string, ZoneSpec>()
+
+/**
+ * Lit le format de zone des données du projet (`data/dofusdb/*.json`, scripts/fetch-dofusdb.mjs `normZone`) :
+ * `'<forme><param1>,<param2>,<pas%>,<paliers>'` (ex. `'C2,1,10,4'`), et les drapeaux `zoneFlags`
+ * (c = includeCarried, s = isStopAtTarget, d = forcedDirection, v = onlyAffectIfInSightLine).
+ * Ce n'est PAS la chaîne `rawZone` de Dofus 2 (dont l'ordre des paramètres dépend de la forme).
+ * Paramètres absents : 1, 0, 10, 4 (défauts du client). Résultat mis en cache et gelé (ne pas le modifier).
+ */
+export function parseZoneString(str: string, flags = '', cells?: readonly number[]): ZoneSpec {
+  const key = cells ? '' : `${str}|${flags}`
+  const cached = key ? zoneStringCache.get(key) : undefined
+  if (cached) return cached
+  const shape = str.length ? str[0] : 'P'
+  const params = str
+    .slice(1)
+    .split(',')
+    .map(s => s.trim())
+  const num = (i: number, def: number) => {
+    const v = params[i] !== undefined && params[i] !== '' ? Number(params[i]) : NaN
+    return Number.isFinite(v) ? v : def
+  }
+  const zone: ZoneSpec = {
+    shape,
+    size: num(0, 1),
+    minSize: num(1, 0),
+    decreaseStepPct: num(2, 10),
+    maxDecreaseCount: num(3, 4),
+    stopAtTarget: flags.includes('s'),
+  }
+  if (flags.includes('c')) zone.includeCarried = true
+  if (flags.includes('v')) zone.onlyIfInSight = true
+  if (flags.includes('d')) zone.forcedDirection = true
+  if (cells && cells.length) zone.cells = cells.slice()
+  Object.freeze(zone)
+  if (key) zoneStringCache.set(key, zone)
+  return zone
+}
+
+/** Toutes les formes connues de ce module (pour les tests de couverture de la grammaire). */
+export const KNOWN_SHAPES: readonly string[] = ['P', 'C', 'O', 'I', 'D', 'X', 'Q', '+', '#', '*', 'G', 'W', 'Z', 'L', '/', 'l', 'T', '-', 'U', 'V', 'F', 'R', 'B', 'A', 'a', ';', ' ']
