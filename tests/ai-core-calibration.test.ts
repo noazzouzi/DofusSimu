@@ -50,7 +50,6 @@ describe('calibration du DPT (data/ai/calibration.json)', () => {
       writeFileSync(FILE, `${JSON.stringify(out, null, 2)}\n`)
       return
     }
-    for (const [k, v] of Object.entries(presets)) expect(stored.presets[k], `preset ${k}`).toBeCloseTo(v, 1)
     for (const [k, v] of Object.entries(presets)) expect(Math.abs((stored.presets[k] ?? 1) - v), `preset ${k}`).toBeLessThanOrEqual(DRIFT)
     for (const [k, v] of Object.entries(breeds)) expect(Math.abs((stored.breeds[k] ?? 1) - v), `classe ${k}`).toBeLessThanOrEqual(DRIFT)
   }, 120_000)

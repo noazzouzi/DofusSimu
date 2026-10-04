@@ -19,6 +19,7 @@ import { spellBaseDamageBonus, spellDamageBonus } from '../../engine/effects/buf
 import type { TriggerEvent } from '../../engine/effects/core'
 import { buffApplies, DAMAGE_SPECS, resolveElement, unerodedMaxHp } from '../../engine/effects/damage/pipeline'
 import type { Engine } from '../../engine/engine'
+import { checkStatesCriterion } from '../../engine/criteria'
 import { matchesTargetMask } from '../../engine/targetMask'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
 import type { ZoneSpec } from '../../data/model'
@@ -320,6 +321,8 @@ const DP_TAKE = new Uint8Array(MAX_ITEMS * (MAX_AP + 1))
 export function castsAvailable(a: Fighter, ks: KnownSpell, p: SpellProfileX, targetId: number, mode: TurnMode): number {
   const cd = a.cooldowns[ks.spellId] ?? 0
   if (mode === 'next' ? cd > 1 : cd > 0) return 0
+  // Condition d'états du lanceur (masques du Zobal, formes…) : lue sur ses états actuels (clé des caches : empreinte).
+  if (!checkStatesCriterion(p.level.statesCriterion, a)) return 0
   let n = Infinity
   if (p.castsPerTurn > 0) n = p.castsPerTurn - (mode === 'now' ? (a.castsThisTurn[ks.spellId] ?? 0) : 0)
   if (p.castsPerTarget > 0) n = Math.min(n, p.castsPerTarget - (mode === 'now' ? (a.castsOnTarget[`${ks.spellId}:${targetId}`] ?? 0) : 0))
