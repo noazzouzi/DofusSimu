@@ -1,0 +1,5851 @@
+{
+ "breedId": 1,
+ "slug": "feca",
+ "name": "Féca",
+ "nameEn": "Feca",
+ "dataSource": "api.dofusdb.fr (fichiers du jeu Dofus 3, données mises à jour le 2026-06-23), extraction 2026-10-04",
+ "officialRoles": [
+  {
+   "roleId": 3,
+   "value": 8,
+   "description": "Réduit les dommages subis par ses alliés et les dommages occasionnés par ses adversaires. Pose des boucliers qui protègent."
+  },
+  {
+   "roleId": 2,
+   "value": 8,
+   "description": "Maintient ses adversaires au contact avec ses sorts et ses glyphes."
+  },
+  {
+   "roleId": 1,
+   "value": 7,
+   "description": "Vole des caractéristiques et retire des points d'action, de mouvement, et de la portée avec ses sorts et ses glyphes."
+  }
+ ],
+ "roles": [
+  {
+   "role": "protecteur-tank",
+   "element": "Terre/Eau ou Terre/Feu (Force + Chance/Intelligence)",
+   "priority": 1,
+   "tags": [
+    "protection",
+    "tank",
+    "damage_reduction"
+   ],
+   "description": "Bouclier Féca (×0,70), Rempart/Fortification (armure fixe 132/176 au niv. 200), Barricade/Bastion (invulnérabilités), Égide (interception), Ataraxie (−75 % sur un coup) ; tient le contact avec Défiance et Bergerie."
+  },
+  {
+   "role": "entraveur-zone",
+   "element": "Terre + Feu/Eau",
+   "priority": 2,
+   "tags": [
+    "ap_removal",
+    "mp_removal",
+    "range_removal"
+   ],
+   "description": "Glyphes Terre Battue (−3 PA), Terre Brûlée (−3 PM), Vallée (−6 PO), Prairie (−20 % dommages finaux) + Somnolence/Tétanie/Atonie/Bulle/Stratus."
+  },
+  {
+   "role": "degats-glyphes-multi",
+   "element": "multi (4 éléments)",
+   "priority": 3,
+   "tags": [
+    "glyph_damage",
+    "aoe"
+   ],
+   "description": "Dégâts réguliers en zone (glyphes en début de tour ennemi + déclenchement manuel par Transhumance/Mise en Garde, +200 stats)."
+  },
+  {
+   "role": "placeur",
+   "element": "tous",
+   "priority": 4,
+   "tags": [
+    "placement"
+   ],
+   "description": "Regroupement, Sonnailles, Frisson, Houlette, Bourrasque, Silbo, Giboulée, Manœuvre, Excursion, Renfort."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Variantes de sorts",
+   "description": "22 paires ; un seul sort de chaque paire est équipé à la fois (choix hors combat).",
+   "implementationNotes": "spellbook = 22 choix binaires ; l'optimiseur de composition doit explorer les variantes par rôle."
+  },
+  {
+   "name": "Glyphes élémentaires (début de tour + aura)",
+   "description": "Effet 401 : marque de 2 tours ; au début du tour de chaque ennemi dans la zone, le sous-sort du glyphe est lancé sur lui (dommages sans CC). Effet 1091 : aura appliquant ses effets aux entités présentes (malus aux ennemis : −PA/−PM esquivables, −PO et −% dommages finaux non esquivables ; armure + bonus aux alliés).",
+   "implementationNotes": "Mark{caster, spellId, cells, turnsLeft=2, type:'glyph'|'aura'} ; à chaque début de tour d'une entité, exécuter les glyphes qui la contiennent ; auras recalculées à chaque déplacement (entrée/sortie) et au début de tour. Puissance glyphes (stat 106) s'applique."
+  },
+  {
+   "name": "Hypoglyphe (état 238)",
+   "description": "Chaque glyphe élémentaire applique l'état 238 au lanceur pour 1 tour ; critère `HS!238` sur tous les glyphes élémentaires.",
+   "implementationNotes": "Vérifier statesCriterion avant le lancer : `HS!X` = le lanceur ne doit pas avoir l'état X ; `HS X` = doit l'avoir."
+  },
+  {
+   "name": "Armures élémentaires & Étoile du Berger",
+   "description": "Un Féca dans un glyphe-aura reçoit l'armure de l'élément (+15 % rés., 2 tours). Les alliés n'en profitent que s'ils portent l'Étoile du Berger (5261).",
+   "implementationNotes": "États 5262–5265 ; retirer les buffs d'armure quand l'état ou l'Étoile disparaît (déclencheurs EOFF). Mise en Garde lit ces états."
+  },
+  {
+   "name": "Déclenchement manuel des glyphes",
+   "description": "Transhumance / Mise en Garde exécutent l'effet 1026 : chaque glyphe (non-aura) du lanceur contenant la case ciblée est exécuté immédiatement sur les entités qu'il contient, une fois par tour et par glyphe (états 5364–5371).",
+   "implementationNotes": "Pendant le déclenchement le lanceur porte l'état 5260 ; les variantes (Pâturage, Verglas, Refuge, Vigie) n'infligent leurs dommages de glyphe que dans ce cas."
+  },
+  {
+   "name": "Lanterne du Berger",
+   "description": "Invocation statique (monstre 7841) créée par les glyphes élémentaires, Défiance et Barrière si la case est libre ; au début de chaque tour du Féca elle révèle les invisibles (cercle 2) et donne l'Étoile aux alliés proches ; cible alliée possible (Renfort) ; une seule à la fois.",
+   "implementationNotes": "Ne joue pas ; état Intacleur (ne tacle pas) sauf sous Défiance ; meurt quand une nouvelle est invoquée."
+  },
+  {
+   "name": "Armure fixe (effet 265)",
+   "description": "Réduction fixe par coup = valeur × (niveau de la cible / 20 + 1) : Rempart 12 (→132 au niv. 200), Fortification 16 (→176).",
+   "implementationNotes": "Appliquée avant les résistances % ? → à confirmer avec le module DoMath (GetDamageReductor) ; une fois par (sort, élément)."
+  },
+  {
+   "name": "Boucliers invoqués",
+   "description": "Barricade/Bastion (invulnérabilité mêlée/distance), Pavois (blocage LdV/cases), Égide (interception 2 tours) : invocations statiques sans emplacement, détruites après 1–2 tours.",
+   "implementationNotes": "PV = bonusCharacteristics.lifePoints % des PV du Féca (INCERTAIN) ; auras qui suivent le bouclier."
+  },
+  {
+   "name": "Multiplicateurs de dommages subis",
+   "description": "Bouclier Féca ×70 % (2 t.), Refuge ×85 %, Ataraxie ×25 % (1 coup).",
+   "implementationNotes": "Effet 1163 avec déclencheur D et effectTriggerDuration ; Ataraxie se retire au premier coup (406 sur D/DTE/DTB/PD)."
+  },
+  {
+   "name": "Pesanteur / Inébranlable / Pacifiste",
+   "description": "États de contrôle (7 : pas d'échange/téléportation ; 157 : pas de poussée ; 218 : pas de dommages).",
+   "implementationNotes": "Flags cantSwitchPosition / cantBePushed / cantDealDamage + critères HS!7 sur les sorts de mobilité."
+  }
+ ],
+ "spells": [
+  {
+   "id": 12983,
+   "spellLevelId": 41050,
+   "pairIndex": 1,
+   "variant": "A",
+   "variantOf": 13017,
+   "name": "Retour du Bâton",
+   "nameEn": "Backlash",
+   "descriptionFr": "Retire de la Force et de la Fuite et occasionne des dommages Terre.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 132,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 29,
+    "max": 33,
+    "critMin": 35,
+    "critMax": 40,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "-100 Force — 3 tour(s)",
+    "-25 Fuite — 3 tour(s)",
+    "29 à 33 dommages Terre (CC : 35 à 40 dommages Terre)"
+   ],
+   "effects": [
+    {
+     "effectId": 157,
+     "action": "CharacterDeboostStrength",
+     "text": "-100 Force",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 754,
+     "action": "CharacterDeboostTakleEvade",
+     "text": "-25 Fuite",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "29 à 33 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 29,
+     "max": 33,
+     "critMin": 35,
+     "critMax": 40
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "debuff",
+    "earth"
+   ],
+   "tactical": "Sort de base Terre : −100 Force et −25 Fuite (3 tours, cumulable 2 fois) sur l'adversaire, utile contre un frappeur Terre ou pour qu'il ne puisse pas fuir le tacle du Féca."
+  },
+  {
+   "id": 13017,
+   "spellLevelId": 77446,
+   "pairIndex": 1,
+   "variant": "B",
+   "variantOf": 12983,
+   "name": "Tétanie",
+   "nameEn": "Tetany",
+   "descriptionFr": "Occasionne des dommages Terre et retire des PA.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 162,
+   "unlockLevel": 95,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 36,
+    "max": 40,
+    "critMin": 43,
+    "critMax": 48,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "36 à 40 dommages Terre (CC : 43 à 48 dommages Terre)",
+    "-3 PA (esquivable) — 1 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "36 à 40 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 36,
+     "max": 40,
+     "critMin": 43,
+     "critMax": 48
+    },
+    {
+     "effectId": 1079,
+     "action": "CharacterDeboostActionPointsDodgeable",
+     "text": "-3 PA (esquivable)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "ap_removal",
+    "earth",
+    "melee"
+   ],
+   "tactical": "Meilleur sort Terre au contact : 36–40 + −3 PA esquivables (2 fois par cible). Combiné à Terre Battue (−3 PA d'aura) il peut vider un monstre de ses PA."
+  },
+  {
+   "id": 12978,
+   "spellLevelId": 41035,
+   "pairIndex": 2,
+   "variant": "A",
+   "variantOf": 13014,
+   "name": "Langueur",
+   "nameEn": "Languor",
+   "descriptionFr": "Retire de l'Intelligence et des Critiques et occasionne des dommages Feu.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 133,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 27,
+    "max": 29,
+    "critMin": 32,
+    "critMax": 35,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "-100 Intelligence — 3 tour(s)",
+    "-10% Critique — 3 tour(s)",
+    "27 à 29 dommages Feu (CC : 32 à 35 dommages Feu)"
+   ],
+   "effects": [
+    {
+     "effectId": 155,
+     "action": "CharacterDeboostIntelligence",
+     "text": "-100 Intelligence",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 171,
+     "action": "CharacterDeboostCriticalHit",
+     "text": "-10% Critique",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "27 à 29 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 27,
+     "max": 29,
+     "critMin": 32,
+     "critMax": 35
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "debuff",
+    "fire"
+   ],
+   "tactical": "Feu à 7 PO, −100 Intelligence et −10 % Critique : anti-boss Feu/critique, sinon simple remplissage."
+  },
+  {
+   "id": 13014,
+   "spellLevelId": 44057,
+   "pairIndex": 2,
+   "variant": "B",
+   "variantOf": 12978,
+   "name": "Atonie",
+   "nameEn": "Lifelessness",
+   "descriptionFr": "Occasionne des dommages Feu et retire des PM aux ennemis en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 167,
+   "unlockLevel": 100,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 31,
+    "max": 35,
+    "critMin": 38,
+    "critMax": 43,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "31 à 35 dommages Feu (CC : 38 à 43 dommages Feu) — cibles : ennemis ; zone : croix de taille 1",
+    "-3 PM (esquivable) — cibles : ennemis ; zone : croix de taille 1 ; 1 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "31 à 35 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 31,
+     "max": 35,
+     "critMin": 38,
+     "critMax": 43
+    },
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "text": "-3 PM (esquivable)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mp_removal",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "−3 PM esquivables en croix + 31–35 Feu : entrave de zone 1/tour, PO 0 permet de se cibler pour toucher les ennemis au contact."
+  },
+  {
+   "id": 12984,
+   "spellLevelId": 41053,
+   "pairIndex": 3,
+   "variant": "A",
+   "variantOf": 13015,
+   "name": "Nimbus",
+   "nameEn": "Nimbus",
+   "descriptionFr": "Retire de la Chance et du Tacle et occasionne des dommages Eau aux ennemis en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 134,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 23,
+    "max": 25,
+    "critMin": 28,
+    "critMax": 30,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "-100 Chance — cibles : ennemis ; zone : croix de taille 1 ; 3 tour(s)",
+    "-20 Tacle — cibles : ennemis ; zone : croix de taille 1 ; 3 tour(s)",
+    "23 à 25 dommages Eau (CC : 28 à 30 dommages Eau) — cibles : ennemis ; zone : croix de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 152,
+     "action": "CharacterDeboostChance",
+     "text": "-100 Chance",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 755,
+     "action": "CharacterDeboostTakleBlock",
+     "text": "-20 Tacle",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "23 à 25 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 23,
+     "max": 25,
+     "critMin": 28,
+     "critMax": 30
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "debuff",
+    "aoe",
+    "water"
+   ],
+   "tactical": "Eau en croix (ennemis seulement) avec −100 Chance et −20 Tacle : remplissage 3 PA, 2/tour."
+  },
+  {
+   "id": 13015,
+   "spellLevelId": 77444,
+   "pairIndex": 3,
+   "variant": "B",
+   "variantOf": 12984,
+   "name": "Stratus",
+   "nameEn": "Stratus",
+   "descriptionFr": "Occasionne des dommages Eau et retire de la Portée aux ennemis en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 172,
+   "unlockLevel": 105,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 31,
+    "max": 34,
+    "critMin": 37,
+    "critMax": 40,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "31 à 34 dommages Eau (CC : 37 à 40 dommages Eau) — cibles : ennemis ; zone : carré de taille 1",
+    "-3 Portée — cibles : ennemis ; zone : carré de taille 1 ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "31 à 34 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 31,
+     "max": 34,
+     "critMin": 37,
+     "critMax": 40
+    },
+    {
+     "effectId": 116,
+     "action": "CharacterDeboostRange",
+     "text": "-3 Portée",
+     "targetMask": "A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "range_removal",
+    "aoe",
+    "water"
+   ],
+   "tactical": "−3 PO en carré 1 + 31–35 Eau : neutralise un groupe de lanceurs à distance (1/tour)."
+  },
+  {
+   "id": 12976,
+   "spellLevelId": 41029,
+   "pairIndex": 4,
+   "variant": "A",
+   "variantOf": 13010,
+   "name": "Typhon",
+   "nameEn": "Typhoon",
+   "descriptionFr": "Retire de l'Agilité et des Dommages et occasionne des dommages Air aux ennemis en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 136,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 25,
+    "max": 27,
+    "critMin": 30,
+    "critMax": 32,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "-100 Agilité — cibles : ennemis ; zone : ligne de 2 case(s) ; 3 tour(s)",
+    "-20 Dommages — cibles : ennemis ; zone : ligne de 2 case(s) ; 3 tour(s)",
+    "25 à 27 dommages Air (CC : 30 à 32 dommages Air) — cibles : ennemis ; zone : ligne de 2 case(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 154,
+     "action": "CharacterDeboostAgility",
+     "text": "-100 Agilité",
+     "targetMask": "A",
+     "zone": {
+      "shape": "L",
+      "shapeName": "line",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 145,
+     "action": "CharacterDeboostDamages",
+     "text": "-20 Dommages",
+     "targetMask": "A",
+     "zone": {
+      "shape": "L",
+      "shapeName": "line",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "25 à 27 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "L",
+      "shapeName": "line",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 25,
+     "max": 27,
+     "critMin": 30,
+     "critMax": 32
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "debuff",
+    "aoe",
+    "air"
+   ],
+   "tactical": "Ligne de 2 (en ligne uniquement) : −100 Agilité et −20 Dommages aux ennemis (3 tours) ; réduction de dégâts sur un paquet."
+  },
+  {
+   "id": 13010,
+   "spellLevelId": 81366,
+   "pairIndex": 4,
+   "variant": "B",
+   "variantOf": 12976,
+   "name": "Bourrasque",
+   "nameEn": "Gust",
+   "descriptionFr": "Occasionne des dommages Air aux ennemis et repousse les cibles vers les extrémités en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 177,
+   "unlockLevel": 110,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 24,
+    "max": 26,
+    "critMin": 29,
+    "critMax": 32,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "24 à 26 dommages Air (CC : 29 à 32 dommages Air) — cibles : ennemis ; zone : ligne perpendiculaire (T) de 1 case(s)",
+    "Repousse de 1 case — zone : ligne perpendiculaire (T) de 1 case(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "24 à 26 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "T",
+      "shapeName": "perpendicularLine",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 24,
+     "max": 26,
+     "critMin": 29,
+     "critMax": 32
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 1 case",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "T",
+      "shapeName": "perpendicularLine",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "aoe",
+    "air"
+   ],
+   "tactical": "Ligne perpendiculaire : repousse de 1 les deux voisins vers l'extérieur ; sert à écarter deux ennemis d'un allié ou à les sortir d'un glyphe ennemi."
+  },
+  {
+   "id": 12981,
+   "spellLevelId": 41044,
+   "pairIndex": 5,
+   "variant": "A",
+   "variantOf": 13009,
+   "name": "Rempart",
+   "nameEn": "Rampart",
+   "descriptionFr": "Réduit les dommages reçus par le lanceur et ses alliés en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 139,
+   "unlockLevel": 5,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "armure: réduit les dommages subis (effet 265, d1=0 d2=0 valeur=12) — cibles : lanceur, alliés (lanceur inclus) ; zone : cercle de taille 3 ; déclenchement : quand le porteur subit des dommages (buff 2 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 265,
+     "action": "CharacterLifeLostCasterModerator",
+     "text": "armure: réduit les dommages subis (effet 265, d1=0 d2=0 valeur=12)",
+     "targetMask": "C,a",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "protection",
+    "shield_armor"
+   ],
+   "tactical": "Armure fixe de groupe : 132 dommages réduits par coup au niv. 200 pour tous les alliés en cercle 3 autour du Féca, 2 tours, relance 3. À lancer au premier tour quand le groupe est regroupé."
+  },
+  {
+   "id": 13009,
+   "spellLevelId": 44045,
+   "pairIndex": 5,
+   "variant": "B",
+   "variantOf": 12981,
+   "name": "Fortification",
+   "nameEn": "Fortification",
+   "descriptionFr": "Réduit les dommages reçus par l'allié ciblé.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 182,
+   "unlockLevel": 115,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "armure: réduit les dommages subis (effet 265, d1=0 d2=0 valeur=16) — cibles : alliés (lanceur inclus) ; déclenchement : quand le porteur subit des dommages (buff 3 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 265,
+     "action": "CharacterLifeLostCasterModerator",
+     "text": "armure: réduit les dommages subis (effet 265, d1=0 d2=0 valeur=16)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "protection",
+    "shield_armor"
+   ],
+   "tactical": "Armure fixe mono-cible plus forte (176/coup au niv. 200) et plus longue (3 tours), PO 5, relance 4 : pour le personnage focalisé par un boss."
+  },
+  {
+   "id": 12979,
+   "spellLevelId": 41038,
+   "pairIndex": 6,
+   "variant": "A",
+   "variantOf": 13016,
+   "name": "Barricade",
+   "nameEn": "Barricade",
+   "descriptionFr": "Rend l'allié ciblé Invulnérable en mêlée. Augmente ses PM s'il est attaqué à distance ou désenvoûté. Sur une case libre : invoque un bouclier statique qui pose un glyphe-aura rendant les alliés Invulnérables en mêlée. Le glyphe suit le bouclier et il est détruit au tour suivant.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 144,
+   "unlockLevel": 10,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "applique l'état «Invulnérable en Mêlée» (376) — cibles : alliés (lanceur inclus) ; 1 tour(s)",
+    "2 PM — cibles : alliés (lanceur inclus) ; 1 tour(s) ; déclenchement : quand le buff est désenvoûté / quand le porteur subit des dommages à distance (buff 1 t.)",
+    "invoque «Barricade» (7864, grade 1)",
+    "pose un glyphe-aura «Barricade» (29301, grade 2) — cibles : alliés (lanceur inclus) ; zone : croix de taille 1 ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Barricade» (29050, grade 1)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29050,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Barricade» (7864, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7864,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "protection",
+    "invulnerability",
+    "summon"
+   ],
+   "tactical": "Invulnérabilité en mêlée d'un allié pour 1 tour (+2 PM s'il est attaqué à distance) ou bouclier statique dont l'aura croix 1 protège les alliés adjacents. Contre des monstres de corps-à-corps, rend le tank intouchable un tour."
+  },
+  {
+   "id": 13016,
+   "spellLevelId": 44050,
+   "pairIndex": 6,
+   "variant": "B",
+   "variantOf": 12979,
+   "name": "Pavois",
+   "nameEn": "Pavise",
+   "descriptionFr": "Invoque plusieurs boucliers statiques en zone. Les boucliers sont détruits au tour suivant. Sur une cible : invoque ces boucliers à son contact. • Sur un allié : les Pavois sont détruits au début de son tour ou à sa mort. • Sur un ennemi : ils sont détruits au tour suivant.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 187,
+   "unlockLevel": 120,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Pavois» (5910, grade 1) — zone : ligne perpendiculaire (T) de 1 case(s)",
+    "invoque «Pavois» (5910, grade 1) — zone : croix sans centre de taille 1",
+    "Tue la cible — cibles : alliés (lanceur inclus) ; si la cible vient d'apparaître (invocation posée par ce sort) ; si la cible est le monstre «Pavois» (5910) ; effet différé de 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Pavois» (29054, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29054,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 2960,
+     "action": "CasterExecuteSpellOnCell",
+     "text": "le lanceur lance sur la case le sort «Pavois» (29054, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29054,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "placement",
+    "los_block",
+    "summon",
+    "control"
+   ],
+   "tactical": "Pose 2 à 4 boucliers statiques (PV ≈ 90 % des PV du Féca, INCERTAIN) : bloque les lignes de vue et les cases autour d'une cible (enfermer un monstre de mêlée, protéger un allié des tirs). Relance 2."
+  },
+  {
+   "id": 12977,
+   "spellLevelId": 41032,
+   "pairIndex": 7,
+   "variant": "A",
+   "variantOf": 13012,
+   "name": "Somnolence",
+   "nameEn": "Drowsiness",
+   "descriptionFr": "Occasionne des dommages Terre et retire des PA aux ennemis en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 149,
+   "unlockLevel": 15,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 27,
+    "max": 30,
+    "critMin": 32,
+    "critMax": 36,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "27 à 30 dommages Terre (CC : 32 à 36 dommages Terre) — cibles : ennemis ; zone : croix diagonale de taille 1",
+    "-2 PA (esquivable) — cibles : ennemis ; zone : croix diagonale de taille 1 ; 1 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "27 à 30 dommages Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "+",
+      "shapeName": "diagonalCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 27,
+     "max": 30,
+     "critMin": 32,
+     "critMax": 36
+    },
+    {
+     "effectId": 1079,
+     "action": "CharacterDeboostActionPointsDodgeable",
+     "text": "-2 PA (esquivable)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "+",
+      "shapeName": "diagonalCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "ap_removal",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "Retrait PA de zone standard (−2 PA esquivables en croix diagonale, PO 6, 1/tour) ; à combiner avec Terre Battue."
+  },
+  {
+   "id": 13012,
+   "spellLevelId": 77443,
+   "pairIndex": 7,
+   "variant": "B",
+   "variantOf": 12977,
+   "name": "Manœuvre",
+   "nameEn": "Manœuvre",
+   "descriptionFr": "Occasionne des dommages Air aux ennemis et échange de position avec la cible.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 192,
+   "unlockLevel": 125,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 38,
+    "max": 42,
+    "critMin": 46,
+    "critMax": 50,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "38 à 42 dommages Air (CC : 46 à 50 dommages Air) — cibles : ennemis",
+    "Échange de positions"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "38 à 42 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 38,
+     "max": 42,
+     "critMin": 46,
+     "critMax": 50
+    },
+    {
+     "effectId": 8,
+     "action": "CharacterExchangePlaces",
+     "text": "Échange de positions",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mobility",
+    "air"
+   ],
+   "tactical": "Meilleur dégât Air brut (38–42) + échange de place avec la cible (aussi un allié) : mobilité et sauvetage."
+  },
+  {
+   "id": 12993,
+   "spellLevelId": 41080,
+   "pairIndex": 8,
+   "variant": "A",
+   "variantOf": 13008,
+   "name": "Léthargie",
+   "nameEn": "Lethargy",
+   "descriptionFr": "Occasionne des dommages Feu et retire des PM.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 154,
+   "unlockLevel": 20,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 28,
+    "max": 31,
+    "critMin": 34,
+    "critMax": 37,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "28 à 31 dommages Feu (CC : 34 à 37 dommages Feu)",
+    "-2 PM (esquivable) — 1 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "28 à 31 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 28,
+     "max": 31,
+     "critMin": 34,
+     "critMax": 37,
+     "dispellable": 3
+    },
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "text": "-2 PM (esquivable)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mp_removal",
+    "fire"
+   ],
+   "tactical": "−2 PM esquivables + 28–31 Feu, 3/tour 2/cible : retrait PM mono-cible."
+  },
+  {
+   "id": 13008,
+   "spellLevelId": 44047,
+   "pairIndex": 8,
+   "variant": "B",
+   "variantOf": 12993,
+   "name": "Regroupement",
+   "nameEn": "Gather the Flock",
+   "descriptionFr": "Attire les cibles vers le centre et occasionne des dommages Terre aux ennemis en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 197,
+   "unlockLevel": 130,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 38,
+    "max": 42,
+    "critMin": 46,
+    "critMax": 50,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "Attire de 2 cases — zone : cercle de taille 3 (à partir de 1)",
+    "38 à 42 dommages Terre (CC : 46 à 50 dommages Terre) — cibles : ennemis ; zone : cercle de taille 3 (à partir de 1)"
+   ],
+   "effects": [
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 1
+     }
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "38 à 42 dommages Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 1
+     },
+     "min": 38,
+     "max": 42,
+     "critMin": 46,
+     "critMax": 50
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "Attire de 2 tout ce qui est en cercle 3 (de 1 à 3) vers le Féca + 38–42 Terre aux ennemis : regroupe les monstres dans le glyphe du Féca et au contact (tank)."
+  },
+  {
+   "id": 12995,
+   "spellLevelId": 41086,
+   "pairIndex": 9,
+   "variant": "A",
+   "variantOf": 12980,
+   "name": "Bastion",
+   "nameEn": "Bastion",
+   "descriptionFr": "Rend l'allié ciblé Invulnérable à distance. Augmente sa Puissance s'il est attaqué en mêlée ou désenvoûté. Sur une case libre : invoque un bouclier statique qui pose un glyphe-aura rendant les alliés Invulnérables à distance. Le glyphe suit le bouclier et il est détruit au tour suivant.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 159,
+   "unlockLevel": 25,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "applique l'état «Invulnérable à Distance» (375) — cibles : alliés (lanceur inclus) ; 1 tour(s)",
+    "200 Puissance — cibles : alliés (lanceur inclus) ; 1 tour(s) ; déclenchement : quand le buff est désenvoûté / quand le porteur subit des dommages en mêlée (buff 1 t.)",
+    "invoque «Bastion» (7865, grade 1)",
+    "pose un glyphe-aura «Bastion» (29303, grade 2) — cibles : alliés (lanceur inclus) ; zone : croix de taille 1 ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Bastion» (29051, grade 5)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29051,
+      "grade": 5
+     },
+     "dispellable": 3
+    },
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Bastion» (7865, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7865,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "protection",
+    "invulnerability",
+    "summon"
+   ],
+   "tactical": "Invulnérabilité à distance d'un allié (+200 Puissance s'il est frappé au contact) ou bouclier statique avec aura d'invulnérabilité distance en croix 1. Indispensable contre des boss lanceurs."
+  },
+  {
+   "id": 12980,
+   "spellLevelId": 41039,
+   "pairIndex": 9,
+   "variant": "B",
+   "variantOf": 12995,
+   "name": "Trêve",
+   "nameEn": "Truce",
+   "descriptionFr": "Pose un glyphe-aura qui rend les entités Pacifistes.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 135,
+   "unlockLevel": 135,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 5,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un glyphe-aura «Trêve» (29048, grade 1) — zone : cercle de taille 2 ; 1 tour(s) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Trêve» (29048, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 1,
+     "subSpell": {
+      "id": 29048,
+      "grade": 1
+     },
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "protection",
+    "pacify",
+    "control"
+   ],
+   "tactical": "Glyphe-aura cercle 2 autour du Féca : toutes les entités (alliés ET ennemis) deviennent Pacifistes (ne peuvent plus infliger de dommages) pendant 1 tour. À utiliser quand le Féca est entouré d'ennemis et que les alliés sont hors de la zone."
+  },
+  {
+   "id": 12989,
+   "spellLevelId": 81365,
+   "pairIndex": 10,
+   "variant": "A",
+   "variantOf": 13022,
+   "name": "Frisson",
+   "nameEn": "Shiver",
+   "descriptionFr": "Occasionne des dommages Air aux ennemis et attire les cibles vers la case ciblée en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 164,
+   "unlockLevel": 30,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 29,
+    "critMin": 31,
+    "critMax": 35,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "26 à 29 dommages Air (CC : 31 à 35 dommages Air) — cibles : ennemis ; zone : cône de taille 2",
+    "Attire de 2 cases — zone : cône de taille 2"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "26 à 29 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "V",
+      "shapeName": "cone",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 26,
+     "max": 29,
+     "critMin": 31,
+     "critMax": 35
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "V",
+      "shapeName": "cone",
+      "size": 2,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "aoe",
+    "air"
+   ],
+   "tactical": "Cône 2 en ligne, sans ligne de vue : attire les entités vers la case ciblée (2) + 26–29 Air ; place les ennemis dans un glyphe."
+  },
+  {
+   "id": 13022,
+   "spellLevelId": 41135,
+   "pairIndex": 10,
+   "variant": "B",
+   "variantOf": 12989,
+   "name": "Giboulée",
+   "nameEn": "Sudden Shower",
+   "descriptionFr": "Occasionne des dommages Eau aux ennemis et repousse la cible.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 140,
+   "unlockLevel": 140,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 36,
+    "max": 40,
+    "critMin": 43,
+    "critMax": 48,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "36 à 40 dommages Eau (CC : 43 à 48 dommages Eau) — cibles : ennemis",
+    "Repousse de 4 cases"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "36 à 40 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 36,
+     "max": 40,
+     "critMin": 43,
+     "critMax": 48
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 4 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "water"
+   ],
+   "tactical": "36–40 Eau + repousse 4 (dommages de poussée si obstacle) : éloigne un monstre de mêlée d'un allié fragile."
+  },
+  {
+   "id": 12994,
+   "spellLevelId": 41083,
+   "pairIndex": 11,
+   "variant": "A",
+   "variantOf": 14436,
+   "name": "Bulle",
+   "nameEn": "Bubble",
+   "descriptionFr": "Occasionne des dommages Eau et retire de la Portée.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 169,
+   "unlockLevel": 35,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 17,
+    "max": 19,
+    "critMin": 20,
+    "critMax": 23,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "17 à 19 dommages Eau (CC : 20 à 23 dommages Eau)",
+    "-3 Portée — 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "17 à 19 dommages Eau",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 17,
+     "max": 19,
+     "critMin": 20,
+     "critMax": 23
+    },
+    {
+     "effectId": 116,
+     "action": "CharacterDeboostRange",
+     "text": "-3 Portée",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "range_removal",
+    "water"
+   ],
+   "tactical": "2 PA, 1–8 PO, −3 PO non esquivable (effet 116) 3/tour 2/cible : retrait de PO très rentable et remplissage de PA."
+  },
+  {
+   "id": 14436,
+   "spellLevelId": 44065,
+   "pairIndex": 11,
+   "variant": "B",
+   "variantOf": 12994,
+   "name": "Sonnailles",
+   "nameEn": "Cowbell",
+   "descriptionFr": "Occasionne des dommages Feu aux ennemis et attire les cibles jusqu'au centre en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 145,
+   "unlockLevel": 145,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 32,
+    "max": 36,
+    "critMin": 38,
+    "critMax": 43,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "32 à 36 dommages Feu (CC : 38 à 43 dommages Feu) — cibles : ennemis ; zone : ligne perpendiculaire (T) de 2 case(s)",
+    "Attire de 2 cases — zone : ligne perpendiculaire (T) de 2 case(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Sonnailles cibles» (1461)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "T",
+      "shapeName": "perpendicularLine",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": -1,
+     "state": {
+      "id": 1461,
+      "name": "Sonnailles cibles"
+     }
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "32 à 36 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "T",
+      "shapeName": "perpendicularLine",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43
+    },
+    {
+     "effectId": 2960,
+     "action": "CasterExecuteSpellOnCell",
+     "text": "le lanceur lance sur la case le sort «Sonnailles» (14675, grade 1)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 14675,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 2960,
+     "action": "CasterExecuteSpellOnCell",
+     "text": "le lanceur lance sur la case le sort «Sonnailles» (14675, grade 2)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 14675,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "placement",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "Ligne perpendiculaire de 2 : 32–36 Feu puis attire les cibles vers le centre (case ciblée). Regroupe 4–5 ennemis en un point."
+  },
+  {
+   "id": 12986,
+   "spellLevelId": 41059,
+   "pairIndex": 12,
+   "variant": "A",
+   "variantOf": 13018,
+   "name": "Transhumance",
+   "nameEn": "Greener Pastures",
+   "descriptionFr": "Téléporte le lanceur et déclenche ses glyphes élémentaires sur la case ciblée. Applique également l'Étoile du Berger sur les alliés présents dans les glyphes déclenchés. Les glyphes ne peuvent être déclenchés manuellement qu'une seule fois par tour.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 174,
+   "unlockLevel": 40,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Téléporte sur la case ciblée",
+    "déclenche les glyphes «Prairie» (12992) — cibles : tous ; si le lanceur n'a pas l'état «Prairie déclenchée» (5364)",
+    "applique l'état «Étoile du Berger» (5261) — cibles : alliés (hors lanceur) ; si la cible n'est pas un joueur de classe 1 ; 2 tour(s) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Glyphes déclenchés» (5260)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 5260,
+      "name": "Glyphes déclenchés"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Transhumance» (5372)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 5372,
+      "name": "Transhumance"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 4,
+     "action": "CharacterTeleportOnSameMap",
+     "text": "Téléporte sur la case ciblée",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Terre Battue» (12987)",
+     "targetMask": "a,A,*e5366",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Refuge» (13021)",
+     "targetMask": "a,A,*e5370",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Terre Brûlée» (12985)",
+     "targetMask": "a,A,*e5367",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Vigie» (13039)",
+     "targetMask": "a,A,*e5371",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Vallée» (12990)",
+     "targetMask": "a,A,*e5365",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Verglas» (13023)",
+     "targetMask": "a,A,*e5369",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Prairie» (12992)",
+     "targetMask": "a,A,*e5364",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Pâturage» (13013)",
+     "targetMask": "a,A,*e5368",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 951,
+     "action": "FightUnsetState",
+     "text": "retire l'état «Glyphes déclenchés» (5260)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "state": {
+      "id": 5260,
+      "name": "Glyphes déclenchés"
+     }
+    },
+    {
+     "effectId": 951,
+     "action": "FightUnsetState",
+     "text": "retire l'état «Transhumance» (5372)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "state": {
+      "id": 5372,
+      "name": "Transhumance"
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "mobility",
+    "glyph_trigger",
+    "damage"
+   ],
+   "tactical": "Téléportation (case libre, 1–6) + déclenchement immédiat de tous les glyphes du Féca contenant la case d'arrivée ; donne l'Étoile du Berger aux alliés dans ces glyphes. Bloqué par Pesanteur."
+  },
+  {
+   "id": 13018,
+   "spellLevelId": 41131,
+   "pairIndex": 12,
+   "variant": "B",
+   "variantOf": 12986,
+   "name": "Égide",
+   "nameEn": "Aegis",
+   "descriptionFr": "Invoque un bouclier statique qui intercepte les dommages subis par les alliés présents dans son glyphe-aura et leur applique l'état Étoile du Berger. Le glyphe suit le bouclier et il est détruit 2 tours après son invocation. Sur une cible : pose un glyphe-aura qui intercepte les dommages subis par les alliés et leur applique l'état Étoile du Berger. N'affecte pas la Barricade et le Bastion.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 150,
+   "unlockLevel": 150,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Égide» (5903, grade 1)",
+    "pose un glyphe-aura «Sanctuaire» (29086, grade 2) — cibles : alliés (lanceur inclus) ; zone : cercle de taille 3 (à partir de 1) ; 2 tour(s)",
+    "Tue la cible — cibles : alliés (lanceur inclus) ; si la cible vient d'apparaître (invocation posée par ce sort) ; si la cible est le monstre «Égide» (5903) ; effet différé de 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Sanctuaire» (29086, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29086,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Égide» (5903, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 5903,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "protection",
+    "interception",
+    "summon"
+   ],
+   "tactical": "Bouclier statique à gros PV qui intercepte pendant 2 tours les dommages des alliés en cercle 3 (et leur donne l'Étoile) ; sur une cible, l'aura d'interception est posée directement. Excellente protection de groupe contre les dégâts de zone."
+  },
+  {
+   "id": 12992,
+   "spellLevelId": 41077,
+   "pairIndex": 13,
+   "variant": "A",
+   "variantOf": 13013,
+   "name": "Prairie",
+   "nameEn": "Prairie",
+   "descriptionFr": "Pose un glyphe de début de tour qui occasionne des dommages Air aux ennemis. Réduit les dommages finaux des ennemis présents ou entrant dans le glyphe. Invoque également la Lanterne du Berger si la case est libre. Empêche l'utilisation d'autres glyphes élémentaires dans le même tour.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 179,
+   "unlockLevel": 45,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!238",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "pose un glyphe de début de tour «Prairie» (12999, grade 3) — cibles : ennemis ; zone : étoile (8 directions) de taille 2 ; 2 tour(s)",
+    "pose un glyphe-aura «Prairie» (29064, grade 3) — zone : étoile (8 directions) de taille 2 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 401,
+     "action": "FightAddGlyphCastingSpell",
+     "text": "pose un glyphe de début de tour «Prairie» (12999, grade 3)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "*",
+      "shapeName": "star",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 12999,
+      "grade": 3
+     }
+    },
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Prairie» (29064, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "*",
+      "shapeName": "star",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 29064,
+      "grade": 3
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Hypoglyphe» (238)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 238,
+      "name": "Hypoglyphe"
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "glyph",
+    "damage",
+    "debuff",
+    "aoe",
+    "air"
+   ],
+   "tactical": "Glyphe étoile 2 : 31–35 Air au début du tour des ennemis + aura −20 % dommages finaux aux ennemis présents (2 tours). Priorité contre un boss qui frappe fort."
+  },
+  {
+   "id": 13013,
+   "spellLevelId": 41126,
+   "pairIndex": 13,
+   "variant": "B",
+   "variantOf": 12992,
+   "name": "Pâturage",
+   "nameEn": "Pastureland",
+   "descriptionFr": "Occasionne des dommages Air aux ennemis en zone et pose un glyphe-aura sous la cible qui augmente les dommages finaux des alliés. Invoque également la Lanterne du Berger si la case est libre. Empêche l'utilisation d'autres glyphes élémentaires dans le même tour. Dissipe le glyphe-aura du sort précédemment posé.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 155,
+   "unlockLevel": 155,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "HS!238",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 31,
+    "max": 35,
+    "critMin": 37,
+    "critMax": 42,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "31 à 35 dommages Air (CC : 37 à 42 dommages Air) — cibles : ennemis ; zone : croix de taille 1",
+    "pose un glyphe-aura «Pâturage» (13028, grade 1) — cibles : alliés (lanceur inclus) ; zone : croix de taille 1 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 2018,
+     "action": "DispelGlyphsOfTarget",
+     "text": "dissipe les glyphes «Pâturage» (13013)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "31 à 35 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42
+    },
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Pâturage» (13028, grade 1)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 13028,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 401,
+     "action": "FightAddGlyphCastingSpell",
+     "text": "pose un glyphe de début de tour «Pâturage» (29068, grade 1)",
+     "targetMask": "A,E5260",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 29068,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Hypoglyphe» (238)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 238,
+      "name": "Hypoglyphe"
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "buff",
+    "aoe",
+    "air"
+   ],
+   "tactical": "Dégâts Air immédiats en croix + aura +10 % dommages finaux aux alliés sous la cible (2 tours). Glyphe offensif pour un groupe de mêlée."
+  },
+  {
+   "id": 12990,
+   "spellLevelId": 78263,
+   "pairIndex": 14,
+   "variant": "A",
+   "variantOf": 13023,
+   "name": "Vallée",
+   "nameEn": "Valley",
+   "descriptionFr": "Pose un glyphe de début de tour qui occasionne des dommages Eau aux ennemis. Retire de la Portée aux ennemis présents ou entrant dans le glyphe. Invoque également la Lanterne du Berger si la case est libre. Empêche l'utilisation d'autres glyphes élémentaires dans le même tour.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 184,
+   "unlockLevel": 50,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!238",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "pose un glyphe de début de tour «Vallée» (12998, grade 3) — cibles : ennemis ; zone : cercle de taille 3 ; 2 tour(s)",
+    "pose un glyphe-aura «Vallée» (29061, grade 3) — zone : cercle de taille 3 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 401,
+     "action": "FightAddGlyphCastingSpell",
+     "text": "pose un glyphe de début de tour «Vallée» (12998, grade 3)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 12998,
+      "grade": 3
+     }
+    },
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Vallée» (29061, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 29061,
+      "grade": 3
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Hypoglyphe» (238)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 238,
+      "name": "Hypoglyphe"
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "glyph",
+    "damage",
+    "range_removal",
+    "aoe",
+    "water"
+   ],
+   "tactical": "Glyphe cercle 3 : 28–32 Eau au début du tour des ennemis + aura −6 PO (non esquivable) : les lanceurs à distance sont neutralisés tant qu'ils restent dedans."
+  },
+  {
+   "id": 13023,
+   "spellLevelId": 41136,
+   "pairIndex": 14,
+   "variant": "B",
+   "variantOf": 12990,
+   "name": "Verglas",
+   "nameEn": "Black Ice",
+   "descriptionFr": "Occasionne des dommages Eau aux ennemis en zone et pose un glyphe-aura sous la cible qui augmente la Fuite des alliés. Invoque également la Lanterne du Berger si la case est libre. Empêche l'utilisation d'autres glyphes élémentaires dans le même tour. Dissipe le glyphe-aura du sort précédemment posé.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 160,
+   "unlockLevel": 160,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "HS!238",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 31,
+    "max": 35,
+    "critMin": 37,
+    "critMax": 42,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "31 à 35 dommages Eau (CC : 37 à 42 dommages Eau) — cibles : ennemis ; zone : carré de taille 1",
+    "pose un glyphe-aura «Verglas» (13034, grade 1) — cibles : alliés (lanceur inclus) ; zone : carré de taille 1 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 2018,
+     "action": "DispelGlyphsOfTarget",
+     "text": "dissipe les glyphes «Verglas» (13023)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "31 à 35 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42
+    },
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Verglas» (13034, grade 1)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 13034,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 401,
+     "action": "FightAddGlyphCastingSpell",
+     "text": "pose un glyphe de début de tour «Verglas» (29066, grade 1)",
+     "targetMask": "A,E5260",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 29066,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Hypoglyphe» (238)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 238,
+      "name": "Hypoglyphe"
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "buff",
+    "aoe",
+    "water"
+   ],
+   "tactical": "Dégâts Eau immédiats en carré 1 + aura +50 Fuite aux alliés : libère un allié tacle."
+  },
+  {
+   "id": 12987,
+   "spellLevelId": 81367,
+   "pairIndex": 15,
+   "variant": "A",
+   "variantOf": 13021,
+   "name": "Terre Battue",
+   "nameEn": "Dirt Floor",
+   "descriptionFr": "Pose un glyphe de début de tour qui occasionne des dommages Terre aux ennemis. Retire des PA aux ennemis présents ou entrant dans le glyphe. Invoque également la Lanterne du Berger si la case est libre. Empêche l'utilisation d'autres glyphes élémentaires dans le même tour.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 189,
+   "unlockLevel": 55,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "HS!238",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "pose un glyphe de début de tour «Terre Battue» (13000, grade 3) — cibles : ennemis ; zone : cercle de taille 3 ; 2 tour(s)",
+    "pose un glyphe-aura «Terre Battue» (29063, grade 3) — zone : cercle de taille 3 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 401,
+     "action": "FightAddGlyphCastingSpell",
+     "text": "pose un glyphe de début de tour «Terre Battue» (13000, grade 3)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 13000,
+      "grade": 3
+     }
+    },
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Terre Battue» (29063, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 29063,
+      "grade": 3
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Hypoglyphe» (238)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 238,
+      "name": "Hypoglyphe"
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "glyph",
+    "damage",
+    "ap_removal",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "Glyphe cercle 3 : 29–33 Terre au début du tour des ennemis + aura −3 PA (esquivable) tant qu'ils restent dedans. Le meilleur sort d'entrave de zone de la classe."
+  },
+  {
+   "id": 13021,
+   "spellLevelId": 41134,
+   "pairIndex": 15,
+   "variant": "B",
+   "variantOf": 12987,
+   "name": "Refuge",
+   "nameEn": "Refuge",
+   "descriptionFr": "Occasionne des dommages Terre aux ennemis en zone et pose un glyphe-aura sous la cible qui réduit les dommages subis par les alliés. Invoque également la Lanterne du Berger si la case est libre. Empêche l'utilisation d'autres glyphes élémentaires dans le même tour. Dissipe le glyphe-aura du sort précédemment posé.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 165,
+   "unlockLevel": 165,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "HS!238",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 32,
+    "max": 36,
+    "critMin": 38,
+    "critMax": 43,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "32 à 36 dommages Terre (CC : 38 à 43 dommages Terre) — cibles : ennemis ; zone : cercle de taille 2",
+    "pose un glyphe-aura «Refuge» (13032, grade 1) — cibles : alliés (lanceur inclus) ; zone : cercle de taille 2 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 2018,
+     "action": "DispelGlyphsOfTarget",
+     "text": "dissipe les glyphes «Refuge» (13021)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "32 à 36 dommages Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43
+    },
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Refuge» (13032, grade 1)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 13032,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 401,
+     "action": "FightAddGlyphCastingSpell",
+     "text": "pose un glyphe de début de tour «Refuge» (29067, grade 1)",
+     "targetMask": "A,E5260",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 29067,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Hypoglyphe» (238)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 238,
+      "name": "Hypoglyphe"
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "protection",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "Dégâts Terre immédiats en cercle 2 + aura « dommages subis ×85 % » pour les alliés dedans (2 tours)."
+  },
+  {
+   "id": 12985,
+   "spellLevelId": 81368,
+   "pairIndex": 16,
+   "variant": "A",
+   "variantOf": 13025,
+   "name": "Terre Brûlée",
+   "nameEn": "Scorched Dirt",
+   "descriptionFr": "Pose un glyphe de début de tour qui occasionne des dommages Feu aux ennemis. Retire des PM aux ennemis présents ou entrant dans le glyphe. Invoque également la Lanterne du Berger si la case est libre. Empêche l'utilisation d'autres glyphes élémentaires dans le même tour.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 194,
+   "unlockLevel": 60,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!238",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "pose un glyphe de début de tour «Terre Brûlée» (12996, grade 3) — cibles : ennemis ; zone : carré de taille 2 ; 2 tour(s)",
+    "pose un glyphe-aura «Terre Brûlée» (29062, grade 3) — zone : carré de taille 2 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 401,
+     "action": "FightAddGlyphCastingSpell",
+     "text": "pose un glyphe de début de tour «Terre Brûlée» (12996, grade 3)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 12996,
+      "grade": 3
+     }
+    },
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Terre Brûlée» (29062, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 29062,
+      "grade": 3
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Hypoglyphe» (238)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 238,
+      "name": "Hypoglyphe"
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "glyph",
+    "damage",
+    "mp_removal",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "Glyphe carré 2 : 30–34 Feu au début du tour des ennemis + aura −3 PM (esquivable) : immobilise un paquet de monstres."
+  },
+  {
+   "id": 13025,
+   "spellLevelId": 41138,
+   "pairIndex": 16,
+   "variant": "B",
+   "variantOf": 12985,
+   "name": "Vigie",
+   "nameEn": "Lookout",
+   "descriptionFr": "Occasionne des dommages Feu aux ennemis en zone et pose un glyphe-aura sous le lanceur qui augmente la Portée des alliés. Le glyphe-aura se pose sur la case ciblée si elle est libre ou si la cible est un allié. Invoque également la Lanterne du Berger si la case est libre. Empêche l'utilisation d'autres glyphes élémentaires dans le même tour. Dissipe le glyphe-aura du sort précédemment posé.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 170,
+   "unlockLevel": 170,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "HS!238",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 30,
+    "max": 34,
+    "critMin": 36,
+    "critMax": 41,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "30 à 34 dommages Feu (CC : 36 à 41 dommages Feu) — cibles : ennemis ; zone : cercle de taille 2",
+    "pose un glyphe-aura «Vigie» (13037, grade 1) — cibles : alliés (lanceur inclus) ; zone : cercle de taille 2 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 2018,
+     "action": "DispelGlyphsOfTarget",
+     "text": "dissipe les glyphes «Vigie» (13039)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Vigie» (13039, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 13039,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "30 à 34 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 41
+    },
+    {
+     "effectId": 2960,
+     "action": "CasterExecuteSpellOnCell",
+     "text": "le lanceur lance sur la case le sort «Vigie» (13039, grade 4)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 13039,
+      "grade": 4
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Hypoglyphe» (238)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 238,
+      "name": "Hypoglyphe"
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "buff",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "Dégâts Feu immédiats en cercle 2 + aura +5 PO aux alliés (sous le lanceur, ou sur la case ciblée si libre/allié)."
+  },
+  {
+   "id": 13020,
+   "spellLevelId": 77461,
+   "pairIndex": 17,
+   "variant": "A",
+   "variantOf": 13027,
+   "name": "Renfort",
+   "nameEn": "Backup",
+   "descriptionFr": "Téléporte le lanceur jusqu'à l'allié ciblé.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 198,
+   "unlockLevel": 65,
+   "apCost": 2,
+   "minRange": 2,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Téléporte sur la case ciblée — cibles : lanceur"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Renfort» (13043, grade 1)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 13043,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "mobility"
+   ],
+   "tactical": "Téléporte le Féca au contact d'un allié en ligne (2–6 PO, cible requise) ; pour aller protéger/tacler. Bloqué par Pesanteur."
+  },
+  {
+   "id": 13027,
+   "spellLevelId": 41140,
+   "pairIndex": 17,
+   "variant": "B",
+   "variantOf": 13020,
+   "name": "Ataraxie",
+   "nameEn": "Ataraxia",
+   "descriptionFr": "Applique l'état Pesanteur sur l'allié ciblé et réduit tout type de dommages subis sur la première attaque. Les effets du sort sont retirés à la moindre attaque subie. Les effets d'interception et de partage de dommages sont incompatibles avec le sort.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 175,
+   "unlockLevel": 175,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "applique l'état «Pesanteur» (7) — cibles : alliés (lanceur inclus) ; si la cible n'a pas l'état «Sacrifice» (583) ; 1 tour(s) ; indésenvoûtable",
+    "Dommages subis x25% — cibles : alliés (lanceur inclus) ; si la cible n'a pas l'état «Sacrifice» (583) ; déclenchement : quand le porteur subit des dommages / dommages subis pendant sa fin de tour (DTE) / dommages subis pendant son début de tour (DTB) / perte de PV (DV) / quand le porteur subit des dommages de poussée (buff 1 t.) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Pesanteur» (7)",
+     "targetMask": "a,e583",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 7,
+      "name": "Pesanteur"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Ataraxie» (2742)",
+     "targetMask": "a,e583",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 2742,
+      "name": "Ataraxie"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "text": "Dommages subis x25%",
+     "targetMask": "a,e583",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D|DTE|DTB|DV|PD",
+     "triggerBuffDuration": 1,
+     "dispellable": 2
+    },
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "text": "retire les effets du sort «Ataraxie» (13027)",
+     "targetMask": "a,e583",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D|DTE|DTB|DV|PD|EON583",
+     "triggerBuffDuration": 1,
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "protection",
+    "anti_burst"
+   ],
+   "tactical": "2 PA, 3/tour : l'allié prend Pesanteur et ne subit que 25 % de la prochaine attaque (dommages directs, poison, poussée), puis l'effet disparaît. Incompatible avec l'interception (état Sacrifice). Parfait contre un coup de boss prévisible."
+  },
+  {
+   "id": 13011,
+   "spellLevelId": 44049,
+   "pairIndex": 18,
+   "variant": "A",
+   "variantOf": 13007,
+   "name": "Silbo",
+   "nameEn": "Silbo",
+   "descriptionFr": "Occasionne des dommages Air aux ennemis et repousse les cibles depuis le centre en zone. N'affecte pas le lanceur.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 137,
+   "unlockLevel": 70,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 17,
+    "max": 19,
+    "critMin": 20,
+    "critMax": 23,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "17 à 19 dommages Air (CC : 20 à 23 dommages Air) — cibles : ennemis ; zone : croix de taille 1",
+    "Repousse de 1 case — cibles : alliés (hors lanceur), ennemis ; zone : croix sans centre de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "17 à 19 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 17,
+     "max": 19,
+     "critMin": 20,
+     "critMax": 23
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 1 case",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "hollowCross",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "aoe",
+    "air"
+   ],
+   "tactical": "2 PA sans ligne de vue : 17–19 Air en croix + repousse de 1 tout ce qui entoure la case ciblée (sauf le lanceur)."
+  },
+  {
+   "id": 13007,
+   "spellLevelId": 41120,
+   "pairIndex": 18,
+   "variant": "B",
+   "variantOf": 13011,
+   "name": "Houlette",
+   "nameEn": "Shepherd's Crook",
+   "descriptionFr": "Occasionne des dommages Feu aux ennemis et attire la cible.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 180,
+   "unlockLevel": 180,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 18,
+    "max": 20,
+    "critMin": 22,
+    "critMax": 24,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "18 à 20 dommages Feu (CC : 22 à 24 dommages Feu) — cibles : ennemis",
+    "Attire de 3 cases"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "18 à 20 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 18,
+     "max": 20,
+     "critMin": 22,
+     "critMax": 24
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 3 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "fire"
+   ],
+   "tactical": "2 PA en ligne 1–7 : 18–20 Feu + attire la cible de 3 (aussi un allié) ; rapatrie un ennemi au contact ou dans un glyphe."
+  },
+  {
+   "id": 14434,
+   "spellLevelId": 44060,
+   "pairIndex": 19,
+   "variant": "A",
+   "variantOf": 29045,
+   "name": "Torpeur",
+   "nameEn": "Torpor",
+   "descriptionFr": "Attire la cible et occasionne des dommages Terre aux ennemis.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 142,
+   "unlockLevel": 75,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 27,
+    "max": 30,
+    "critMin": 32,
+    "critMax": 36,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "Attire de 2 cases",
+    "27 à 30 dommages Terre (CC : 32 à 36 dommages Terre) — cibles : ennemis"
+   ],
+   "effects": [
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "27 à 30 dommages Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 27,
+     "max": 30,
+     "critMin": 32,
+     "critMax": 36
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "earth"
+   ],
+   "tactical": "Attire de 2 puis 27–30 Terre ; rapproche un ennemi."
+  },
+  {
+   "id": 29045,
+   "spellLevelId": 77445,
+   "pairIndex": 19,
+   "variant": "B",
+   "variantOf": 14434,
+   "name": "Escapade",
+   "nameEn": "Getaway",
+   "descriptionFr": "Éloigne le lanceur de la cible et occasionne des dommages Eau aux ennemis.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 185,
+   "unlockLevel": 185,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 27,
+    "max": 29,
+    "critMin": 32,
+    "critMax": 35,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "Recule de 2 cases",
+    "27 à 29 dommages Eau (CC : 32 à 35 dommages Eau) — cibles : ennemis"
+   ],
+   "effects": [
+    {
+     "effectId": 1041,
+     "action": "CharacterGetPushed",
+     "text": "Recule de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "27 à 29 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 27,
+     "max": 29,
+     "critMin": 32,
+     "critMax": 35
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mobility",
+    "water"
+   ],
+   "tactical": "Le Féca recule de 2 puis 27–29 Eau ; sortie de tacle partielle."
+  },
+  {
+   "id": 12991,
+   "spellLevelId": 41073,
+   "pairIndex": 20,
+   "variant": "A",
+   "variantOf": 13024,
+   "name": "Bergerie",
+   "nameEn": "Into the Fold",
+   "descriptionFr": "Pose un glyphe-aura qui applique les états Inébranlable et Pesanteur sur les entités. Applique également l'Étoile du Berger sur les alliés présents ou entrant dans le glyphe.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 147,
+   "unlockLevel": 80,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un glyphe-aura «Bergerie» (13005, grade 2) — zone : carré de taille 2 ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Bergerie» (13005, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 1,
+     "subSpell": {
+      "id": 13005,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "control",
+    "anti_push",
+    "protection"
+   ],
+   "tactical": "Glyphe-aura carré 2 (1 tour) : Inébranlable + Pesanteur sur toutes les entités (empêche poussées, téléportations, échanges) + Étoile du Berger aux alliés. Fixe les ennemis dans les glyphes et protège contre les placements adverses."
+  },
+  {
+   "id": 13024,
+   "spellLevelId": 41137,
+   "pairIndex": 20,
+   "variant": "B",
+   "variantOf": 12991,
+   "name": "Excursion",
+   "nameEn": "Excursion",
+   "descriptionFr": "Pose un glyphe qui échange la position des alliés avec celle du lanceur. Applique également l'Étoile du Berger sur les alliés qui déclenchent le glyphe.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 190,
+   "unlockLevel": 190,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un glyphe (effet immédiat à la pose) «Excursion» (13036, grade 2) — cibles : alliés (lanceur inclus) ; si la cible n'a pas l'état «Pesanteur» (7) ; 1 tour(s) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Excursion» (13036, grade 1)",
+     "targetMask": "a,e7",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "subSpell": {
+      "id": 13036,
+      "grade": 1
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 1165,
+     "action": "FightAddGlyphCastingSpellImmediate",
+     "text": "pose un glyphe (effet immédiat à la pose) «Excursion» (13036, grade 2)",
+     "targetMask": "a,e7",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "subSpell": {
+      "id": 13036,
+      "grade": 2
+     },
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "mobility",
+    "rescue"
+   ],
+   "tactical": "Glyphe : le premier allié qui y passe échange sa place avec le Féca (et reçoit l'Étoile). Sauvetage d'un allié encerclé."
+  },
+  {
+   "id": 12988,
+   "spellLevelId": 41064,
+   "pairIndex": 21,
+   "variant": "A",
+   "variantOf": 13019,
+   "name": "Défiance",
+   "nameEn": "Distrust",
+   "descriptionFr": "Augmente le Tacle de l'allié ciblé pour chaque ennemi à son contact et pose un glyphe de fin de tour qui occasionne des dommages Terre, Feu, Eau et Air aux ennemis. Augmente les résistances en mêlée des alliés présents ou entrant dans le glyphe. Invoque également la Lanterne du Berger, lui applique les effets du sort et lui permet de tacler si la case est libre.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 152,
+   "unlockLevel": 85,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Air",
+    "Eau",
+    "Feu",
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "15 Tacle — cibles : alliés (lanceur inclus) ; 1 tour(s) ; indésenvoûtable",
+    "pose un glyphe de fin de tour «Défiance» (13001, grade 2) — cibles : ennemis ; zone : croix de taille 1 ; 1 tour(s)",
+    "pose un glyphe-aura «Défiance» (31537, grade 2) — cibles : alliés (lanceur inclus) ; zone : croix de taille 1 ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Défiance» (29052, grade 5)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29052,
+      "grade": 5
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 402,
+     "action": "FightAddGlyphCastingSpellEndturn",
+     "text": "pose un glyphe de fin de tour «Défiance» (13001, grade 2)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "subSpell": {
+      "id": 13001,
+      "grade": 2
+     }
+    },
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Défiance» (31537, grade 2)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "subSpell": {
+      "id": 31537,
+      "grade": 2
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Défiance» (29052, grade 5)",
+     "targetMask": "a,P,F7841,U",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29052,
+      "grade": 5
+     },
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "tank",
+    "glyph",
+    "damage",
+    "protection"
+   ],
+   "tactical": "+15 Tacle à l'allié par ennemi au contact, glyphe de fin de tour croix 1 (21–22 dans les 4 éléments aux ennemis) et aura +30 % résistance mêlée alliés. Le sort de tank au contact par excellence (relance 2)."
+  },
+  {
+   "id": 13019,
+   "spellLevelId": 41132,
+   "pairIndex": 21,
+   "variant": "B",
+   "variantOf": 12988,
+   "name": "Barrière",
+   "nameEn": "Barrier",
+   "descriptionFr": "Applique les états Pesanteur et Barrière sur la cible. Sur un ennemi : • Pose un glyphe autour de lui au début de son tour qui occasionne des dommages Terre, Feu, Eau et Air. • Augmente les résistances à distance des alliés présents ou entrant à l'intérieur de la zone. • Le glyphe n'occasionne des dommages qu'à cet ennemi s'il le traverse. • Les états et le glyphe sont retirés si l'ennemi traverse la Barrière ou s'il est achevé. Sur un allié : • Le glyphe est posé à la fin du tour du lanceur et n'occasionne des dommages qu'au premier ennemi qui le traverse. • Les états et le glyphe sont retirés si la cible ou un ennemi traverse la Barrière. Sur une case libre : invoque la Lanterne du Berger et lui applique les effets du sort.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 195,
+   "unlockLevel": 195,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Air",
+    "Eau",
+    "Feu",
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "le lanceur lance le sort «Invoque la Lanterne du Berger» (29072, grade 1)",
+    "applique l'état «Pesanteur» (7) — 1 tour(s) ; indésenvoûtable",
+    "applique l'état «Barrière» (717) — 1 tour(s) ; indésenvoûtable",
+    "pose un glyphe (effet immédiat à la pose) «Barrière» (29579, grade 1) — zone : anneau de taille 3 ; 1 tour(s) ; indésenvoûtable",
+    "pose un glyphe-aura «Barrière» (31538, grade 1) — cibles : alliés (lanceur inclus) ; zone : cercle de taille 2 ; 1 tour(s) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Lanterne du Berger» (7841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 0,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 7841,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Pesanteur» (7)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 7,
+      "name": "Pesanteur"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Barrière» (717)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 717,
+      "name": "Barrière"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Barrière allié» (4028)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 4028,
+      "name": "Barrière allié"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Barrière ennemi» (5375)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 5375,
+      "name": "Barrière ennemi"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Barrière» (29575, grade 1)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29575,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Barrière» (29575, grade 2)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "TE",
+     "triggerBuffDuration": 1,
+     "subSpell": {
+      "id": 29575,
+      "grade": 2
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Pesanteur» (7)",
+     "targetMask": "a,P,F7841,U",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 7,
+      "name": "Pesanteur"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Barrière» (717)",
+     "targetMask": "a,P,F7841,U",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 717,
+      "name": "Barrière"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Barrière allié» (4028)",
+     "targetMask": "a,P,F7841,U",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 4028,
+      "name": "Barrière allié"
+     },
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "control",
+    "glyph",
+    "damage",
+    "protection"
+   ],
+   "tactical": "Anneau de glyphe (rayon 3) autour de la cible : un ennemi qui le traverse prend 21–22 dans 4 éléments et l'effet s'arrête ; aura +30 % résistance distance alliés. Sur un ennemi : le maintient enfermé (il doit traverser pour sortir)."
+  },
+  {
+   "id": 12982,
+   "spellLevelId": 41046,
+   "pairIndex": 22,
+   "variant": "A",
+   "variantOf": 12997,
+   "name": "Bouclier Féca",
+   "nameEn": "Feca Shield",
+   "descriptionFr": "Réduit les dommages subis par l'allié ciblé. Applique également l'Étoile du Berger sur l'allié ciblé et tous les alliés dans un glyphe élémentaire allié.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 157,
+   "unlockLevel": 90,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Dommages subis x70% — cibles : alliés (lanceur inclus) ; déclenchement : quand le porteur subit des dommages (buff 2 t.)",
+    "applique l'état «Étoile du Berger» (5261) — cibles : alliés (hors lanceur) ; si la cible n'est pas un joueur de classe 1 ; si la cible n'est aucun de: «Barricade» (7864), «Bastion» (7865), «Égide» (5903), «Pavois» (5910), «Lanterne du Berger» (7841) ; 2 tour(s) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "text": "Dommages subis x70%",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Étoile du Berger» (5261)",
+     "targetMask": "g,b1,f7864,f7865,f5903,f5910,f7841",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "state": {
+      "id": 5261,
+      "name": "Étoile du Berger"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Étoile du Berger» (29056, grade 1)",
+     "targetMask": "g,b1,f7864,f7865,f5903,f5910,f7841",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29056,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Bouclier Féca» (29580, grade 1)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29580,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "protection",
+    "shield"
+   ],
+   "tactical": "Dommages subis ×70 % pendant 2 tours sur un allié (2 PA, PO 5, relance 3) + Étoile du Berger : le cœur de la protection Féca."
+  },
+  {
+   "id": 12997,
+   "spellLevelId": 41090,
+   "pairIndex": 22,
+   "variant": "B",
+   "variantOf": 12982,
+   "name": "Mise en Garde",
+   "nameEn": "Reinforced Protection",
+   "descriptionFr": "Augmente les caractéristiques du lanceur selon ses armures élémentaires actives, déclenche ses glyphes élémentaires sur la case ciblée et applique l'Étoile du Berger sur les alliés dans ces glyphes. Les glyphes ne peuvent être déclenchés manuellement qu'une seule fois par tour.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 200,
+   "unlockLevel": 200,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "200 Force — cibles : lanceur ; si la cible a l'état «Armure Terrestre» (5262) ; 2 tour(s) ; indésenvoûtable",
+    "200 Intelligence — cibles : lanceur ; si la cible a l'état «Armure Incandescente» (5263) ; 2 tour(s) ; indésenvoûtable",
+    "200 Chance — cibles : lanceur ; si la cible a l'état «Armure Aqueuse» (5264) ; 2 tour(s) ; indésenvoûtable",
+    "200 Agilité — cibles : lanceur ; si la cible a l'état «Armure Venteuse» (5265) ; 2 tour(s) ; indésenvoûtable",
+    "déclenche les glyphes «Prairie» (12992) — cibles : tous ; si le lanceur n'a pas l'état «Prairie déclenchée» (5364)",
+    "applique l'état «Étoile du Berger» (5261) — cibles : alliés (hors lanceur) ; si la cible n'est pas un joueur de classe 1 ; 2 tour(s) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Glyphes déclenchés» (5260)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 5260,
+      "name": "Glyphes déclenchés"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Mise en Garde» (5373)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 5373,
+      "name": "Mise en Garde"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 118,
+     "action": "CharacterBoostStrength",
+     "text": "200 Force",
+     "targetMask": "C,E5262",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "dispellable": 2
+    },
+    {
+     "effectId": 126,
+     "action": "CharacterBoostIntelligence",
+     "text": "200 Intelligence",
+     "targetMask": "C,E5263",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "dispellable": 2
+    },
+    {
+     "effectId": 123,
+     "action": "CharacterBoostChance",
+     "text": "200 Chance",
+     "targetMask": "C,E5264",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "dispellable": 2
+    },
+    {
+     "effectId": 119,
+     "action": "CharacterBoostAgility",
+     "text": "200 Agilité",
+     "targetMask": "C,E5265",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "dispellable": 2
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Étoile du Berger» (29056, grade 1)",
+     "targetMask": "g,b1",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29056,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Terre Battue» (12987)",
+     "targetMask": "a,A,*e5366",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Refuge» (13021)",
+     "targetMask": "a,A,*e5370",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Terre Brûlée» (12985)",
+     "targetMask": "a,A,*e5367",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Vigie» (13039)",
+     "targetMask": "a,A,*e5371",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Vallée» (12990)",
+     "targetMask": "a,A,*e5365",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Verglas» (13023)",
+     "targetMask": "a,A,*e5369",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Prairie» (12992)",
+     "targetMask": "a,A,*e5364",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1026,
+     "action": "ForceGlyphTrigger",
+     "text": "déclenche les glyphes «Pâturage» (13013)",
+     "targetMask": "a,A,*e5368",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 951,
+     "action": "FightUnsetState",
+     "text": "retire l'état «Glyphes déclenchés» (5260)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "state": {
+      "id": 5260,
+      "name": "Glyphes déclenchés"
+     }
+    },
+    {
+     "effectId": 951,
+     "action": "FightUnsetState",
+     "text": "retire l'état «Mise en Garde» (5373)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "state": {
+      "id": 5373,
+      "name": "Mise en Garde"
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "buff",
+    "glyph_trigger",
+    "damage"
+   ],
+   "tactical": "Sort niv. 200 : +200 dans chaque caractéristique correspondant à une armure active (2 tours) et déclenche les glyphes sous le Féca. Pour un Féca multi-élément orienté dégâts."
+  }
+ ],
+ "summons": [
+  {
+   "monsterId": 5903,
+   "name": "Égide",
+   "gradesSummonedByClassSpells": [
+    1
+   ],
+   "useSummonSlot": false,
+   "summonCost": 0,
+   "canPlay": false,
+   "canTackle": false,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [],
+   "characRatios": [
+    [
+     0,
+     600
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     0.125
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 140
+     },
+     "startingSpellLevelId": 41155
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 140
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 140
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 4,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 140
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 5,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 140
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 5910,
+   "name": "Pavois",
+   "gradesSummonedByClassSpells": [
+    1
+   ],
+   "useSummonSlot": false,
+   "summonCost": 0,
+   "canPlay": false,
+   "canTackle": false,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [],
+   "characRatios": [
+    [
+     0,
+     1
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     0.125
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41163
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 4,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 5,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 7841,
+   "name": "Lanterne du Berger",
+   "gradesSummonedByClassSpells": [
+    1
+   ],
+   "useSummonSlot": false,
+   "summonCost": 0,
+   "canPlay": false,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 77519
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 4,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 5,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 7864,
+   "name": "Barricade",
+   "gradesSummonedByClassSpells": [
+    1
+   ],
+   "useSummonSlot": false,
+   "summonCost": 0,
+   "canPlay": false,
+   "canTackle": false,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [],
+   "characRatios": [
+    [
+     0,
+     1
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     0.125
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78075
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78075
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78075
+    },
+    {
+     "grade": 4,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78075
+    },
+    {
+     "grade": 5,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78075
+    }
+   ]
+  },
+  {
+   "monsterId": 7865,
+   "name": "Bastion",
+   "gradesSummonedByClassSpells": [
+    1
+   ],
+   "useSummonSlot": false,
+   "summonCost": 0,
+   "canPlay": false,
+   "canTackle": false,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [],
+   "characRatios": [
+    [
+     0,
+     1
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     0.125
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78080
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78080
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78080
+    },
+    {
+     "grade": 4,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78080
+    },
+    {
+     "grade": 5,
+     "level": 1,
+     "ap": 0,
+     "mp": 0,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 78080
+    }
+   ]
+  }
+ ],
+ "importantStates": {
+  "7": {
+   "name": "Pesanteur",
+   "note": "Pesanteur : pas d'échange de position ni téléportation (critère HS!7 sur les sorts de mobilité)"
+  },
+  "157": {
+   "name": "Inébranlable",
+   "note": "Inébranlable : ne peut pas être poussé/attiré"
+  },
+  "218": {
+   "name": "Pacifiste",
+   "note": "Pacifiste : ne peut pas infliger de dommages"
+  },
+  "238": {
+   "name": "Hypoglyphe",
+   "note": "Hypoglyphe : interdit un 2e glyphe élémentaire dans le tour"
+  },
+  "375": {
+   "name": "Invulnérable à Distance",
+   "note": "Invulnérable à distance"
+  },
+  "376": {
+   "name": "Invulnérable en Mêlée",
+   "note": "Invulnérable en mêlée"
+  },
+  "583": {
+   "name": "Sacrifice",
+   "note": "Sacrifice : marque une interception/partage de dommages"
+  },
+  "5260": {
+   "name": "Glyphes déclenchés",
+   "note": "Glyphes déclenchés (pendant un déclenchement manuel)"
+  },
+  "5261": {
+   "name": "Étoile du Berger",
+   "note": "Étoile du Berger : permet de recevoir les armures Féca"
+  },
+  "5262": {
+   "name": "Armure Terrestre",
+   "note": "Armure Terrestre (+15 % rés. Terre)"
+  },
+  "5263": {
+   "name": "Armure Incandescente",
+   "note": "Armure Incandescente (+15 % rés. Feu)"
+  },
+  "5264": {
+   "name": "Armure Aqueuse",
+   "note": "Armure Aqueuse (+15 % rés. Eau)"
+  },
+  "5265": {
+   "name": "Armure Venteuse",
+   "note": "Armure Venteuse (+15 % rés. Air)"
+  },
+  "5364": {
+   "name": "Prairie déclenchée"
+  },
+  "5365": {
+   "name": "Vallée déclenchée"
+  },
+  "5366": {
+   "name": "Terre Battue déclenchée"
+  },
+  "5367": {
+   "name": "Terre Brûlée déclenchée"
+  },
+  "5368": {
+   "name": "Pâturage déclenché"
+  },
+  "5369": {
+   "name": "Verglas déclenché"
+  },
+  "5370": {
+   "name": "Refuge déclenché"
+  },
+  "5371": {
+   "name": "Vigie déclenchée"
+  },
+  "2742": {
+   "name": "Ataraxie",
+   "note": "Ataraxie (−75 % sur le prochain coup)"
+  },
+  "717": {
+   "name": "Barrière",
+   "note": "Barrière"
+  },
+  "5375": {
+   "name": "Barrière ennemi",
+   "note": "Barrière ennemi"
+  },
+  "4028": {
+   "name": "Barrière allié",
+   "note": "Barrière allié"
+  }
+ },
+ "spellSets": {
+  "protecteur_tank": {
+   "A": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    9,
+    10,
+    11,
+    13,
+    14,
+    15,
+    16,
+    19,
+    20,
+    21,
+    22
+   ],
+   "B": [
+    1,
+    2,
+    8,
+    12,
+    17,
+    18
+   ],
+   "note": "Tétanie si mêlée (paire 1 → B possible)"
+  },
+  "entraveur_zone": {
+   "A": [
+    5,
+    7,
+    9,
+    10,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    22
+   ],
+   "B": [
+    1,
+    2,
+    3,
+    4,
+    6,
+    8,
+    11,
+    21
+   ]
+  },
+  "degats_glyphes_multi": {
+   "A": [
+    1,
+    3,
+    5,
+    6,
+    9,
+    10,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    19,
+    21
+   ],
+   "B": [
+    2,
+    4,
+    7,
+    8,
+    11,
+    18,
+    20,
+    22
+   ]
+  }
+ },
+ "rotations": [
+  {
+   "name": "Ouverture protecteur (12 PA)",
+   "sequence": [
+    "Bouclier Féca (2) sur l'allié exposé",
+    "Rempart (2)",
+    "Terre Battue (3) sur le paquet d'ennemis",
+    "Somnolence (3)",
+    "Bulle (2)"
+   ],
+   "goal": "Réduire les dégâts du premier tour ennemi et retirer 3+2 PA."
+  },
+  {
+   "name": "Contrôle (12 PA)",
+   "sequence": [
+    "Prairie ou Terre Brûlée (3)",
+    "Regroupement ou Sonnailles (4)",
+    "Barricade/Bastion (2)",
+    "Bulle (2)"
+   ],
+   "goal": "Ramener les ennemis dans les auras (−3 PM / −20 % DF) avant la fin du tour."
+  },
+  {
+   "name": "Cycle glyphes (12 PA)",
+   "sequence": [
+    "Mise en Garde (3) dans un glyphe",
+    "Transhumance (3) vers un second glyphe",
+    "Somnolence (3)",
+    "Tétanie ou Bulle"
+   ],
+   "goal": "Doubler les dégâts des glyphes (début de tour ennemi + déclenchement manuel) et cumuler +200 stats."
+  },
+  {
+   "name": "Anti-burst boss (≈9 PA)",
+   "sequence": [
+    "Ataraxie (2) sur la cible prévue",
+    "Bouclier Féca (2)",
+    "Fortification (2)",
+    "Barricade ou Bastion (2) selon mêlée/distance"
+   ],
+   "goal": "Survivre à un tour de boss prévisible."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "DPS (Sram, Crâ, Iop, Ouginak, Huppermage)",
+   "how": "Bouclier Féca + armures ; ennemis ralentis par les auras −PA/−PM/−PO ne peuvent pas les atteindre."
+  },
+  {
+   "with": "Enutrof",
+   "how": "Retrait PM cumulé (Terre Brûlée + Maladresse/Pelle Aurifère) ; les retraits esquivables du Féca devraient déclencher Orpaillage/Monnaie Sonnante de l'Enutrof (INCERTAIN)."
+  },
+  {
+   "with": "Pandawa / Sacrieur / Osamodas",
+   "how": "Placement des ennemis dans les glyphes ; Étoile du Berger donnée aux alliés placés dans les glyphes."
+  },
+  {
+   "with": "Eniripsa / Osamodas soigneur",
+   "how": "Soins plus rentables quand les dégâts subis sont réduits de 30–50 %."
+  },
+  {
+   "with": "Xélor",
+   "how": "Retraits PA cumulés (aura Terre Battue + Somnolence/Tétanie + sorts Xélor) : boss sans PA."
+  }
+ ],
+ "strengths": [
+  "Réduction de dommages inégalée (×0,70, armures fixes, −20 % dommages finaux, invulnérabilités)",
+  "Entrave de zone persistante par les auras (−3 PA et −3 PM esquivables, −6 PO non esquivable)",
+  "Boucliers bloquant lignes de vue et cases, placement riche",
+  "Polyvalent (4 éléments), pas de dépendance aux invocations"
+ ],
+ "weaknesses": [
+  "Dégâts inférieurs à un DPS dédié",
+  "Un seul glyphe élémentaire par tour, relances longues (3–5 tours)",
+  "Glyphes inefficaces contre des ennemis très mobiles ou immunisés aux malus",
+  "Pesanteur (Bergerie, Ataraxie) bloque aussi ses propres téléportations"
+ ],
+ "uncertain": [
+  "PV des boucliers/Lanterne : bonusCharacteristics.lifePoints interprété comme % des PV du Féca (30/90/140 %).",
+  "Sémantique de characRatios des invocations (ratios par caractéristique) non documentée.",
+  "globalCooldown = -1 interprété comme relance partagée entre lanceurs de la même équipe.",
+  "Armure élémentaire : 15 % dans les données 2026 contre 25 % annoncés à la refonte 2.71 (on retient 15 %).",
+  "Ordre exact d'application armure fixe / résistances / multiplicateurs : à valider avec le module DoMath.",
+  "Retraits d'aura esquivables (1079/1080) : moment du jet d'esquive (entrée dans l'aura / chaque début de tour) et déclenchement des états Enutrof APA/MPA."
+ ],
+ "sources": [
+  "https://api.dofusdb.fr/breeds/1",
+  "https://api.dofusdb.fr/spell-variants?breedId=1",
+  "https://github.com/PyDofus/pydofus3 (ActionId.py)",
+  "https://github.com/Souchy/DofusDB (code/ActionIds.ts)",
+  "https://github.com/Romain-P/d2gen (DamageUtil.as, armure 265)",
+  "https://domath.fr",
+  "https://guidactik.com/dofus/refonte-du-feca-avec-dofus-2-71-le-resume/",
+  "https://www.next-stage.fr/?p=224295"
+ ]
+}

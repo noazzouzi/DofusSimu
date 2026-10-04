@@ -1,0 +1,4200 @@
+{
+ "breedId": 4,
+ "slug": "sram",
+ "name": "Sram",
+ "nameEn": "Sram",
+ "dataSource": "api.dofusdb.fr (fichiers du jeu Dofus 3, données mises à jour le 2026-06-23), extraction 2026-10-04",
+ "officialRoles": [
+  {
+   "roleId": 5,
+   "value": 10,
+   "description": "Pose des pièges et peut empoisonner ses adversaires."
+  },
+  {
+   "roleId": 6,
+   "value": 7,
+   "description": "Pousse et attire avec ses sorts et ses pièges."
+  },
+  {
+   "roleId": 1,
+   "value": 6,
+   "description": "Vole des caractéristiques et ralentit ses adversaires avec ses sorts, ses pièges et son double."
+  }
+ ],
+ "roles": [
+  {
+   "role": "dps-terre-pieges",
+   "element": "Terre (Force)",
+   "priority": 1,
+   "tags": [
+    "damage",
+    "trap",
+    "burst"
+   ],
+   "description": "Pièges (Mortel, Funeste, Effroyable) qui chargent Chausse-trappe (+40), Perfidie (6→2 PA), Marque Mortuaire (×110 %) ; Attaque Mortelle en finisseur."
+  },
+  {
+   "role": "dps-air-poisons",
+   "element": "Air (Agilité)",
+   "priority": 2,
+   "tags": [
+    "damage",
+    "poison",
+    "aoe"
+   ],
+   "description": "Injection Toxique, Épidémie (propagation), Arsenic, Toxines, Fourvoiement (érosion), Arnaque."
+  },
+  {
+   "role": "utilitaire-entrave",
+   "element": "tous",
+   "priority": 3,
+   "tags": [
+    "mp_removal_aoe",
+    "stealth",
+    "team_damage_amp"
+   ],
+   "description": "Piège d'Immobilisation (−4 PM cercle 3), Brume (alliés invisibles, −4 PO), Fosse Commune (Pesanteur), Manigance (+20 Dommages alliés), Coupe-gorge (×110 %)."
+  },
+  {
+   "role": "placeur",
+   "element": "tous",
+   "priority": 4,
+   "tags": [
+    "placement"
+   ],
+   "description": "Peur, Sournoiserie, Méprise, Guet-apens, Perquisition, pièges d'attraction/répulsion."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Pièges",
+   "description": "Effet 400 : marque invisible pour l'ennemi, posée sur case libre sans piège ; déclenchée quand une entité entre dans sa zone ; effets appliqués depuis la case centrale ; jamais de CC ; Puissance/Dommages pièges.",
+   "implementationNotes": "Mark{type:'trap', caster, spellId, grade, triggerCells (zone de l'effet 400), visibleTo: team} ; à l'entrée : stopper le mouvement, exécuter le sous-sort, supprimer la marque, lancer 12968 « Pièges » sur le Sram (compteurs)."
+  },
+  {
+   "name": "Compteurs de pièges",
+   "description": "Sous-sort 12968 : Chausse-trappe +8 dmg de base (×5), Perfidie −1 PA (×4), Marque Mortuaire paliers I–IV, Injection Toxique −1 relance, Comploteur +8.",
+   "implementationNotes": "Chaque compteur est un buff (effets 293/285/1036) ou un état ; remis à zéro au lancer du sort concerné (effet 406)."
+  },
+  {
+   "name": "États de deck",
+   "description": "Les compteurs de pièges et les rangs (Toxines, Épidémie double) dépendent d'états permanents du Sram (3762–3766, 2763/2764, 6050/6051) qu'aucun sort ne pose : appliqués selon les sorts équipés (INCERTAIN).",
+   "implementationNotes": "Au début du combat : pour chaque sort équipé parmi Marque Mortuaire, Chausse-trappe, Comploteur, Perfidie, Injection Toxique, poser l'état compteur correspondant ; Toxines → état rang 2 (niv. ≥ 172)."
+  },
+  {
+   "name": "Poisons",
+   "description": "Buffs de dégâts à déclenchement TB/TE (Arsenic, Injection Toxique, Toxines, Épidémie, Piège Insidieux).",
+   "implementationNotes": "Durée = effectTriggerDuration ; Épidémie : propagation en fin de tour aux ennemis en cercle 2 (sous-sort 12956)."
+  },
+  {
+   "name": "Invisibilité",
+   "description": "Effet 150 (1 tour) ; non ciblable directement par l'ennemi ; zones s'appliquent ; certains sorts dissipent l'invisibilité du lanceur.",
+   "implementationNotes": "Fighter.invisible ; révéler la case au lancer d'un sort (lastKnownCell pour l'IA ennemie) ; révélé par effets « Dévoile les entités invisibles »."
+  },
+  {
+   "name": "Double / Comploteur",
+   "description": "Effet 180 : copie contrôlable (mêmes stats, emplacement d'invocation) qui n'attaque pas ; Double échange + 2 PM fin du 2e tour ; Comploteur explose fin du 3e tour.",
+   "implementationNotes": "États 611/705 (double), 6052 (Sram a un double) ; sorts dont le centre devient le double : Guet-apens, Perquisition, Méprise, Épidémie."
+  },
+  {
+   "name": "Vols de caractéristiques",
+   "description": "Effets 266–271 : la cible perd X, le Sram gagne X (3 tours, ×2).",
+   "implementationNotes": "Deux buffs liés ; valeurs fixes (100 ou 80)."
+  },
+  {
+   "name": "Érosion",
+   "description": "Effet 776 : % d'érosion (Larcin/Fourvoiement 13 %, Marque Mortuaire jusqu'à 30 %).",
+   "implementationNotes": "Ajouté à l'érosion de base du module de calcul (PV max perdus)."
+  },
+  {
+   "name": "Peur",
+   "description": "Effet 783 « Pousse jusqu'à la case visée » : pousse l'entité adjacente au lanceur dans la direction de la case ciblée jusqu'à celle-ci.",
+   "implementationNotes": "DoMath force min/max range 1 pour trouver la cible (case adjacente) ; arrêt sur obstacle."
+  }
+ ],
+ "spells": [
+  {
+   "id": 12902,
+   "spellLevelId": 40885,
+   "pairIndex": 1,
+   "variant": "A",
+   "variantOf": 12932,
+   "name": "Truanderie",
+   "nameEn": "Gangsterdom",
+   "descriptionFr": "Vole de la Puissance et occasionne des dommages Terre.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 132,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 29,
+    "critMin": 31,
+    "critMax": 35,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "-80 Puissance — 3 tour(s)",
+    "80 Puissance — cibles : lanceur ; 3 tour(s)",
+    "26 à 29 dommages Terre (CC : 31 à 35 dommages Terre)"
+   ],
+   "effects": [
+    {
+     "effectId": 186,
+     "action": "CharacterDeboostDamagesPercent",
+     "text": "-80 Puissance",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 138,
+     "action": "CharacterBoostDamagesPercent",
+     "text": "80 Puissance",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "26 à 29 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 26,
+     "max": 29,
+     "critMin": 31,
+     "critMax": 35
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "steal_stat",
+    "earth"
+   ],
+   "tactical": "3 PA, cible requise : vole 80 Puissance (3 tours, cumulable 2) + 26–29 Terre. Monte la Puissance du Sram de 160 sur 2 lancers."
+  },
+  {
+   "id": 12932,
+   "spellLevelId": 43788,
+   "pairIndex": 1,
+   "variant": "B",
+   "variantOf": 12902,
+   "name": "Chausse-trappe",
+   "nameEn": "Pitfall",
+   "descriptionFr": "Occasionne des dommages Terre. Les dommages du sort sont augmentés pour chaque piège déclenché du lanceur. Les effets sont retirés après utilisation du sort.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 162,
+   "unlockLevel": 95,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 5,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 28,
+    "max": 32,
+    "critMin": 34,
+    "critMax": 38,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "28 à 32 dommages Terre (CC : 34 à 38 dommages Terre)",
+    "«Chausse-trappe» : +8 dommages de base — cibles : lanceur ; durée infinie ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "28 à 32 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 28,
+     "max": 32,
+     "critMin": 34,
+     "critMax": 38
+    },
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "text": "retire les effets du sort «Chausse-trappe» (12971)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "burst",
+    "earth",
+    "trap_synergy"
+   ],
+   "tactical": "4 PA au contact proche (1–4) : 28–32 Terre +8 dommages de base par piège déclenché (5 cumuls, +40), compteur remis à 0 après le lancer."
+  },
+  {
+   "id": 12904,
+   "spellLevelId": 40891,
+   "pairIndex": 2,
+   "variant": "A",
+   "variantOf": 12935,
+   "name": "Sournoiserie",
+   "nameEn": "Deviousness",
+   "descriptionFr": "Occasionne des dommages Feu aux ennemis et repousse la cible.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 133,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 28,
+    "max": 31,
+    "critMin": 34,
+    "critMax": 37,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "28 à 31 dommages Feu (CC : 34 à 37 dommages Feu) — cibles : ennemis",
+    "Repousse de 3 cases — cibles : ennemis, alliés (lanceur inclus)"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "28 à 31 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 28,
+     "max": 31,
+     "critMin": 34,
+     "critMax": 37
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 3 cases",
+     "targetMask": "A,a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "fire"
+   ],
+   "tactical": "3 PA en ligne : 28–31 Feu + repousse 3 : pousser un ennemi dans un piège ou l'éloigner."
+  },
+  {
+   "id": 12935,
+   "spellLevelId": 43794,
+   "pairIndex": 2,
+   "variant": "B",
+   "variantOf": 12904,
+   "name": "Coupe-gorge",
+   "nameEn": "Cut-Throat",
+   "descriptionFr": "Occasionne des dommages Feu et augmente les dommages subis par la cible.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 167,
+   "unlockLevel": 100,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 34,
+    "max": 38,
+    "critMin": 40,
+    "critMax": 44,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "34 à 38 dommages Feu (CC : 40 à 44 dommages Feu)",
+    "Dommages subis x110% — déclenchement : quand le porteur subit des dommages (buff 1 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "34 à 38 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 34,
+     "max": 38,
+     "critMin": 40,
+     "critMax": 44
+    },
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "text": "Dommages subis x110%",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "debuff",
+    "fire",
+    "team_amp"
+   ],
+   "tactical": "4 PA : 34–38 Feu et dommages subis ×110 % (1 tour) sur la cible : amplificateur de groupe."
+  },
+  {
+   "id": 12907,
+   "spellLevelId": 40900,
+   "pairIndex": 3,
+   "variant": "A",
+   "variantOf": 12933,
+   "name": "Arsenic",
+   "nameEn": "Arsenic",
+   "descriptionFr": "Retire de la Portée et applique un poison Air de début de tour sur la cible.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 134,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "-2 Portée — 2 tour(s)",
+    "16 à 18 dommages Air (CC : 19 à 22 dommages Air) — déclenchement : début de tour du porteur (buff 2 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 116,
+     "action": "CharacterDeboostRange",
+     "text": "-2 Portée",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "16 à 18 dommages Air",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 16,
+     "max": 18,
+     "critMin": 19,
+     "critMax": 22,
+     "triggers": "TB",
+     "triggerBuffDuration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "poison",
+    "range_removal",
+    "air"
+   ],
+   "tactical": "3 PA en ligne sans LdV, 1/cible : −2 PO (2 tours) et poison 16–18 Air au début des 2 prochains tours de la cible."
+  },
+  {
+   "id": 12933,
+   "spellLevelId": 43792,
+   "pairIndex": 3,
+   "variant": "B",
+   "variantOf": 12907,
+   "name": "Toxines",
+   "nameEn": "Toxines",
+   "descriptionFr": "Applique un poison Air de fin de tour sur l'ennemi ciblé. Les dommages du sort sont augmentés (cumulable 5 fois) et le poison est réappliqué tant qu'il est actif et que la cible subit des dommages de pièges Cet effet ne peut être déclenché qu'une seule fois par tour.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 172,
+   "unlockLevel": 105,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "7 à 9 dommages Air — cibles : ennemis ; déclenchement : fin de tour du porteur (buff 2 t.)",
+    "«Toxines» : +6 dommages de base — cibles : lanceur ; durée infinie"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Toxines» (28739, grade 1)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 28739,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "poison",
+    "air",
+    "trap_synergy"
+   ],
+   "tactical": "3 PA, 1/tour : poison Air de fin de tour (2 tours) qui s'intensifie et se réapplique quand la cible subit des dégâts de piège (5 cumuls)."
+  },
+  {
+   "id": 12919,
+   "spellLevelId": 40936,
+   "pairIndex": 4,
+   "variant": "A",
+   "variantOf": 12922,
+   "name": "Cruauté",
+   "nameEn": "Cruelty",
+   "descriptionFr": "Occasionne des dommages Eau et augmente les PM du lanceur. Les dommages n'affectent pas le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 136,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 22,
+    "max": 25,
+    "critMin": 26,
+    "critMax": 30,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "22 à 25 dommages Eau (CC : 26 à 30 dommages Eau) — cibles : alliés (hors lanceur), ennemis",
+    "1 PM — cibles : lanceur ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "22 à 25 dommages Eau",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 22,
+     "max": 25,
+     "critMin": 26,
+     "critMax": 30
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "text": "1 PM",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "water",
+    "self_mp"
+   ],
+   "tactical": "3 PA, cible requise : 22–25 Eau (pas sur le lanceur) et +1 PM au Sram, 3/tour."
+  },
+  {
+   "id": 12922,
+   "spellLevelId": 76664,
+   "pairIndex": 4,
+   "variant": "B",
+   "variantOf": 12919,
+   "name": "Poisse",
+   "nameEn": "Jinx",
+   "descriptionFr": "Vole de la vie dans l'élément Eau et minimise les effets aléatoires de l'ennemi ciblé. Soigne également les alliés (hors lanceur) selon les dommages occasionnés à l'ennemi ciblé en zone. La minimisation des effets ne fonctionne qu'un tour sur deux sur une même cible.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 177,
+   "unlockLevel": 110,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 34,
+    "max": 38,
+    "critMin": 41,
+    "critMax": 46,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "34 à 38 vol Eau (CC : 41 à 46 vol Eau)",
+    "Soin : 50% des dommages occasionnés — cibles : alliés (hors lanceur) ; zone : cercle de taille 2 (à partir de 1)",
+    "Minimise les effets aléatoires de la cible — cibles : ennemis ; si la cible n'a pas l'état «Poisse» (5183) ; 1 tour(s)",
+    "applique l'état «Poisse» (5183) — cibles : ennemis ; si la cible n'a pas l'état «Poisse» (5183) ; 2 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Poisse» (28716, grade 1)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 28716,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 91,
+     "action": "CharacterLifePointsStealFromWater",
+     "text": "34 à 38 vol Eau",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 34,
+     "max": 38,
+     "critMin": 41,
+     "critMax": 46
+    },
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "text": "retire les effets du sort «Poisse» (28716)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 781,
+     "action": "CharacterUnlucky",
+     "text": "Minimise les effets aléatoires de la cible",
+     "targetMask": "A,e5183",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Poisse» (5183)",
+     "targetMask": "A,e5183",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "state": {
+      "id": 5183,
+      "name": "Poisse"
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "steal",
+    "water",
+    "heal_allies",
+    "anti_random"
+   ],
+   "tactical": "4 PA : vol de vie Eau 34–38, minimise les effets aléatoires de l'ennemi (un tour sur deux) et, au prochain dégât qu'il subit, soigne les alliés en cercle 2 autour de lui de 50 % des dommages."
+  },
+  {
+   "id": 12913,
+   "spellLevelId": 40918,
+   "pairIndex": 5,
+   "variant": "A",
+   "variantOf": 12930,
+   "name": "Invisibilité",
+   "nameEn": "Invisibility",
+   "descriptionFr": "Rend la cible invisible. Augmente également ses PM si c'est un allié. Le temps de relance est réinitialisé lorsque le lanceur achève un combattant.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 139,
+   "unlockLevel": 5,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Rend la cible invisible — 1 tour(s)",
+    "2 PM — cibles : alliés (lanceur inclus) ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 150,
+     "action": "CharacterMakeInvisible",
+     "text": "Rend la cible invisible",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "text": "2 PM",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "stealth",
+    "buff_mp",
+    "survival"
+   ],
+   "tactical": "2 PA sans LdV : invisibilité 1 tour sur n'importe quelle cible (+2 PM 2 tours si allié). Relance 3 réinitialisée quand le Sram achève un combattant."
+  },
+  {
+   "id": 12930,
+   "spellLevelId": 43791,
+   "pairIndex": 5,
+   "variant": "B",
+   "variantOf": 12913,
+   "name": "Brume",
+   "nameEn": "Mist",
+   "descriptionFr": "Pose un glyphe-aura qui rend les alliés invisibles et retire de la Portée aux ennemis. Le temps de relance est réduit lorsque le lanceur achève un combattant.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 182,
+   "unlockLevel": 115,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 5,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un glyphe-aura «Brume» (12951, grade 2) — zone : cercle de taille 3 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1091,
+     "action": "FightAddGlyphAura",
+     "text": "pose un glyphe-aura «Brume» (12951, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 0
+     },
+     "duration": 2,
+     "subSpell": {
+      "id": 12951,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "stealth",
+    "range_removal",
+    "aoe",
+    "group"
+   ],
+   "tactical": "3 PA, relance 5 : glyphe-aura cercle 3 (2 tours) — alliés invisibles, ennemis −4 PO : protège tout un groupe à distance."
+  },
+  {
+   "id": 12915,
+   "spellLevelId": 40924,
+   "pairIndex": 6,
+   "variant": "A",
+   "variantOf": 12936,
+   "name": "Double",
+   "nameEn": "Double",
+   "descriptionFr": "Invoque un double contrôlable qui possède les mêmes caractéristiques que l'invocateur. Il n'attaque pas et meurt à la fin de son deuxième tour pour échanger de position avec le lanceur et lui augmenter ses PM.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 144,
+   "unlockLevel": 10,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Invoque un double du lanceur",
+    "Échange de positions — effet différé de 2 tour(s)",
+    "2 PM — 1 tour(s) ; effet différé de 2 tour(s) ; désenvoûtement fort uniquement",
+    "Tue la cible — cibles : alliés (lanceur inclus) ; si la cible vient d'apparaître (invocation posée par ce sort) ; effet différé de 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 180,
+     "action": "CharacterAddDoubleUseSummonSlot",
+     "text": "Invoque un double du lanceur",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Doublure» (12966, grade 1)",
+     "targetMask": "a,U",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12966,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Épidémie Double et Comploteur» (1486)",
+     "targetMask": "a,U",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": -1,
+     "state": {
+      "id": 1486,
+      "name": "Épidémie Double et Comploteur"
+     },
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "double",
+    "mobility",
+    "decoy"
+   ],
+   "tactical": "3 PA : copie contrôlable du Sram (sans attaque) qui échange de place avec lui et lui donne +2 PM à la fin de son 2e tour. Leurre et relais pour Guet-apens/Perquisition/Méprise/Épidémie."
+  },
+  {
+   "id": 12936,
+   "spellLevelId": 43796,
+   "pairIndex": 6,
+   "variant": "B",
+   "variantOf": 12915,
+   "name": "Comploteur",
+   "nameEn": "Plotter",
+   "descriptionFr": "Invoque un double contrôlable qui possède les mêmes caractéristiques que l'invocateur. Il n'attaque pas et meurt à la fin de son troisième tour pour occasionner des dommages dans son meilleur élément aux entités à son contact. Les dommages à la mort du double sont augmentés pour chaque piège déclenché du lanceur depuis son invocation.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 187,
+   "unlockLevel": 120,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 5,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Air",
+    "meilleur élément"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Invoque un double du lanceur — cibles : alliés (lanceur inclus)",
+    "«Comploteur» : +8 dommages de base — cibles : alliés (lanceur inclus) ; si la cible est le lanceur ou une de ses invocations ; si la cible a l'état «Double» (611) ; durée infinie ; indésenvoûtable",
+    "26 à 30 dommages du meilleur élément — zone : croix sans centre de taille 1 (à partir de 1) ; effet différé de 3 tour(s)",
+    "Tue la cible — cibles : alliés (lanceur inclus) ; si la cible vient d'apparaître (invocation posée par ce sort) ; effet différé de 3 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 180,
+     "action": "CharacterAddDoubleUseSummonSlot",
+     "text": "Invoque un double du lanceur",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Complot» (19724, grade 1)",
+     "targetMask": "a,U",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 19724,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Épidémie Double et Comploteur» (1486)",
+     "targetMask": "a,U",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": -1,
+     "state": {
+      "id": 1486,
+      "name": "Épidémie Double et Comploteur"
+     },
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "double",
+    "damage",
+    "trap_synergy"
+   ],
+   "tactical": "3 PA : double qui explose à la fin de son 3e tour (26–30 meilleur élément au contact, +8 par piège déclenché depuis son invocation)."
+  },
+  {
+   "id": 12906,
+   "spellLevelId": 40897,
+   "pairIndex": 7,
+   "variant": "A",
+   "variantOf": 12939,
+   "name": "Piège Sournois",
+   "nameEn": "Tricky Trap",
+   "descriptionFr": "Pose un piège qui occasionne des dommages Feu aux ennemis et attire les entités vers son centre en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 149,
+   "unlockLevel": 15,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège Sournois» (12929, grade 3) — zone : croix de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège Sournois» (12929, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12929,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "damage",
+    "placement",
+    "fire"
+   ],
+   "tactical": "2 PA, 1/tour : piège croix 1 — 17–19 Feu aux ennemis et attire de 1 vers le centre (regroupe dans la zone d'un second piège)."
+  },
+  {
+   "id": 12939,
+   "spellLevelId": 52961,
+   "pairIndex": 7,
+   "variant": "B",
+   "variantOf": 12906,
+   "name": "Guet-apens",
+   "nameEn": "Waylaying",
+   "descriptionFr": "Vole de la vie dans l'élément Eau aux ennemis et attire la cible. Les entités qui attaquent l'ennemi ciblé sont soignées d'une partie des dommages occasionnés. Attire la cible vers le double du lanceur s'il est présent sur le terrain.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 192,
+   "unlockLevel": 125,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 22,
+    "max": 25,
+    "critMin": 27,
+    "critMax": 30,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "22 à 25 vol Eau (CC : 27 à 30 vol Eau) — cibles : ennemis",
+    "soigne l'attaquant de 25% des dommages subis — cibles : ennemis ; déclenchement : quand le porteur subit des dommages (buff 1 t.)",
+    "Attire de 2 cases — cibles : tous ; si le lanceur n'a pas l'état «Double invoqué» (6052)"
+   ],
+   "effects": [
+    {
+     "effectId": 91,
+     "action": "CharacterLifePointsStealFromWater",
+     "text": "22 à 25 vol Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 22,
+     "max": 25,
+     "critMin": 27,
+     "critMax": 30
+    },
+    {
+     "effectId": 786,
+     "action": "CharacterHealAttackers",
+     "text": "soigne l'attaquant de 25% des dommages subis",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 1
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Guet-apens (cible)» (2339)",
+     "targetMask": "a,A,*E6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 2339,
+      "name": "Guet-apens (cible)"
+     },
+     "dispellable": 3
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Guet-apens» (12953, grade 2)",
+     "targetMask": "C,*E6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12953,
+      "grade": 2
+     }
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 2 cases",
+     "targetMask": "a,A,*e6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 2 cases",
+     "targetMask": "a,P,E611,*E6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "steal",
+    "placement",
+    "water",
+    "heal_on_attack"
+   ],
+   "tactical": "3 PA : vol de vie Eau 22–25, attire de 2 (vers le double s'il existe) ; pendant 1 tour, quiconque attaque la cible est soigné de 25 %."
+  },
+  {
+   "id": 12916,
+   "spellLevelId": 40927,
+   "pairIndex": 8,
+   "variant": "A",
+   "variantOf": 12943,
+   "name": "Piège Fangeux",
+   "nameEn": "Miry Trap",
+   "descriptionFr": "Pose un piège qui occasionne des dommages Eau et retire des PM.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 154,
+   "unlockLevel": 20,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège Fangeux» (12970, grade 3)"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège Fangeux» (12970, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12970,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "damage",
+    "mp_removal",
+    "water"
+   ],
+   "tactical": "3 PA : piège mono-cellule — 33–37 Eau et −2 PM esquivables à l'entité qui le déclenche (y compris un allié)."
+  },
+  {
+   "id": 12943,
+   "spellLevelId": 76671,
+   "pairIndex": 8,
+   "variant": "B",
+   "variantOf": 12916,
+   "name": "Épidémie",
+   "nameEn": "Epidemic",
+   "descriptionFr": "Applique un poison Air de fin de tour sur l'ennemi ciblé et lui applique l'état Épidémie : • À la fin du tour de la cible, propage le poison et l'état sur les ennemis en zone autour d'elle. Le lanceur et son double peuvent servir de cible pour propager le poison. N'affecte pas les invocations statiques.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 197,
+   "unlockLevel": 130,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "36 à 40 dommages Air — cibles : ennemis ; déclenchement : fin de tour du porteur (buff 1 t.) ; indésenvoûtable",
+    "applique l'état «Epidémie» (667) — cibles : lanceur, ennemis ; 1 tour(s) ; indésenvoûtable",
+    "36 à 40 dommages Air — cibles : ennemis ; zone : cercle de taille 2 (à partir de 1) ; déclenchement : fin de tour du porteur (buff 1 t.) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Épidémie» (12956, grade 2)",
+     "targetMask": "H,I,M,D",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12956,
+      "grade": 2
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Épidémie» (12956, grade 6)",
+     "targetMask": "a,P,E1486",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12956,
+      "grade": 6
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Épidémie» (12956, grade 6)",
+     "targetMask": "c",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12956,
+      "grade": 6
+     },
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "poison",
+    "aoe",
+    "air",
+    "spread"
+   ],
+   "tactical": "4 PA en ligne : poison Air de fin de tour 36–40 + état Épidémie qui, à la fin du tour de la cible, propage poison et état aux ennemis en cercle 2. Excellent sur un paquet."
+  },
+  {
+   "id": 12948,
+   "spellLevelId": 44725,
+   "pairIndex": 9,
+   "variant": "A",
+   "variantOf": 14742,
+   "name": "Piège Funeste",
+   "nameEn": "Malevolent Trap",
+   "descriptionFr": "Pose un piège qui occasionne des dommages Terre. Les dommages du sort sont augmentés pour chaque ennemi en zone autour du piège avant d'appliquer ses effets.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 159,
+   "unlockLevel": 25,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège Funeste» (12962, grade 3)"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège Funeste» (12962, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12962,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "damage",
+    "earth"
+   ],
+   "tactical": "3 PA : piège mono-cellule — 28–32 Terre +20 dommages de base par ennemi en cercle 2 autour du piège au déclenchement."
+  },
+  {
+   "id": 14742,
+   "spellLevelId": 44741,
+   "pairIndex": 9,
+   "variant": "B",
+   "variantOf": 12948,
+   "name": "Effraction",
+   "nameEn": "Break-In",
+   "descriptionFr": "Vole des Résistances Poussée et occasionne des dommages Feu.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 135,
+   "unlockLevel": 135,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 15,
+    "max": 17,
+    "critMin": 19,
+    "critMax": 21,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "-30 Résistances Poussée — 3 tour(s)",
+    "30 Résistances Poussée — cibles : lanceur ; 3 tour(s)",
+    "15 à 17 dommages Feu (CC : 19 à 21 dommages Feu)"
+   ],
+   "effects": [
+    {
+     "effectId": 417,
+     "action": "CharacterDeboostPushDamageReduction",
+     "text": "-30 Résistances Poussée",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 416,
+     "action": "CharacterBoostPushDamageReduction",
+     "text": "30 Résistances Poussée",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "15 à 17 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 15,
+     "max": 17,
+     "critMin": 19,
+     "critMax": 21
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "steal_stat",
+    "fire"
+   ],
+   "tactical": "2 PA, cible requise : vole 30 résistance poussée (3 tours) + 15–17 Feu ; prépare les dommages de poussée (Sournoiserie)."
+  },
+  {
+   "id": 12914,
+   "spellLevelId": 40921,
+   "pairIndex": 10,
+   "variant": "A",
+   "variantOf": 12920,
+   "name": "Piège Répulsif",
+   "nameEn": "Repelling Trap",
+   "descriptionFr": "Pose un piège qui repousse les entités depuis son centre et occasionne des dommages Air aux ennemis en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 164,
+   "unlockLevel": 30,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège Répulsif» (12928, grade 3) — zone : croix de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège Répulsif» (12928, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12928,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "damage",
+    "placement",
+    "air"
+   ],
+   "tactical": "2 PA : piège croix 1 — repousse de 2 depuis le centre et 14–17 Air aux ennemis."
+  },
+  {
+   "id": 12920,
+   "spellLevelId": 40937,
+   "pairIndex": 10,
+   "variant": "B",
+   "variantOf": 12914,
+   "name": "Piège Effroyable",
+   "nameEn": "Frightful Trap",
+   "descriptionFr": "Pose un piège mono-cellule qui occasionne des dommages Terre aux ennemis et repousse les entités depuis le centre en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 140,
+   "unlockLevel": 140,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège Effroyable» (28737, grade 1)"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège Effroyable» (28737, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 28737,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "damage",
+    "placement",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "2 PA : piège mono-cellule dont les effets couvrent une croix 3 : 20–22 Terre aux ennemis et repousse de 2 depuis le centre."
+  },
+  {
+   "id": 12910,
+   "spellLevelId": 40909,
+   "pairIndex": 11,
+   "variant": "A",
+   "variantOf": 14314,
+   "name": "Piège d'Immobilisation",
+   "nameEn": "Paralysing Trap",
+   "descriptionFr": "Pose un piège qui retire des PM aux ennemis en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 169,
+   "unlockLevel": 35,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège d'Immobilisation» (12923, grade 3) — zone : cercle de taille 3"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège d'Immobilisation» (12923, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12923,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "mp_removal",
+    "aoe"
+   ],
+   "tactical": "3 PA en ligne, relance 4 : piège cercle 3 — −4 PM esquivables (2 tours) à tous les ennemis de la zone. Meilleur outil d'entrave du Sram."
+  },
+  {
+   "id": 14314,
+   "spellLevelId": 43798,
+   "pairIndex": 11,
+   "variant": "B",
+   "variantOf": 12910,
+   "name": "Fosse Commune",
+   "nameEn": "Mass Grave",
+   "descriptionFr": "Pose un piège mono-cellule qui applique l'état Pesanteur en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 145,
+   "unlockLevel": 145,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Fosse Commune» (12957, grade 1)"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Fosse Commune» (12957, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12957,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "control"
+   ],
+   "tactical": "3 PA, relance 3 : piège mono-cellule qui applique Pesanteur en cercle 2 (empêche téléportations/échanges, y compris alliés)."
+  },
+  {
+   "id": 12938,
+   "spellLevelId": 76673,
+   "pairIndex": 12,
+   "variant": "A",
+   "variantOf": 12947,
+   "name": "Extorsion",
+   "nameEn": "Shakedown",
+   "descriptionFr": "Vole de la Force et de la vie dans l'élément Terre.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 174,
+   "unlockLevel": 40,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 27,
+    "max": 30,
+    "critMin": 32,
+    "critMax": 36,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "Vole 100 Force — 3 tour(s)",
+    "27 à 30 vol Terre (CC : 32 à 36 vol Terre)"
+   ],
+   "effects": [
+    {
+     "effectId": 271,
+     "action": "CharacterStealStrength",
+     "text": "Vole 100 Force",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 92,
+     "action": "CharacterLifePointsStealFromEarth",
+     "text": "27 à 30 vol Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 27,
+     "max": 30,
+     "critMin": 32,
+     "critMax": 36
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "steal",
+    "steal_stat",
+    "earth"
+   ],
+   "tactical": "3 PA, PO 1–3 : vole 100 Force (3 tours, ×2) + vol de vie Terre 27–30."
+  },
+  {
+   "id": 12947,
+   "spellLevelId": 40984,
+   "pairIndex": 12,
+   "variant": "B",
+   "variantOf": 12938,
+   "name": "Perquisition",
+   "nameEn": "Perquisition",
+   "descriptionFr": "Occasionne des dommages Feu aux ennemis et repousse la cible. Repousse la cible depuis le double du lanceur s'il est présent sur le terrain.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 150,
+   "unlockLevel": 150,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 13,
+    "max": 15,
+    "critMin": 16,
+    "critMax": 18,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "13 à 15 dommages Feu (CC : 16 à 18 dommages Feu) — cibles : ennemis",
+    "Repousse de 2 cases — cibles : tous ; si le lanceur n'a pas l'état «Double invoqué» (6052)"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Perquisition (cible)» (6059)",
+     "targetMask": "a,A,*E6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 6059,
+      "name": "Perquisition (cible)"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "13 à 15 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 13,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 2 cases",
+     "targetMask": "a,A,*e6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 2 cases",
+     "targetMask": "a,P,E611,*E6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Perquisition» (30793, grade 2)",
+     "targetMask": "C,*E6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 30793,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "placement",
+    "fire"
+   ],
+   "tactical": "2 PA : 13–15 Feu + repousse de 2 (depuis le double s'il existe)."
+  },
+  {
+   "id": 12911,
+   "spellLevelId": 76674,
+   "pairIndex": 13,
+   "variant": "A",
+   "variantOf": 12937,
+   "name": "Arnaque",
+   "nameEn": "Con",
+   "descriptionFr": "Vole de l'Agilité et de la vie dans l'élément Air.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 179,
+   "unlockLevel": 45,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 25,
+    "max": 28,
+    "critMin": 30,
+    "critMax": 34,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "Vole 100 Agilité — 3 tour(s)",
+    "25 à 28 vol Air (CC : 30 à 34 vol Air)"
+   ],
+   "effects": [
+    {
+     "effectId": 268,
+     "action": "CharacterStealAgility",
+     "text": "Vole 100 Agilité",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 93,
+     "action": "CharacterLifePointsStealFromAir",
+     "text": "25 à 28 vol Air",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 25,
+     "max": 28,
+     "critMin": 30,
+     "critMax": 34
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "steal",
+    "steal_stat",
+    "air"
+   ],
+   "tactical": "3 PA en ligne : vole 100 Agilité (3 tours, ×2) + vol de vie Air 25–28."
+  },
+  {
+   "id": 12937,
+   "spellLevelId": 40974,
+   "pairIndex": 13,
+   "variant": "B",
+   "variantOf": 12911,
+   "name": "Larcin",
+   "nameEn": "Larceny",
+   "descriptionFr": "Érode les cibles et occasionne des dommages Eau en zone. N'affecte pas le lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 155,
+   "unlockLevel": 155,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 34,
+    "max": 38,
+    "critMin": 41,
+    "critMax": 46,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "13% Érosion — cibles : alliés (hors lanceur), ennemis ; zone : croix diagonale de taille 1 ; 2 tour(s)",
+    "34 à 38 dommages Eau (CC : 41 à 46 dommages Eau) — cibles : alliés (hors lanceur), ennemis ; zone : croix diagonale de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "text": "13% Érosion",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "+",
+      "shapeName": "diagonalCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "34 à 38 dommages Eau",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "+",
+      "shapeName": "diagonalCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 34,
+     "max": 38,
+     "critMin": 41,
+     "critMax": 46
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "erosion",
+    "aoe",
+    "water"
+   ],
+   "tactical": "4 PA : 13 % d'érosion (2 tours) et 34–38 Eau en croix diagonale 1 (pas le lanceur, mais les alliés oui)."
+  },
+  {
+   "id": 12934,
+   "spellLevelId": 81546,
+   "pairIndex": 14,
+   "variant": "A",
+   "variantOf": 12917,
+   "name": "Pillage",
+   "nameEn": "Raiding",
+   "descriptionFr": "Vole de la Chance et de la vie dans l'élément Eau.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 184,
+   "unlockLevel": 50,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 29,
+    "critMin": 31,
+    "critMax": 35,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "Vole 100 Chance — 3 tour(s)",
+    "26 à 29 vol Eau (CC : 31 à 35 vol Eau)"
+   ],
+   "effects": [
+    {
+     "effectId": 266,
+     "action": "CharacterStealChance",
+     "text": "Vole 100 Chance",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 91,
+     "action": "CharacterLifePointsStealFromWater",
+     "text": "26 à 29 vol Eau",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 26,
+     "max": 29,
+     "critMin": 31,
+     "critMax": 35
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "steal",
+    "steal_stat",
+    "water"
+   ],
+   "tactical": "3 PA, PO 1–4 : vole 100 Chance + vol de vie Eau 26–29."
+  },
+  {
+   "id": 12917,
+   "spellLevelId": 40928,
+   "pairIndex": 14,
+   "variant": "B",
+   "variantOf": 12934,
+   "name": "Attaque Mortelle",
+   "nameEn": "Lethal Attack",
+   "descriptionFr": "Occasionne des dommages Terre. Les dommages sont plus importants sur les cibles ayant moins de 50% de leur vie.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 160,
+   "unlockLevel": 160,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 0,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 43,
+    "max": 48,
+    "critMin": 52,
+    "critMax": 58,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "43 à 48 dommages Terre (CC : 52 à 58 dommages Terre) — cibles : tous ; si la cible a au moins 50% PV",
+    "54 à 60 dommages Terre (CC : 65 à 72 dommages Terre) — cibles : tous ; si la cible a moins de 50% PV"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "43 à 48 dommages Terre",
+     "targetMask": "a,A,v50",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 43,
+     "max": 48,
+     "critMin": 52,
+     "critMax": 58
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "54 à 60 dommages Terre",
+     "targetMask": "a,A,V50",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 54,
+     "max": 60,
+     "critMin": 65,
+     "critMax": 72
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "execute",
+    "earth"
+   ],
+   "tactical": "4 PA, PO 1–2 : 43–48 Terre, 54–60 si la cible a moins de 50 % PV (CC 65–72) : finisseur."
+  },
+  {
+   "id": 12905,
+   "spellLevelId": 76683,
+   "pairIndex": 15,
+   "variant": "A",
+   "variantOf": 12940,
+   "name": "Fourberie",
+   "nameEn": "Furrow",
+   "descriptionFr": "Vole de l'Intelligence et de la vie dans l'élément Feu en zone. N'affecte pas le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 189,
+   "unlockLevel": 55,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 27,
+    "max": 31,
+    "critMin": 32,
+    "critMax": 37,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "Vole 100 Intelligence — cibles : alliés (hors lanceur), ennemis ; zone : anneau de taille 2 ; 3 tour(s)",
+    "27 à 31 vol Feu (CC : 32 à 37 vol Feu) — cibles : alliés (hors lanceur), ennemis ; zone : anneau de taille 2"
+   ],
+   "effects": [
+    {
+     "effectId": 269,
+     "action": "CharacterStealIntelligence",
+     "text": "Vole 100 Intelligence",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "O",
+      "shapeName": "ring",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 94,
+     "action": "CharacterLifePointsStealFromFire",
+     "text": "27 à 31 vol Feu",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "O",
+      "shapeName": "ring",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 27,
+     "max": 31,
+     "critMin": 32,
+     "critMax": 37
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "steal",
+    "steal_stat",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "4 PA : vole 100 Intelligence et vol de vie Feu 27–31 en anneau 2 autour de la case ciblée (pas le lanceur)."
+  },
+  {
+   "id": 12940,
+   "spellLevelId": 40977,
+   "pairIndex": 15,
+   "variant": "B",
+   "variantOf": 12905,
+   "name": "Injection Toxique",
+   "nameEn": "Toxic Injection",
+   "descriptionFr": "Retire des PM et applique un poison Air de début de tour sur la cible. Le temps de relance du sort est réduit pour chaque piège déclenché du lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 165,
+   "unlockLevel": 165,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 5,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "-1 PM (esquivable) — 3 tour(s)",
+    "28 à 32 dommages Air (CC : 34 à 38 dommages Air) — déclenchement : début de tour du porteur (buff 3 t.)",
+    "«Injection Toxique» : -1 tour(s) de relance — cibles : lanceur"
+   ],
+   "effects": [
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "text": "-1 PM (esquivable)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "28 à 32 dommages Air",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 28,
+     "max": 32,
+     "critMin": 34,
+     "critMax": 38,
+     "triggers": "TB",
+     "triggerBuffDuration": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "poison",
+    "mp_removal",
+    "air",
+    "trap_synergy"
+   ],
+   "tactical": "5 PA, relance 5 (−1 par piège déclenché) : −1 PM 3 tours et poison Air 28–32 au début des 3 prochains tours de la cible."
+  },
+  {
+   "id": 12908,
+   "spellLevelId": 40903,
+   "pairIndex": 16,
+   "variant": "A",
+   "variantOf": 12945,
+   "name": "Peur",
+   "nameEn": "Fear",
+   "descriptionFr": "Pousse la cible jusqu'à la case ciblée.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 194,
+   "unlockLevel": 60,
+   "apCost": 2,
+   "minRange": 2,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Pousse jusqu'à la case visée"
+   ],
+   "effects": [
+    {
+     "effectId": 783,
+     "action": "CharacterPushUpTo",
+     "text": "Pousse jusqu'à la case visée",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "placement"
+   ],
+   "tactical": "2 PA, PO 2–8 en ligne sans LdV, case libre : pousse l'entité adjacente au Sram (dans la direction choisie) jusqu'à la case ciblée. Outil n°1 pour mettre un ennemi dans un piège."
+  },
+  {
+   "id": 12945,
+   "spellLevelId": 40982,
+   "pairIndex": 16,
+   "variant": "B",
+   "variantOf": 12908,
+   "name": "Méprise",
+   "nameEn": "Misconstrual",
+   "descriptionFr": "Échange de position avec la cible. Échange les positions de la cible et du double du lanceur s'il est présent sur le terrain. Dissipe l'invisibilité du lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 170,
+   "unlockLevel": 170,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Échange de positions — cibles : tous ; si le lanceur n'a pas l'état «Double invoqué» (6052)"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Méprise» (2228)",
+     "targetMask": "a,A,e7,*E6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": -1,
+     "state": {
+      "id": 2228,
+      "name": "Méprise"
+     },
+     "dispellable": 3
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Méprise» (12958, grade 1)",
+     "targetMask": "a,P,E611,*E6052",
+     "zone": {
+      "shape": "a",
+      "shapeName": "wholeMap",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12958,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 8,
+     "action": "CharacterExchangePlaces",
+     "text": "Échange de positions",
+     "targetMask": "a,P,E611",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 951,
+     "action": "FightUnsetState",
+     "text": "retire l'état «Méprise» (2228)",
+     "targetMask": "a,A,*E6052",
+     "zone": {
+      "shape": "a",
+      "shapeName": "wholeMap",
+      "size": 1,
+      "minSize": 0
+     },
+     "state": {
+      "id": 2228,
+      "name": "Méprise"
+     }
+    },
+    {
+     "effectId": 8,
+     "action": "CharacterExchangePlaces",
+     "text": "Échange de positions",
+     "targetMask": "a,A,*e6052",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 100,
+     "action": "CharacterLifePointsLost",
+     "text": "1 dommages Neutre",
+     "targetMask": "a,A,F50000",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 1,
+     "max": 1
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "mobility",
+    "placement"
+   ],
+   "tactical": "3 PA en ligne, cible requise : échange de place avec la cible (ou échange la cible avec le double s'il existe) ; dissipe l'invisibilité du Sram."
+  },
+  {
+   "id": 12942,
+   "spellLevelId": 76677,
+   "pairIndex": 17,
+   "variant": "A",
+   "variantOf": 12918,
+   "name": "Piège de Dérive",
+   "nameEn": "Drift Trap",
+   "descriptionFr": "Pose un piège qui occasionne des dommages Feu aux ennemis et repousse les entités depuis le centre en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 198,
+   "unlockLevel": 65,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège de Dérive» (12955, grade 3) — zone : croix diagonale de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège de Dérive» (12955, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "+",
+      "shapeName": "diagonalCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12955,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "damage",
+    "placement",
+    "fire"
+   ],
+   "tactical": "2 PA : piège croix diagonale 1 — 17–19 Feu aux ennemis et repousse de 2 depuis le centre."
+  },
+  {
+   "id": 12918,
+   "spellLevelId": 40931,
+   "pairIndex": 17,
+   "variant": "B",
+   "variantOf": 12942,
+   "name": "Piège Insidieux",
+   "nameEn": "Insidious Trap",
+   "descriptionFr": "Pose un piège qui applique un poison Air de fin de tour sur les ennemis, leur occasionne des dommages Air et attire les entités vers le centre en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 175,
+   "unlockLevel": 175,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège Insidieux» (28736, grade 1) — zone : croix diagonale de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège Insidieux» (28736, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "+",
+      "shapeName": "diagonalCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 28736,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "poison",
+    "placement",
+    "air"
+   ],
+   "tactical": "2 PA, 1/tour : piège croix diagonale 1 — 8–9 Air immédiat + poison 8–9 Air en fin de tour, attire de 1 vers le centre."
+  },
+  {
+   "id": 12931,
+   "spellLevelId": 43789,
+   "pairIndex": 18,
+   "variant": "A",
+   "variantOf": 12941,
+   "name": "Piège Scélérat",
+   "nameEn": "Sickrat Trap",
+   "descriptionFr": "Pose un piège mono-cellule qui attire les entités vers son centre et occasionne des dommages Eau aux ennemis en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 137,
+   "unlockLevel": 70,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège Scélérat» (12952, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège Scélérat» (12952, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12952,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "placement",
+    "damage",
+    "water"
+   ],
+   "tactical": "2 PA : piège mono-cellule — attire de 3 vers le centre tout ce qui est en croix 3 puis 17–19 Eau aux ennemis : regroupe."
+  },
+  {
+   "id": 12941,
+   "spellLevelId": 40978,
+   "pairIndex": 18,
+   "variant": "B",
+   "variantOf": 12931,
+   "name": "Piège à Fragmentation",
+   "nameEn": "Fragmentation Trap",
+   "descriptionFr": "Pose un piège mono-cellule qui occasionne des dommages Feu en zone. Les dommages sont plus importants sur la case centrale et selon la distance avec le piège. N'affecte pas l'entité qui déclenche le piège si c'est un allié.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 180,
+   "unlockLevel": 180,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège à Fragmentation» (12954, grade 1)"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège à Fragmentation» (12954, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12954,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "damage",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "4 PA, 1/tour : piège mono-cellule — 47–51 Feu sur la case centrale et 27–31 / 37–41 / 47–51 Feu sur les anneaux 1/2/3 (alliés compris, sauf l'allié déclencheur)."
+  },
+  {
+   "id": 12903,
+   "spellLevelId": 40887,
+   "pairIndex": 19,
+   "variant": "A",
+   "variantOf": 14741,
+   "name": "Concentration de Chakra",
+   "nameEn": "Chakra Concentration",
+   "descriptionFr": "Applique l'état Concentration de Chakra sur l'ennemi ciblé : • Vole de la vie dans le meilleur élément du lanceur à la cible si elle subit des dommages de pièges. Dissipe l'invisibilité du lanceur.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 142,
+   "unlockLevel": 75,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "meilleur élément"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "applique l'état «Concentration de Chakra» (643) — cibles : ennemis ; 1 tour(s)",
+    "12 vol du meilleur élément — cibles : ennemis ; si la cible est le monstre «monstre#50000» (50000) ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Concentration de Chakra» (643)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 643,
+      "name": "Concentration de Chakra"
+     }
+    },
+    {
+     "effectId": 2828,
+     "action": "CharacterLifePointsStealFromBestElement",
+     "text": "12 vol du meilleur élément",
+     "targetMask": "A,F50000",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 12,
+     "max": 12,
+     "duration": 1
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Concentration de Chakra» (24003, grade 3)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "DT",
+     "triggerBuffDuration": 1,
+     "subSpell": {
+      "id": 24003,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "steal",
+    "trap_synergy"
+   ],
+   "tactical": "3 PA en ligne, relance 3 : état 1 tour sur un ennemi ; chaque dégât de piège qu'il subit déclenche un vol de vie de 12 (base) dans le meilleur élément. Dissipe l'invisibilité du Sram."
+  },
+  {
+   "id": 14741,
+   "spellLevelId": 44739,
+   "pairIndex": 19,
+   "variant": "B",
+   "variantOf": 12903,
+   "name": "Manigance",
+   "nameEn": "Plot",
+   "descriptionFr": "Vole de la Fuite et des Dommages aux ennemis ou augmente ceux du lanceur et de l'allié ciblé.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 185,
+   "unlockLevel": 185,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 2,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "-20 Fuite — cibles : ennemis ; 3 tour(s)",
+    "-20 Dommages — cibles : ennemis ; 3 tour(s)",
+    "20 Fuite — cibles : lanceur, alliés (lanceur inclus) ; 3 tour(s)",
+    "20 Dommages — cibles : lanceur, alliés (lanceur inclus) ; 3 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 754,
+     "action": "CharacterDeboostTakleEvade",
+     "text": "-20 Fuite",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 145,
+     "action": "CharacterDeboostDamages",
+     "text": "-20 Dommages",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 752,
+     "action": "CharacterBoostTakleEvade",
+     "text": "20 Fuite",
+     "targetMask": "C,a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 112,
+     "action": "CharacterBoostDamages",
+     "text": "20 Dommages",
+     "targetMask": "C,a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "buff_damage",
+    "debuff",
+    "team_amp"
+   ],
+   "tactical": "2 PA : sur un ennemi −20 Fuite et −20 Dommages (3 tours) ; sur un allié +20 Fuite et +20 Dommages au lanceur et à l'allié (3 tours). 2/tour."
+  },
+  {
+   "id": 12921,
+   "spellLevelId": 40942,
+   "pairIndex": 20,
+   "variant": "A",
+   "variantOf": 12950,
+   "name": "Piège Mortel",
+   "nameEn": "Lethal Trap",
+   "descriptionFr": "Pose un piège qui occasionne des dommages Terre. Les dommages sont plus importants sur les entités ayant moins de 50% de leurs points de vie.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 147,
+   "unlockLevel": 80,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Piège Mortel» (12927, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Piège Mortel» (12927, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12927,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "damage",
+    "execute",
+    "earth"
+   ],
+   "tactical": "3 PA en ligne : piège mono-cellule — 39–43 Terre, 49–54 sous 50 % PV (touche aussi les alliés)."
+  },
+  {
+   "id": 12950,
+   "spellLevelId": 40987,
+   "pairIndex": 20,
+   "variant": "B",
+   "variantOf": 12921,
+   "name": "Calamité",
+   "nameEn": "Calamity",
+   "descriptionFr": "Pose un piège qui vole de la Fuite et occasionne des dommages Eau aux ennemis en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 190,
+   "unlockLevel": 190,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 4,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "pose un piège «Calamité» (12963, grade 1) — zone : carré de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 400,
+     "action": "FightAddTrapCastingSpell",
+     "text": "pose un piège «Calamité» (12963, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 12963,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "trap",
+    "damage",
+    "aoe",
+    "water"
+   ],
+   "tactical": "4 PA, 1/tour : piège carré 1 — 40–44 Eau aux ennemis et vol de 20 Fuite (2 tours)."
+  },
+  {
+   "id": 12909,
+   "spellLevelId": 40905,
+   "pairIndex": 21,
+   "variant": "A",
+   "variantOf": 12949,
+   "name": "Fourvoiement",
+   "nameEn": "Mistake",
+   "descriptionFr": "Érode les cibles et occasionne des dommages Air en zone. N'affecte pas le lanceur.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 152,
+   "unlockLevel": 85,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 32,
+    "max": 36,
+    "critMin": 38,
+    "critMax": 43,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "13% Érosion — cibles : alliés (hors lanceur), ennemis ; zone : croix sans centre de taille 1 ; 2 tour(s)",
+    "32 à 36 dommages Air (CC : 38 à 43 dommages Air) — cibles : alliés (hors lanceur), ennemis ; zone : croix sans centre de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "text": "13% Érosion",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "hollowCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "32 à 36 dommages Air",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "hollowCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "erosion",
+    "aoe",
+    "air"
+   ],
+   "tactical": "4 PA : 13 % d'érosion (2 tours) et 32–36 Air en croix autour de la case ciblée (pas le centre)."
+  },
+  {
+   "id": 12949,
+   "spellLevelId": 40986,
+   "pairIndex": 21,
+   "variant": "B",
+   "variantOf": 12909,
+   "name": "Perfidie",
+   "nameEn": "Perfidy",
+   "descriptionFr": "Occasionne des dommages Terre. Le coût en PA du sort est réduit pour chaque piège déclenché du lanceur. Les effets sont retirés après utilisation du sort.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 195,
+   "unlockLevel": 195,
+   "apCost": 6,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 4,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 56,
+    "max": 60,
+    "critMin": 62,
+    "critMax": 66,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "56 à 60 dommages Terre (CC : 62 à 66 dommages Terre)"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "56 à 60 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 56,
+     "max": 60,
+     "critMin": 62,
+     "critMax": 66
+    },
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "text": "retire les effets du sort «Perfidie» (12972)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "burst",
+    "earth",
+    "trap_synergy"
+   ],
+   "tactical": "6 PA au contact : 56–60 Terre (CC 62–66, 25 % CC), −1 PA par piège déclenché (jusqu'à 2 PA), 3/tour 2/cible : le plus gros burst de la classe."
+  },
+  {
+   "id": 14312,
+   "spellLevelId": 43799,
+   "pairIndex": 22,
+   "variant": "A",
+   "variantOf": 14313,
+   "name": "Dérobade",
+   "nameEn": "Evasion",
+   "descriptionFr": "Réduit les dommages subis par l'allié ciblé, le rend Intaclable et lui applique l'état Dérobade : • Éloigne la cible de son attaquant et augmente ses PM si elle est attaquée par un ennemi (cumulable 3 fois). Le recul ne fait pas de dommages.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 157,
+   "unlockLevel": 90,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Dommages subis x90% — cibles : alliés (lanceur inclus) ; déclenchement : quand le porteur subit des dommages d'un ennemi (buff 1 t.) ; indésenvoûtable",
+    "applique l'état «Intaclable» (96) — cibles : alliés (lanceur inclus) ; 1 tour(s) ; indésenvoûtable",
+    "applique l'état «Dérobade» (5595) — cibles : alliés (lanceur inclus) ; 1 tour(s)",
+    "Repousse de 2 cases (sans dommages) — cibles : alliés (lanceur inclus) ; déclenchement : quand le porteur subit des dommages d'un ennemi (buff 1 t.) ; indésenvoûtable",
+    "1 PM — cibles : alliés (lanceur inclus) ; 1 tour(s) ; déclenchement : quand le porteur subit des dommages d'un ennemi (buff 1 t.) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Dérobade» (28742, grade 1)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 28742,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "protection",
+    "mobility",
+    "ally_support"
+   ],
+   "tactical": "2 PA, relance 3 : un allié prend ×90 % de dommages des ennemis, devient Intaclable et, à chaque coup ennemi, recule de 2 (sans dommages) et gagne +1 PM (3 cumuls)."
+  },
+  {
+   "id": 14313,
+   "spellLevelId": 43795,
+   "pairIndex": 22,
+   "variant": "B",
+   "variantOf": 14312,
+   "name": "Marque Mortuaire",
+   "nameEn": "Mortuary Mark",
+   "descriptionFr": "Augmente les dommages subis par la cible et l'érode. Les effets sont plus importants selon le nombre de pièges déclenchés du lanceur. Dissipe l'invisibilité du lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 200,
+   "unlockLevel": 200,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Dommages subis x102% — cibles : tous ; si le lanceur n'a pas l'état «Marque Mortuaire I» (1407) ; si le lanceur n'a pas l'état «Marque Mortuaire II» (1408) ; si le lanceur n'a pas l'état «Marque Mortuaire III» (1409) ; si le lanceur n'a pas l'état «Marque Mortuaire IV» (1410) ; déclenchement : quand le porteur subit des dommages (buff 2 t.)",
+    "10% Érosion — cibles : tous ; si le lanceur n'a pas l'état «Marque Mortuaire I» (1407) ; si le lanceur n'a pas l'état «Marque Mortuaire II» (1408) ; si le lanceur n'a pas l'état «Marque Mortuaire III» (1409) ; si le lanceur n'a pas l'état «Marque Mortuaire IV» (1410) ; 2 tour(s)",
+    "Dommages subis x104% — cibles : tous ; si le lanceur a l'état «Marque Mortuaire I» (1407) ; déclenchement : quand le porteur subit des dommages (buff 2 t.)",
+    "15% Érosion — cibles : tous ; si le lanceur a l'état «Marque Mortuaire I» (1407) ; 2 tour(s)",
+    "Dommages subis x106% — cibles : tous ; si le lanceur a l'état «Marque Mortuaire II» (1408) ; déclenchement : quand le porteur subit des dommages (buff 2 t.)",
+    "20% Érosion — cibles : tous ; si le lanceur a l'état «Marque Mortuaire II» (1408) ; 2 tour(s)",
+    "Dommages subis x108% — cibles : tous ; si le lanceur a l'état «Marque Mortuaire III» (1409) ; déclenchement : quand le porteur subit des dommages (buff 2 t.)",
+    "25% Érosion — cibles : tous ; si le lanceur a l'état «Marque Mortuaire III» (1409) ; 2 tour(s)",
+    "Dommages subis x110% — cibles : tous ; si le lanceur a l'état «Marque Mortuaire IV» (1410) ; déclenchement : quand le porteur subit des dommages (buff 2 t.)",
+    "30% Érosion — cibles : tous ; si le lanceur a l'état «Marque Mortuaire IV» (1410) ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "text": "Dommages subis x102%",
+     "targetMask": "a,A,*e1407,*e1408,*e1409,*e1410",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 2
+    },
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "text": "10% Érosion",
+     "targetMask": "a,A,*e1407,*e1408,*e1409,*e1410",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    },
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "text": "Dommages subis x104%",
+     "targetMask": "a,A,*E1407",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 2
+    },
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "text": "15% Érosion",
+     "targetMask": "a,A,*E1407",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    },
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "text": "Dommages subis x106%",
+     "targetMask": "a,A,*E1408",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 2
+    },
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "text": "20% Érosion",
+     "targetMask": "a,A,*E1408",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    },
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "text": "Dommages subis x108%",
+     "targetMask": "a,A,*E1409",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 2
+    },
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "text": "25% Érosion",
+     "targetMask": "a,A,*E1409",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    },
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "text": "Dommages subis x110%",
+     "targetMask": "a,A,*E1410",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 2
+    },
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "text": "30% Érosion",
+     "targetMask": "a,A,*E1410",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    },
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "text": "retire les effets du sort «Marque Mortuaire» (14319)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 100,
+     "action": "CharacterLifePointsLost",
+     "text": "1 dommages Neutre",
+     "targetMask": "a,A,F50000",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 1,
+     "max": 1
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "debuff",
+    "erosion",
+    "team_amp",
+    "trap_synergy"
+   ],
+   "tactical": "2 PA, cible requise : dommages subis ×102 % → ×110 % et érosion 10 % → 30 % (2 tours) selon le nombre de pièges déclenchés (paliers I–IV, remis à 0)."
+  }
+ ],
+ "summons": [],
+ "importantStates": {
+  "611": {
+   "name": "Double",
+   "note": "Double (porté par le double)"
+  },
+  "6052": {
+   "name": "Double invoqué",
+   "note": "Double invoqué (porté par le Sram)"
+  },
+  "667": {
+   "name": "Epidémie",
+   "note": "Épidémie (propagation)"
+  },
+  "643": {
+   "name": "Concentration de Chakra",
+   "note": "Concentration de Chakra"
+  },
+  "5183": {
+   "name": "Poisse",
+   "note": "Poisse (un tour sur deux)"
+  },
+  "1407": {
+   "name": "Marque Mortuaire I",
+   "note": "Marque Mortuaire I"
+  },
+  "1410": {
+   "name": "Marque Mortuaire IV",
+   "note": "Marque Mortuaire IV"
+  },
+  "3762": {
+   "name": "Marque Mortuaire",
+   "note": "Marque Mortuaire (compteur actif)"
+  },
+  "3763": {
+   "name": "Chausse-trappe",
+   "note": "Chausse-trappe (compteur actif)"
+  },
+  "3764": {
+   "name": "Comploteur",
+   "note": "Comploteur (compteur actif)"
+  },
+  "3765": {
+   "name": "Perfidie",
+   "note": "Perfidie (compteur actif)"
+  },
+  "3766": {
+   "name": "Injection Toxique",
+   "note": "Injection Toxique (compteur actif)"
+  },
+  "2763": {
+   "name": "Toxines rang 1",
+   "note": "Toxines rang 1"
+  },
+  "2764": {
+   "name": "Toxines rang 2",
+   "note": "Toxines rang 2"
+  },
+  "5595": {
+   "name": "Dérobade",
+   "note": "Dérobade"
+  },
+  "96": {
+   "name": "Intaclable",
+   "note": "Intaclable"
+  },
+  "7": {
+   "name": "Pesanteur",
+   "note": "Pesanteur"
+  }
+ },
+ "spellSets": {
+  "dps_terre_pieges": {
+   "A": [
+    2,
+    3,
+    4,
+    5,
+    7,
+    8,
+    9,
+    11,
+    12,
+    13,
+    16,
+    17,
+    19,
+    20
+   ],
+   "B": [
+    1,
+    6,
+    10,
+    14,
+    15,
+    18,
+    21,
+    22
+   ]
+  },
+  "dps_air_poisons": {
+   "A": [
+    1,
+    4,
+    5,
+    6,
+    9,
+    10,
+    11,
+    13,
+    14,
+    16,
+    18,
+    21
+   ],
+   "B": [
+    2,
+    3,
+    7,
+    8,
+    12,
+    15,
+    17,
+    19,
+    20,
+    22
+   ]
+  },
+  "utilitaire": {
+   "A": [
+    1,
+    3,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    13,
+    14,
+    17,
+    18,
+    20,
+    21,
+    22
+   ],
+   "B": [
+    2,
+    4,
+    5,
+    12,
+    15,
+    16,
+    19
+   ]
+  }
+ },
+ "rotations": [
+  {
+   "name": "Mise en place pièges (12 PA)",
+   "sequence": [
+    "Invisibilité (2)",
+    "Piège Mortel (3)",
+    "Piège Effroyable (2)",
+    "Peur (2) pour pousser un ennemi dans un piège",
+    "Truanderie (3)"
+   ],
+   "goal": "Déclencher 2 pièges ce tour (compteurs Perfidie/Chausse-trappe/Marque) en restant invisible."
+  },
+  {
+   "name": "Burst Terre (12 PA)",
+   "sequence": [
+    "Marque Mortuaire (2) palier IV",
+    "Perfidie (2–6 selon pièges)",
+    "Chausse-trappe (4, +8 à +40)",
+    "Attaque Mortelle (4) si < 50 % PV"
+   ],
+   "goal": "Tuer une cible prioritaire."
+  },
+  {
+   "name": "Poisons Air (12 PA)",
+   "sequence": [
+    "Injection Toxique (5)",
+    "Épidémie (4) au centre du paquet",
+    "Arsenic (3)"
+   ],
+   "goal": "Dégâts de zone sur la durée + −1 PM / −2 PO."
+  },
+  {
+   "name": "Utilitaire (12 PA)",
+   "sequence": [
+    "Brume (3)",
+    "Piège d'Immobilisation (3)",
+    "Manigance (2) sur le DPS",
+    "Coupe-gorge (4) sur la cible du groupe"
+   ],
+   "goal": "Groupe invisible, ennemis −4 PM/−4 PO, cible ×110 %."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "Pandawa / Osamodas / Féca",
+   "how": "Placement des ennemis dans les pièges (porter/jeter, Laisse Spirituelle, Regroupement)."
+  },
+  {
+   "with": "Enutrof / Féca",
+   "how": "Ennemis immobilisés ⇒ pièges adjacents + Peur ; Épidémie sur des paquets immobiles."
+  },
+  {
+   "with": "Iop / Crâ / tout DPS",
+   "how": "Marque Mortuaire (×110 %, érosion 30 %), Coupe-gorge (×110 %), Manigance (+20 Dommages)."
+  },
+  {
+   "with": "Eniripsa / Osamodas",
+   "how": "Poisse soigne les alliés autour de la cible ; Invisibilité/Brume protègent le soigneur."
+  },
+  {
+   "with": "Xélor / Roublard",
+   "how": "Téléportations et poussées pour déclencher les pièges."
+  }
+ ],
+ "strengths": [
+  "Très gros burst (Perfidie, Chausse-trappe, Attaque Mortelle)",
+  "Poisons de zone (Épidémie)",
+  "Invisibilité (survie, groupe avec Brume)",
+  "Pièges invisibles sans ligne de vue",
+  "Amplificateurs d'équipe (×110 %, érosion)",
+  "Retrait PM de zone (Piège d'Immobilisation)"
+ ],
+ "weaknesses": [
+  "Pièges inutiles contre des ennemis immobiles/inébranlables",
+  "Certains pièges et zones touchent les alliés",
+  "Pièges sans coup critique",
+  "Fragile une fois révélé",
+  "Gameplay en deux temps (charger les compteurs)"
+ ],
+ "uncertain": [
+  "Règles exactes de déclenchement des pièges (poussée/attirance/téléportation, arrêt du mouvement, durée de vie) : règles générales Dofus à confirmer.",
+  "Origine des états de rang de Toxines (2763/2764) et des états compteurs 3762–3766 (« états de deck ») : supposés posés en début de combat selon les sorts équipés.",
+  "Moment où les caractéristiques du Sram sont lues pour un poison (pose ou déclenchement).",
+  "globalCooldown = 1 sur Invisibilité : relance partagée entre Srams de l'équipe ?",
+  "Comportement exact de Peur (cible = entité adjacente dans la direction) déduit du code DoMath."
+ ],
+ "sources": [
+  "https://api.dofusdb.fr/breeds/4",
+  "https://api.dofusdb.fr/spell-variants?breedId=4",
+  "https://www.gamosaurus.com/jeux/dofus/guide-stuff-sram-dofus-items-dofusbook-equipements",
+  "https://www.gamosaurus.com/jeux/dofus/les-equilibrages-sram-avec-dofus-2-70",
+  "https://www.millenium.org/guide/336066.html",
+  "https://domath.fr",
+  "https://github.com/PyDofus/pydofus3 (ActionId.py)"
+ ]
+}

@@ -1,0 +1,3003 @@
+{
+ "_meta": {
+  "generatedAt": "2026-10-04",
+  "game": "Dofus 3 (Unity) — données DofusDB (fichiers client, MAJ jusqu'à l'été 2026)",
+  "sources": [
+   "https://api.dofusdb.fr/effects (effectPowerRate = poids par point)",
+   "https://api.dofusdb.fr/items?typeId=78 (runes), typeId=211 (runes de transcendance), typeId=258 (gravures), typeId=189 (orbes)",
+   "https://www.gamosaurus.com/?p=118767 (Forgemagie, le guide complet — maj 07/2023)",
+   "https://dafous.app/guides/poids-runes-fm.html (02/2026)",
+   "https://dofus.jeuxonline.info/article/3736/forgemagie",
+   "https://dofus.jeuxonline.info/actualite/30454/devblog-nouvelles-restrictions-pa-pm-po (2.3.4)",
+   "https://www.next-stage.fr/2026/03/runes-transcendance-dofus-comment-elles-fonctionnent-comment-utiliser.html",
+   "https://dofusbuilds.com/guides/exos-and-forgemagie (08/2026)",
+   "https://www.gamosaurus.com/jeux/dofus/dofus-unity-stuff-eau-niveau-200 (Ta Do Per So sur le stuff)"
+  ],
+  "conventions": "weightPerPoint = poids d'un point de caractéristique (|effectPowerRate| des données du jeu). runeWeight = valeur de la rune × weightPerPoint. overmaxLineCapPoints = floor(101 / weightPerPoint) : valeur maximale d'une ligne (over ou exo) sauf si le jet max naturel de l'objet est déjà plus élevé. INCERTAIN = non confirmé par une source primaire."
+ },
+ "rules": {
+  "outcomes": {
+   "criticalSuccess": "Succès critique : la rune passe et aucune autre ligne ne baisse (puits éventuellement consommé pour un over/exo).",
+   "neutralSuccess": "Succès neutre : la rune passe mais d'autres lignes perdent ~l'équivalent de son poids (absorbé d'abord par le puits).",
+   "criticalFailure": "Échec critique : la rune ne passe pas et d'autres lignes perdent du poids ; l'excédent perdu alimente le puits.",
+   "source": "https://www.gamosaurus.com/?p=118767"
+  },
+  "puits": {
+   "definition": "Reliquat de poids propre à l'objet : Reliquat = Poids perdu − Poids utilisé. Il absorbe les pertes futures et permet de passer des overs/exos (hors PA/PM/PO) avec moins de pertes.",
+   "lostWhen": "Disparaît si l'objet est échangé ou mis en vente (Gamosaurus).",
+   "affectsExoPaPmPo": false,
+   "source": "https://www.gamosaurus.com/?p=118767 ; https://dafous.app/guides/poids-runes-fm.html"
+  },
+  "overmax": {
+   "lineWeightCap": 101,
+   "rule": "Une ligne ne peut pas dépasser un poids total de 101 (valeur × poids/pt), sauf si le jet théorique max de l'objet dépasse déjà 101 : dans ce cas aucun over n'est possible au-delà du jet max (INCERTAIN sur ce cas limite).",
+   "examples": {
+    "vitality": 505,
+    "strength": 101,
+    "wisdom": 33,
+    "criticalHit": 10,
+    "power": 50,
+    "elementalDamage": 20,
+    "resPercent": 16
+   },
+   "level200Reality": "Au niveau 200, la plupart des lignes principales sont déjà à ~100 de poids (Vitalité 500, stat 100, Do élém. 20) : l'over réaliste est marginal (+1 stat, +5 Vita). Le gain de FM vient surtout du jet parfait, des exos et des transcendances.",
+   "source": "https://www.gamosaurus.com/?p=118767"
+  },
+  "exo": {
+   "definition": "Ligne absente de l'objet de base ajoutée par forgemagie.",
+   "paPmPo": {
+    "criticalSuccessRate": 0.01,
+    "rateNote": "≈1 % par tentative de rune Ga Pa / Ga Pme / Po, indépendamment du puits et du niveau de métier (Gamosaurus, dafous.app) — INCERTAIN exact.",
+    "countedOncePerCharacter": true,
+    "note": "Un personnage ne bénéficie que d'un seul exo PA, un seul exo PM et un seul exo PO (devblog 2.3.4, Gamosaurus, dofusbuilds 08/2026). Les plafonds 12 PA / 6 PM / PO s'appliquent ensuite."
+   },
+   "summons": "Exo Invocation possible, non limité par personnage (Gamosaurus) — plafond d'invocations DofusDB : 6 (INCERTAIN).",
+   "otherStats": "Toute autre caractéristique forgeable peut être exo via le puits (Do, Pui, Res %, Do Crit, Do Per So…), ligne ≤ 101 de poids. Coût et faisabilité dépendent du puits (INCERTAIN).",
+   "notCumulableWithTranscendance": "Une rune de transcendance exige un objet sans over ni exo, et verrouille ensuite l'objet."
+  },
+  "transcendance": {
+   "successRate": 1.0,
+   "locksItem": "Ajoute l'effet 2825 « Empêche les futures forgemagies » (et 2827 « 100 % de chances de réussite »).",
+   "preconditions": "Objet sans over ni exo (au mieux au jet parfait). Exception connue : un exo « Arme de chasse » peut coexister (Gamosaurus).",
+   "levelRule": "Niveau de la rune 104→200 selon le palier (Ta/Pata/Rata) ; on suppose niveau de l'objet ≥ niveau de la rune — INCERTAIN.",
+   "obtention": "Récompenses des Songes Infinis (aléatoire, plusieurs dizaines de millions de kamas selon serveurs, next-stage 03/2026).",
+   "typicalUse": "Ta Do Per So (+1 % dommages aux sorts) sur ~6 objets du stuff ⇒ +6 à +7 % (Gamosaurus, stuffs 200).",
+   "sources": [
+    "https://www.next-stage.fr/2026/03/runes-transcendance-dofus-comment-elles-fonctionnent-comment-utiliser.html",
+    "https://www.gamosaurus.com/?p=118767",
+    "https://www.millenium.org/guide/316947.html"
+   ]
+  },
+  "caps": {
+   "actionPoints": 12,
+   "movementPoints": 6,
+   "range": 6,
+   "summons": 6,
+   "resPercentPlayer": 50,
+   "note": "12 PA / 6 PM : devblog 2.3.4 (2011) + DofusDB stuff creator (2026). PO : 6 dans DofusDB et guides récents, 9 dans le devblog 2.3.4 — INCERTAIN. Invocations 6 : DofusDB uniquement — INCERTAIN. Rés. % 50 : cap joueur dans le calcul de dégâts (code Haxe Dofus 3 MaxResistHuman=50, client D2 Math.min(resist,50))."
+  },
+  "signatureRune": "Rune de Signature (item 7508, niv. 100) : signe un objet fabriqué, sans effet statistique."
+ },
+ "runeWeights": {
+  "111": {
+   "stat": "actionPoints",
+   "fr": "PA",
+   "weightPerPoint": 100,
+   "overmaxLineCapPoints": 1,
+   "runes": [
+    {
+     "itemId": 1557,
+     "name": "Rune Ga Pa",
+     "level": 100,
+     "tier": "ga",
+     "value": 1,
+     "runeWeight": 100
+    }
+   ],
+   "forgeable": true,
+   "note": "Pas de rune Pa/Ra. Rune Ga Pa (niv. 100). Exo : ~1 % de succès critique, 1 seul exo PA compté par personnage."
+  },
+  "112": {
+   "stat": "damage",
+   "fr": "Dommages",
+   "weightPerPoint": 20,
+   "overmaxLineCapPoints": 5,
+   "runes": [
+    {
+     "itemId": 7435,
+     "name": "Rune Do",
+     "level": 50,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true
+  },
+  "115": {
+   "stat": "criticalHit",
+   "fr": "% Critique",
+   "weightPerPoint": 10,
+   "overmaxLineCapPoints": 10,
+   "runes": [
+    {
+     "itemId": 7433,
+     "name": "Rune Cri",
+     "level": 80,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 10
+    }
+   ],
+   "forgeable": true
+  },
+  "117": {
+   "stat": "range",
+   "fr": "Portée",
+   "weightPerPoint": 51,
+   "overmaxLineCapPoints": 1,
+   "runes": [
+    {
+     "itemId": 7438,
+     "name": "Rune Po",
+     "level": 90,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 51
+    }
+   ],
+   "forgeable": true,
+   "note": "Rune Po (niv. 90). Exo : ~1 %, 1 seul exo PO compté par personnage."
+  },
+  "118": {
+   "stat": "strength",
+   "fr": "Force",
+   "weightPerPoint": 1,
+   "overmaxLineCapPoints": 101,
+   "runes": [
+    {
+     "itemId": 1519,
+     "name": "Rune Fo",
+     "level": 1,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 1
+    },
+    {
+     "itemId": 1545,
+     "name": "Rune Pa Fo",
+     "level": 5,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 3
+    },
+    {
+     "itemId": 1551,
+     "name": "Rune Ra Fo",
+     "level": 10,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 10
+    }
+   ],
+   "forgeable": true
+  },
+  "119": {
+   "stat": "agility",
+   "fr": "Agilité",
+   "weightPerPoint": 1,
+   "overmaxLineCapPoints": 101,
+   "runes": [
+    {
+     "itemId": 1524,
+     "name": "Rune Age",
+     "level": 1,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 1
+    },
+    {
+     "itemId": 1549,
+     "name": "Rune Pa Age",
+     "level": 5,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 3
+    },
+    {
+     "itemId": 1555,
+     "name": "Rune Ra Age",
+     "level": 10,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 10
+    }
+   ],
+   "forgeable": true
+  },
+  "123": {
+   "stat": "chance",
+   "fr": "Chance",
+   "weightPerPoint": 1,
+   "overmaxLineCapPoints": 101,
+   "runes": [
+    {
+     "itemId": 1525,
+     "name": "Rune Cha",
+     "level": 1,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 1
+    },
+    {
+     "itemId": 1550,
+     "name": "Rune Pa Cha",
+     "level": 5,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 3
+    },
+    {
+     "itemId": 1556,
+     "name": "Rune Ra Cha",
+     "level": 10,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 10
+    }
+   ],
+   "forgeable": true
+  },
+  "124": {
+   "stat": "wisdom",
+   "fr": "Sagesse",
+   "weightPerPoint": 3,
+   "overmaxLineCapPoints": 33,
+   "runes": [
+    {
+     "itemId": 1521,
+     "name": "Rune Sa",
+     "level": 15,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 3
+    },
+    {
+     "itemId": 1546,
+     "name": "Rune Pa Sa",
+     "level": 20,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 9
+    },
+    {
+     "itemId": 1552,
+     "name": "Rune Ra Sa",
+     "level": 25,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 30
+    }
+   ],
+   "forgeable": true
+  },
+  "125": {
+   "stat": "vitality",
+   "fr": "Vitalité",
+   "weightPerPoint": 0.2,
+   "overmaxLineCapPoints": 505,
+   "runes": [
+    {
+     "itemId": 1523,
+     "name": "Rune Vi",
+     "level": 1,
+     "tier": "base",
+     "value": 5,
+     "runeWeight": 1.0
+    },
+    {
+     "itemId": 1548,
+     "name": "Rune Pa Vi",
+     "level": 5,
+     "tier": "pa",
+     "value": 15,
+     "runeWeight": 3.0
+    },
+    {
+     "itemId": 1554,
+     "name": "Rune Ra Vi",
+     "level": 10,
+     "tier": "ra",
+     "value": 50,
+     "runeWeight": 10.0
+    }
+   ],
+   "forgeable": true,
+   "note": "Données du jeu : 0,2/pt (Rune Vi = +5 Vitalité, poids 1). dafous.app indique 0,25 (ancienne valeur) : erroné pour la version actuelle."
+  },
+  "126": {
+   "stat": "intelligence",
+   "fr": "Intelligence",
+   "weightPerPoint": 1,
+   "overmaxLineCapPoints": 101,
+   "runes": [
+    {
+     "itemId": 1522,
+     "name": "Rune Ine",
+     "level": 1,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 1
+    },
+    {
+     "itemId": 1547,
+     "name": "Rune Pa Ine",
+     "level": 5,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 3
+    },
+    {
+     "itemId": 1553,
+     "name": "Rune Ra Ine",
+     "level": 10,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 10
+    }
+   ],
+   "forgeable": true
+  },
+  "128": {
+   "stat": "movementPoints",
+   "fr": "PM",
+   "weightPerPoint": 90,
+   "overmaxLineCapPoints": 1,
+   "runes": [
+    {
+     "itemId": 1558,
+     "name": "Rune Ga Pme",
+     "level": 95,
+     "tier": "ga",
+     "value": 1,
+     "runeWeight": 90
+    }
+   ],
+   "forgeable": true,
+   "note": "Rune Ga Pme (niv. 95). Exo : ~1 %, 1 seul exo PM compté par personnage."
+  },
+  "138": {
+   "stat": "power",
+   "fr": "Puissance",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [
+    {
+     "itemId": 7436,
+     "name": "Rune Pui",
+     "level": 15,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 2
+    },
+    {
+     "itemId": 10618,
+     "name": "Rune Pa Pui",
+     "level": 20,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 6
+    },
+    {
+     "itemId": 10619,
+     "name": "Rune Ra Pui",
+     "level": 25,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true
+  },
+  "158": {
+   "stat": "pods",
+   "fr": "Pods",
+   "weightPerPoint": 0.25,
+   "overmaxLineCapPoints": 404,
+   "runes": [
+    {
+     "itemId": 7443,
+     "name": "Rune Pod",
+     "level": 1,
+     "tier": "base",
+     "value": 10,
+     "runeWeight": 2.5
+    },
+    {
+     "itemId": 7444,
+     "name": "Rune Pa Pod",
+     "level": 5,
+     "tier": "pa",
+     "value": 30,
+     "runeWeight": 7.5
+    },
+    {
+     "itemId": 7445,
+     "name": "Rune Ra Pod",
+     "level": 10,
+     "tier": "ra",
+     "value": 100,
+     "runeWeight": 25.0
+    }
+   ],
+   "forgeable": true
+  },
+  "160": {
+   "stat": "apParry",
+   "fr": "Esquive PA",
+   "weightPerPoint": 7,
+   "overmaxLineCapPoints": 14,
+   "runes": [
+    {
+     "itemId": 11641,
+     "name": "Rune Ré Pa",
+     "level": 65,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 7
+    },
+    {
+     "itemId": 11642,
+     "name": "Rune Pa Ré Pa",
+     "level": 70,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 21
+    }
+   ],
+   "forgeable": true
+  },
+  "161": {
+   "stat": "mpParry",
+   "fr": "Esquive PM",
+   "weightPerPoint": 7,
+   "overmaxLineCapPoints": 14,
+   "runes": [
+    {
+     "itemId": 11643,
+     "name": "Rune Ré Pme",
+     "level": 65,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 7
+    },
+    {
+     "itemId": 11644,
+     "name": "Rune Pa Ré Pme",
+     "level": 70,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 21
+    }
+   ],
+   "forgeable": true
+  },
+  "174": {
+   "stat": "initiative",
+   "fr": "Initiative",
+   "weightPerPoint": 0.1,
+   "overmaxLineCapPoints": 1010,
+   "runes": [
+    {
+     "itemId": 7448,
+     "name": "Rune Ini",
+     "level": 1,
+     "tier": "base",
+     "value": 10,
+     "runeWeight": 1.0
+    },
+    {
+     "itemId": 7449,
+     "name": "Rune Pa Ini",
+     "level": 5,
+     "tier": "pa",
+     "value": 30,
+     "runeWeight": 3.0
+    },
+    {
+     "itemId": 7450,
+     "name": "Rune Ra Ini",
+     "level": 10,
+     "tier": "ra",
+     "value": 100,
+     "runeWeight": 10.0
+    }
+   ],
+   "forgeable": true
+  },
+  "176": {
+   "stat": "prospecting",
+   "fr": "Prospection",
+   "weightPerPoint": 3,
+   "overmaxLineCapPoints": 33,
+   "runes": [
+    {
+     "itemId": 7451,
+     "name": "Rune Prospe",
+     "level": 15,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 3
+    },
+    {
+     "itemId": 10662,
+     "name": "Rune Pa Prospe",
+     "level": 20,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 9
+    }
+   ],
+   "forgeable": true
+  },
+  "178": {
+   "stat": "heals",
+   "fr": "Soins",
+   "weightPerPoint": 10,
+   "overmaxLineCapPoints": 10,
+   "runes": [
+    {
+     "itemId": 7434,
+     "name": "Rune So",
+     "level": 80,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 10
+    },
+    {
+     "itemId": 19337,
+     "name": "Rune Pa So",
+     "level": 90,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 30
+    }
+   ],
+   "forgeable": true
+  },
+  "182": {
+   "stat": "summons",
+   "fr": "Invocations",
+   "weightPerPoint": 30,
+   "overmaxLineCapPoints": 3,
+   "runes": [
+    {
+     "itemId": 7442,
+     "name": "Rune Invo",
+     "level": 85,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 30
+    }
+   ],
+   "forgeable": true,
+   "note": "Rune Invo (niv. 85). Exo Invo non limité par personnage (Gamosaurus)."
+  },
+  "183": {
+   "stat": "magicalReduction",
+   "fr": "Réduction magique",
+   "weightPerPoint": 10,
+   "overmaxLineCapPoints": 10,
+   "runes": [],
+   "forgeable": false,
+   "note": "Aucune rune de forgemagie classique pour cette ligne (non forgeable par rune ; poids = effectPowerRate, utile pour le calcul de puissance d'objet)."
+  },
+  "184": {
+   "stat": "physicalReduction",
+   "fr": "Réduction physique",
+   "weightPerPoint": 10,
+   "overmaxLineCapPoints": 10,
+   "runes": [],
+   "forgeable": false,
+   "note": "Aucune rune de forgemagie classique pour cette ligne (non forgeable par rune ; poids = effectPowerRate, utile pour le calcul de puissance d'objet)."
+  },
+  "210": {
+   "stat": "resPercentEarth",
+   "fr": "% Résistance Terre",
+   "weightPerPoint": 6,
+   "overmaxLineCapPoints": 16,
+   "runes": [
+    {
+     "itemId": 7459,
+     "name": "Rune Ré Per Terre",
+     "level": 75,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 6
+    }
+   ],
+   "forgeable": true
+  },
+  "211": {
+   "stat": "resPercentWater",
+   "fr": "% Résistance Eau",
+   "weightPerPoint": 6,
+   "overmaxLineCapPoints": 16,
+   "runes": [
+    {
+     "itemId": 7560,
+     "name": "Rune Ré Per Eau",
+     "level": 75,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 6
+    }
+   ],
+   "forgeable": true
+  },
+  "212": {
+   "stat": "resPercentAir",
+   "fr": "% Résistance Air",
+   "weightPerPoint": 6,
+   "overmaxLineCapPoints": 16,
+   "runes": [
+    {
+     "itemId": 7458,
+     "name": "Rune Ré Per Air",
+     "level": 75,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 6
+    }
+   ],
+   "forgeable": true
+  },
+  "213": {
+   "stat": "resPercentFire",
+   "fr": "% Résistance Feu",
+   "weightPerPoint": 6,
+   "overmaxLineCapPoints": 16,
+   "runes": [
+    {
+     "itemId": 7457,
+     "name": "Rune Ré Per Feu",
+     "level": 75,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 6
+    }
+   ],
+   "forgeable": true
+  },
+  "214": {
+   "stat": "resPercentNeutral",
+   "fr": "% Résistance Neutre",
+   "weightPerPoint": 6,
+   "overmaxLineCapPoints": 16,
+   "runes": [
+    {
+     "itemId": 7460,
+     "name": "Rune Ré Per Neutre",
+     "level": 75,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 6
+    }
+   ],
+   "forgeable": true
+  },
+  "220": {
+   "stat": "reflectDamage",
+   "fr": "Dommages renvoyés",
+   "weightPerPoint": 5,
+   "overmaxLineCapPoints": 20,
+   "runes": [
+    {
+     "itemId": 7437,
+     "name": "Rune Do Ren",
+     "level": 40,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 5
+    },
+    {
+     "itemId": 30942,
+     "name": "Rune Pa Do Ren",
+     "level": 45,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true,
+   "note": "Données du jeu : 5/pt. dafous.app (02/2026) : 10/pt ; jeuxonline : 5. INCERTAIN, on garde 5."
+  },
+  "225": {
+   "stat": "trapDamage",
+   "fr": "Dommages Pièges",
+   "weightPerPoint": 5,
+   "overmaxLineCapPoints": 20,
+   "runes": [
+    {
+     "itemId": 7446,
+     "name": "Rune Do Pi",
+     "level": 40,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 5
+    },
+    {
+     "itemId": 10613,
+     "name": "Rune Pa Do Pi",
+     "level": 45,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true,
+   "note": "Rune Do Pi."
+  },
+  "226": {
+   "stat": "trapPower",
+   "fr": "Puissance Pièges",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [
+    {
+     "itemId": 7447,
+     "name": "Rune Per Pi",
+     "level": 15,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 2
+    },
+    {
+     "itemId": 10615,
+     "name": "Rune Pa Per Pi",
+     "level": 20,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 6
+    },
+    {
+     "itemId": 10616,
+     "name": "Rune Ra Per Pi",
+     "level": 25,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true,
+   "note": "Rune Per Pi."
+  },
+  "240": {
+   "stat": "resFixedEarth",
+   "fr": "Résistance Terre (fixe)",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [
+    {
+     "itemId": 7455,
+     "name": "Rune Ré Terre",
+     "level": 30,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 2
+    },
+    {
+     "itemId": 19342,
+     "name": "Rune Pa Ré Terre",
+     "level": 35,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 6
+    },
+    {
+     "itemId": 30695,
+     "name": "Rune Ra Ré Terre",
+     "level": 40,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true
+  },
+  "241": {
+   "stat": "resFixedWater",
+   "fr": "Résistance Eau (fixe)",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [
+    {
+     "itemId": 7454,
+     "name": "Rune Ré Eau",
+     "level": 30,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 2
+    },
+    {
+     "itemId": 19339,
+     "name": "Rune Pa Ré Eau",
+     "level": 35,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 6
+    },
+    {
+     "itemId": 30698,
+     "name": "Rune Ra Ré Eau",
+     "level": 40,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true
+  },
+  "242": {
+   "stat": "resFixedAir",
+   "fr": "Résistance Air (fixe)",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [
+    {
+     "itemId": 7453,
+     "name": "Rune Ré Air",
+     "level": 30,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 2
+    },
+    {
+     "itemId": 19338,
+     "name": "Rune Pa Ré Air",
+     "level": 35,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 6
+    },
+    {
+     "itemId": 30700,
+     "name": "Rune Ra Ré Air",
+     "level": 40,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true
+  },
+  "243": {
+   "stat": "resFixedFire",
+   "fr": "Résistance Feu (fixe)",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [
+    {
+     "itemId": 7452,
+     "name": "Rune Ré Feu",
+     "level": 30,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 2
+    },
+    {
+     "itemId": 19340,
+     "name": "Rune Pa Ré Feu",
+     "level": 35,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 6
+    },
+    {
+     "itemId": 30697,
+     "name": "Rune Ra Ré Feu",
+     "level": 40,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true
+  },
+  "244": {
+   "stat": "resFixedNeutral",
+   "fr": "Résistance Neutre (fixe)",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [
+    {
+     "itemId": 7456,
+     "name": "Rune Ré Neutre",
+     "level": 30,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 2
+    },
+    {
+     "itemId": 19341,
+     "name": "Rune Pa Ré Neutre",
+     "level": 35,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 6
+    },
+    {
+     "itemId": 30696,
+     "name": "Rune Ra Ré Neutre",
+     "level": 40,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true
+  },
+  "410": {
+   "stat": "apReduction",
+   "fr": "Retrait PA",
+   "weightPerPoint": 7,
+   "overmaxLineCapPoints": 14,
+   "runes": [
+    {
+     "itemId": 11645,
+     "name": "Rune Ret Pa",
+     "level": 65,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 7
+    },
+    {
+     "itemId": 11646,
+     "name": "Rune Pa Ret Pa",
+     "level": 70,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 21
+    }
+   ],
+   "forgeable": true
+  },
+  "412": {
+   "stat": "mpReduction",
+   "fr": "Retrait PM",
+   "weightPerPoint": 7,
+   "overmaxLineCapPoints": 14,
+   "runes": [
+    {
+     "itemId": 11647,
+     "name": "Rune Ret Pme",
+     "level": 65,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 7
+    },
+    {
+     "itemId": 11648,
+     "name": "Rune Pa Ret Pme",
+     "level": 70,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 21
+    }
+   ],
+   "forgeable": true
+  },
+  "414": {
+   "stat": "pushDamage",
+   "fr": "Dommages Poussée",
+   "weightPerPoint": 5,
+   "overmaxLineCapPoints": 20,
+   "runes": [
+    {
+     "itemId": 11649,
+     "name": "Rune Do Pou",
+     "level": 40,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 5
+    },
+    {
+     "itemId": 11650,
+     "name": "Rune Pa Do Pou",
+     "level": 45,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 15
+    },
+    {
+     "itemId": 29684,
+     "name": "Rune Ra Do Pou",
+     "level": 50,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 50
+    }
+   ],
+   "forgeable": true
+  },
+  "416": {
+   "stat": "pushResistance",
+   "fr": "Résistance Poussée",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [
+    {
+     "itemId": 11651,
+     "name": "Rune Ré Pou",
+     "level": 30,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 2
+    },
+    {
+     "itemId": 11652,
+     "name": "Rune Pa Ré Pou",
+     "level": 35,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 6
+    },
+    {
+     "itemId": 29683,
+     "name": "Rune Ra Ré Pou",
+     "level": 40,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true
+  },
+  "418": {
+   "stat": "criticalDamage",
+   "fr": "Dommages Critiques",
+   "weightPerPoint": 5,
+   "overmaxLineCapPoints": 20,
+   "runes": [
+    {
+     "itemId": 11653,
+     "name": "Rune Do Cri",
+     "level": 40,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 5
+    },
+    {
+     "itemId": 11654,
+     "name": "Rune Pa Do Cri",
+     "level": 45,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true
+  },
+  "420": {
+   "stat": "criticalResistance",
+   "fr": "Résistance Critiques",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [
+    {
+     "itemId": 11655,
+     "name": "Rune Ré Cri",
+     "level": 30,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 2
+    },
+    {
+     "itemId": 11656,
+     "name": "Rune Pa Ré Cri",
+     "level": 35,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 6
+    },
+    {
+     "itemId": 30699,
+     "name": "Rune Ra Ré Cri",
+     "level": 40,
+     "tier": "ra",
+     "value": 10,
+     "runeWeight": 20
+    }
+   ],
+   "forgeable": true
+  },
+  "422": {
+   "stat": "earthDamage",
+   "fr": "Dommages Terre",
+   "weightPerPoint": 5,
+   "overmaxLineCapPoints": 20,
+   "runes": [
+    {
+     "itemId": 11657,
+     "name": "Rune Do Terre",
+     "level": 40,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 5
+    },
+    {
+     "itemId": 11658,
+     "name": "Rune Pa Do Terre",
+     "level": 45,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true
+  },
+  "424": {
+   "stat": "fireDamage",
+   "fr": "Dommages Feu",
+   "weightPerPoint": 5,
+   "overmaxLineCapPoints": 20,
+   "runes": [
+    {
+     "itemId": 11659,
+     "name": "Rune Do Feu",
+     "level": 40,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 5
+    },
+    {
+     "itemId": 11660,
+     "name": "Rune Pa Do Feu",
+     "level": 45,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true
+  },
+  "426": {
+   "stat": "waterDamage",
+   "fr": "Dommages Eau",
+   "weightPerPoint": 5,
+   "overmaxLineCapPoints": 20,
+   "runes": [
+    {
+     "itemId": 11661,
+     "name": "Rune Do Eau",
+     "level": 40,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 5
+    },
+    {
+     "itemId": 11662,
+     "name": "Rune Pa Do Eau",
+     "level": 45,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true
+  },
+  "428": {
+   "stat": "airDamage",
+   "fr": "Dommages Air",
+   "weightPerPoint": 5,
+   "overmaxLineCapPoints": 20,
+   "runes": [
+    {
+     "itemId": 11663,
+     "name": "Rune Do Air",
+     "level": 40,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 5
+    },
+    {
+     "itemId": 11664,
+     "name": "Rune Pa Do Air",
+     "level": 45,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true
+  },
+  "430": {
+   "stat": "neutralDamage",
+   "fr": "Dommages Neutre",
+   "weightPerPoint": 5,
+   "overmaxLineCapPoints": 20,
+   "runes": [
+    {
+     "itemId": 11665,
+     "name": "Rune Do Neutre",
+     "level": 40,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 5
+    },
+    {
+     "itemId": 11666,
+     "name": "Rune Pa Do Neutre",
+     "level": 45,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true
+  },
+  "752": {
+   "stat": "escape",
+   "fr": "Fuite",
+   "weightPerPoint": 4,
+   "overmaxLineCapPoints": 25,
+   "runes": [
+    {
+     "itemId": 11637,
+     "name": "Rune Fui",
+     "level": 55,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 4
+    },
+    {
+     "itemId": 11638,
+     "name": "Rune Pa Fui",
+     "level": 60,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 12
+    }
+   ],
+   "forgeable": true
+  },
+  "753": {
+   "stat": "tackle",
+   "fr": "Tacle",
+   "weightPerPoint": 4,
+   "overmaxLineCapPoints": 25,
+   "runes": [
+    {
+     "itemId": 11639,
+     "name": "Rune Tac",
+     "level": 55,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 4
+    },
+    {
+     "itemId": 11640,
+     "name": "Rune Pa Tac",
+     "level": 60,
+     "tier": "pa",
+     "value": 3,
+     "runeWeight": 12
+    }
+   ],
+   "forgeable": true
+  },
+  "1166": {
+   "stat": "glyphPower",
+   "fr": "Puissance Glyphes",
+   "weightPerPoint": 2,
+   "overmaxLineCapPoints": 50,
+   "runes": [],
+   "forgeable": false,
+   "note": "Aucune rune de forgemagie n'existe pour cette caractéristique (pas forgeable)."
+  },
+  "2800": {
+   "stat": "meleeDamagePercent",
+   "fr": "% Dommages mêlée",
+   "weightPerPoint": 15,
+   "overmaxLineCapPoints": 6,
+   "runes": [
+    {
+     "itemId": 18719,
+     "name": "Rune Do Per Mé",
+     "level": 50,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true
+  },
+  "2803": {
+   "stat": "meleeResistancePercent",
+   "fr": "% Résistance mêlée",
+   "weightPerPoint": 10,
+   "overmaxLineCapPoints": 10,
+   "runes": [
+    {
+     "itemId": 18723,
+     "name": "Rune Ré Per Mé",
+     "level": 50,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 10
+    }
+   ],
+   "forgeable": true,
+   "note": "Données du jeu : 10/pt ; jeuxonline indique 15 pour Ré Per Mé. INCERTAIN."
+  },
+  "2804": {
+   "stat": "rangedDamagePercent",
+   "fr": "% Dommages distance",
+   "weightPerPoint": 15,
+   "overmaxLineCapPoints": 6,
+   "runes": [
+    {
+     "itemId": 18720,
+     "name": "Rune Do Per Di",
+     "level": 50,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true
+  },
+  "2807": {
+   "stat": "rangedResistancePercent",
+   "fr": "% Résistance distance",
+   "weightPerPoint": 10,
+   "overmaxLineCapPoints": 10,
+   "runes": [
+    {
+     "itemId": 18724,
+     "name": "Rune Ré Per Di",
+     "level": 50,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 10
+    }
+   ],
+   "forgeable": true,
+   "note": "Données du jeu : 10/pt ; probablement 15 selon guides (cf. Ré Per Mé). INCERTAIN."
+  },
+  "2808": {
+   "stat": "weaponDamagePercent",
+   "fr": "% Dommages d'armes",
+   "weightPerPoint": 15,
+   "overmaxLineCapPoints": 6,
+   "runes": [
+    {
+     "itemId": 18721,
+     "name": "Rune Do Per Ar",
+     "level": 50,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true
+  },
+  "2811": {
+   "stat": "weaponResistancePercent",
+   "fr": "% Résistance aux armes",
+   "weightPerPoint": 15,
+   "overmaxLineCapPoints": 6,
+   "runes": [],
+   "forgeable": false,
+   "note": "Aucune rune de forgemagie classique pour cette ligne (non forgeable par rune ; poids = effectPowerRate, utile pour le calcul de puissance d'objet)."
+  },
+  "2812": {
+   "stat": "spellDamagePercent",
+   "fr": "% Dommages aux sorts",
+   "weightPerPoint": 15,
+   "overmaxLineCapPoints": 6,
+   "runes": [
+    {
+     "itemId": 18722,
+     "name": "Rune Do Per So",
+     "level": 50,
+     "tier": "base",
+     "value": 1,
+     "runeWeight": 15
+    }
+   ],
+   "forgeable": true,
+   "note": "Rune Do Per So (poids 15) ; aussi rune de transcendance Ta Do Per So (+1 %, niv. 200)."
+  },
+  "2815": {
+   "stat": "spellResistancePercent",
+   "fr": "% Résistance aux sorts",
+   "weightPerPoint": 15,
+   "overmaxLineCapPoints": 6,
+   "runes": [],
+   "forgeable": false,
+   "note": "Aucune rune de forgemagie classique pour cette ligne (non forgeable par rune ; poids = effectPowerRate, utile pour le calcul de puissance d'objet)."
+  }
+ },
+ "transcendanceRunes": [
+  {
+   "itemId": 20561,
+   "name": "Rune Ta Age",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 119,
+   "stat": "agility",
+   "fr": "Agilité",
+   "value": 10,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20562,
+   "name": "Rune Pata Age",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 119,
+   "stat": "agility",
+   "fr": "Agilité",
+   "value": 15,
+   "equivalentWeight": 15
+  },
+  {
+   "itemId": 20563,
+   "name": "Rune Rata Age",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 119,
+   "stat": "agility",
+   "fr": "Agilité",
+   "value": 20,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20605,
+   "name": "Rune Ta Do Air",
+   "level": 144,
+   "tier": "ta",
+   "effectId": 428,
+   "stat": "airDamage",
+   "fr": "Dommages Air",
+   "value": 2,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20606,
+   "name": "Rune Pata Do Air",
+   "level": 166,
+   "tier": "pata",
+   "effectId": 428,
+   "stat": "airDamage",
+   "fr": "Dommages Air",
+   "value": 4,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20607,
+   "name": "Rune Rata Do Air",
+   "level": 188,
+   "tier": "rata",
+   "effectId": 428,
+   "stat": "airDamage",
+   "fr": "Dommages Air",
+   "value": 6,
+   "equivalentWeight": 30
+  },
+  {
+   "itemId": 20623,
+   "name": "Rune Ta Ré Pa",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 160,
+   "stat": "apParry",
+   "fr": "Esquive PA",
+   "value": 2,
+   "equivalentWeight": 14
+  },
+  {
+   "itemId": 20624,
+   "name": "Rune Pata Ré Pa",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 160,
+   "stat": "apParry",
+   "fr": "Esquive PA",
+   "value": 4,
+   "equivalentWeight": 28
+  },
+  {
+   "itemId": 20625,
+   "name": "Rune Rata Ré Pa",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 160,
+   "stat": "apParry",
+   "fr": "Esquive PA",
+   "value": 6,
+   "equivalentWeight": 42
+  },
+  {
+   "itemId": 20629,
+   "name": "Rune Ta Ret Pa",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 410,
+   "stat": "apReduction",
+   "fr": "Retrait PA",
+   "value": 2,
+   "equivalentWeight": 14
+  },
+  {
+   "itemId": 20630,
+   "name": "Rune Pata Ret Pa",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 410,
+   "stat": "apReduction",
+   "fr": "Retrait PA",
+   "value": 3,
+   "equivalentWeight": 21
+  },
+  {
+   "itemId": 20631,
+   "name": "Rune Rata Ret Pa",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 410,
+   "stat": "apReduction",
+   "fr": "Retrait PA",
+   "value": 4,
+   "equivalentWeight": 28
+  },
+  {
+   "itemId": 20564,
+   "name": "Rune Ta Cha",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 123,
+   "stat": "chance",
+   "fr": "Chance",
+   "value": 10,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20565,
+   "name": "Rune Pata Cha",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 123,
+   "stat": "chance",
+   "fr": "Chance",
+   "value": 15,
+   "equivalentWeight": 15
+  },
+  {
+   "itemId": 20566,
+   "name": "Rune Rata Cha",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 123,
+   "stat": "chance",
+   "fr": "Chance",
+   "value": 20,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20585,
+   "name": "Rune Ta Do Cri",
+   "level": 166,
+   "tier": "ta",
+   "effectId": 418,
+   "stat": "criticalDamage",
+   "fr": "Dommages Critiques",
+   "value": 6,
+   "equivalentWeight": 30
+  },
+  {
+   "itemId": 20586,
+   "name": "Rune Pata Do Cri",
+   "level": 188,
+   "tier": "pata",
+   "effectId": 418,
+   "stat": "criticalDamage",
+   "fr": "Dommages Critiques",
+   "value": 8,
+   "equivalentWeight": 40
+  },
+  {
+   "itemId": 20640,
+   "name": "Rune Ta Cri",
+   "level": 164,
+   "tier": "ta",
+   "effectId": 115,
+   "stat": "criticalHit",
+   "fr": "% Critique",
+   "value": 1,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20641,
+   "name": "Rune Pata Cri",
+   "level": 188,
+   "tier": "pata",
+   "effectId": 115,
+   "stat": "criticalHit",
+   "fr": "% Critique",
+   "value": 2,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20581,
+   "name": "Rune Ta Ré Cri",
+   "level": 166,
+   "tier": "ta",
+   "effectId": 420,
+   "stat": "criticalResistance",
+   "fr": "Résistance Critiques",
+   "value": 9,
+   "equivalentWeight": 18
+  },
+  {
+   "itemId": 20582,
+   "name": "Rune Pata Ré Cri",
+   "level": 188,
+   "tier": "pata",
+   "effectId": 420,
+   "stat": "criticalResistance",
+   "fr": "Résistance Critiques",
+   "value": 12,
+   "equivalentWeight": 24
+  },
+  {
+   "itemId": 20596,
+   "name": "Rune Ta Do Terre",
+   "level": 144,
+   "tier": "ta",
+   "effectId": 422,
+   "stat": "earthDamage",
+   "fr": "Dommages Terre",
+   "value": 2,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20597,
+   "name": "Rune Pata Do Terre",
+   "level": 166,
+   "tier": "pata",
+   "effectId": 422,
+   "stat": "earthDamage",
+   "fr": "Dommages Terre",
+   "value": 4,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20598,
+   "name": "Rune Rata Do Terre",
+   "level": 188,
+   "tier": "rata",
+   "effectId": 422,
+   "stat": "earthDamage",
+   "fr": "Dommages Terre",
+   "value": 6,
+   "equivalentWeight": 30
+  },
+  {
+   "itemId": 20617,
+   "name": "Rune Ta Fui",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 752,
+   "stat": "escape",
+   "fr": "Fuite",
+   "value": 4,
+   "equivalentWeight": 16
+  },
+  {
+   "itemId": 20618,
+   "name": "Rune Pata Fui",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 752,
+   "stat": "escape",
+   "fr": "Fuite",
+   "value": 6,
+   "equivalentWeight": 24
+  },
+  {
+   "itemId": 20619,
+   "name": "Rune Rata Fui",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 752,
+   "stat": "escape",
+   "fr": "Fuite",
+   "value": 8,
+   "equivalentWeight": 32
+  },
+  {
+   "itemId": 20599,
+   "name": "Rune Ta Do Feu",
+   "level": 144,
+   "tier": "ta",
+   "effectId": 424,
+   "stat": "fireDamage",
+   "fr": "Dommages Feu",
+   "value": 2,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20600,
+   "name": "Rune Pata Do Feu",
+   "level": 166,
+   "tier": "pata",
+   "effectId": 424,
+   "stat": "fireDamage",
+   "fr": "Dommages Feu",
+   "value": 4,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20601,
+   "name": "Rune Rata Do Feu",
+   "level": 188,
+   "tier": "rata",
+   "effectId": 424,
+   "stat": "fireDamage",
+   "fr": "Dommages Feu",
+   "value": 6,
+   "equivalentWeight": 30
+  },
+  {
+   "itemId": 20642,
+   "name": "Rune Ta So",
+   "level": 124,
+   "tier": "ta",
+   "effectId": 178,
+   "stat": "heals",
+   "fr": "Soins",
+   "value": 4,
+   "equivalentWeight": 40
+  },
+  {
+   "itemId": 20643,
+   "name": "Rune Pata So",
+   "level": 146,
+   "tier": "pata",
+   "effectId": 178,
+   "stat": "heals",
+   "fr": "Soins",
+   "value": 7,
+   "equivalentWeight": 70
+  },
+  {
+   "itemId": 20644,
+   "name": "Rune Rata So",
+   "level": 168,
+   "tier": "rata",
+   "effectId": 178,
+   "stat": "heals",
+   "fr": "Soins",
+   "value": 10,
+   "equivalentWeight": 100
+  },
+  {
+   "itemId": 20570,
+   "name": "Rune Ta Ini",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 174,
+   "stat": "initiative",
+   "fr": "Initiative",
+   "value": 100,
+   "equivalentWeight": 10.0
+  },
+  {
+   "itemId": 20571,
+   "name": "Rune Pata Ini",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 174,
+   "stat": "initiative",
+   "fr": "Initiative",
+   "value": 150,
+   "equivalentWeight": 15.0
+  },
+  {
+   "itemId": 20572,
+   "name": "Rune Rata Ini",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 174,
+   "stat": "initiative",
+   "fr": "Initiative",
+   "value": 200,
+   "equivalentWeight": 20.0
+  },
+  {
+   "itemId": 20492,
+   "name": "Rune Ta Ine",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 126,
+   "stat": "intelligence",
+   "fr": "Intelligence",
+   "value": 10,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20556,
+   "name": "Rune Pata Ine",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 126,
+   "stat": "intelligence",
+   "fr": "Intelligence",
+   "value": 15,
+   "equivalentWeight": 15
+  },
+  {
+   "itemId": 20557,
+   "name": "Rune Rata Ine",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 126,
+   "stat": "intelligence",
+   "fr": "Intelligence",
+   "value": 20,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20616,
+   "name": "Rune Ta Do Per Mé",
+   "level": 200,
+   "tier": "ta",
+   "effectId": 2800,
+   "stat": "meleeDamagePercent",
+   "fr": "% Dommages mêlée",
+   "value": 1,
+   "equivalentWeight": 15
+  },
+  {
+   "itemId": 20612,
+   "name": "Rune Ta Ré Per Mé",
+   "level": 200,
+   "tier": "ta",
+   "effectId": 2803,
+   "stat": "meleeResistancePercent",
+   "fr": "% Résistance mêlée",
+   "value": 1,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20626,
+   "name": "Rune Ta Ré Pme",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 161,
+   "stat": "mpParry",
+   "fr": "Esquive PM",
+   "value": 2,
+   "equivalentWeight": 14
+  },
+  {
+   "itemId": 20627,
+   "name": "Rune Pata Ré Pme",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 161,
+   "stat": "mpParry",
+   "fr": "Esquive PM",
+   "value": 4,
+   "equivalentWeight": 28
+  },
+  {
+   "itemId": 20628,
+   "name": "Rune Rata Ré Pme",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 161,
+   "stat": "mpParry",
+   "fr": "Esquive PM",
+   "value": 6,
+   "equivalentWeight": 42
+  },
+  {
+   "itemId": 20632,
+   "name": "Rune Ta Ret Pme",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 412,
+   "stat": "mpReduction",
+   "fr": "Retrait PM",
+   "value": 2,
+   "equivalentWeight": 14
+  },
+  {
+   "itemId": 20633,
+   "name": "Rune Pata Ret Pme",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 412,
+   "stat": "mpReduction",
+   "fr": "Retrait PM",
+   "value": 3,
+   "equivalentWeight": 21
+  },
+  {
+   "itemId": 20634,
+   "name": "Rune Rata Ret Pme",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 412,
+   "stat": "mpReduction",
+   "fr": "Retrait PM",
+   "value": 4,
+   "equivalentWeight": 28
+  },
+  {
+   "itemId": 20608,
+   "name": "Rune Ta Do Neutre",
+   "level": 144,
+   "tier": "ta",
+   "effectId": 430,
+   "stat": "neutralDamage",
+   "fr": "Dommages Neutre",
+   "value": 2,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20609,
+   "name": "Rune Pata Do Neutre",
+   "level": 166,
+   "tier": "pata",
+   "effectId": 430,
+   "stat": "neutralDamage",
+   "fr": "Dommages Neutre",
+   "value": 4,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20610,
+   "name": "Rune Rata Do Neutre",
+   "level": 188,
+   "tier": "rata",
+   "effectId": 430,
+   "stat": "neutralDamage",
+   "fr": "Dommages Neutre",
+   "value": 6,
+   "equivalentWeight": 30
+  },
+  {
+   "itemId": 20573,
+   "name": "Rune Ta Pod",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 158,
+   "stat": "pods",
+   "fr": "Pods",
+   "value": 100,
+   "equivalentWeight": 25.0
+  },
+  {
+   "itemId": 20574,
+   "name": "Rune Pata Pod",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 158,
+   "stat": "pods",
+   "fr": "Pods",
+   "value": 200,
+   "equivalentWeight": 50.0
+  },
+  {
+   "itemId": 20575,
+   "name": "Rune Rata Pod",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 158,
+   "stat": "pods",
+   "fr": "Pods",
+   "value": 400,
+   "equivalentWeight": 100.0
+  },
+  {
+   "itemId": 20576,
+   "name": "Rune Ta Pui",
+   "level": 124,
+   "tier": "ta",
+   "effectId": 138,
+   "stat": "power",
+   "fr": "Puissance",
+   "value": 6,
+   "equivalentWeight": 12
+  },
+  {
+   "itemId": 20577,
+   "name": "Rune Pata Pui",
+   "level": 146,
+   "tier": "pata",
+   "effectId": 138,
+   "stat": "power",
+   "fr": "Puissance",
+   "value": 9,
+   "equivalentWeight": 18
+  },
+  {
+   "itemId": 20578,
+   "name": "Rune Rata Pui",
+   "level": 168,
+   "tier": "rata",
+   "effectId": 138,
+   "stat": "power",
+   "fr": "Puissance",
+   "value": 12,
+   "equivalentWeight": 24
+  },
+  {
+   "itemId": 20583,
+   "name": "Rune Ta Do Pou",
+   "level": 166,
+   "tier": "ta",
+   "effectId": 414,
+   "stat": "pushDamage",
+   "fr": "Dommages Poussée",
+   "value": 6,
+   "equivalentWeight": 30
+  },
+  {
+   "itemId": 20584,
+   "name": "Rune Pata Do Pou",
+   "level": 188,
+   "tier": "pata",
+   "effectId": 414,
+   "stat": "pushDamage",
+   "fr": "Dommages Poussée",
+   "value": 8,
+   "equivalentWeight": 40
+  },
+  {
+   "itemId": 20579,
+   "name": "Rune Ta Ré Pou",
+   "level": 166,
+   "tier": "ta",
+   "effectId": 416,
+   "stat": "pushResistance",
+   "fr": "Résistance Poussée",
+   "value": 9,
+   "equivalentWeight": 18
+  },
+  {
+   "itemId": 20580,
+   "name": "Rune Pata Ré Pou",
+   "level": 188,
+   "tier": "pata",
+   "effectId": 416,
+   "stat": "pushResistance",
+   "fr": "Résistance Poussée",
+   "value": 12,
+   "equivalentWeight": 24
+  },
+  {
+   "itemId": 20615,
+   "name": "Rune Ta Do Per Di",
+   "level": 200,
+   "tier": "ta",
+   "effectId": 2804,
+   "stat": "rangedDamagePercent",
+   "fr": "% Dommages distance",
+   "value": 1,
+   "equivalentWeight": 15
+  },
+  {
+   "itemId": 20611,
+   "name": "Rune Ta Ré Per Di",
+   "level": 200,
+   "tier": "ta",
+   "effectId": 2807,
+   "stat": "rangedResistancePercent",
+   "fr": "% Résistance distance",
+   "value": 1,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20638,
+   "name": "Rune Ta Ré Per Air",
+   "level": 188,
+   "tier": "ta",
+   "effectId": 212,
+   "stat": "resPercentAir",
+   "fr": "% Résistance Air",
+   "value": 2,
+   "equivalentWeight": 12
+  },
+  {
+   "itemId": 20635,
+   "name": "Rune Ta Ré Per Terre",
+   "level": 188,
+   "tier": "ta",
+   "effectId": 210,
+   "stat": "resPercentEarth",
+   "fr": "% Résistance Terre",
+   "value": 2,
+   "equivalentWeight": 12
+  },
+  {
+   "itemId": 20636,
+   "name": "Rune Ta Ré Per Feu",
+   "level": 188,
+   "tier": "ta",
+   "effectId": 213,
+   "stat": "resPercentFire",
+   "fr": "% Résistance Feu",
+   "value": 2,
+   "equivalentWeight": 12
+  },
+  {
+   "itemId": 20639,
+   "name": "Rune Ta Ré Per Neutre",
+   "level": 188,
+   "tier": "ta",
+   "effectId": 214,
+   "stat": "resPercentNeutral",
+   "fr": "% Résistance Neutre",
+   "value": 2,
+   "equivalentWeight": 12
+  },
+  {
+   "itemId": 20637,
+   "name": "Rune Ta Ré Per Eau",
+   "level": 188,
+   "tier": "ta",
+   "effectId": 211,
+   "stat": "resPercentWater",
+   "fr": "% Résistance Eau",
+   "value": 2,
+   "equivalentWeight": 12
+  },
+  {
+   "itemId": 20613,
+   "name": "Rune Ta Do Per So",
+   "level": 200,
+   "tier": "ta",
+   "effectId": 2812,
+   "stat": "spellDamagePercent",
+   "fr": "% Dommages aux sorts",
+   "value": 1,
+   "equivalentWeight": 15
+  },
+  {
+   "itemId": 20558,
+   "name": "Rune Ta Fo",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 118,
+   "stat": "strength",
+   "fr": "Force",
+   "value": 10,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20559,
+   "name": "Rune Pata Fo",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 118,
+   "stat": "strength",
+   "fr": "Force",
+   "value": 15,
+   "equivalentWeight": 15
+  },
+  {
+   "itemId": 20560,
+   "name": "Rune Rata Fo",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 118,
+   "stat": "strength",
+   "fr": "Force",
+   "value": 20,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20620,
+   "name": "Rune Ta Tac",
+   "level": 104,
+   "tier": "ta",
+   "effectId": 753,
+   "stat": "tackle",
+   "fr": "Tacle",
+   "value": 4,
+   "equivalentWeight": 16
+  },
+  {
+   "itemId": 20621,
+   "name": "Rune Pata Tac",
+   "level": 126,
+   "tier": "pata",
+   "effectId": 753,
+   "stat": "tackle",
+   "fr": "Tacle",
+   "value": 6,
+   "equivalentWeight": 24
+  },
+  {
+   "itemId": 20622,
+   "name": "Rune Rata Tac",
+   "level": 148,
+   "tier": "rata",
+   "effectId": 753,
+   "stat": "tackle",
+   "fr": "Tacle",
+   "value": 8,
+   "equivalentWeight": 32
+  },
+  {
+   "itemId": 20567,
+   "name": "Rune Ta Vi",
+   "level": 124,
+   "tier": "ta",
+   "effectId": 125,
+   "stat": "vitality",
+   "fr": "Vitalité",
+   "value": 50,
+   "equivalentWeight": 10.0
+  },
+  {
+   "itemId": 20568,
+   "name": "Rune Pata Vi",
+   "level": 146,
+   "tier": "pata",
+   "effectId": 125,
+   "stat": "vitality",
+   "fr": "Vitalité",
+   "value": 75,
+   "equivalentWeight": 15.0
+  },
+  {
+   "itemId": 20569,
+   "name": "Rune Rata Vi",
+   "level": 168,
+   "tier": "rata",
+   "effectId": 125,
+   "stat": "vitality",
+   "fr": "Vitalité",
+   "value": 100,
+   "equivalentWeight": 20.0
+  },
+  {
+   "itemId": 20602,
+   "name": "Rune Ta Do Eau",
+   "level": 144,
+   "tier": "ta",
+   "effectId": 426,
+   "stat": "waterDamage",
+   "fr": "Dommages Eau",
+   "value": 2,
+   "equivalentWeight": 10
+  },
+  {
+   "itemId": 20603,
+   "name": "Rune Pata Do Eau",
+   "level": 166,
+   "tier": "pata",
+   "effectId": 426,
+   "stat": "waterDamage",
+   "fr": "Dommages Eau",
+   "value": 4,
+   "equivalentWeight": 20
+  },
+  {
+   "itemId": 20604,
+   "name": "Rune Rata Do Eau",
+   "level": 188,
+   "tier": "rata",
+   "effectId": 426,
+   "stat": "waterDamage",
+   "fr": "Dommages Eau",
+   "value": 6,
+   "equivalentWeight": 30
+  },
+  {
+   "itemId": 20614,
+   "name": "Rune Ta Do Per Ar",
+   "level": 200,
+   "tier": "ta",
+   "effectId": 2808,
+   "stat": "weaponDamagePercent",
+   "fr": "% Dommages d'armes",
+   "value": 1,
+   "equivalentWeight": 15
+  }
+ ],
+ "engravings": [
+  {
+   "itemId": 26345,
+   "name": "Gravure de Tsunami",
+   "level": 80,
+   "keepsBaseDamagePercent": 85,
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+  },
+  {
+   "itemId": 26347,
+   "name": "Gravure de Séisme",
+   "level": 80,
+   "keepsBaseDamagePercent": 85,
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+  },
+  {
+   "itemId": 26348,
+   "name": "Gravure d'Incendie",
+   "level": 80,
+   "keepsBaseDamagePercent": 85,
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+  },
+  {
+   "itemId": 26349,
+   "name": "Gravure d'Ouragan",
+   "level": 80,
+   "keepsBaseDamagePercent": 85,
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+  },
+  {
+   "itemId": 26353,
+   "name": "Gravure d'Étincelle",
+   "level": 20,
+   "keepsBaseDamagePercent": 50,
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+  },
+  {
+   "itemId": 26354,
+   "name": "Gravure de Courant d'Air",
+   "level": 20,
+   "keepsBaseDamagePercent": 50,
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+  },
+  {
+   "itemId": 26355,
+   "name": "Gravure de Crachin",
+   "level": 20,
+   "keepsBaseDamagePercent": 50,
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+  },
+  {
+   "itemId": 26358,
+   "name": "Gravure de Secousse",
+   "level": 20,
+   "keepsBaseDamagePercent": 50,
+   "note": "Convertit définitivement les dégâts neutres d'une arme vers un élément ; seul le vol de vie est aussi converti (description du jeu)."
+  }
+ ],
+ "orbs": [
+  {
+   "itemId": 17272,
+   "name": "Orbe régénérant mineur",
+   "level": 60,
+   "effect": "Réinitialise (re-tire) les effets d'un objet de niveau ≤ niveau de l'orbe (effet 1185)"
+  },
+  {
+   "itemId": 17273,
+   "name": "Orbe régénérant",
+   "level": 120,
+   "effect": "Réinitialise (re-tire) les effets d'un objet de niveau ≤ niveau de l'orbe (effet 1185)"
+  },
+  {
+   "itemId": 17274,
+   "name": "Orbe régénérant majeur",
+   "level": 180,
+   "effect": "Réinitialise (re-tire) les effets d'un objet de niveau ≤ niveau de l'orbe (effet 1185)"
+  },
+  {
+   "itemId": 17275,
+   "name": "Orbe régénérant magistral",
+   "level": 200,
+   "effect": "Réinitialise (re-tire) les effets d'un objet de niveau ≤ niveau de l'orbe (effet 1185)"
+  },
+  {
+   "itemId": 27493,
+   "name": "Orbe régénérant magistral (lié)",
+   "level": 200,
+   "effect": "Réinitialise (re-tire) les effets d'un objet de niveau ≤ niveau de l'orbe (effet 1185)"
+  },
+  {
+   "itemId": 27494,
+   "name": "Orbe régénérant majeur (lié)",
+   "level": 180,
+   "effect": "Réinitialise (re-tire) les effets d'un objet de niveau ≤ niveau de l'orbe (effet 1185)"
+  },
+  {
+   "itemId": 27495,
+   "name": "Orbe régénérant (lié)",
+   "level": 120,
+   "effect": "Réinitialise (re-tire) les effets d'un objet de niveau ≤ niveau de l'orbe (effet 1185)"
+  },
+  {
+   "itemId": 27496,
+   "name": "Orbe régénérant mineur (lié)",
+   "level": 60,
+   "effect": "Réinitialise (re-tire) les effets d'un objet de niveau ≤ niveau de l'orbe (effet 1185)"
+  }
+ ],
+ "exoOptions": [
+  {
+   "id": "exoPA",
+   "effectId": 111,
+   "value": 1,
+   "lineWeight": 100,
+   "successRatePerTry": 0.01,
+   "countedOncePerCharacter": true,
+   "rarity": "très rare",
+   "costTier": 5,
+   "typicalSlots": [
+    "ring",
+    "amulet",
+    "hat",
+    "cloak",
+    "boots",
+    "belt"
+   ],
+   "note": "Inutile si le stuff atteint déjà 12 PA. Incompatible avec une transcendance sur le même objet."
+  },
+  {
+   "id": "exoPM",
+   "effectId": 128,
+   "value": 1,
+   "lineWeight": 90,
+   "successRatePerTry": 0.01,
+   "countedOncePerCharacter": true,
+   "rarity": "très rare",
+   "costTier": 5,
+   "typicalSlots": [
+    "ring",
+    "amulet",
+    "hat",
+    "cloak",
+    "boots",
+    "belt"
+   ],
+   "note": "Inutile au-delà de 6 PM."
+  },
+  {
+   "id": "exoPO",
+   "effectId": 117,
+   "value": 1,
+   "lineWeight": 51,
+   "successRatePerTry": 0.01,
+   "countedOncePerCharacter": true,
+   "rarity": "rare",
+   "costTier": 4,
+   "typicalSlots": [
+    "ring",
+    "amulet",
+    "hat",
+    "cloak",
+    "boots",
+    "belt"
+   ],
+   "note": "Moins cher qu'un exo PA/PM (rune Po moins rare) — INCERTAIN."
+  },
+  {
+   "id": "exoSummon",
+   "effectId": 182,
+   "value": 1,
+   "lineWeight": 30,
+   "successRatePerTry": null,
+   "countedOncePerCharacter": false,
+   "rarity": "peu commun",
+   "costTier": 3,
+   "note": "Utile pour Osamodas/Sadida/invocateurs."
+  },
+  {
+   "id": "exoDamage",
+   "effectId": 112,
+   "valueRange": [
+    1,
+    5
+   ],
+   "lineWeightPerPoint": 20,
+   "rarity": "peu commun",
+   "costTier": 3,
+   "note": "Via puits ; 5 Do = poids 100 (max)."
+  },
+  {
+   "id": "exoPower",
+   "effectId": 138,
+   "valueRange": [
+    5,
+    30
+   ],
+   "lineWeightPerPoint": 2,
+   "rarity": "commun",
+   "costTier": 2
+  },
+  {
+   "id": "exoCriticalDamage",
+   "effectId": 418,
+   "valueRange": [
+    3,
+    10
+   ],
+   "lineWeightPerPoint": 5,
+   "rarity": "commun",
+   "costTier": 2
+  },
+  {
+   "id": "exoResPercent",
+   "effectIds": [
+    210,
+    211,
+    212,
+    213,
+    214
+   ],
+   "valueRange": [
+    2,
+    8
+   ],
+   "lineWeightPerPoint": 6,
+   "rarity": "commun",
+   "costTier": 2
+  },
+  {
+   "id": "exoSpellDamagePercent",
+   "effectId": 2812,
+   "valueRange": [
+    1,
+    3
+   ],
+   "lineWeightPerPoint": 15,
+   "rarity": "rare",
+   "costTier": 3,
+   "note": "Via rune Do Per So et puits (INCERTAIN en pratique)."
+  },
+  {
+   "id": "transcendanceSpellDamage",
+   "effectId": 2812,
+   "value": 1,
+   "runeItemId": 20613,
+   "runeName": "Rune Ta Do Per So",
+   "runeLevel": 200,
+   "successRatePerTry": 1.0,
+   "rarity": "rare (Songes Infinis)",
+   "costTier": 4,
+   "note": "La « coiffe exo 1 % dommages sorts » : +1 % dommages aux sorts, verrouille l'objet, objet sans over/exo requis."
+  },
+  {
+   "id": "transcendanceOther",
+   "note": "Voir transcendanceRunes : ex. Rata Pui +12, Rata Vi +100, Pata Cri +2, Ta Ré Per Mé +1, Rata Do Feu +6…",
+   "rarity": "rare (Songes Infinis)",
+   "costTier": 3
+  }
+ ],
+ "costTierScale": {
+  "0": "gratuit",
+  "1": "négligeable",
+  "2": "modéré",
+  "3": "cher",
+  "4": "très cher",
+  "5": "extrême (centaines de millions de kamas selon serveur — INCERTAIN)"
+ },
+ "realisticProfiles": {
+  "average": {
+   "rollPolicy": "mean",
+   "exos": [],
+   "transcendance": 0,
+   "description": "Jets moyens ((min+max)/2), aucun exo."
+  },
+  "perfect": {
+   "rollPolicy": "max",
+   "exos": [],
+   "transcendance": 0,
+   "description": "Jets parfaits (diceSide), comme DofusDB/DofusBook par défaut."
+  },
+  "thlStandard": {
+   "rollPolicy": "max",
+   "exos": [
+    "exoPA|exoPM (1 objet)"
+   ],
+   "transcendance": 0,
+   "description": "Jets parfaits + 1 exo PA ou PM sur un anneau/une amulette."
+  },
+  "thlOptimized": {
+   "rollPolicy": "max",
+   "exos": [
+    "exoPA",
+    "exoPM"
+   ],
+   "transcendanceSpellDamagePercentItems": 6,
+   "description": "Jets parfaits + exo PA et exo PM (2 objets différents) + Ta Do Per So sur ~6 autres objets (+6 % dommages sorts)."
+  },
+  "note": "Profils indicatifs pour l'optimiseur ; la disponibilité réelle dépend du serveur (INCERTAIN)."
+ },
+ "typicalLevel200Lines": {
+  "125": {
+   "stat": "vitality",
+   "itemsWithLine": 511,
+   "minOfMax": 100,
+   "medianMax": 350,
+   "maxOfMax": 500,
+   "medianLineWeight": 70.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "126": {
+   "stat": "intelligence",
+   "itemsWithLine": 199,
+   "minOfMax": 20,
+   "medianMax": 60,
+   "maxOfMax": 100,
+   "medianLineWeight": 60,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "123": {
+   "stat": "chance",
+   "itemsWithLine": 198,
+   "minOfMax": 20,
+   "medianMax": 60.0,
+   "maxOfMax": 100,
+   "medianLineWeight": 60.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "124": {
+   "stat": "wisdom",
+   "itemsWithLine": 488,
+   "minOfMax": 20,
+   "medianMax": 40.0,
+   "maxOfMax": 60,
+   "medianLineWeight": 120.0,
+   "shareWithOvermaxRoom": 0.24
+  },
+  "115": {
+   "stat": "criticalHit",
+   "itemsWithLine": 311,
+   "minOfMax": 2,
+   "medianMax": 4,
+   "maxOfMax": 12,
+   "medianLineWeight": 40,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "111": {
+   "stat": "actionPoints",
+   "itemsWithLine": 100,
+   "minOfMax": 1,
+   "medianMax": 1.0,
+   "maxOfMax": 2,
+   "medianLineWeight": 100.0,
+   "shareWithOvermaxRoom": 0.98
+  },
+  "424": {
+   "stat": "fireDamage",
+   "itemsWithLine": 210,
+   "minOfMax": 4,
+   "medianMax": 12.0,
+   "maxOfMax": 20,
+   "medianLineWeight": 60.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "426": {
+   "stat": "waterDamage",
+   "itemsWithLine": 210,
+   "minOfMax": 4,
+   "medianMax": 12.0,
+   "maxOfMax": 20,
+   "medianLineWeight": 60.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "210": {
+   "stat": "resPercentEarth",
+   "itemsWithLine": 166,
+   "minOfMax": 2,
+   "medianMax": 7.0,
+   "maxOfMax": 15,
+   "medianLineWeight": 42.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "212": {
+   "stat": "resPercentAir",
+   "itemsWithLine": 164,
+   "minOfMax": 2,
+   "medianMax": 8.0,
+   "maxOfMax": 15,
+   "medianLineWeight": 48.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "753": {
+   "stat": "tackle",
+   "itemsWithLine": 152,
+   "minOfMax": 3,
+   "medianMax": 10.0,
+   "maxOfMax": 20,
+   "medianLineWeight": 40.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "410": {
+   "stat": "apReduction",
+   "itemsWithLine": 66,
+   "minOfMax": 5,
+   "medianMax": 7.0,
+   "maxOfMax": 24,
+   "medianLineWeight": 49.0,
+   "shareWithOvermaxRoom": 0.95
+  },
+  "416": {
+   "stat": "pushResistance",
+   "itemsWithLine": 62,
+   "minOfMax": 8,
+   "medianMax": 20.0,
+   "maxOfMax": 80,
+   "medianLineWeight": 40.0,
+   "shareWithOvermaxRoom": 0.97
+  },
+  "117": {
+   "stat": "range",
+   "itemsWithLine": 165,
+   "minOfMax": 1,
+   "medianMax": 1,
+   "maxOfMax": 2,
+   "medianLineWeight": 51,
+   "shareWithOvermaxRoom": 0.88
+  },
+  "161": {
+   "stat": "mpParry",
+   "itemsWithLine": 82,
+   "minOfMax": 2,
+   "medianMax": 8.0,
+   "maxOfMax": 25,
+   "medianLineWeight": 56.0,
+   "shareWithOvermaxRoom": 0.89
+  },
+  "128": {
+   "stat": "movementPoints",
+   "itemsWithLine": 101,
+   "minOfMax": 1,
+   "medianMax": 1,
+   "maxOfMax": 2,
+   "medianLineWeight": 90,
+   "shareWithOvermaxRoom": 0.99
+  },
+  "118": {
+   "stat": "strength",
+   "itemsWithLine": 187,
+   "minOfMax": 20,
+   "medianMax": 60,
+   "maxOfMax": 100,
+   "medianLineWeight": 60,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "119": {
+   "stat": "agility",
+   "itemsWithLine": 178,
+   "minOfMax": 20,
+   "medianMax": 60.0,
+   "maxOfMax": 100,
+   "medianLineWeight": 60.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "422": {
+   "stat": "earthDamage",
+   "itemsWithLine": 197,
+   "minOfMax": 4,
+   "medianMax": 12,
+   "maxOfMax": 25,
+   "medianLineWeight": 60,
+   "shareWithOvermaxRoom": 0.99
+  },
+  "428": {
+   "stat": "airDamage",
+   "itemsWithLine": 193,
+   "minOfMax": 4,
+   "medianMax": 12,
+   "maxOfMax": 25,
+   "medianLineWeight": 60,
+   "shareWithOvermaxRoom": 0.99
+  },
+  "213": {
+   "stat": "resPercentFire",
+   "itemsWithLine": 149,
+   "minOfMax": 2,
+   "medianMax": 7,
+   "maxOfMax": 15,
+   "medianLineWeight": 42,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "211": {
+   "stat": "resPercentWater",
+   "itemsWithLine": 153,
+   "minOfMax": 2,
+   "medianMax": 7,
+   "maxOfMax": 15,
+   "medianLineWeight": 42,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "752": {
+   "stat": "escape",
+   "itemsWithLine": 121,
+   "minOfMax": 3,
+   "medianMax": 10,
+   "maxOfMax": 40,
+   "medianLineWeight": 40,
+   "shareWithOvermaxRoom": 0.99
+  },
+  "412": {
+   "stat": "mpReduction",
+   "itemsWithLine": 83,
+   "minOfMax": 5,
+   "medianMax": 7,
+   "maxOfMax": 20,
+   "medianLineWeight": 49,
+   "shareWithOvermaxRoom": 0.93
+  },
+  "420": {
+   "stat": "criticalResistance",
+   "itemsWithLine": 85,
+   "minOfMax": 8,
+   "medianMax": 20,
+   "maxOfMax": 50,
+   "medianLineWeight": 40,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "160": {
+   "stat": "apParry",
+   "itemsWithLine": 72,
+   "minOfMax": 2,
+   "medianMax": 8.5,
+   "maxOfMax": 25,
+   "medianLineWeight": 59.5,
+   "shareWithOvermaxRoom": 0.89
+  },
+  "430": {
+   "stat": "neutralDamage",
+   "itemsWithLine": 169,
+   "minOfMax": 5,
+   "medianMax": 12,
+   "maxOfMax": 25,
+   "medianLineWeight": 60,
+   "shareWithOvermaxRoom": 0.99
+  },
+  "418": {
+   "stat": "criticalDamage",
+   "itemsWithLine": 78,
+   "minOfMax": 5,
+   "medianMax": 13.5,
+   "maxOfMax": 30,
+   "medianLineWeight": 67.5,
+   "shareWithOvermaxRoom": 0.87
+  },
+  "414": {
+   "stat": "pushDamage",
+   "itemsWithLine": 81,
+   "minOfMax": 10,
+   "medianMax": 20,
+   "maxOfMax": 60,
+   "medianLineWeight": 100,
+   "shareWithOvermaxRoom": 0.54
+  },
+  "182": {
+   "stat": "summons",
+   "itemsWithLine": 96,
+   "minOfMax": 1,
+   "medianMax": 1.0,
+   "maxOfMax": 2,
+   "medianLineWeight": 30.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "214": {
+   "stat": "resPercentNeutral",
+   "itemsWithLine": 113,
+   "minOfMax": 2,
+   "medianMax": 7,
+   "maxOfMax": 15,
+   "medianLineWeight": 42,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "138": {
+   "stat": "power",
+   "itemsWithLine": 104,
+   "minOfMax": 10,
+   "medianMax": 40.0,
+   "maxOfMax": 120,
+   "medianLineWeight": 80.0,
+   "shareWithOvermaxRoom": 0.67
+  },
+  "178": {
+   "stat": "heals",
+   "itemsWithLine": 91,
+   "minOfMax": 6,
+   "medianMax": 12,
+   "maxOfMax": 30,
+   "medianLineWeight": 120,
+   "shareWithOvermaxRoom": 0.43
+  },
+  "174": {
+   "stat": "initiative",
+   "itemsWithLine": 91,
+   "minOfMax": 150,
+   "medianMax": 400,
+   "maxOfMax": 1000,
+   "medianLineWeight": 40.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "176": {
+   "stat": "prospecting",
+   "itemsWithLine": 262,
+   "minOfMax": 10,
+   "medianMax": 15.0,
+   "maxOfMax": 30,
+   "medianLineWeight": 45.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "244": {
+   "stat": "resFixedNeutral",
+   "itemsWithLine": 29,
+   "minOfMax": 5,
+   "medianMax": 15,
+   "maxOfMax": 30,
+   "medianLineWeight": 30,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "241": {
+   "stat": "resFixedWater",
+   "itemsWithLine": 26,
+   "minOfMax": 5,
+   "medianMax": 14.0,
+   "maxOfMax": 30,
+   "medianLineWeight": 28.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "112": {
+   "stat": "damage",
+   "itemsWithLine": 23,
+   "minOfMax": 5,
+   "medianMax": 10,
+   "maxOfMax": 15,
+   "medianLineWeight": 200,
+   "shareWithOvermaxRoom": 0.13
+  },
+  "2807": {
+   "stat": "rangedResistancePercent",
+   "itemsWithLine": 14,
+   "minOfMax": 4,
+   "medianMax": 5.0,
+   "maxOfMax": 10,
+   "medianLineWeight": 50.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "2803": {
+   "stat": "meleeResistancePercent",
+   "itemsWithLine": 10,
+   "minOfMax": 3,
+   "medianMax": 7.0,
+   "maxOfMax": 10,
+   "medianLineWeight": 70.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "242": {
+   "stat": "resFixedAir",
+   "itemsWithLine": 29,
+   "minOfMax": 5,
+   "medianMax": 15,
+   "maxOfMax": 30,
+   "medianLineWeight": 30,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "240": {
+   "stat": "resFixedEarth",
+   "itemsWithLine": 30,
+   "minOfMax": 5,
+   "medianMax": 13.5,
+   "maxOfMax": 30,
+   "medianLineWeight": 27.0,
+   "shareWithOvermaxRoom": 1.0
+  },
+  "243": {
+   "stat": "resFixedFire",
+   "itemsWithLine": 22,
+   "minOfMax": 5,
+   "medianMax": 14.5,
+   "maxOfMax": 30,
+   "medianLineWeight": 29.0,
+   "shareWithOvermaxRoom": 1.0
+  }
+ }
+}

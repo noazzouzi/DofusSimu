@@ -1,0 +1,3139 @@
+{
+ "breedId": 12,
+ "name": "Pandawa",
+ "slug": "pandawa",
+ "dataSource": "https://api.dofusdb.fr (breeds/12, spell-variants?breedId=12, spells, spell-levels, spell-states, monsters) — données juin 2026",
+ "roles": [
+  {
+   "role": "placement",
+   "element": "-",
+   "priority": 1,
+   "description": "Porter/jeter (Karcham/Chamrak + sorts de jet), Varappe (portages multiples), Consolation, Épouvante, Éviction, Cascade (repousse 4), Brancard (attire en ligne), Bambous (obstacles)."
+  },
+  {
+   "role": "dps-melee-mi-distance",
+   "element": "Terre/Eau/Air/Feu (Saoul)",
+   "priority": 2,
+   "description": "Pandatak, Vague à Lame, Souffle Alcoolisé, Souffle Enflammé, Engourdissement, Main de Pandawa ; dégâts de jet en zone."
+  },
+  {
+   "role": "tank-secondaire",
+   "element": "-",
+   "priority": 2,
+   "description": "Saoul ×85 % dommages subis, vols de vie (Alcoshu, Liqueur, Absinthe, Bistouille), Pandawasta/Bambou (réduction des dommages alliés), Prohibition (invulnérable en mêlée)."
+  },
+  {
+   "role": "soutien",
+   "element": "-",
+   "priority": 3,
+   "description": "Soins de jet (alliés jetés/touchés), Fermentation (bouclier 240 % ×2), Ivresse, Stabilisation (+40 esq. PM, Enraciné), Pandanlku (+3 PM), Lait de Bambou."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Postures Sobre / Saoul",
+   "description": "Sobre (3531, défaut, infini) ; Saoul (498, 2 tours) : -1 PM non esquivable, dommages subis ×85 %. Nombreux sorts à double effet selon la posture, et sorts réservés (HS=498 / HS=3531).",
+   "implementationNotes": "Sorts 24036/24037. Saoul impossible si Porté (8) ou Prohibition (3536). Portée /2 en Saoul pour Flasque Explosive, Pandatak, Souffle Alcoolisé, Vague à Lame, Brassage (règle textuelle, INCERTAIN : arrondi inférieur). Bombance/Picole : bascule 1 PA (+1 PA ou +1 PM en revenant Sobre)."
+  },
+  {
+   "name": "Porter / jeter",
+   "description": "Karcham/Chamrak portent (Pandawa Sobre) puis jettent (+5/+3 PO, Chamrak sans LdV). Sorts de jet (HS=3) appliquent soins/dégâts à l'impact sur l'entité jetée et en zone.",
+   "implementationNotes": "Effet 50 (porter) : la cible passe dans l'état Porté (8), occupe la case du porteur et se déplace avec lui ; le porteur reçoit Porteur (3, flag preventsSpellCast → seuls les sorts autorisant HS=3). Effet 51 (jeter) : déposer sur la case ciblée (libre). Masque K = entité jetée (INCERTAIN). Varappe : +2 lancers/tour et +1/cible pour Karcham/Chamrak."
+  },
+  {
+   "name": "Tonneaux",
+   "description": "Tonneau de l'Éméché (+50 Puissance porté ; jeté → Saoul + Potion Magique 4–10 meilleur élément cercle 2 selon rang) ; Tonneau de l'Ivrogne (soin 7 % porté ; jeté → Saoul + Grande Rasade 7 % PV max alliés cercle 2). Porter son Tonneau rend 1 PA.",
+   "implementationNotes": "États Ébriété (4030, rangs 4077–4079) / Ivresse (4029) ; sous-sorts 25507/25508 déclenchés à chaque jet (2960) tant que l'état est actif. Un seul Tonneau : relancer détruit l'ancien. Ne consomment pas d'emplacement."
+  },
+  {
+   "name": "Invocations obstacles (Bambou, Petits Bambous) et Pandawasta",
+   "description": "Bambou : obstacle, -80 % dommages immédiats alliés reçus, porte le Pandawa Sobre qui le frappe au contact ; Petits Bambous temporaires ; Pandawasta : tacleur/débuffeur maîtrisable, -50 % dommages alliés.",
+   "implementationNotes": "Réductions « dommages immédiats alliés » = multiplicateur sur les dommages directs infligés par un allié à l'invocation (pour pouvoir les frapper/porter sans les tuer)."
+  },
+  {
+   "name": "Paume Explosive / Distillation (rampes)",
+   "description": "Paume : +1 PA de coût après 1er lancer (296), zone cercle 2 en Sobre, +12 dégâts en Saoul. Distillation : +4 dégâts de base par poison déclenché (cumul 4).",
+   "implementationNotes": "Modificateurs de sorts (296 = +PA de coût sur le sort, 293 = dégâts de base) avec cumul 1 par type."
+  },
+  {
+   "name": "Main de Pandawa (riposte)",
+   "description": "Après lancement : fin de tour → Sobre ; au prochain dommage de mêlée subi, riposte 25 (meilleur élément) et porte l'attaquant (s'il n'est pas déjà porteur).",
+   "implementationNotes": "Sous-sorts 25505/25506 : déclencheurs TE puis DM (1 tour)."
+  }
+ ],
+ "spells": [
+  {
+   "id": 12781,
+   "pairIndex": 1,
+   "variantOf": 12815,
+   "isBaseSpell": true,
+   "name": "Paume Explosive",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 61178,
+   "description": "Occasionne des dommages Feu.\nN'affecte pas le lanceur.\n\nModifie le sort selon l'état du lanceur après un lancer :\n• Le coût en PA du sort est augmenté après le premier lancer.\n• Sobre : les dommages s'appliquent en zone.\n• Saoul : les dommages du sort sont augmentés.\n\nChaque effet est cumulable une fois.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "12–14 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "15–17 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "20–22 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "20 à 22 dommages Feu (CC : 24 à 26) → cible (hors lanceur) — si lanceur n'a PAS l'état « Paume Explosive Sobre » (3532)",
+    "Paume Explosive : +1 PA → lanceur (1 tour(s), non désenvoûtable)",
+    "Applique l'état « Paume Explosive Sobre » (3532) → lanceur — si lanceur a l'état « Sobre » (3531) ET si lanceur n'a PAS l'état « Paume Explosive Sobre » (3532) (1 tour(s), non désenvoûtable)",
+    "20 à 22 dommages Feu (CC : 24 à 26) → tous sauf le lanceur dans la zone — si lanceur a l'état « Paume Explosive Sobre » (3532) (zone cercle taille 2)",
+    "le lanceur lance le sous-sort « État Sobre : » (25606, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Change la zone d'effet en Cercle de taille 2 » (25604, niv. 1) → cible (alliée ou ennemie) (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Paume Explosive : +12 dégâts de base → lanceur — si lanceur a l'état « Saoul » (498) ET si lanceur n'a PAS l'état « Paume Explosive Saoul » (3533) (1 tour(s), non désenvoûtable)",
+    "Applique l'état « Paume Explosive Saoul » (3533) → lanceur — si lanceur a l'état « Saoul » (498) ET si lanceur n'a PAS l'état « Paume Explosive Saoul » (3533) (non désenvoûtable)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "ramp"
+   ],
+   "tactic": "Feu 2 PA (po 0–5, 3×/tour) : 20–22 Feu (pas le lanceur) ; après le 1er lancer, coût +1 PA ; Sobre → les lancers suivants frappent en cercle 2, Saoul → +12 dégâts de base. Sort de remplissage Feu."
+  },
+  {
+   "id": 12815,
+   "pairIndex": 1,
+   "variantOf": 12781,
+   "isBaseSpell": false,
+   "name": "Distillation",
+   "obtainedAtLevel": 100,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 61176,
+   "description": "Occasionne des dommages et applique un poison Eau de début de tour sur les cibles en zone.\nN'affecte pas le lanceur.\n\nLes dommages du sort et du poison sont augmentés pour chaque poison du sort déclenché sur une cible (cumulable 4 fois).\n\nLes bonus sont retirés après utilisation du sort.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "10–13 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "13–16 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "13 à 16 dommages Eau (CC : 17 à 20) → tous sauf le lanceur dans la zone (zone carré taille 1)",
+    "13 à 16 dommages Eau (CC : 17 à 20) → tous sauf le lanceur dans la zone (zone carré taille 1, actif 3 tour(s), déclencheur : début de tour du porteur)",
+    "le lanceur lance le sous-sort « Distillation » (25528, niv. 2) → tous sauf le lanceur dans la zone (zone carré taille 1, actif 3 tour(s), déclencheur : début de tour du porteur OU dommages subis en début de tour (variante X, INCERTAIN))",
+    "Distillation : +4 dégâts de base → lanceur (2 tour(s), actif 3 tour(s), déclencheur : début de tour du porteur, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Retire les effets du sort « Distillation » (25528) → lanceur"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "poison",
+    "ramp"
+   ],
+   "tactic": "Variante Eau 4 PA (po 0–6, 1×/tour, CC 20 %) : 13–16 Eau en carré 1 + poison Eau 13–16 au début des 3 prochains tours des cibles ; +4 dégâts de base par poison déclenché (cumul 4)."
+  },
+  {
+   "id": 12803,
+   "pairIndex": 2,
+   "variantOf": 12805,
+   "isBaseSpell": true,
+   "name": "Gueule de Bois",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 61175,
+   "description": "Rend le lanceur Sobre et occasionne des dommages Terre.\nLes dommages sont plus importants si le lanceur est sorti de l'état Saoul pendant le tour en cours.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "14–16 Terre, 18–20 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "19–22 Terre, 25–28 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "24–27 Terre, 34–37 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Sobre » (24037, niv. 1) → lanceur — si cible a l'état « Saoul » (498)",
+    "Applique l'état « Sobre » (3531) → lanceur (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "24 à 27 dommages Terre (CC : 29 à 32) → cible (alliée ou ennemie) — si lanceur n'a PAS l'état « Gueule de Bois » (3577) ET si lanceur n'a PAS l'état « Saoul » (498)",
+    "34 à 37 dommages Terre (CC : 39 à 42) → cible (alliée ou ennemie) — si lanceur a l'état « Gueule de Bois » (3577) ET si lanceur n'a PAS l'état « Saoul » (498)",
+    "34 à 37 dommages Terre (CC : 39 à 42) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)"
+   ],
+   "role": [
+    "damage",
+    "posture"
+   ],
+   "tactic": "Terre 3 PA (po 1–3, 3×/tour, 2×/cible) : rend Sobre et inflige 24–27 Terre (34–37 si l'on est sorti de Saoul ce tour-ci ou si l'on était Saoul). Sort pivot pour revenir Sobre en frappant."
+  },
+  {
+   "id": 12805,
+   "pairIndex": 2,
+   "variantOf": 12803,
+   "isBaseSpell": false,
+   "name": "Souffle Enflammé",
+   "obtainedAtLevel": 95,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": "HS=498",
+   "spellLevelId": 61594,
+   "description": "Occasionne des dommages Feu et réduit les chances de Critique en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "31–34 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "38–42 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "38 à 42 dommages Feu (CC : 46 à 50) → tous (alliés+ennemis) dans la zone (zone cône taille 2)",
+    "-20% Critique → tous (alliés+ennemis) dans la zone (zone cône taille 2, 1 tour(s))"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "debuff"
+   ],
+   "tactic": "Variante Feu 4 PA en ligne (po 1–3, **Saoul requis**, 1×/tour, CC 20 %) : 38–42 Feu en cône 2 et -20 % Critique (1 t.)."
+  },
+  {
+   "id": 12782,
+   "pairIndex": 3,
+   "variantOf": 12786,
+   "isBaseSpell": true,
+   "name": "Schnaps",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 40649,
+   "description": "Occasionne des dommages Air et applique des effets sur les cibles selon l'état du lanceur en zone :\n• Sobre : retire du Retrait PA et PM.\n• Saoul : réduit les Résistances Poussée.\n\nN'affecte pas le lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "12–14 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "17–19 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "21–24 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "21 à 24 dommages Air (CC : 25 à 29) → tous sauf le lanceur dans la zone — si lanceur a l'état « Sobre » (3531) (zone croix taille 1)",
+    "-30 Retrait PM → tous sauf le lanceur dans la zone — si lanceur a l'état « Sobre » (3531) (zone croix taille 1, 2 tour(s))",
+    "-30 Retrait PA → tous sauf le lanceur dans la zone — si lanceur a l'état « Sobre » (3531) (zone croix taille 1, 2 tour(s))",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "21 à 24 dommages Air (CC : 25 à 29) → tous sauf le lanceur dans la zone — si lanceur a l'état « Saoul » (498) (zone croix taille 1)",
+    "-40 Résistances Poussée → tous sauf le lanceur dans la zone — si lanceur a l'état « Saoul » (498) (zone croix taille 1, 2 tour(s))"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "debuff"
+   ],
+   "tactic": "Air 3 PA (po 1–8, 2×/tour) : 21–24 Air en croix 1 (pas le lanceur) ; Sobre → -30 Retrait PA et -30 Retrait PM (2 t.) ; Saoul → -40 Résistance Poussée (2 t.) (prépare les dommages de poussée des jets)."
+  },
+  {
+   "id": 12786,
+   "pairIndex": 3,
+   "variantOf": 12782,
+   "isBaseSpell": false,
+   "name": "Ribote",
+   "obtainedAtLevel": 105,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 40660,
+   "description": "Applique des effets selon l'état du lanceur et occasionne des dommages Terre :\n• Sobre : rend le lanceur Saoul.\n• Saoul : retire de la Fuite à la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "17–19 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "20–22 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "la cible lance (sur elle-même) le sous-sort « Saoul » (24036, niv. 1) → lanceur — si lanceur a l'état « Sobre » (3531) ET si lanceur n'a PAS l'état « Prohibition » (3536)",
+    "Applique l'état « Saoul » (498) → lanceur (s’il est dans la zone) (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "20 à 22 dommages Terre (CC : 24 à 26) → cible (alliée ou ennemie) — si lanceur a l'état « Sobre » (3531)",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "20 à 22 dommages Terre (CC : 24 à 26) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "-40 Fuite → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498) (1 tour(s))"
+   ],
+   "role": [
+    "damage",
+    "posture",
+    "debuff"
+   ],
+   "tactic": "Variante Terre 2 PA (po 1–6, 3×/tour, 2×/cible) : 20–22 Terre ; Sobre → rend Saoul ; Saoul → -40 Fuite à la cible."
+  },
+  {
+   "id": 12791,
+   "pairIndex": 4,
+   "variantOf": 12807,
+   "isBaseSpell": true,
+   "name": "Ethylo",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 40674,
+   "description": "Occasionne des dommages Eau et applique des effets selon l'état du lanceur :\n• Sobre : augmente la Portée du lanceur.\n• Saoul : retire de la Portée à la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "15–17 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "20–23 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "25–28 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "25 à 28 dommages Eau (CC : 30 à 34) → cible (alliée ou ennemie) — si lanceur a l'état « Sobre » (3531)",
+    "3 Portée → lanceur — si lanceur a l'état « Sobre » (3531) (1 tour(s))",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "25 à 28 dommages Eau (CC : 30 à 34) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "-3 Portée → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498) (1 tour(s))"
+   ],
+   "role": [
+    "damage",
+    "range"
+   ],
+   "tactic": "Eau 3 PA (po 1–6, 3×/tour, 2×/cible) : 25–28 Eau ; Sobre → +3 PO au Pandawa (1 t.) ; Saoul → -3 PO à la cible."
+  },
+  {
+   "id": 12807,
+   "pairIndex": 4,
+   "variantOf": 12791,
+   "isBaseSpell": false,
+   "name": "Engourdissement",
+   "obtainedAtLevel": 110,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 43749,
+   "description": "Occasionne des dommages Air et applique des effets selon l'état du lanceur en zone :\n• Sobre : augmente les PM du lanceur pour chaque entité touché (cumulable 3 fois).\n• Saoul : retire des PM aux cibles.\n\nLes dommages n'affectent pas le lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "31–34 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "36–40 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Engourdissement » (24241, niv. 1) → tous sauf le lanceur dans la zone — si lanceur a l'état « Sobre » (3531) (zone croix diagonale taille 1)",
+    "1 PM → lanceur — si lanceur a l'état « Sobre » (3531) (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "36 à 40 dommages Air (CC : 43 à 48) → tous sauf le lanceur dans la zone — si lanceur a l'état « Sobre » (3531) (zone croix diagonale taille 1)",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "36 à 40 dommages Air (CC : 43 à 48) → tous sauf le lanceur dans la zone — si lanceur a l'état « Saoul » (498) (zone croix diagonale taille 1)",
+    "Retire 3 PM (esquivable) → tous sauf le lanceur dans la zone — si lanceur a l'état « Saoul » (498) (zone croix diagonale taille 1, 1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "mp-removal",
+    "mobility"
+   ],
+   "tactic": "Variante Air 4 PA (po 1–7, 1×/tour, CC 20 %) : 36–40 Air en croix diagonale 1 (pas le lanceur) ; Sobre → +1 PM par entité touchée (cumul 3) ; Saoul → -3 PM aux cibles."
+  },
+  {
+   "id": 12804,
+   "pairIndex": 5,
+   "variantOf": 12780,
+   "isBaseSpell": true,
+   "name": "Bombance",
+   "obtainedAtLevel": 5,
+   "grade": 3,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 6,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!8&HS!3536",
+   "spellLevelId": 43742,
+   "description": "Rend le lanceur Saoul ou Sobre.\nRend 1 PA s'il devient Sobre.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "la cible lance (sur elle-même) le sous-sort « Saoul » (24036, niv. 1) → lanceur — si cible a l'état « Sobre » (3531)",
+    "la cible lance (sur elle-même) le sous-sort « Sobre » (24037, niv. 1) → lanceur — si cible a l'état « Saoul » (498)",
+    "Applique l'état « Saoul » (498) → cible (alliée ou ennemie) (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Sobre » (3531) → cible (alliée ou ennemie) (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Rembourse 1 PA → lanceur — si cible a l'état « Saoul » (498) (non désenvoûtable)"
+   ],
+   "role": [
+    "posture",
+    "ap-refund"
+   ],
+   "tactic": "1 PA (6×/tour, interdit si Porté ou sous Prohibition) : bascule Sobre ↔ Saoul ; rembourse 1 PA en redevenant Sobre (bascule « gratuite » Saoul→Sobre)."
+  },
+  {
+   "id": 12780,
+   "pairIndex": 5,
+   "variantOf": 12804,
+   "isBaseSpell": false,
+   "name": "Picole",
+   "obtainedAtLevel": 115,
+   "grade": 2,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 6,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 3,
+   "critChance": 0,
+   "statesCriterion": "HS!8&HS!3536",
+   "spellLevelId": 43743,
+   "description": "Rend le lanceur Saoul ou Sobre.\nAugmente ses PM s'il devient Sobre.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "la cible lance (sur elle-même) le sous-sort « Saoul » (24036, niv. 1) → lanceur — si cible a l'état « Sobre » (3531)",
+    "la cible lance (sur elle-même) le sous-sort « Sobre » (24037, niv. 1) → lanceur — si cible a l'état « Saoul » (498)",
+    "Applique l'état « Saoul » (498) → cible (alliée ou ennemie) (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Sobre » (3531) → cible (alliée ou ennemie) (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "1 PM → lanceur — si cible a l'état « Saoul » (498) (1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "posture",
+    "mobility"
+   ],
+   "tactic": "Variante 1 PA : bascule Sobre ↔ Saoul ; +1 PM (1 t., cumul 3) en redevenant Sobre."
+  },
+  {
+   "id": 12787,
+   "pairIndex": 6,
+   "variantOf": 12810,
+   "isBaseSpell": true,
+   "name": "Karcham",
+   "obtainedAtLevel": 10,
+   "grade": 3,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 6,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS=3|(HS=3531&HS!534&HS!661&HS!8)",
+   "spellLevelId": 40738,
+   "description": "Porte ou jette la cible.\n\nLa portée maximale du sort est augmentée lorsque le lanceur porte une cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Porte la cible → cible (hors lanceur) — si lanceur n'a PAS l'état « Porteur » (3)",
+    "Applique l'état « Porteur » (3) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Karcham : +5 Portée maximale → lanceur (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Lance une entité → cible (hors lanceur) — si lanceur a l'état « Porteur » (3)",
+    "le lanceur lance sur la case ciblée le sous-sort « Grande Rasade » (25507, niv. 1) → lanceur — si lanceur a l'état « Ivresse » (4029)",
+    "le lanceur lance sur la case ciblée le sous-sort « Potion Magique » (25508, niv. 1) → lanceur — si lanceur a l'état « Ébriété » (4030)"
+   ],
+   "role": [
+    "carry",
+    "throw",
+    "placement"
+   ],
+   "tactic": "1 PA au contact en ligne (4×/tour, 1×/cible, 6×/tour global) : porte la cible (Pandawa Sobre requis) ; si l'on porte déjà → jette l'entité (+5 PO). Base de tout le placement Pandawa (sortir un allié, déplacer un monstre)."
+  },
+  {
+   "id": 12810,
+   "pairIndex": 6,
+   "variantOf": 12787,
+   "isBaseSpell": false,
+   "name": "Chamrak",
+   "obtainedAtLevel": 120,
+   "grade": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 6,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS=3|(HS=3531&HS!534&HS!661&HS!8)",
+   "spellLevelId": 43757,
+   "description": "Porte ou jette la cible.\n\nLa portée maximale du sort est augmentée et sa ligne de vue est désactivée lorsque le lanceur porte une cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 187,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Porte la cible → cible (hors lanceur) — si lanceur n'a PAS l'état « Porteur » (3)",
+    "Applique l'état « Porteur » (3) → cible (alliée ou ennemie) (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Chamrak : +3 Portée maximale → lanceur (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Lance une entité → cible (hors lanceur) — si lanceur a l'état « Porteur » (3)",
+    "le lanceur lance sur la case ciblée le sous-sort « Grande Rasade » (25507, niv. 1) → lanceur — si lanceur a l'état « Ivresse » (4029)",
+    "le lanceur lance sur la case ciblée le sous-sort « Potion Magique » (25508, niv. 1) → lanceur — si lanceur a l'état « Ébriété » (4030)"
+   ],
+   "role": [
+    "carry",
+    "throw",
+    "placement"
+   ],
+   "tactic": "Variante 1 PA : comme Karcham mais +3 PO et **sans ligne de vue** pour le jet (lancer par-dessus les obstacles)."
+  },
+  {
+   "id": 12783,
+   "pairIndex": 7,
+   "variantOf": 12806,
+   "isBaseSpell": true,
+   "name": "Épouvante",
+   "obtainedAtLevel": 15,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 40652,
+   "description": "Repousse la cible et applique des effets sur la cible selon l'état du lanceur :\n• Sobre : la poussée est plus importante.\n• Saoul : réduit les chances de Critique.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Repousse la cible de 2 case(s) → cible (alliée ou ennemie) — si lanceur a l'état « Sobre » (3531)",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Repousse la cible de 1 case(s) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "-15% Critique → cible ennemie — si lanceur a l'état « Saoul » (498) (2 tour(s))"
+   ],
+   "role": [
+    "push",
+    "debuff"
+   ],
+   "tactic": "2 PA en ligne (po 1–7, 3×/tour, 1×/cible) : repousse de 2 (Sobre) ou de 1 + -15 % Critique 2 t. (Saoul). Pas de dégâts (hors dommages de poussée)."
+  },
+  {
+   "id": 12806,
+   "pairIndex": 7,
+   "variantOf": 12783,
+   "isBaseSpell": false,
+   "name": "Consolation",
+   "obtainedAtLevel": 125,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 43747,
+   "description": "Attire et soigne l'allié ciblé.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Attire la cible de 5 case(s) → cible alliée",
+    "Soin : 7% des PV max → cible alliée"
+   ],
+   "role": [
+    "pull",
+    "heal",
+    "placement"
+   ],
+   "tactic": "Variante 2 PA en ligne (po 1–6, 1×/tour) : attire un allié de 5 cases et le soigne de 7 % PV max. Sauvetage d'allié."
+  },
+  {
+   "id": 12811,
+   "pairIndex": 8,
+   "variantOf": 14307,
+   "isBaseSpell": true,
+   "name": "Brancard",
+   "obtainedAtLevel": 20,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "HS=3",
+   "spellLevelId": 64966,
+   "description": "Jette la cible, attire les cibles et rapproche le lanceur vers la cible, soigne les alliés et occasionne des dommages Terre aux ennemis en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "18–20 soin Terre, 18–20 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–26 soin Terre, 23–26 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "28–32 soin Terre, 28–32 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "Applique l'état « Brancard Train » (4043) → tous sauf le lanceur dans la zone (zone ligne depuis le lanceur taille 1 (min 63), 1 tour(s))",
+    "Applique l'état « Brancard » (2519) → alliés (dont lanceur si dans la zone), ennemis, K (INCERTAIN: entité portée/porteur) (1 tour(s))",
+    "Lance une entité → cible (alliée ou ennemie)",
+    "le lanceur lance sur la case ciblée le sous-sort « Brancard » (12828, niv. 2) → lanceur",
+    "la cible lance (sur elle-même) le sous-sort « Brancard » (12828, niv. 1) → lanceur",
+    "le lanceur lance sur la case ciblée le sous-sort « Grande Rasade » (25507, niv. 1) → lanceur — si lanceur a l'état « Ivresse » (4029)",
+    "le lanceur lance sur la case ciblée le sous-sort « Potion Magique » (25508, niv. 1) → lanceur — si lanceur a l'état « Ébriété » (4030)",
+    "Attire la cible de 4 case(s) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Le lanceur avance de 5 case(s) vers la cible → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "28 à 32 soins Terre (CC : 34 à 38) → alliés hors lanceur, K (INCERTAIN: entité portée/porteur)",
+    "28 à 32 soins Terre (CC : 34 à 38) → alliés (hors lanceur) dans la zone (zone ligne depuis le lanceur taille 1 (min 63))",
+    "28 à 32 dommages Terre (CC : 34 à 38) → ennemis, K (INCERTAIN: entité portée/porteur)",
+    "28 à 32 dommages Terre (CC : 34 à 38) → ennemis dans la zone (zone ligne depuis le lanceur taille 1 (min 63))"
+   ],
+   "role": [
+    "throw",
+    "damage",
+    "heal",
+    "aoe",
+    "pull"
+   ],
+   "tactic": "2 PA en ligne (po 1–5 sans LdV, **Porteur requis**, case libre, 1×/tour) : jette l'entité portée ; à l'impact 28–32 Terre aux ennemis / soin Terre 28–32 aux alliés (entité jetée + première cible de la ligne), attire de 1 à 4 cases les entités alignées derrière et le Pandawa avance de 5 vers la cible."
+  },
+  {
+   "id": 14307,
+   "pairIndex": 8,
+   "variantOf": 12811,
+   "isBaseSpell": false,
+   "name": "Alcoshu",
+   "obtainedAtLevel": 130,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 43751,
+   "description": "Rend le lanceur Saoul et vole de la vie dans l'élément Eau.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "13–15 vol Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "15–17 vol Eau"
+    }
+   ],
+   "effectsSummary": [
+    "la cible lance (sur elle-même) le sous-sort « Saoul » (24036, niv. 1) → lanceur — si lanceur a l'état « Sobre » (3531) ET si lanceur n'a PAS l'état « Prohibition » (3536)",
+    "Applique l'état « Saoul » (498) → lanceur (s’il est dans la zone) (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "15 à 17 vol Eau (CC : 18 à 20) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "posture"
+   ],
+   "tactic": "Variante 2 PA (po 1–6, 2×/tour) : rend Saoul (si Sobre, hors Prohibition) et vole Eau 15–17."
+  },
+  {
+   "id": 12793,
+   "pairIndex": 9,
+   "variantOf": 12809,
+   "isBaseSpell": true,
+   "name": "Pandikulation",
+   "obtainedAtLevel": 25,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "HS=3",
+   "spellLevelId": 40680,
+   "description": "Jette la cible, attire les cibles vers le centre, soigne les alliés et occasionne des dommages Feu aux ennemis en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "18–20 soin Feu, 18–20 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–25 soin Feu, 23–25 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "28–31 soin Feu, 28–31 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "Lance une entité → cible (alliée ou ennemie)",
+    "Attire la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone croix sans centre taille 2)",
+    "le lanceur lance sur la case ciblée le sous-sort « Grande Rasade » (25507, niv. 1) → lanceur — si lanceur a l'état « Ivresse » (4029)",
+    "le lanceur lance sur la case ciblée le sous-sort « Potion Magique » (25508, niv. 1) → lanceur — si lanceur a l'état « Ébriété » (4030)",
+    "28 à 31 soins Feu (CC : 34 à 37) → alliés hors lanceur, K (INCERTAIN: entité portée/porteur)",
+    "28 à 31 soins Feu (CC : 34 à 37) → alliés (hors lanceur) dans la zone (zone croix taille 2)",
+    "28 à 31 dommages Feu (CC : 34 à 37) → ennemis, K (INCERTAIN: entité portée/porteur)",
+    "28 à 31 dommages Feu (CC : 34 à 37) → ennemis dans la zone (zone croix taille 2)"
+   ],
+   "role": [
+    "throw",
+    "damage",
+    "heal",
+    "aoe",
+    "pull"
+   ],
+   "tactic": "2 PA (po 1–4, Porteur requis, case libre) : jette l'entité ; à l'impact soin Feu 28–31 aux alliés / 28–31 Feu aux ennemis en croix 2, et attire de 2 vers le centre les entités en croix 2. Regroupement + soin/dégâts."
+  },
+  {
+   "id": 12809,
+   "pairIndex": 9,
+   "variantOf": 12793,
+   "isBaseSpell": false,
+   "name": "Liqueur",
+   "obtainedAtLevel": 135,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 40714,
+   "description": "Rend le lanceur Saoul et vole de la vie dans l'élément Air.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "22–25 vol Air"
+    }
+   ],
+   "effectsSummary": [
+    "la cible lance (sur elle-même) le sous-sort « Saoul » (24036, niv. 1) → lanceur — si lanceur a l'état « Sobre » (3531) ET si lanceur n'a PAS l'état « Prohibition » (3536)",
+    "Applique l'état « Saoul » (498) → lanceur (s’il est dans la zone) (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "22 à 25 vol Air (CC : 26 à 30) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "posture"
+   ],
+   "tactic": "Variante Air 3 PA (po 1–7, 3×/tour, 2×/cible) : rend Saoul et vole Air 22–25."
+  },
+  {
+   "id": 12826,
+   "pairIndex": 10,
+   "variantOf": 12777,
+   "isBaseSpell": true,
+   "name": "Ébriété",
+   "obtainedAtLevel": 30,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 65311,
+   "description": "Invoque un Tonneau qui augmente la Puissance de son invocateur lorsqu'il est porté et le rend Saoul quand il est jeté.\nLe lanceur occasionne également des dommages dans son meilleur élément aux ennemis en zone autour du point d'impact.\n\nRend 1 PA au lanceur s'il porte son Tonneau.\n\nSi le Tonneau du lanceur est encore présent et que le sort est relancé, l'ancien est détruit pour laisser place au nouveau.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "4–6 meilleur élt"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "6–8 meilleur élt"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 164,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "8–10 meilleur élt"
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Tonneau de l'Éméché » (monstre 5844, grade 1) → cible (alliée ou ennemie)",
+    "+50 Puissance → personnages joueurs alliés, invocations du lanceur (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Saoul » (498) → personnages joueurs alliés, invocations du lanceur (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "8 à 10 dommages du meilleur élément → ennemis dans la zone (zone cercle taille 2 (min 1), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "buff",
+    "damage",
+    "ap-refund"
+   ],
+   "tactic": "2 PA au contact (case libre) : Tonneau de l'Éméché ; le porter rend 1 PA et donne +50 Puissance (2 t.) ; le jeter rend Saoul et inflige 8–10 dégâts meilleur élément en cercle 2 autour de l'impact (Potion Magique, rangs 1–3). Un seul Tonneau à la fois."
+  },
+  {
+   "id": 12777,
+   "pairIndex": 10,
+   "variantOf": 12826,
+   "isBaseSpell": false,
+   "name": "Ivresse",
+   "obtainedAtLevel": 140,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 40634,
+   "description": "Invoque un Tonneau qui soigne son invocateur lorsqu'il est porté et le rend Saoul quand il est jeté.\nLe lanceur soigne également ses alliés en zone autour du point d'impact.\n\nRend 1 PA au lanceur s'il porte son Tonneau.\n\nSi le Tonneau du lanceur est encore présent et que le sort est relancé, l'ancien est détruit pour laisser place au nouveau.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Tonneau de l'Ivrogne » (monstre 5843, grade 3) → cible (alliée ou ennemie)",
+    "Soin : 7% des PV max → lanceur (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Soin : 7% des PV max → alliés (hors lanceur) dans la zone (zone cercle taille 2 (min 1), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Saoul » (498) → personnages joueurs alliés, invocations du lanceur (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "heal",
+    "ap-refund"
+   ],
+   "tactic": "Variante 2 PA : Tonneau de l'Ivrogne ; le porter rend 1 PA et soigne 7 % PV max ; le jeter rend Saoul et soigne 7 % PV max les alliés en cercle 2 autour de l'impact (Grande Rasade)."
+  },
+  {
+   "id": 12789,
+   "pairIndex": 11,
+   "variantOf": 12813,
+   "isBaseSpell": true,
+   "name": "Stabilisation",
+   "obtainedAtLevel": 35,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "HS=3531",
+   "spellLevelId": 40668,
+   "description": "Enracine la cible et augmente l'Esquive PM de l'allié ciblé.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Applique l'état « Enraciné » (6) → cible (alliée ou ennemie) (1 tour(s))",
+    "40 Esquive PM → cible alliée (1 tour(s))"
+   ],
+   "role": [
+    "support",
+    "anti-push",
+    "dodge"
+   ],
+   "tactic": "2 PA (po 0–6, **Sobre requis**, relance 3) : Enracine la cible (insensible poussées/échanges, ne tacle pas et n'est pas taclée) 1 tour et +40 Esquive PM à un allié. Protège un allié des retraits PM/déplacements ou fixe un ennemi."
+  },
+  {
+   "id": 12813,
+   "pairIndex": 11,
+   "variantOf": 12789,
+   "isBaseSpell": false,
+   "name": "Varappe",
+   "obtainedAtLevel": 145,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS=3531",
+   "spellLevelId": 40718,
+   "description": "Augmente le nombre de lancers par tour et par cible des sorts Karcham ou Chamrak du lanceur.\nRend également l'allié ciblé Intaclable.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Karcham : +2 lancer(s) par tour → lanceur — si lanceur a l'état « Karcham » (3583) (1 tour(s))",
+    "Karcham : +1 lancer(s) par cible → lanceur — si lanceur a l'état « Karcham » (3583) (1 tour(s))",
+    "Chamrak : +2 lancer(s) par tour → lanceur — si lanceur a l'état « Chamrak » (3584) (1 tour(s))",
+    "Chamrak : +1 lancer(s) par cible → lanceur — si lanceur a l'état « Chamrak » (3584) (1 tour(s))",
+    "Applique l'état « Intaclable » (96) → cible alliée (1 tour(s))"
+   ],
+   "role": [
+    "buff",
+    "placement"
+   ],
+   "tactic": "Variante 2 PA (Sobre requis, relance 3) : Karcham/Chamrak +2 lancers par tour et +1 par cible pour ce tour, et rend un allié Intaclable. Tour de placement massif (portages multiples)."
+  },
+  {
+   "id": 12788,
+   "pairIndex": 12,
+   "variantOf": 12820,
+   "isBaseSpell": true,
+   "name": "Propulsion",
+   "obtainedAtLevel": 40,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "HS=3",
+   "spellLevelId": 61186,
+   "description": "Jette la cible, soigne les alliés, occasionne des dommages Air aux ennemis et repousse les cibles depuis le centre en zone.\nLes soins n'affectent pas le lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "21–23 soin Air, 21–23 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "27–30 soin Air, 27–30 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "33–37 soin Air, 33–37 Air"
+    }
+   ],
+   "effectsSummary": [
+    "Lance une entité → cible (alliée ou ennemie)",
+    "le lanceur lance sur la case ciblée le sous-sort « Grande Rasade » (25507, niv. 1) → lanceur — si lanceur a l'état « Ivresse » (4029)",
+    "le lanceur lance sur la case ciblée le sous-sort « Potion Magique » (25508, niv. 1) → lanceur — si lanceur a l'état « Ébriété » (4030)",
+    "33 à 37 soins Air (CC : 40 à 44) → alliés hors lanceur, K (INCERTAIN: entité portée/porteur)",
+    "33 à 37 soins Air (CC : 40 à 44) → alliés (hors lanceur) dans la zone (zone croix taille 1)",
+    "33 à 37 dommages Air (CC : 40 à 44) → ennemis, K (INCERTAIN: entité portée/porteur)",
+    "33 à 37 dommages Air (CC : 40 à 44) → ennemis dans la zone (zone croix taille 1)",
+    "Repousse la cible de 1 case(s) → tous (alliés+ennemis) dans la zone (zone croix sans centre taille 1)"
+   ],
+   "role": [
+    "throw",
+    "damage",
+    "heal",
+    "push",
+    "aoe"
+   ],
+   "tactic": "2 PA (po 1–4, Porteur requis, case libre) : jette l'entité ; à l'impact soin Air 33–37 aux alliés / 33–37 Air aux ennemis en croix 1, repousse de 1 depuis le centre."
+  },
+  {
+   "id": 12820,
+   "pairIndex": 12,
+   "variantOf": 12788,
+   "isBaseSpell": false,
+   "name": "Absinthe",
+   "obtainedAtLevel": 150,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 40725,
+   "description": "Rend le lanceur Saoul et vole de la vie dans l'élément Feu.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "17–19 vol Feu"
+    }
+   ],
+   "effectsSummary": [
+    "la cible lance (sur elle-même) le sous-sort « Saoul » (24036, niv. 1) → lanceur — si lanceur a l'état « Sobre » (3531) ET si lanceur n'a PAS l'état « Prohibition » (3536)",
+    "Applique l'état « Saoul » (498) → lanceur (s’il est dans la zone) (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "17 à 19 vol Feu (CC : 20 à 23) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "posture"
+   ],
+   "tactic": "Variante Feu 2 PA (po 1–5 sans LdV, 2×/tour) : rend Saoul et vole Feu 17–19."
+  },
+  {
+   "id": 12808,
+   "pairIndex": 13,
+   "variantOf": 12821,
+   "isBaseSpell": true,
+   "name": "Eau-de-vie",
+   "obtainedAtLevel": 45,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "HS=3",
+   "spellLevelId": 61188,
+   "description": "Jette la cible, soigne les alliés et occasionne des dommages Eau aux ennemis en zone.\nN'affecte pas le lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "16–18 soin Eau, 16–18 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "22–24 soin Eau, 22–24 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 179,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "26–29 soin Eau, 26–29 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Lance une entité → cible (alliée ou ennemie)",
+    "le lanceur lance sur la case ciblée le sous-sort « Grande Rasade » (25507, niv. 1) → lanceur — si lanceur a l'état « Ivresse » (4029)",
+    "le lanceur lance sur la case ciblée le sous-sort « Potion Magique » (25508, niv. 1) → lanceur — si lanceur a l'état « Ébriété » (4030)",
+    "26 à 29 soins Eau (CC : 31 à 35) → alliés (dont lanceur si dans la zone), K (INCERTAIN: entité portée/porteur)",
+    "26 à 29 soins Eau (CC : 31 à 35) → alliés (hors lanceur) dans la zone (zone croix taille 1)",
+    "26 à 29 dommages Eau (CC : 31 à 35) → ennemis, K (INCERTAIN: entité portée/porteur)",
+    "26 à 29 dommages Eau (CC : 31 à 35) → ennemis dans la zone (zone croix taille 1)"
+   ],
+   "role": [
+    "throw",
+    "damage",
+    "heal",
+    "aoe"
+   ],
+   "tactic": "2 PA (po 1–4 sans LdV, Porteur requis, case libre) : jette l'entité ; à l'impact soin Eau 26–29 aux alliés / 26–29 Eau aux ennemis en croix 1."
+  },
+  {
+   "id": 12821,
+   "pairIndex": 13,
+   "variantOf": 12808,
+   "isBaseSpell": false,
+   "name": "Bistouille",
+   "obtainedAtLevel": 155,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 40726,
+   "description": "Rend le lanceur Saoul et vole de la vie dans l'élément Terre en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "34–38 vol Terre"
+    }
+   ],
+   "effectsSummary": [
+    "la cible lance (sur elle-même) le sous-sort « Saoul » (24036, niv. 1) → lanceur — si lanceur a l'état « Sobre » (3531) ET si lanceur n'a PAS l'état « Prohibition » (3536)",
+    "Applique l'état « Saoul » (498) → lanceur (s’il est dans la zone) (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "34 à 38 vol Terre (CC : 41 à 46) → tous sauf le lanceur dans la zone (zone croix sans centre taille 1)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "lifesteal",
+    "posture"
+   ],
+   "tactic": "Variante Terre 4 PA (sur soi, 2×/tour, CC 15 %) : rend Saoul et vole Terre 34–38 aux entités adjacentes (pas le lanceur)."
+  },
+  {
+   "id": 12792,
+   "pairIndex": 14,
+   "variantOf": 12816,
+   "isBaseSpell": true,
+   "name": "Souillure",
+   "obtainedAtLevel": 50,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "HS=498",
+   "spellLevelId": 40677,
+   "description": "Réduit la durée des effets sur la cible et retire de la Puissance aux ennemis.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 184,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Durée des effets : -1 → cible (alliée ou ennemie)",
+    "-150 Puissance → cible ennemie (1 tour(s))"
+   ],
+   "role": [
+    "debuff",
+    "dispel"
+   ],
+   "tactic": "2 PA (po 1–3, **Saoul requis**, 2×/tour, 1×/cible) : -1 tour aux effets de la cible et -150 Puissance (1 t.) aux ennemis."
+  },
+  {
+   "id": 12816,
+   "pairIndex": 14,
+   "variantOf": 12792,
+   "isBaseSpell": false,
+   "name": "Brassage",
+   "obtainedAtLevel": 160,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 40721,
+   "description": "Applique des effets sur la cible selon l'état du lanceur :\n• Sobre : augmente les dommages subis par la cible.\n• Saoul : applique l'état Pesanteur sur la cible et l'état Brassage sur le lanceur.\n\nL'état Brassage empêche l'utilisation du sort dans l'état Saoul.\nLa portée du sort est modifiable dans l'état Sobre, mais elle est réduite de moitié si le lanceur est Saoul.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "la cible lance (sur elle-même) le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Dommages subis x110% → cible (alliée ou ennemie) — si lanceur a l'état « Sobre » (3531) (actif 2 tour(s), déclencheur : quand la cible subit des dommages)",
+    "la cible lance (sur elle-même) le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Pesanteur » (7) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498) (1 tour(s))",
+    "Applique l'état « Brassage » (4072) → lanceur — si lanceur a l'état « Saoul » (498) (3 tour(s))",
+    "Applique l'état « Brassage II » (6108) → lanceur — si lanceur a l'état « Saoul » (498) (1 tour(s), délai 1 t.)",
+    "Applique l'état « Brassage I » (4073) → lanceur — si lanceur a l'état « Saoul » (498) (1 tour(s), délai 2 t.)"
+   ],
+   "role": [
+    "damage-amp",
+    "anti-mobility"
+   ],
+   "tactic": "Variante 2 PA (po 0–6, 2×/tour, 1×/cible) : Sobre → ×110 % dommages subis (2 t.) ; Saoul → Pesanteur (1 t.) sur la cible et état Brassage (3 t.) qui empêche de relancer en Saoul. Portée divisée par 2 en Saoul."
+  },
+  {
+   "id": 12819,
+   "pairIndex": 15,
+   "variantOf": 12785,
+   "isBaseSpell": true,
+   "name": "Fermentation",
+   "obtainedAtLevel": 55,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "HS=498",
+   "spellLevelId": 65202,
+   "description": "Applique un bouclier sur l'allié ciblé immédiatement et au tour suivant.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Retire les effets du sort « Fermentation » (12819) → cible alliée",
+    "Bouclier : 240% du niveau → cible alliée (1 tour(s))",
+    "Bouclier : 240% du niveau → cible alliée (1 tour(s), délai 1 t.)"
+   ],
+   "role": [
+    "shield",
+    "support"
+   ],
+   "tactic": "3 PA (po 0–3, **Saoul requis**, relance 3) : bouclier 240 % du niveau à un allié immédiatement, puis de nouveau au tour suivant (2 × 480 PV au niveau 200)."
+  },
+  {
+   "id": 12785,
+   "pairIndex": 15,
+   "variantOf": 12819,
+   "isBaseSpell": false,
+   "name": "Bambouseraie",
+   "obtainedAtLevel": 165,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 40656,
+   "description": "Invoque plusieurs Petits Bambous en zone.\n\nLes Bambous meurent au début du prochain tour du lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Petit Bambou » (monstre 7355, grade 1) → alliés (dont lanceur si dans la zone), invocations du lanceur — si cible est le monstre « Petit Bambou » (7355) (zone cercle taille 2 (min 1))"
+   ],
+   "role": [
+    "summon",
+    "obstacle",
+    "placement"
+   ],
+   "tactic": "Variante 2 PA (po 0–3, relance 2) : invoque des Petits Bambous dans un cercle de 2 (obstacles portables) qui meurent au début du prochain tour du Pandawa. Mur temporaire / blocage de chemin."
+  },
+  {
+   "id": 12790,
+   "pairIndex": 16,
+   "variantOf": 12784,
+   "isBaseSpell": true,
+   "name": "Éviction",
+   "obtainedAtLevel": 60,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 61602,
+   "description": "Applique des effets selon l'état du lanceur et occasionne des dommages Terre aux ennemis.\n• Sobre : téléporte le lanceur symétriquement par rapport à la cible.\n• Saoul : téléporte la cible symétriquement par rapport au lanceur et occasionne les dommages en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "11–13 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "13–15 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "15–17 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Téléportation symétrique par rapport à la cible → lanceur — si lanceur a l'état « Sobre » (3531)",
+    "15 à 17 dommages Terre (CC : 19 à 21) → cible ennemie — si lanceur a l'état « Sobre » (3531)",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Téléportation symétrique par rapport au lanceur → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "15 à 17 dommages Terre (CC : 19 à 21) → ennemis dans la zone — si lanceur a l'état « Saoul » (498) (zone cercle taille 2)"
+   ],
+   "role": [
+    "damage",
+    "mobility",
+    "placement"
+   ],
+   "tactic": "Terre 2 PA au contact (2×/tour) : Sobre → le Pandawa se téléporte symétriquement par rapport à la cible + 15–17 Terre ; Saoul → la cible est téléportée symétriquement par rapport au Pandawa et 15–17 Terre en cercle 2."
+  },
+  {
+   "id": 12784,
+   "pairIndex": 16,
+   "variantOf": 12790,
+   "isBaseSpell": false,
+   "name": "Souffle Alcoolisé",
+   "obtainedAtLevel": 170,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 10,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 40653,
+   "description": "Occasionne des dommages Air aux ennemis et repousse les cibles en zone.\n\nLa portée du sort est réduite de moitié mais les dommages sont plus importants si le lanceur est Saoul.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 10,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "28–32 Air, 34–38 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "28 à 32 dommages Air (CC : 34 à 38) → ennemis dans la zone — si lanceur a l'état « Sobre » (3531) (zone ligne taille 3)",
+    "Repousse la cible de 2 case(s) → tous (alliés+ennemis) dans la zone — si lanceur a l'état « Sobre » (3531) (zone ligne taille 3)",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "34 à 38 dommages Air (CC : 40 à 44) → ennemis dans la zone — si lanceur a l'état « Saoul » (498) (zone ligne taille 3)",
+    "Repousse la cible de 2 case(s) → tous (alliés+ennemis) dans la zone — si lanceur a l'état « Saoul » (498) (zone ligne taille 3)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "push"
+   ],
+   "tactic": "Variante Air 3 PA en ligne (po 1–10, réduite de moitié en Saoul, 2×/tour) : 28–32 Air (34–38 en Saoul) en ligne de 3 aux ennemis et repousse de 2."
+  },
+  {
+   "id": 12796,
+   "pairIndex": 17,
+   "variantOf": 12797,
+   "isBaseSpell": true,
+   "name": "Flasque Explosive",
+   "obtainedAtLevel": 65,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 61200,
+   "description": "Occasionne des dommages Feu en zone.\nN'affecte pas le lanceur.\n\nLa portée du sort est réduite de moitié mais les dommages sont plus importants si le lanceur est Saoul.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "13–15 Feu, 16–19 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 131,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "16–18 Feu, 20–22 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 198,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "18–20 Feu, 22–25 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "18 à 20 dommages Feu (CC : 22 à 24) → tous sauf le lanceur dans la zone — si lanceur a l'état « Sobre » (3531) (zone cercle taille 2)",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "22 à 25 dommages Feu (CC : 26 à 30) → tous sauf le lanceur dans la zone — si lanceur a l'état « Saoul » (498) (zone cercle taille 2)"
+   ],
+   "role": [
+    "damage",
+    "aoe"
+   ],
+   "tactic": "Feu 2 PA en ligne (po 1–8, moitié en Saoul, 1×/tour) : 18–20 Feu (22–25 Saoul) en cercle 2 (pas le lanceur, alliés compris)."
+  },
+  {
+   "id": 12797,
+   "pairIndex": 17,
+   "variantOf": 12796,
+   "isBaseSpell": false,
+   "name": "Pandatak",
+   "obtainedAtLevel": 175,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 40690,
+   "description": "Occasionne des dommages Terre en zone.\n\nLa portée du sort est réduite de moitié mais les dommages sont plus importants si le lanceur est Saoul.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "38–42 Terre, 46–50 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "38 à 42 dommages Terre (CC : 46 à 50) → tous (alliés+ennemis) dans la zone — si lanceur a l'état « Sobre » (3531) (zone ligne taille 2)",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "46 à 50 dommages Terre (CC : 54 à 58) → tous (alliés+ennemis) dans la zone — si lanceur a l'état « Saoul » (498) (zone ligne taille 2)"
+   ],
+   "role": [
+    "damage",
+    "aoe"
+   ],
+   "tactic": "Variante Terre 4 PA en ligne (po 1–6, moitié en Saoul, 2×/tour, CC 15 %) : 38–42 Terre (46–50 Saoul) en ligne de 2 (alliés compris). Le plus gros sort Terre."
+  },
+  {
+   "id": 24038,
+   "pairIndex": 18,
+   "variantOf": 12817,
+   "isBaseSpell": true,
+   "name": "Lait de Bambou",
+   "obtainedAtLevel": 70,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 61194,
+   "description": "Réduit la durée des effets sur le lanceur et le rend Sobre.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Durée des effets : -4 → lanceur",
+    "la cible lance (sur elle-même) le sous-sort « Sobre » (24037, niv. 1) → lanceur — si lanceur a l'état « Saoul » (498)",
+    "Applique l'état « Sobre » (3531) → cible (alliée ou ennemie) (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "self-cleanse",
+    "posture"
+   ],
+   "tactic": "2 PA (relance 3) : -4 tours à la durée des effets sur le Pandawa et le rend Sobre. Purge de malus."
+  },
+  {
+   "id": 12817,
+   "pairIndex": 18,
+   "variantOf": 24038,
+   "isBaseSpell": false,
+   "name": "Prohibition",
+   "obtainedAtLevel": 180,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 40722,
+   "description": "Rend la cible Insoignable et Invulnérable en mêlée.\n\nSur le lanceur :\n• Rend Invulnérable en mêlée et Sobre.\n• Applique l'état Prohibition, qui empêche l'entrée dans l'état Saoul et l'application des effets des Tonneaux sur lui.\n• Rend Insoignable au début du prochain tour.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Applique l'état « Insoignable » (76) → cible (hors lanceur) (1 tour(s))",
+    "Applique l'état « Invulnérable en Mêlée » (376) → cible (alliée ou ennemie) (1 tour(s))",
+    "la cible lance (sur elle-même) le sous-sort « Sobre » (24037, niv. 1) → lanceur (s’il est dans la zone) — si cible a l'état « Saoul » (498)",
+    "Applique l'état « Sobre » (3531) → lanceur (s’il est dans la zone) (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Prohibition » (3536) → lanceur (s’il est dans la zone) (1 tour(s), non désenvoûtable)",
+    "Applique l'état « Insoignable » (76) → lanceur (s’il est dans la zone) (1 tour(s), délai 1 t.)"
+   ],
+   "role": [
+    "protect",
+    "debuff",
+    "posture"
+   ],
+   "tactic": "Variante 2 PA en ligne (po 0–5, relance 3) : la cible devient Insoignable et Invulnérable en mêlée (1 t.) ; sur soi : Invulnérable en mêlée, Sobre, état Prohibition (pas de Saoul ni d'effets de Tonneau) et Insoignable au début du tour suivant. Protège un allié des mêlées ou empêche un monstre de se soigner."
+  },
+  {
+   "id": 12814,
+   "pairIndex": 19,
+   "variantOf": 12823,
+   "isBaseSpell": true,
+   "name": "Nausée",
+   "obtainedAtLevel": 75,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 78624,
+   "description": "Applique des effets selon l'état du lanceur et occasionne des dommages Air aux ennemis :\n• Sobre : éloigne le lanceur de la cible.\n• Saoul : repousse la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "12–14 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "15–17 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Le lanceur recule de 2 case(s) (s’éloigne de la cible) → cible (alliée ou ennemie) — si lanceur a l'état « Sobre » (3531)",
+    "15 à 17 dommages Air (CC : 18 à 20) → cible ennemie — si lanceur a l'état « Sobre » (3531)",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Repousse la cible de 1 case(s) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "15 à 17 dommages Air (CC : 18 à 20) → cible ennemie — si lanceur a l'état « Saoul » (498)"
+   ],
+   "role": [
+    "damage",
+    "escape",
+    "push"
+   ],
+   "tactic": "Air 2 PA en ligne (po 1–8, 2×/tour) : 15–17 Air ; Sobre → le Pandawa recule de 2 ; Saoul → repousse la cible de 1."
+  },
+  {
+   "id": 12823,
+   "pairIndex": 19,
+   "variantOf": 12814,
+   "isBaseSpell": false,
+   "name": "Cascade",
+   "obtainedAtLevel": 185,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "HS=3",
+   "spellLevelId": 40728,
+   "description": "Jette la cible, soigne les alliés, occasionne des dommages Eau aux ennemis et repousse les entités en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "24–28 soin Eau, 24–28 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Lance une entité → cible (alliée ou ennemie)",
+    "Applique l'état « Cascade » (4229) → tous (alliés+ennemis) dans la zone (zone ligne depuis le lanceur taille 1 (min 63), 1 tour(s))",
+    "24 à 28 soins Eau (CC : 29 à 34) → alliés (dont lanceur si dans la zone), K (INCERTAIN: entité portée/porteur)",
+    "24 à 28 dommages Eau (CC : 29 à 34) → ennemis, K (INCERTAIN: entité portée/porteur)",
+    "24 à 28 soins Eau (CC : 29 à 34) → alliés dans la zone (zone ligne depuis le lanceur taille 1 (min 63))",
+    "24 à 28 dommages Eau (CC : 29 à 34) → ennemis dans la zone (zone ligne depuis le lanceur taille 1 (min 63))",
+    "24 à 28 soins Eau (CC : 29 à 34) → alliés dans la zone (zone ligne perpendiculaire (barre en T) taille 1)",
+    "24 à 28 dommages Eau (CC : 29 à 34) → ennemis dans la zone (zone ligne perpendiculaire (barre en T) taille 1)",
+    "le lanceur lance le sous-sort « Cascade » (12822, niv. 1) → lanceur",
+    "Repousse la cible de 4 case(s) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance sur la case ciblée le sous-sort « Grande Rasade » (25507, niv. 1) → lanceur — si lanceur a l'état « Ivresse » (4029)",
+    "le lanceur lance sur la case ciblée le sous-sort « Potion Magique » (25508, niv. 1) → lanceur — si lanceur a l'état « Ébriété » (4030)"
+   ],
+   "role": [
+    "throw",
+    "damage",
+    "heal",
+    "push",
+    "aoe"
+   ],
+   "tactic": "Variante 2 PA (po 1–5 sans LdV, Porteur requis) : jette l'entité ; soin Eau 24–28 aux alliés / 24–28 Eau aux ennemis sur l'entité jetée, la 1re cible de la ligne et en barre perpendiculaire 1 à l'impact, puis repousse de 4 les entités marquées."
+  },
+  {
+   "id": 12794,
+   "pairIndex": 20,
+   "variantOf": 14309,
+   "isBaseSpell": true,
+   "name": "Vague à Lame",
+   "obtainedAtLevel": 80,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 10,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 40682,
+   "description": "Occasionne des dommages Eau aux ennemis et repousse les cibles en zone.\nLa poussée est appliquée uniquement si le lanceur est Sobre.\n\nLa portée du sort est réduite de moitié mais les dommages sont plus importants si le lanceur est Saoul.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "29–32 Eau, 35–38 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 10,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "36–40 Eau, 44–48 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « État Sobre : » (24024, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "36 à 40 dommages Eau (CC : 43 à 48) → ennemis dans la zone — si lanceur a l'état « Sobre » (3531) (zone ligne perpendiculaire (barre en T) taille 1)",
+    "le lanceur lance le sous-sort « Vague à Lame » (24246, niv. 1) → tous (alliés+ennemis) dans la zone — si lanceur a l'état « Sobre » (3531) (zone ligne perpendiculaire (barre en T) taille 1)",
+    "Repousse la cible de 1 case(s) → tous (alliés+ennemis) dans la zone (zone ligne perpendiculaire (barre en T) taille 1, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « État Saoul : » (24025, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "44 à 48 dommages Eau (CC : 51 à 56) → tous (alliés+ennemis) dans la zone — si lanceur a l'état « Saoul » (498) (zone ligne perpendiculaire (barre en T) taille 1)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "push"
+   ],
+   "tactic": "Eau 4 PA en ligne (po 1–10, moitié en Saoul, 2×/tour, CC 15 %) : barre perpendiculaire 1 : 36–40 Eau + repousse de 1 (Sobre) ou 44–48 Eau sans poussée (Saoul, touche aussi les alliés)."
+  },
+  {
+   "id": 14309,
+   "pairIndex": 20,
+   "variantOf": 12794,
+   "isBaseSpell": false,
+   "name": "Pandjiu",
+   "obtainedAtLevel": 190,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 43769,
+   "description": "Occasionne des dommages Feu aux ennemis et attire la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "28–32 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "28 à 32 dommages Feu (CC : 34 à 38) → cible ennemie",
+    "Attire la cible de 2 case(s) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "pull"
+   ],
+   "tactic": "Variante Feu 3 PA (po 1–5, 2×/tour) : 28–32 Feu et attire de 2."
+  },
+  {
+   "id": 12799,
+   "pairIndex": 21,
+   "variantOf": 12824,
+   "isBaseSpell": true,
+   "name": "Lien Spiritueux",
+   "obtainedAtLevel": 85,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 5,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "HS=498",
+   "spellLevelId": 40697,
+   "description": "Invoque un Pandawasta maîtrisable qui retire de la Fuite, de la Puissance et tacle les adversaires.\nIl peut également augmenter ses caractéristiques pendant le combat ou porter le lanceur Sobre si ce dernier l'attaque en mêlée.\n\nLe Pandawasta réduit de 50% les dommages immédiats alliés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 5,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 5,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Pandawasta » (monstre 5845, grade 2) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "summon",
+    "tank",
+    "debuff"
+   ],
+   "tactic": "3 PA en ligne (po 1–5 sans LdV, **Saoul requis**, relance 5) : Pandawasta maîtrisable (6 PA/5 PM) qui tacle, retire Fuite/Puissance (Coup de Bambou), peut se buffer (+325 Vitalité/Agilité, +1 PM, 4 t.), porter le Pandawa Sobre qui l'attaque en mêlée ; réduit de 50 % les dommages immédiats alliés reçus."
+  },
+  {
+   "id": 12824,
+   "pairIndex": 21,
+   "variantOf": 12799,
+   "isBaseSpell": false,
+   "name": "Bambou",
+   "obtainedAtLevel": 195,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 40729,
+   "description": "Invoque un Bambou qui sert d'obstacle.\nIl peut porter le lanceur Sobre si ce dernier l'attaque en mêlée.\n\nLe Bambou réduit de 80% les dommages immédiats alliés.\n\nRend 1 PA au lanceur s'il porte un Bambou.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Bambou » (monstre 5846, grade 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "summon",
+    "obstacle",
+    "ap-refund"
+   ],
+   "tactic": "Variante 2 PA (po 1–4, 1×/tour) : Bambou (obstacle statique) qui réduit de 80 % les dommages immédiats alliés, peut porter le Pandawa Sobre qui l'attaque en mêlée ; porter un Bambou rend 1 PA."
+  },
+  {
+   "id": 12798,
+   "pairIndex": 22,
+   "variantOf": 24039,
+   "isBaseSpell": true,
+   "name": "Pandanlku",
+   "obtainedAtLevel": 90,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 4,
+   "initialCooldown": 1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "HS=498",
+   "spellLevelId": 61605,
+   "description": "Augmente les PM de la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "3 PM → cible (alliée ou ennemie) (2 tour(s))"
+   ],
+   "role": [
+    "buff",
+    "mobility"
+   ],
+   "tactic": "2 PA (po 0–6, **Saoul requis**, relance 4, 1er lancer au tour 2) : +3 PM (2 t.) à la cible (allié ou soi)."
+  },
+  {
+   "id": 24039,
+   "pairIndex": 22,
+   "variantOf": 12798,
+   "isBaseSpell": false,
+   "name": "Main de Pandawa",
+   "obtainedAtLevel": 200,
+   "grade": 1,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 5,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 1,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 61196,
+   "description": "Retire de la Puissance et occasionne des dommages selon l'état du lanceur et lui applique l'état Main de Pandawa :\n• Sobre : occasionne des dommages dans son meilleur élément.\n• Saoul : occasionne des dommages Neutre, Terre, Feu, Eau et Air.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 5,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 5,
+     "cooldown": 5,
+     "damageBrief": "70–70 meilleur élt, 7–7 Neutre, 7–7 Terre, 7–7 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "-500 Puissance → cible (alliée ou ennemie) (1 tour(s))",
+    "70 dommages du meilleur élément (CC : 100) → cible (alliée ou ennemie) — si lanceur a l'état « Sobre » (3531)",
+    "7 dommages Neutre (CC : 10) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "7 dommages Terre (CC : 10) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "7 dommages Feu (CC : 10) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "7 dommages Eau (CC : 10) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "7 dommages Air (CC : 10) → cible (alliée ou ennemie) — si lanceur a l'état « Saoul » (498)",
+    "le lanceur lance le sous-sort « Main de Pandawa » (25505, niv. 1) → lanceur (actif 1 tour(s), déclencheur : fin de tour du porteur)",
+    "Applique l'état « Main de Pandawa » (4026) → lanceur (1 tour(s))"
+   ],
+   "role": [
+    "damage",
+    "debuff",
+    "finisher"
+   ],
+   "tactic": "Variante niveau 200, 5 PA (po 1–5, relance 5, 1×/tour global) : -500 Puissance à la cible ; Sobre → 70 dégâts meilleur élément ; Saoul → 7 dégâts dans chacun des 5 éléments ; état Main de Pandawa : redevient Sobre en fin de tour et riposte (25 meilleur élément + portage) au prochain coup de mêlée reçu."
+  }
+ ],
+ "variantChoices": {
+  "pandawa-placement-soutien": {
+   "chosen": [
+    12781,
+    12803,
+    12782,
+    12791,
+    12804,
+    12787,
+    12806,
+    12811,
+    12793,
+    12777,
+    12813,
+    12788,
+    12808,
+    12792,
+    12819,
+    12790,
+    12796,
+    24038,
+    12823,
+    12794,
+    12799,
+    12798
+   ],
+   "notes": "Karcham + Varappe + sorts de jet (Brancard, Pandikulation, Propulsion, Eau-de-vie, Cascade), Consolation, Ivresse (soins), Fermentation (bouclier), Pandawasta."
+  },
+  "pandawa-dps-saoul": {
+   "chosen": [
+    12815,
+    12805,
+    12786,
+    12807,
+    12780,
+    12810,
+    12783,
+    14307,
+    12809,
+    12826,
+    12789,
+    12820,
+    12821,
+    12816,
+    12819,
+    12784,
+    12797,
+    24038,
+    12814,
+    12794,
+    12799,
+    24039
+   ],
+   "notes": "Postures Saoul agressives : Souffle Enflammé, Engourdissement (-3 PM), Pandatak, Souffle Alcoolisé, Vague à Lame, Main de Pandawa ; vols de vie qui rendent Saoul ; Ébriété (+50 Puissance)."
+  }
+ },
+ "rotations": [
+  {
+   "name": "Tour de placement (12 PA, Sobre)",
+   "ap": 12,
+   "sequence": [
+    "Varappe (2 PA) : Karcham +2 lancers/tour, allié Intaclable",
+    "Karcham (1 PA) : porter l'allié en danger",
+    "Karcham (1 PA) : le jeter hors de portée des monstres (+5 PO)",
+    "Karcham (1 PA) : porter un monstre",
+    "Pandikulation (2 PA) : le jeter au centre du paquet (attire en croix 2 + dégâts Feu)",
+    "Bombance (1 PA) → Saoul",
+    "Pandatak (4 PA) : 46–50 Terre en ligne 2 (portée 3 en Saoul)"
+   ],
+   "notes": "Les portages ne coûtent que 1 PA : le Pandawa repositionne 2–3 entités par tour."
+  },
+  {
+   "name": "Tour dégâts Saoul (12 PA)",
+   "ap": 12,
+   "sequence": [
+    "Alcoshu (2 PA) : devient Saoul + vol Eau",
+    "Vague à Lame (4 PA) : 44–48 Eau (barre de 3)",
+    "Pandatak (4 PA) : 46–50 Terre",
+    "Flasque Explosive (2 PA) : 22–25 Feu cercle 2"
+   ],
+   "notes": "Saoul = ×85 % dommages subis et -1 PM ; les portées sont divisées par 2 → se placer avant."
+  },
+  {
+   "name": "Tour soutien (12 PA)",
+   "ap": 12,
+   "sequence": [
+    "Bombance (1 PA) → Saoul",
+    "Fermentation (3 PA) sur le tank : bouclier 240 % niveau ce tour + le suivant",
+    "Bombance (1 PA) → Sobre (+1 PA remboursé)",
+    "Karcham (1 PA) porter un allié blessé",
+    "Eau-de-vie (2 PA) le jeter : soin Eau 26–29 sur lui + alliés en croix 1",
+    "Consolation (2 PA) : attire + 7 % PV",
+    "Stabilisation (2 PA) : allié +40 Esquive PM, Enraciné"
+   ],
+   "notes": "Bombance rembourse 1 PA en revenant Sobre : la bascule aller-retour coûte 1 PA net."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "Crâ / Sadida / Eliotrope (zone)",
+   "why": "Jeter les monstres en paquet (Pandikulation attire en croix 2) avant une Flèche Explosive / Inoculation."
+  },
+  {
+   "with": "Iop / Sacrieur (mêlée)",
+   "why": "Porter-jeter le DPS mêlée au contact du boss sans PM ; Varappe/Stabilisation (Intaclable/Enraciné) ; Brassage ×110 %."
+  },
+  {
+   "with": "Féca / Eniripsa",
+   "why": "Les sorts de jet soignent l'allié jeté ; Fermentation complète les boucliers ; sortir un allié encerclé."
+  },
+  {
+   "with": "Enutrof / Sram",
+   "why": "Schnaps (Saoul) -40 Résistance Poussée puis jets/poussées pour des dommages de poussée ; déplacer les monstres sur les pièges."
+  }
+ ],
+ "strengths": [
+  "Placement le plus flexible du jeu (porter/jeter à 1 PA)",
+  "Soins et dégâts de zone à l'impact des jets",
+  "×85 % dommages subis en Saoul",
+  "Réponses utilitaires (Prohibition, Stabilisation, Pandanlku, Lait de Bambou)",
+  "Multi-éléments"
+ ],
+ "weaknesses": [
+  "Complexité (postures, états) → IA difficile",
+  "Saoul : -1 PM et portées divisées par 2",
+  "Dégâts mono-cible moyens hors Main de Pandawa/Pandatak",
+  "Le portage expose le Pandawa (Porteur : sorts limités)",
+  "Beaucoup de sorts touchent les alliés"
+ ],
+ "summons": [
+  {
+   "monsterId": 5844,
+   "name": "Tonneau de l'Éméché",
+   "static": true,
+   "usesSummonSlot": false,
+   "canBeCarried": true,
+   "note": "porté : +50 Puissance au Pandawa, +1 PA ; jeté : Saoul + Potion Magique"
+  },
+  {
+   "monsterId": 5843,
+   "name": "Tonneau de l'Ivrogne",
+   "static": true,
+   "usesSummonSlot": false,
+   "canBeCarried": true,
+   "note": "porté : soin 7 % PV max, +1 PA ; jeté : Saoul + Grande Rasade (soin 7 % alliés cercle 2)"
+  },
+  {
+   "monsterId": 5845,
+   "name": "Pandawasta",
+   "canPlay": true,
+   "ap": 6,
+   "mp": 5,
+   "lifeBonus": 80,
+   "resistances": [
+    15,
+    35
+   ],
+   "spells": [
+    {
+     "id": 12778,
+     "name": "Méditation Ivre",
+     "ap": 6,
+     "effects": "+325 Vitalité, +325 Agilité, +1 PM (4 t.), relance 2"
+    },
+    {
+     "id": 12800,
+     "name": "Coup de Bambou",
+     "ap": 2,
+     "effects": "-30 Fuite, -100 Puissance (au contact)"
+    },
+    {
+     "id": 12779,
+     "name": "Révérence Alcoolisée",
+     "ap": 2,
+     "effects": "porte un Tonneau du Pandawa ou jette la cible (déclenche Grande Rasade/Potion Magique)"
+    }
+   ]
+  },
+  {
+   "monsterId": 5846,
+   "name": "Bambou",
+   "static": true,
+   "usesSummonSlot": true,
+   "note": "obstacle ; -80 % dommages immédiats alliés ; porte le Pandawa Sobre qui le frappe"
+  },
+  {
+   "monsterId": 7355,
+   "name": "Petit Bambou",
+   "static": true,
+   "usesSummonSlot": false,
+   "note": "invoqués en cercle 2 par Bambouseraie ; meurent au début du prochain tour du Pandawa"
+  }
+ ],
+ "states": [
+  {
+   "id": 3531,
+   "name": "Sobre"
+  },
+  {
+   "id": 498,
+   "name": "Saoul",
+   "note": "2 tours, -1 PM, ×85 % dommages subis"
+  },
+  {
+   "id": 3,
+   "name": "Porteur",
+   "flags": [
+    "preventsSpellCast"
+   ]
+  },
+  {
+   "id": 8,
+   "name": "Porté"
+  },
+  {
+   "id": 3536,
+   "name": "Prohibition"
+  },
+  {
+   "id": 3577,
+   "name": "Gueule de Bois"
+  },
+  {
+   "id": 4029,
+   "name": "Ivresse"
+  },
+  {
+   "id": 4030,
+   "name": "Ébriété"
+  },
+  {
+   "id": 4072,
+   "name": "Brassage"
+  },
+  {
+   "id": 6,
+   "name": "Enraciné"
+  },
+  {
+   "id": 76,
+   "name": "Insoignable",
+   "flags": [
+    "incurable"
+   ]
+  },
+  {
+   "id": 376,
+   "name": "Invulnérable en Mêlée",
+   "flags": [
+    "invulnerableMelee"
+   ]
+  },
+  {
+   "id": 3583,
+   "name": "Karcham (sort équipé)"
+  },
+  {
+   "id": 3584,
+   "name": "Chamrak (sort équipé)"
+  },
+  {
+   "id": 4026,
+   "name": "Main de Pandawa"
+  }
+ ],
+ "openQuestions": [
+  "Portée divisée par 2 en Saoul (Flasque Explosive, Pandatak, Souffle Alcoolisé, Vague à Lame, Brassage) : non visible dans les effets ; arrondi à confirmer.",
+  "Masque `K` (sorts de jet) interprété comme « entité jetée » ; vérifier qu'elle reçoit bien soin/dégâts une seule fois.",
+  "État Porteur (3) avec preventsSpellCast : liste exacte des sorts utilisables en portant.",
+  "Application de l'état Gueule de Bois (3577) : sortie de Saoul pendant le tour (non retrouvée dans les sous-sorts).",
+  "PV des Tonneaux/Bambous (bonusCharacteristics.lifePoints = 0) : probablement fixés côté serveur."
+ ]
+}

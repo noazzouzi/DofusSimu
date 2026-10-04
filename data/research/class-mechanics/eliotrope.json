@@ -1,0 +1,4260 @@
+{
+ "breedId": 16,
+ "name": "Eliotrope",
+ "slug": "eliotrope",
+ "dataSource": "https://api.dofusdb.fr (breeds/16, spell-variants?breedId=16, spells, spell-levels, spell-states, monsters, effects) — données du jeu mises à jour en 2026 ; cache .cache/classes/rzse/",
+ "officialRoles": [
+  {
+   "roleId": 7,
+   "value": 1,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 1,
+   "value": 3,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 6,
+   "value": 8,
+   "description": "Les portails permettent aux alliés et aux ennemis de se téléporter."
+  },
+  {
+   "roleId": 4,
+   "value": 6,
+   "description": "Les portails augmentent les soins des sorts qui les traversent."
+  },
+  {
+   "roleId": 5,
+   "value": 7,
+   "description": "Les portails augmentent les dommages des sorts qui les traversent."
+  },
+  {
+   "roleId": 8,
+   "value": 5,
+   "description": "Rôle"
+  }
+ ],
+ "roles": [
+  {
+   "role": "dps-distance-amplifié",
+   "element": "Air/Terre (Raillerie, Sermon, Sarcasme) ou Feu/Eau (Extinction, Aplomb) — multi possible",
+   "priority": 1,
+   "description": "Sorts 4–5 PA à 32–42 de base, amplifiés de +2 %/case de réseau (souvent +20 à +40 %) et par le passif (+2 % finaux par projection, jusqu’à +20 %). Peut frapper hors de la ligne de vue directe grâce aux portails."
+  },
+  {
+   "role": "placement-mobilité",
+   "element": "-",
+   "priority": 1,
+   "description": "Réseau de portails = téléportation gratuite pour TOUT le groupe (et les ennemis après le 1er tour !) ; Exil/Résonance (téléporter une cible), Stupeur (échange), Sillage (se téléporter), Odyssée/Exode, poussées/attirances."
+  },
+  {
+   "role": "soin-secondaire",
+   "element": "Feu/Eau/Terre/Air + % PV",
+   "priority": 2,
+   "description": "Cicatrisation 8 % zone, Résilience 10 % (+15 % soins reçus via portail), Rayon de Wakfu, Thérapie, Affliction (soin sur la durée via portail), Distribution, Cataclysme, Entraide ; soins amplifiés par les portails."
+  },
+  {
+   "role": "soutien-buff",
+   "element": "-",
+   "priority": 2,
+   "description": "Cabale (+200 Puissance +2 PM en croix r1 via portail), Coalition (+2 PA via portail), Orgueil (renvoi de 30 % des dommages finaux + 150 Puissance au tour suivant)."
+  },
+  {
+   "role": "entrave",
+   "element": "Air/Terre",
+   "priority": 3,
+   "description": "Raillerie -3 PM et Sarcasme -3 PA (via portail), Persiflage -3 PO / vol 3 PO, Conjuration (désenvoûtement partiel + anti-soin), Camouflet -40 Dommages, Neutral/Interruption (désactiver les portails pour piéger les ennemis)."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Portails : pose, limite, activation",
+   "description": "Portail (14574, 1 PA, PO 1–6 LdV, case libre sans portail, 2/tour) ou Errance (14604, 1 PA, PO 1–4, case sans portail — peut être posé sous une entité, 3/tour). Le choix de la variante fixe l’état permanent « Portail » (3737) ou « Errance » (3738) posé en début de combat (sorts initiaux 24955/24956) ; les autres sorts qui créent des portails (Exil, Sillage, Stupeur, Résonance, Totem) posent le portail du type correspondant. Effet 1181 `FightAddPortal` : diceNum = 2 (% de bonus par case), value = 0 (bonus de base), durée infinie. Maximum **4 portails** par Eliotrope (INCERTAIN pour Dofus 3, source historique jeuxonline). Neutral (1 PA rendu → gratuit) désactive un portail 1 tour ; Interruption désactive tous les portails 1 tour. Les ennemis ne peuvent pas emprunter les portails pendant leur 1er tour (état 678 « Téléportail impossible » posé par le passif au début du combat). Les invocations reçoivent les états « Portails alliés/ennemis » (7021/7022) à leur apparition (INCERTAIN : leur permet d’utiliser les portails).",
+   "implementationNotes": "Marque {cell, teamId, ownerId, active, createdTurn}. Si plus de 4 portails : supprimer le plus ancien (INCERTAIN). Les portails sont des marques d’équipe (l’IA ennemie peut les emprunter à partir du tour 2)."
+  },
+  {
+   "name": "Réseau, portail de sortie et téléportation",
+   "description": "Le réseau se parcourt en **chaîne** : depuis le portail d’entrée, on va au portail actif le plus proche non encore visité (distance de Manhattan en cases ; en cas d’égalité, départage par l’angle — PortalUtils.GetNextNearestPortalCell), et ainsi de suite ; le **dernier** portail de la chaîne est la sortie. Une entité qui entre sur un portail (déplacement volontaire ou poussée/attirance) est téléportée sur la sortie (effet 1182 `FightUsePortal`).",
+   "implementationNotes": "Implémenter `portalChain(entry)` exactement comme PortalUtils.GetPortalChainFromPortalCells (cache .cache/domath/haxe/Tools/PortalUtils.cs). Téléportation impossible si la sortie est occupée (INCERTAIN). Les poussées qui font passer une entité sur un portail la téléportent (PushUtils, ThroughPortal)."
+  },
+  {
+   "name": "Projection de sorts et bonus de distance",
+   "description": "Lancer un sort SUR un portail d’entrée (≥ 2 portails actifs) le fait ressortir par le portail de sortie, « de façon symétrique selon la position du lanceur par rapport au portail ciblé » (jeuxonline) : l’origine du sort devient la sortie (les poussées/attirances partent de la sortie). Bonus : multiplicateur `1 + (max(base) + Σ distances entre portails successifs de la chaîne × 2) / 100` appliqué aux dommages ET aux soins (sauf soins « splash »). Exemple : 3 portails espacés de 6 puis 7 cases → +26 %.",
+   "implementationNotes": "FightContext.GetPortalBonus + DamageEffectHandler (efficiency *= 1 + bonus × 0,01) dans le port C#. Hypothèse de ciblage (INCERTAIN) : cible effective = sortie + (portail d’entrée − lanceur), même distance que lanceur→entrée. Les masques `R`/`r` (via / hors portail) activent les effets bonus. Déclencheur `PST` sur le lanceur à chaque projection."
+  },
+  {
+   "name": "Passif « Le Portail Eliotrope » (14631) et Totem",
+   "description": "Chaque sort projeté (déclencheur PST) donne +2 % dommages finaux et +2 % soins finaux pendant 3 tours, cumulable 10 fois. Vestige (14612) invoque le Totem Eliotrope (5109, 0 PA/0 PM, 15 % résistances, 1 par équipe, relance 3) : il se soigne de 15 % quand une entité traverse un portail et, quand un allié l’attaque, pose et active un portail sous cet allié (téléportation) et lui donne +1 PM (2 tours, cumul 2).",
+   "implementationNotes": "`1171`/`2971` (×% dommages/soins finaux) en buff cumulable (maxStack 10 de 14631 niv.2). Déclencheurs : `CPT` (une entité traverse un portail du porteur, INCERTAIN), `DBA` (dommages subis d’un allié)."
+  },
+  {
+   "name": "Soins indirects (Distribution, Cataclysme, Orgueil)",
+   "description": "Distribution (relance 3) : état sur une cible ; quand elle subit des dommages, les alliés en cercle 2 autour d’elle (hors elle) sont soignés de 25 % des dommages occasionnés. Cataclysme : Feu 34–38 en carré r1 aux ennemis ; les alliés du carré (état 2252) sont soignés de 50 % des dommages occasionnés. Orgueil : l’allié renvoie 30 % des dommages finaux subis à l’attaquant (effet 1223) et gagne +150 Puissance au tour suivant.",
+   "implementationNotes": "Effet 2973 `FightCasterSplashHeal` = soin proportionnel aux dommages finaux infligés par l’effet déclencheur ; non amplifié par les portails (IsPortalBonus exclut les splash heals)."
+  }
+ ],
+ "summons": [
+  {
+   "name": "Totem Eliotrope",
+   "monsterId": 5109,
+   "grade": "1",
+   "apmp": "0/0",
+   "res": "15 partout",
+   "canPlay": "oui (passif)",
+   "slot": "aucun (1 par équipe)",
+   "notes": "Soin 15 % au passage d’un portail ; portail + 1 PM sous l’allié qui l’attaque"
+  }
+ ],
+ "keyStates": [
+  {
+   "id": 3737,
+   "name": "Portail",
+   "use": "variante Portail choisie"
+  },
+  {
+   "id": 3738,
+   "name": "Errance",
+   "use": "variante Errance choisie"
+  },
+  {
+   "id": 678,
+   "name": "Téléportail impossible",
+   "use": "ennemis au tour 1"
+  },
+  {
+   "id": 6252,
+   "name": "Entraide",
+   "use": "+1 PA/soin au passage des portails"
+  },
+  {
+   "id": 6249,
+   "name": "Coalition",
+   "use": "soin au passage des portails"
+  },
+  {
+   "id": 6251,
+   "name": "Résonance",
+   "use": "portail sous la cible à la 1re attaque"
+  },
+  {
+   "id": 6049,
+   "name": "Orgueil",
+   "use": "renvoi de dommages"
+  },
+  {
+   "id": 2252,
+   "name": "Cataclysme",
+   "use": "soin des alliés de la zone"
+  }
+ ],
+ "spells": [
+  {
+   "id": 14575,
+   "pairIndex": 1,
+   "variantOf": 14602,
+   "isBaseVariant": true,
+   "name": "Affront",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air aux ennemis et repousse les cibles en zone. \nLa poussée n'est pas appliquée si le sort est projeté dans un portail.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 26,
+     "max": 28,
+     "critMin": 31,
+     "critMax": 34,
+     "zone": "T1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "ligne perpendiculaire r1"
+   ],
+   "effectsSummary": [
+    "Dommages Air 26 à 28 — ligne perpendiculaire r1; cibles: ennemis",
+    "le lanceur lance « Affront » (26192) niv.1 — ligne perpendiculaire r1; cibles: alliés/ennemis [non lancé via portail]",
+    "↳ Repousse de 2 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 31 à 34"
+   ],
+   "tooltipOnlyEffects": [
+    "Repousse de 2 case(s) — ligne perpendiculaire r1; cibles: alliés/ennemis [non lancé via portail]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Dommages Air 15 à 17 (g1) → Dommages Air 26 à 28 (g3)",
+    "g2 (niv 66) vs g3: Dommages Air 20 à 22 (g2) → Dommages Air 26 à 28 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Air 26–28 en barre de 3 perpendiculaire + repousse 2 (sauf via portail).",
+   "spellLevelId": 44344
+  },
+  {
+   "id": 14602,
+   "pairIndex": 1,
+   "variantOf": 14575,
+   "isBaseVariant": false,
+   "name": "Mépris",
+   "unlockLevel": 95,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air aux ennemis et repousse les cibles en zone.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 24,
+     "max": 27,
+     "critMin": 29,
+     "critMax": 32,
+     "zone": "L2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "ligne 2"
+   ],
+   "effectsSummary": [
+    "Dommages Air 24 à 27 — ligne 2; cibles: ennemis",
+    "Repousse de 2 case(s) — ligne 2; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 29 à 32"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 3,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 95) vs g2: Dommages Air 19 à 22 (g1) → Dommages Air 24 à 27 (g2) ; PO max 6 (g1) → 7 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Air 24–27 sur 2 cases en ligne + repousse 2.",
+   "spellLevelId": 44483
+  },
+  {
+   "id": 14593,
+   "pairIndex": 2,
+   "variantOf": 14603,
+   "isBaseVariant": true,
+   "name": "Audace",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Rapproche le lanceur de la cible et occasionne des dommages Eau aux ennemis.\nLe rapprochement n'est pas appliqué si le sort est projeté dans un portail.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 26,
+     "max": 29,
+     "critMin": 31,
+     "critMax": 35,
+     "zone": "P1",
+     "targetMask": "A,r",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 26,
+     "max": 29,
+     "critMin": 31,
+     "critMax": 35,
+     "zone": "P1",
+     "targetMask": "a,A,R",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur avance de 2 case(s) — cibles: alliés/ennemis [non lancé via portail]",
+    "Dommages Eau 26 à 29 — cibles: ennemis [non lancé via portail]",
+    "Dommages Eau 26 à 29 — cibles: alliés/ennemis [lancé via portail]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 31 à 35 ; Dommages Eau 31 à 35"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Dommages Eau 15 à 17 (g1) → Dommages Eau 26 à 29 (g3) ; Dommages Eau 15 à 17 (g1) → Dommages Eau 26 à 29 (g3)",
+    "g2 (niv 67) vs g3: Dommages Eau 20 à 23 (g2) → Dommages Eau 26 à 29 (g3) ; Dommages Eau 20 à 23 (g2) → Dommages Eau 26 à 29 (g3)"
+   ],
+   "role": [
+    "damage",
+    "self_move"
+   ],
+   "tacticalNote": "Se rapproche de 2 + Eau 26–29 ; via portail touche aussi les alliés (attention).",
+   "spellLevelId": 44398
+  },
+  {
+   "id": 14603,
+   "pairIndex": 2,
+   "variantOf": 14593,
+   "isBaseVariant": false,
+   "name": "Tribulation",
+   "unlockLevel": 100,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau aux ennemis et attire les cibles vers le centre en zone.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 31,
+     "zone": "T1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "ligne perpendiculaire r1"
+   ],
+   "effectsSummary": [
+    "Applique l'état « Tribulation cibles » (3979) — ligne perpendiculaire r1; cibles: alliés/ennemis; 1 tour",
+    "Dommages Eau 23 à 26 — ligne perpendiculaire r1; cibles: ennemis",
+    "le lanceur lance sur la cellule ciblée « Tribulation » (25448) niv.1 — cibles: lanceur",
+    "↳ Applique l'état « Tribulation bloquée » (3980) — cibles: alliés/ennemis; infini; non désenvoûtable",
+    "le lanceur lance sur la cellule ciblée « Tribulation » (25448) niv.2 — cibles: lanceur",
+    "↳ Attire de 1 case(s) — ligne perpendiculaire r1; cibles: alliés/ennemis [sans état « Tribulation bloquée » (3980); avec état « Tribulation cibles » (3979)]",
+    "↳ Retire l'état « Tribulation bloquée » (3980) — toute la carte; cibles: alliés/ennemis [avec état « Tribulation bloquée » (3980)]",
+    "↳ Retire l'état « Tribulation cibles » (3979) — toute la carte; cibles: alliés/ennemis [avec état « Tribulation cibles » (3979)]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 28 à 31"
+   ],
+   "tooltipOnlyEffects": [
+    "Attire de 1 case(s) — ligne perpendiculaire r1; cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 3,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 100) vs g2: Dommages Eau 19 à 21 (g1) → Dommages Eau 23 à 26 (g2) ; PO max 6 (g1) → 7 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "pull"
+   ],
+   "tacticalNote": "Eau 23–26 en barre de 3 + attire vers le centre.",
+   "spellLevelId": 44484
+  },
+  {
+   "id": 14583,
+   "pairIndex": 3,
+   "variantOf": 14605,
+   "isBaseVariant": true,
+   "name": "Commotion",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre aux ennemis et attire les cibles vers le centre en zone.\nL'attirance affecte le lanceur uniquement si le sort est projeté dans un portail.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 31,
+     "zone": "Q1,1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix sans centre r1 (rayon min 1)"
+   ],
+   "effectsSummary": [
+    "Dommages Terre 23 à 26 — croix sans centre r1 (rayon min 1); cibles: ennemis",
+    "Attire de 1 case(s) — croix sans centre r1 (rayon min 1); cibles: alliés sauf lanceur/ennemis [non lancé via portail]",
+    "Attire de 1 case(s) — croix sans centre r1 (rayon min 1); cibles: alliés/ennemis [lancé via portail]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 28 à 31"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 3,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 3,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Dommages Terre 14 à 16 (g1) → Dommages Terre 23 à 26 (g3)",
+    "g2 (niv 68) vs g3: Dommages Terre 18 à 20 (g2) → Dommages Terre 23 à 26 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "pull"
+   ],
+   "tacticalNote": "Terre 23–26 autour de la case + attire 1 vers le centre.",
+   "spellLevelId": 44368
+  },
+  {
+   "id": 14605,
+   "pairIndex": 3,
+   "variantOf": 14583,
+   "isBaseVariant": false,
+   "name": "Convulsion",
+   "unlockLevel": 105,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre aux ennemis et repousse les cibles vers les extrémités en zone.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 24,
+     "max": 27,
+     "critMin": 29,
+     "critMax": 32,
+     "zone": "+1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix diagonale r1"
+   ],
+   "effectsSummary": [
+    "Dommages Terre 24 à 27 — croix diagonale r1; cibles: ennemis",
+    "Repousse de 2 case(s) — croix diagonale r1; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 29 à 32"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 105) vs g2: Dommages Terre 19 à 22 (g1) → Dommages Terre 24 à 27 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Terre 24–27 en X + repousse 2 vers l’extérieur.",
+   "spellLevelId": 44485
+  },
+  {
+   "id": 14579,
+   "pairIndex": 4,
+   "variantOf": 14606,
+   "isBaseVariant": true,
+   "name": "Rayon de Wakfu",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Soigne les alliés et occasionne des dommages Feu aux ennemis en zone.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "heal",
+     "element": "Feu",
+     "min": 26,
+     "max": 28,
+     "critMin": 31,
+     "critMax": 34,
+     "zone": "L2",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 26,
+     "max": 28,
+     "critMin": 31,
+     "critMax": 34,
+     "zone": "L2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "ligne 2"
+   ],
+   "effectsSummary": [
+    "Soin Feu 26 à 28 — ligne 2; cibles: alliés",
+    "Dommages Feu 26 à 28 — ligne 2; cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Soin Feu 31 à 34 ; Dommages Feu 31 à 34"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Soin Feu 15 à 17 (g1) → Soin Feu 26 à 28 (g3) ; Dommages Feu 15 à 17 (g1) → Dommages Feu 26 à 28 (g3)",
+    "g2 (niv 69) vs g3: Soin Feu 21 à 23 (g2) → Soin Feu 26 à 28 (g3) ; Dommages Feu 21 à 23 (g2) → Dommages Feu 26 à 28 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "heal"
+   ],
+   "tacticalNote": "Soigne les alliés et frappe les ennemis sur 2 cases en ligne (Feu 26–28) : sort hybride très rentable via portail (+bonus aux soins).",
+   "spellLevelId": 44356
+  },
+  {
+   "id": 14606,
+   "pairIndex": 4,
+   "variantOf": 14579,
+   "isBaseVariant": false,
+   "name": "Faisceau",
+   "unlockLevel": 110,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu en zone.\nLes dommages deviennent du vol de vie si le sort est projeté dans un portail.\n\nN'affecte pas le lanceur.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 31,
+     "zone": "V1",
+     "targetMask": "g,A,r",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "lifesteal",
+     "element": "Feu",
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 31,
+     "zone": "V1",
+     "targetMask": "g,A,R",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "cône r1"
+   ],
+   "effectsSummary": [
+    "Dommages Feu 23 à 26 — cône r1; cibles: alliés sauf lanceur/ennemis [non lancé via portail]",
+    "Vol de vie Feu 23 à 26 — cône r1; cibles: alliés sauf lanceur/ennemis [lancé via portail]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 28 à 31 ; Vol de vie Feu 28 à 31"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 110) vs g2: Dommages Feu 19 à 21 (g1) → Dommages Feu 23 à 26 (g2) ; Vol de vie Feu 19 à 21 (g1) → Vol de vie Feu 23 à 26 (g2) ; PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "lifesteal"
+   ],
+   "tacticalNote": "Feu 23–26 en cône (pas le lanceur, touche les alliés) ; vol de vie via portail.",
+   "spellLevelId": 44486
+  },
+  {
+   "id": 14574,
+   "pairIndex": 5,
+   "variantOf": 14604,
+   "isBaseVariant": true,
+   "name": "Portail",
+   "unlockLevel": 5,
+   "gradeUsed": 3,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose un portail.\n\nLorsque plusieurs portails sont actifs, ils permettent de se téléporter ou de projeter des sorts.\nLes dommages et soins des sorts projetés sont augmentés par les portails.\n\nLes dommages et soins finaux du lanceur sont augmentés lorsqu'il projette un sort dans un portail (cumulable 10 fois).\nLes combattants ennemis ne peuvent pas emprunter un portail au premier tour de jeu.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis; infini"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "+2% Dommages finaux — cibles: lanceur; 3 tours",
+    "+2% Soins finaux — cibles: lanceur; 3 tours"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 1,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 1,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 1,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 5) vs g3: PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 72) vs g3: PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "portal",
+    "self_final_damage_buff"
+   ],
+   "tacticalNote": "Portail : 1 PA, PO 1–6 sur case libre, 2/tour.",
+   "spellLevelId": 44341
+  },
+  {
+   "id": 14604,
+   "pairIndex": 5,
+   "variantOf": 14574,
+   "isBaseVariant": false,
+   "name": "Errance",
+   "unlockLevel": 115,
+   "gradeUsed": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose un portail.\n\nLorsque plusieurs portails sont actifs, ils permettent de se téléporter ou de projeter des sorts.\nLes dommages et soins des sorts projetés sont augmentés par les portails.\n\nLes dommages et soins finaux du lanceur sont augmentés lorsqu'il projette un sort dans un portail (cumulable 10 fois).\nLes combattants ennemis ne peuvent pas emprunter un portail au premier tour de jeu.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis; infini"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "+2% Dommages finaux — cibles: lanceur; 3 tours",
+    "+2% Soins finaux — cibles: lanceur; 3 tours"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 1,
+     "range": [
+      1,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 1,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 115) vs g2: PO max 3 (g1) → 4 (g2)"
+   ],
+   "role": [
+    "portal",
+    "self_final_damage_buff"
+   ],
+   "tacticalNote": "Errance : 1 PA, PO 1–4, 3/tour, posable sous une entité.",
+   "spellLevelId": 44482
+  },
+  {
+   "id": 14582,
+   "pairIndex": 6,
+   "variantOf": 14607,
+   "isBaseVariant": true,
+   "name": "Neutral",
+   "unlockLevel": 10,
+   "gradeUsed": 3,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Désactive un portail.\n\nLe coût en PA du sort est remboursé.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Désactive un portail — cibles: alliés/ennemis; 1 tour",
+    "Rend 1 PA — cibles: lanceur"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 1,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 1,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 1,
+     "range": [
+      0,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 10) vs g3: PO max 6 (g1) → 8 (g3)",
+    "g2 (niv 77) vs g3: PO max 7 (g2) → 8 (g3)"
+   ],
+   "role": [
+    "ap_refund",
+    "portal"
+   ],
+   "tacticalNote": "Désactive un portail (gratuit) : couper la route aux ennemis.",
+   "spellLevelId": 44365
+  },
+  {
+   "id": 14607,
+   "pairIndex": 6,
+   "variantOf": 14582,
+   "isBaseVariant": false,
+   "name": "Interruption",
+   "unlockLevel": 120,
+   "gradeUsed": 2,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Désactive tous les portails.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "Désactive un portail — toute la carte; cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 187,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 120) vs g2: lancers/tour 1 (g1) → 2 (g2)"
+   ],
+   "role": [
+    "portal"
+   ],
+   "tacticalNote": "Désactive tous les portails.",
+   "spellLevelId": 44487
+  },
+  {
+   "id": 14620,
+   "pairIndex": 7,
+   "variantOf": 14610,
+   "isBaseVariant": true,
+   "name": "Persiflage",
+   "unlockLevel": 15,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Retire de la Portée et occasionne des dommages Terre.\nLe retrait devient un vol si le sort est projeté dans un portail.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 25,
+     "max": 29,
+     "critMin": 30,
+     "critMax": 35,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Persiflage » (31024) niv.1 — cibles: alliés/ennemis [non lancé via portail]",
+    "↳ -3 PO — cibles: alliés/ennemis; 1 tour",
+    "le lanceur lance « Persiflage » (31024) niv.2 — cibles: alliés/ennemis [lancé via portail]",
+    "↳ Vole 3 PO — cibles: alliés/ennemis; 1 tour",
+    "Dommages Terre 25 à 29 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 30 à 35"
+   ],
+   "tooltipOnlyEffects": [
+    "-3 PO — cibles: alliés/ennemis [non lancé via portail]; 1 tour",
+    "Vole 3 PO — cibles: alliés/ennemis [lancé via portail]; 1 tour"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 15) vs g3: Dommages Terre 16 à 18 (g1) → Dommages Terre 25 à 29 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 82) vs g3: Dommages Terre 20 à 23 (g2) → Dommages Terre 25 à 29 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "damage",
+    "range_removal",
+    "range_steal"
+   ],
+   "tacticalNote": "Terre 25–29 + -3 PO (vol via portail) : contre les lanceurs à distance.",
+   "spellLevelId": 81321
+  },
+  {
+   "id": 14610,
+   "pairIndex": 7,
+   "variantOf": 14620,
+   "isBaseVariant": false,
+   "name": "Sinécure",
+   "unlockLevel": 125,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 5,
+   "statesCriterion": null,
+   "description": "Vole de la vie dans l'élément Air aux ennemis ou soigne l'allié ciblé.\nRéduit également les Résistances Poussée de l'ennemi ciblé si le sort est projeté dans un portail.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "lifesteal",
+     "element": "Air",
+     "min": 12,
+     "max": 14,
+     "critMin": 15,
+     "critMax": 17,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "heal",
+     "element": "Air",
+     "min": 12,
+     "max": 14,
+     "critMin": 15,
+     "critMax": 17,
+     "zone": "P1",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Vol de vie Air 12 à 14 — cibles: ennemis",
+    "Soin Air 12 à 14 — cibles: alliés",
+    "-40 Résistance poussée — cibles: ennemis [lancé via portail]; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Vol de vie Air 15 à 17 ; Soin Air 15 à 17"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 2,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 125) vs g2: Vol de vie Air 9 à 11 (g1) → Vol de vie Air 12 à 14 (g2) ; Soin Air 9 à 11 (g1) → Soin Air 12 à 14 (g2) ; -30 Résistance poussée (g1) → -40 Résistance poussée (g2) ; PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "damage",
+    "heal",
+    "lifesteal",
+    "push_res_debuff"
+   ],
+   "tacticalNote": "Vol de vie Air / soin 12–14 (2 PA).",
+   "spellLevelId": 44480
+  },
+  {
+   "id": 14587,
+   "pairIndex": 8,
+   "variantOf": 14622,
+   "isBaseVariant": true,
+   "name": "Cicatrisation",
+   "unlockLevel": 20,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Soigne les alliés en zone.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 8,
+     "max": 8,
+     "critMin": 10,
+     "critMax": 10,
+     "zone": "C2",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "cercle r2"
+   ],
+   "effectsSummary": [
+    "Soin = 8% des PV max — cercle r2; cibles: alliés"
+   ],
+   "criticalSummary": [
+    "[CC] Soin = 10% des PV max"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 3,
+     "range": [
+      0,
+      2
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 3,
+     "range": [
+      0,
+      2
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 3,
+     "range": [
+      0,
+      2
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 20) vs g3: Soin = 6% des PV max (g1) → Soin = 8% des PV max (g3)",
+    "g2 (niv 87) vs g3: Soin = 7% des PV max (g2) → Soin = 8% des PV max (g3)"
+   ],
+   "role": [
+    "heal"
+   ],
+   "tacticalNote": "Soin 8 % PV max en cercle 2 (1/tour) : soin de groupe.",
+   "spellLevelId": 44380
+  },
+  {
+   "id": 14622,
+   "pairIndex": 8,
+   "variantOf": 14587,
+   "isBaseVariant": false,
+   "name": "Conjuration",
+   "unlockLevel": 130,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Réduit la durée des effets sur la cible.\nRéduit également les soins reçus par l'ennemi ciblé si le sort est projeté dans un portail.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Réduit la durée des effets de 1 tour(s) — cibles: alliés/ennemis",
+    "Soins reçus x70% — cibles: ennemis [lancé via portail]; déclenché quand le porteur est soigné (déclencheur actif 2 tour(s))"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 2,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 130) vs g2: PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "heal_modifier",
+    "shorten_effects"
+   ],
+   "tacticalNote": "Réduit la durée des effets (désenvoûtement partiel) ; anti-soin ×70 % via portail.",
+   "spellLevelId": 82063
+  },
+  {
+   "id": 14608,
+   "pairIndex": 9,
+   "variantOf": 14618,
+   "isBaseVariant": true,
+   "name": "Outrage",
+   "unlockLevel": 25,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu.\nAugmente également la Portée du lanceur si le sort est projeté dans un portail.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 24,
+     "max": 28,
+     "critMin": 29,
+     "critMax": 34,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Feu 24 à 28 — cibles: alliés/ennemis",
+    "+1 PO — cibles: lanceur [lancé via portail]; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 29 à 34"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 3,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 25) vs g3: Dommages Feu 15 à 18 (g1) → Dommages Feu 24 à 28 (g3) ; PO max 5 (g1) → 7 (g3)",
+    "g2 (niv 92) vs g3: Dommages Feu 19 à 23 (g2) → Dommages Feu 24 à 28 (g3) ; PO max 6 (g2) → 7 (g3)"
+   ],
+   "role": [
+    "ally_range_buff",
+    "damage"
+   ],
+   "tacticalNote": "Feu 24–28 ; +1 PO via portail.",
+   "spellLevelId": 82066
+  },
+  {
+   "id": 14618,
+   "pairIndex": 9,
+   "variantOf": 14608,
+   "isBaseVariant": false,
+   "name": "Aplomb",
+   "unlockLevel": 135,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau.\nAugmente également les PM du lanceur si le sort est projeté dans un portail.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 32,
+     "max": 36,
+     "critMin": 39,
+     "critMax": 43,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Eau 32 à 36 — cibles: alliés/ennemis",
+    "+1 PM — cibles: lanceur [lancé via portail]; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 39 à 43"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 4,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ally_mp_buff",
+    "damage"
+   ],
+   "tacticalNote": "Eau 32–36 à 1–8 PO ; +1 PM via portail.",
+   "spellLevelId": 44440
+  },
+  {
+   "id": 14589,
+   "pairIndex": 10,
+   "variantOf": 14616,
+   "isBaseVariant": true,
+   "name": "Odyssée",
+   "unlockLevel": 30,
+   "gradeUsed": 3,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Sur un ennemi : éloigne le lanceur de la cible et attire la cible.\nSur un allié : repousse la cible et rapproche le lanceur vers elle.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur recule de 1 case(s) — cibles: ennemis",
+    "Attire de 1 case(s) — cibles: ennemis",
+    "Repousse de 1 case(s) — cibles: alliés",
+    "Le lanceur avance de 1 case(s) — cibles: alliés"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 1,
+     "range": [
+      1,
+      2
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 1,
+     "range": [
+      1,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 164,
+     "apCost": 1,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 30) vs g3: PO max 2 (g1) → 4 (g3)",
+    "g2 (niv 97) vs g3: PO max 3 (g2) → 4 (g3)"
+   ],
+   "role": [
+    "pull",
+    "push",
+    "self_move"
+   ],
+   "tacticalNote": "Micro-placement 1 PA (ennemi : recule + attire ; allié : repousse + avance).",
+   "spellLevelId": 44386
+  },
+  {
+   "id": 14616,
+   "pairIndex": 10,
+   "variantOf": 14589,
+   "isBaseVariant": false,
+   "name": "Exode",
+   "unlockLevel": 140,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "description": "Téléporte le lanceur symétriquement par rapport à la cible.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Téléportation symétrique par rapport à la cible — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 2,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "teleport"
+   ],
+   "tacticalNote": "Téléport symétrique autour d’une entité adjacente.",
+   "spellLevelId": 44438
+  },
+  {
+   "id": 14637,
+   "pairIndex": 11,
+   "variantOf": 14590,
+   "isBaseVariant": true,
+   "name": "Insolence",
+   "unlockLevel": 35,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Éloigne le lanceur de la cible et occasionne des dommages Eau aux ennemis.\nLe recul n'est pas appliqué si le sort est projeté dans un portail.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 25,
+     "max": 28,
+     "critMin": 30,
+     "critMax": 34,
+     "zone": "P1",
+     "targetMask": "A,r",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 25,
+     "max": 28,
+     "critMin": 30,
+     "critMax": 34,
+     "zone": "P1",
+     "targetMask": "a,A,R",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur recule de 2 case(s) — cibles: alliés/ennemis [non lancé via portail]",
+    "Dommages Eau 25 à 28 — cibles: ennemis [non lancé via portail]",
+    "Dommages Eau 25 à 28 — cibles: alliés/ennemis [lancé via portail]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 30 à 34 ; Dommages Eau 30 à 34"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 35) vs g3: Dommages Eau 16 à 18 (g1) → Dommages Eau 25 à 28 (g3) ; Dommages Eau 16 à 18 (g1) → Dommages Eau 25 à 28 (g3)",
+    "g2 (niv 102) vs g3: Dommages Eau 20 à 23 (g2) → Dommages Eau 25 à 28 (g3) ; Dommages Eau 20 à 23 (g2) → Dommages Eau 25 à 28 (g3)"
+   ],
+   "role": [
+    "damage",
+    "self_move"
+   ],
+   "tacticalNote": "Recule de 2 + Eau 25–28.",
+   "spellLevelId": 81323
+  },
+  {
+   "id": 14590,
+   "pairIndex": 11,
+   "variantOf": 14637,
+   "isBaseVariant": false,
+   "name": "Camouflet",
+   "unlockLevel": 145,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre aux ennemis en zone.\nRetire également des Dommages aux ennemis en zone si le sort est projeté dans un portail.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 24,
+     "max": 27,
+     "critMin": 29,
+     "critMax": 33,
+     "zone": "X1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1"
+   ],
+   "effectsSummary": [
+    "Dommages Terre 24 à 27 — croix r1; cibles: ennemis",
+    "-40 Dommages — croix r1; cibles: ennemis [lancé via portail]; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 29 à 33"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "damage_debuff"
+   ],
+   "tacticalNote": "Terre 24–27 en croix ; -40 Dommages via portail.",
+   "spellLevelId": 44387
+  },
+  {
+   "id": 14617,
+   "pairIndex": 12,
+   "variantOf": 14615,
+   "isBaseVariant": true,
+   "name": "Cabale",
+   "unlockLevel": 40,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Augmente la Puissance et les PM des alliés en zone.\nLe bonus est plus important si le sort est projeté dans un portail.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix r1"
+   ],
+   "effectsSummary": [
+    "Désenvoûte les effets du sort « Cabale » (14617) — croix r1; cibles: alliés",
+    "+100 Puissance — croix r1; cibles: alliés [non lancé via portail]; 2 tours",
+    "+1 PM — croix r1; cibles: alliés [non lancé via portail]; 2 tours",
+    "+200 Puissance — croix r1; cibles: alliés [lancé via portail]; 2 tours",
+    "+2 PM — croix r1; cibles: alliés [lancé via portail]; 2 tours"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 2,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 2,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 40) vs g3: +50 Puissance (g1) → +100 Puissance (g3) ; +100 Puissance (g1) → +200 Puissance (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 107) vs g3: +75 Puissance (g2) → +100 Puissance (g3) ; +150 Puissance (g2) → +200 Puissance (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "ally_mp_buff",
+    "ally_power_buff"
+   ],
+   "tacticalNote": "+100 Puissance +1 PM (croix r1) ; +200/+2 PM via portail : excellent buff de groupe.",
+   "spellLevelId": 82048
+  },
+  {
+   "id": 14615,
+   "pairIndex": 12,
+   "variantOf": 14617,
+   "isBaseVariant": false,
+   "name": "Résilience",
+   "unlockLevel": 150,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Soigne l'allié ciblé.\nAugmente également ses soins reçus si le sort est projeté dans un portail.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 10,
+     "max": 10,
+     "critMin": 12,
+     "critMax": 12,
+     "zone": "P1",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Soin = 10% des PV max — cibles: alliés",
+    "Soins reçus x115% — cibles: alliés [lancé via portail]; déclenché quand le porteur est soigné (déclencheur actif 2 tour(s))"
+   ],
+   "criticalSummary": [
+    "[CC] Soin = 12% des PV max"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 3,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "heal",
+    "heal_modifier"
+   ],
+   "tacticalNote": "Soin 10 % PV max ; +15 % soins reçus via portail.",
+   "spellLevelId": 44437
+  },
+  {
+   "id": 14592,
+   "pairIndex": 13,
+   "variantOf": 14619,
+   "isBaseVariant": true,
+   "name": "Brimade",
+   "unlockLevel": 45,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air aux ennemis en zone et repousse les cibles depuis le centre de la zone.\nLa poussée affecte le lanceur uniquement si le sort est projeté dans un portail.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 23,
+     "max": 25,
+     "critMin": 28,
+     "critMax": 30,
+     "zone": "Q1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix sans centre r1"
+   ],
+   "effectsSummary": [
+    "Dommages Air 23 à 25 — croix sans centre r1; cibles: ennemis",
+    "Repousse de 2 case(s) — croix sans centre r1; cibles: alliés sauf lanceur/ennemis [non lancé via portail]",
+    "Repousse de 2 case(s) — croix sans centre r1; cibles: alliés/ennemis [lancé via portail]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 28 à 30"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 3,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 179,
+     "apCost": 3,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 45) vs g3: Dommages Air 14 à 16 (g1) → Dommages Air 23 à 25 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 112) vs g3: Dommages Air 18 à 20 (g2) → Dommages Air 23 à 25 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Air 23–25 autour de la case + repousse 2 depuis le centre.",
+   "spellLevelId": 44395
+  },
+  {
+   "id": 14619,
+   "pairIndex": 13,
+   "variantOf": 14592,
+   "isBaseVariant": false,
+   "name": "Cataclysme",
+   "unlockLevel": 155,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu aux ennemis et soigne les alliés selon les dommages occasionnés en zone.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 34,
+     "max": 38,
+     "critMin": 41,
+     "critMax": 46,
+     "zone": "G1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "carré r1"
+   ],
+   "effectsSummary": [
+    "Applique l'état « Cataclysme » (2252) — carré r1; cibles: alliés; 1 tour",
+    "le lanceur lance « Cataclysme » (14630) niv.1 — carré r1; cibles: ennemis",
+    "↳ le lanceur lance « Cataclysme » (14630) niv.2 — cibles: ennemis; déclenché quand le porteur subit des dommages ou à la mort du porteur (tué par dommages) (déclencheur actif 1 tour(s))",
+    "↳ ↳ Désenvoûte les effets du sort « Cataclysme » (14630) — cibles: ennemis",
+    "↳ ↳ Soin du lanceur = 50% des dommages occasionnés — toute la carte; cibles: alliés [avec état « Cataclysme » (2252)]",
+    "Dommages Feu 34 à 38 — carré r1; cibles: ennemis",
+    "la cible lance sur elle-même « Cataclysme » (14630) niv.3 — cibles: lanceur",
+    "↳ Désenvoûte les effets du sort « Cataclysme » (14630) — toute la carte; cibles: ennemis",
+    "↳ Retire l'état « Cataclysme » (2252) — toute la carte; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 41 à 46"
+   ],
+   "tooltipOnlyEffects": [
+    "Soin du lanceur = 50% des dommages occasionnés — carré r1; cibles: alliés [avec état « Cataclysme » (2252)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 4,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "heal"
+   ],
+   "tacticalNote": "Feu 34–38 en carré r1 + soigne les alliés du carré de 50 % des dommages.",
+   "spellLevelId": 44441
+  },
+  {
+   "id": 14591,
+   "pairIndex": 14,
+   "variantOf": 14585,
+   "isBaseVariant": true,
+   "name": "Sillage",
+   "unlockLevel": 50,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "description": "Pose un portail sous le lanceur et le téléporte sur la case ciblée.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Sillage » (31021) niv.1 — cibles: lanceur",
+    "↳ Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Portail » (3737)]; infini",
+    "↳ Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Errance » (3738)]; infini",
+    "Téléporte le lanceur sur la case ciblée — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Portail » (3737)]; infini",
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Errance » (3738)]; infini"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 3,
+     "range": [
+      1,
+      3
+     ],
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 3,
+     "range": [
+      1,
+      3
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 184,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 50) vs g3: PO max 3 (g1) → 4 (g3) ; relance 4 (g1) → 3 (g3)",
+    "g2 (niv 117) vs g3: PO max 3 (g2) → 4 (g3)"
+   ],
+   "role": [
+    "portal",
+    "teleport"
+   ],
+   "tacticalNote": "Portail sous le lanceur + téléportation sur la case ciblée (1–4).",
+   "spellLevelId": 82057
+  },
+  {
+   "id": 14585,
+   "pairIndex": 14,
+   "variantOf": 14591,
+   "isBaseVariant": false,
+   "name": "Stupeur",
+   "unlockLevel": 160,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "description": "Pose deux portails sous le lanceur et la cible et échange de position avec cette dernière.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Stupeur » (31023) niv.1 — cibles: alliés/ennemis",
+    "↳ le lanceur lance « Stupeur » (31023) niv.2 — cibles: lanceur",
+    "↳ ↳ Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Portail » (3737)]; infini",
+    "↳ ↳ Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Errance » (3738)]; infini",
+    "↳ le lanceur lance « Stupeur » (31023) niv.2 — cibles: alliés/ennemis",
+    "Échange de positions avec le lanceur — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Portail » (3737)]; infini",
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Errance » (3738)]; infini"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 2,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "portal",
+    "swap"
+   ],
+   "tacticalNote": "Deux portails (lanceur et cible) + échange de position.",
+   "spellLevelId": 44372
+  },
+  {
+   "id": 14581,
+   "pairIndex": 15,
+   "variantOf": 14576,
+   "isBaseVariant": true,
+   "name": "Thérapie",
+   "unlockLevel": 55,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Vole de la vie dans l'élément Terre aux ennemis ou soigne l'allié ciblé et attire la cible.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "lifesteal",
+     "element": "Terre",
+     "min": 23,
+     "max": 25,
+     "critMin": 28,
+     "critMax": 30,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "heal",
+     "element": "Terre",
+     "min": 23,
+     "max": 25,
+     "critMin": 28,
+     "critMax": 30,
+     "zone": "P1",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Vol de vie Terre 23 à 25 — cibles: ennemis",
+    "Soin Terre 23 à 25 — cibles: alliés",
+    "Attire de 2 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Vol de vie Terre 28 à 30 ; Soin Terre 28 à 30"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 3,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 55) vs g3: Vol de vie Terre 15 à 17 (g1) → Vol de vie Terre 23 à 25 (g3) ; Soin Terre 15 à 17 (g1) → Soin Terre 23 à 25 (g3) ; PO max 5 (g1) → 7 (g3)",
+    "g2 (niv 122) vs g3: Vol de vie Terre 20 à 22 (g2) → Vol de vie Terre 23 à 25 (g3) ; Soin Terre 20 à 22 (g2) → Soin Terre 23 à 25 (g3) ; PO max 6 (g2) → 7 (g3)"
+   ],
+   "role": [
+    "damage",
+    "heal",
+    "lifesteal",
+    "pull"
+   ],
+   "tacticalNote": "Vol de vie Terre / soin allié 23–25 + attire 2.",
+   "spellLevelId": 44362
+  },
+  {
+   "id": 14576,
+   "pairIndex": 15,
+   "variantOf": 14581,
+   "isBaseVariant": false,
+   "name": "Poing Fulgurant",
+   "unlockLevel": 165,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau aux ennemis et repousse la cible.\nLa poussée est plus importante si le sort est projeté dans un portail.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 23,
+     "max": 25,
+     "critMin": 28,
+     "critMax": 30,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Eau 23 à 25 — cibles: ennemis",
+    "Repousse de 2 case(s) — cibles: alliés/ennemis [non lancé via portail]",
+    "Repousse de 4 case(s) — cibles: alliés/ennemis [lancé via portail]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 28 à 30"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Eau 23–25 + repousse 2 (4 via portail).",
+   "spellLevelId": 44345
+  },
+  {
+   "id": 14577,
+   "pairIndex": 16,
+   "variantOf": 14614,
+   "isBaseVariant": true,
+   "name": "Distribution",
+   "unlockLevel": 60,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Soigne les alliés d'une partie des dommages occasionnés à la cible en zone autour d'elle.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Distribution » (14578) niv.3 — cibles: alliés/ennemis; déclenché quand le porteur subit des dommages ou à la mort du porteur (tué par dommages) (déclencheur actif 1 tour(s))",
+    "↳ Soin du lanceur = 25% des dommages occasionnés — cercle r2 (rayon min 1); cibles: alliés"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Soin du lanceur = 25% des dommages occasionnés — cibles: alliés; déclenché quand le porteur subit des dommages ou à la mort du porteur (tué par dommages) (déclencheur actif 1 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 2,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 2,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 60) vs g3: le lanceur lance « Distribution » (14578) niv.1 (g1) → le lanceur lance « Distribution » (14578) niv.3 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 127) vs g3: le lanceur lance « Distribution » (14578) niv.2 (g2) → le lanceur lance « Distribution » (14578) niv.3 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "heal"
+   ],
+   "tacticalNote": "Les dommages subis par la cible soignent les alliés autour (25 %).",
+   "spellLevelId": 82064
+  },
+  {
+   "id": 14614,
+   "pairIndex": 16,
+   "variantOf": 14577,
+   "isBaseVariant": false,
+   "name": "Orgueil",
+   "unlockLevel": 170,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique l'état Orgueil sur l'allié ciblé :\n• Renvoie une partie des dommages subis par la cible à son attaquant.\n\nAugmente la Puissance de la cible au tour suivant.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Orgueil » (6049) — cibles: alliés; 1 tour",
+    "la cible lance sur elle-même « Orgueil » (31017) niv.1 — cibles: alliés; déclenché quand le porteur subit des dommages ou à la mort du porteur (tué par dommages) (déclencheur actif 1 tour(s))",
+    "↳ Renvoie/propage 30% des dommages finaux subis (en zone) — cibles: alliés/ennemis [= cible déclenchante]",
+    "+150 Puissance — cibles: alliés; 1 tour, après 1 tour(s)"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Renvoie/propage 30% des dommages finaux subis (en zone) — cibles: alliés; déclenché quand le porteur subit des dommages ou à la mort du porteur (tué par dommages) (déclencheur actif 1 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ally_power_buff",
+    "damage_return"
+   ],
+   "tacticalNote": "Renvoi 30 % des dommages + 150 Puissance au tour suivant.",
+   "spellLevelId": 44436
+  },
+  {
+   "id": 14584,
+   "pairIndex": 17,
+   "variantOf": 14588,
+   "isBaseVariant": true,
+   "name": "Affliction",
+   "unlockLevel": 65,
+   "gradeUsed": 3,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Vole de la vie dans l'élément Eau aux ennemis ou soigne l'allié ciblé.\nApplique également un poison Eau de début de tour sur l'ennemi ciblé ou soigne l'allié ciblé au début de son tour si le sort est projeté dans un portail.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "lifesteal",
+     "element": "Eau",
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 32,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "heal",
+     "element": "Eau",
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 32,
+     "zone": "P1",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 32,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "TB",
+     "via": "29098#5"
+    },
+    {
+     "kind": "heal",
+     "element": "Eau",
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 32,
+     "zone": "P1",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "TB",
+     "via": "29098#5"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Vol de vie Eau 23 à 26 — cibles: ennemis",
+    "Soin Eau 23 à 26 — cibles: alliés",
+    "le lanceur lance « Affliction » (29098) niv.5 — cibles: alliés/ennemis [lancé via portail]",
+    "↳ Dommages Eau 23 à 26 — cibles: ennemis; déclenché en début de tour (déclencheur actif 1 tour(s))",
+    "↳ Soin Eau 23 à 26 — cibles: alliés; déclenché en début de tour (déclencheur actif 1 tour(s))"
+   ],
+   "criticalSummary": [
+    "[CC] Vol de vie Eau 28 à 32 ; Dommages Eau 28 à 32 ; Soin Eau 28 à 32 ; Soin Eau 28 à 32"
+   ],
+   "tooltipOnlyEffects": [
+    "Dommages Eau 23 à 26 — cibles: ennemis [lancé via portail]; déclenché en début de tour (déclencheur actif 1 tour(s))",
+    "Soin Eau 23 à 26 — cibles: alliés [lancé via portail]; déclenché en début de tour (déclencheur actif 1 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 4,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 131,
+     "apCost": 4,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 198,
+     "apCost": 4,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 65) vs g3: Vol de vie Eau 14 à 16 (g1) → Vol de vie Eau 23 à 26 (g3) ; Soin Eau 14 à 16 (g1) → Soin Eau 23 à 26 (g3) ; le lanceur lance « Affliction » (29098) niv.1 (g1) → le lanceur lance « Affliction » (29098) niv.5 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 131) vs g3: Vol de vie Eau 18 à 21 (g2) → Vol de vie Eau 23 à 26 (g3) ; Soin Eau 18 à 21 (g2) → Soin Eau 23 à 26 (g3) ; le lanceur lance « Affliction » (29098) niv.3 (g2) → le lanceur lance « Affliction » (29098) niv.5 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "damage",
+    "heal",
+    "lifesteal",
+    "poison"
+   ],
+   "tacticalNote": "Vol de vie Eau / soin ; poison ou soin de début de tour via portail.",
+   "spellLevelId": 44371
+  },
+  {
+   "id": 14588,
+   "pairIndex": 17,
+   "variantOf": 14584,
+   "isBaseVariant": false,
+   "name": "Offense",
+   "unlockLevel": 175,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu en zone.\nN'affecte pas le lanceur.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 41,
+     "zone": "C2",
+     "targetMask": "g,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "cercle r2"
+   ],
+   "effectsSummary": [
+    "Dommages Feu 30 à 34 — cercle r2; cibles: alliés sauf lanceur/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 36 à 41"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 4,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage"
+   ],
+   "tacticalNote": "Feu 30–34 en cercle 2 (touche les alliés, pas le lanceur).",
+   "spellLevelId": 44381
+  },
+  {
+   "id": 14580,
+   "pairIndex": 18,
+   "variantOf": 14609,
+   "isBaseVariant": true,
+   "name": "Transcendance",
+   "unlockLevel": 70,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Rend le lanceur Intaclable et augmente le nombre de lancers par tour du sort Portail ou la Portée maximale du sort Errance.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Intaclable » (96) — cibles: lanceur; 1 tour; non désenvoûtable",
+    "Sort « Portail » (14574) : +1 lancer(s)/tour — cibles: lanceur [avec état « Portail » (3737)]; 1 tour",
+    "Sort « Errance » (14604) : +2 portée max — cibles: lanceur [avec état « Errance » (3738)]; 1 tour"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 2,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 2,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 70) vs g2: relance 4 (g1) → 3 (g2)"
+   ],
+   "role": [
+    "untackleable"
+   ],
+   "tacticalNote": "Intaclable + 1 lancer de Portail (ou +2 PO d’Errance) pour le tour.",
+   "spellLevelId": 44358
+  },
+  {
+   "id": 14609,
+   "pairIndex": 18,
+   "variantOf": 14580,
+   "isBaseVariant": false,
+   "name": "Exil",
+   "unlockLevel": 180,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 2,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose et active un portail sous une cible.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Portail » (3737)]; infini",
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Errance » (3738)]; infini",
+    "Téléportail (traverse le réseau de portails) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "portal",
+    "teleport"
+   ],
+   "tacticalNote": "Portail sous une cible + la téléporte via le réseau (relance 2).",
+   "spellLevelId": 44431
+  },
+  {
+   "id": 14595,
+   "pairIndex": 19,
+   "variantOf": 14638,
+   "isBaseVariant": true,
+   "name": "Raillerie",
+   "unlockLevel": 75,
+   "gradeUsed": 2,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air.\nRetire également des PM si le sort est projeté dans un portail.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Air 32 à 36 — cibles: alliés/ennemis",
+    "-3 PM (esquivable) — cibles: alliés/ennemis [lancé via portail]; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 38 à 43"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 4,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 4,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 75) vs g2: Dommages Air 26 à 29 (g1) → Dommages Air 32 à 36 (g2) ; PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "damage",
+    "mp_removal"
+   ],
+   "tacticalNote": "Air 32–36 ; -3 PM via portail : retrait PM principal.",
+   "spellLevelId": 81324
+  },
+  {
+   "id": 14638,
+   "pairIndex": 19,
+   "variantOf": 14595,
+   "isBaseVariant": false,
+   "name": "Sarcasme",
+   "unlockLevel": 185,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre. \nRetire également des PA si le sort est projeté dans un portail.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 34,
+     "max": 38,
+     "critMin": 41,
+     "critMax": 46,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Terre 34 à 38 — cibles: alliés/ennemis",
+    "-3 PA (esquivable) — cibles: alliés/ennemis [lancé via portail]; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 41 à 46"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 4,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ap_removal",
+    "damage"
+   ],
+   "tacticalNote": "Terre 34–38 ; -3 PA via portail.",
+   "spellLevelId": 44471
+  },
+  {
+   "id": 14611,
+   "pairIndex": 20,
+   "variantOf": 14612,
+   "isBaseVariant": true,
+   "name": "Résonance",
+   "unlockLevel": 80,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique l'état Résonance sur la cible :\n• Pose et active un portail sous la cible sur la première attaque subie.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Résonance » (6251) — cibles: alliés/ennemis; 1 tour",
+    "le lanceur lance « Résonance » (31020) niv.1 — cibles: alliés/ennemis; déclenché quand le porteur subit des dommages ou à la mort du porteur (tué par dommages) (déclencheur actif 1 tour(s))",
+    "↳ Désenvoûte les effets du sort « Résonance » (14611) — cibles: alliés/ennemis",
+    "↳ Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Portail » (3737)]; infini",
+    "↳ Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Errance » (3738)]; infini",
+    "↳ Téléportail (traverse le réseau de portails) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Portail » (3737)]; infini; déclenché quand le porteur subit des dommages ou à la mort du porteur (tué par dommages) (déclencheur actif 1 tour(s))",
+    "Pose un portail (+2% dommages par case entre 2 portails; base 0%) — cibles: alliés/ennemis [lanceur avec état « Errance » (3738)]; infini; déclenché quand le porteur subit des dommages ou à la mort du porteur (tué par dommages) (déclencheur actif 1 tour(s))",
+    "Téléportail (traverse le réseau de portails) — cibles: alliés/ennemis; déclenché quand le porteur subit des dommages ou à la mort du porteur (tué par dommages) (déclencheur actif 1 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 2,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 80) vs g2: PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "portal",
+    "teleport"
+   ],
+   "tacticalNote": "À la 1re attaque subie, portail sous la cible + téléportation (piège à ennemi ou sauvetage d’allié).",
+   "spellLevelId": 82053
+  },
+  {
+   "id": 14612,
+   "pairIndex": 20,
+   "variantOf": 14611,
+   "isBaseVariant": false,
+   "name": "Vestige",
+   "unlockLevel": 190,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Invoque un Totem Eliotrope qui peut poser et activer un portail sous son attaquant allié et augmenter ses PM (cumulable 2 fois).\nLe Totem se soigne lorsqu'une entité traverse un portail.\n\nIl ne peut y avoir qu'un seul Totem Eliotrope par équipe. Si le Totem est encore présent et que celui-ci est ré-invoqué, l'ancien est détruit pour laisser place au nouveau.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque Totem Eliotrope (5109) grade 1 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "+1 PM — cibles: alliés; 2 tours",
+    "Soin = 15% des PV max — cibles: alliés; déclenché quand une entité traverse un portail du porteur (INCERTAIN) (déclencheur actif 63 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 2,
+     "range": [
+      1,
+      3
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ally_mp_buff",
+    "heal",
+    "portal",
+    "summon"
+   ],
+   "tacticalNote": "Totem Eliotrope (soin, portails sous les alliés qui le frappent).",
+   "spellLevelId": 44434
+  },
+  {
+   "id": 14594,
+   "pairIndex": 21,
+   "variantOf": 14613,
+   "isBaseVariant": true,
+   "name": "Extinction",
+   "unlockLevel": 85,
+   "gradeUsed": 2,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu.\nApplique également un poison Feu de fin de tour sur la cible si le sort est projeté dans un portail.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 32,
+     "max": 35,
+     "critMin": 38,
+     "critMax": 42,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 32,
+     "max": 35,
+     "critMin": 38,
+     "critMax": 42,
+     "zone": "P1",
+     "targetMask": "a,A,R",
+     "duration": 0,
+     "triggers": "TE"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Feu 32 à 35 — cibles: alliés/ennemis",
+    "Dommages Feu 32 à 35 — cibles: alliés/ennemis [lancé via portail]; déclenché en fin de tour (déclencheur actif 1 tour(s))"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 38 à 42 ; Dommages Feu 38 à 42"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 5,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 5,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 85) vs g2: Dommages Feu 26 à 28 (g1) → Dommages Feu 32 à 35 (g2) ; Dommages Feu 26 à 28 (g1) → Dommages Feu 32 à 35 (g2) ; PO max 4 (g1) → 5 (g2)"
+   ],
+   "role": [
+    "damage",
+    "poison"
+   ],
+   "tacticalNote": "Feu 32–35 (5 PA) ; poison Feu de fin de tour via portail (≈ double dégâts).",
+   "spellLevelId": 44400
+  },
+  {
+   "id": 14613,
+   "pairIndex": 21,
+   "variantOf": 14594,
+   "isBaseVariant": false,
+   "name": "Sermon",
+   "unlockLevel": 195,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air aux ennemis et repousse la cible.\nLa poussée est plus importante si le sort est projeté dans un portail.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 38,
+     "max": 42,
+     "critMin": 46,
+     "critMax": 50,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Air 38 à 42 — cibles: ennemis",
+    "Repousse de 2 case(s) — cibles: alliés/ennemis [non lancé via portail]",
+    "Repousse de 4 case(s) — cibles: alliés/ennemis [lancé via portail]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 46 à 50"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 4,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Air 38–42 (4 PA) + repousse 2 (4 via portail) : meilleur sort Air.",
+   "spellLevelId": 44435
+  },
+  {
+   "id": 14596,
+   "pairIndex": 22,
+   "variantOf": 14621,
+   "isBaseVariant": true,
+   "name": "Entraide",
+   "unlockLevel": 90,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique l'état Entraide sur le lanceur, qui applique des effets lorsqu'une entité traverse un portail : \n• Augmente les PA du lanceur.\n• Soigne le lanceur et ses alliés en zone autour de lui.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 3,
+     "max": 3,
+     "critMin": null,
+     "critMax": null,
+     "zone": "C2",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "I",
+     "via": "14598#1"
+    }
+   ],
+   "zones": [
+    "cercle r2"
+   ],
+   "effectsSummary": [
+    "le lanceur lance « Entraide » (14598) niv.1 — cibles: lanceur; déclenché quand une entité traverse un portail du porteur (INCERTAIN) (déclencheur actif 2 tour(s))",
+    "↳ +1 PA — cibles: lanceur; 1 tour",
+    "↳ Soin = 3% des PV max — cercle r2; cibles: alliés",
+    "le lanceur lance « Entraide » (14598) niv.2 — cibles: lanceur",
+    "↳ Applique l'état « Entraide » (6252) — cibles: lanceur; 2 tours; non désenvoûtable"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Applique l'état « Entraide » (6252) — cibles: lanceur; 2 tours; non désenvoûtable",
+    "+1 PA — cibles: lanceur; 1 tour",
+    "Soin = 3% des PV max — cercle r2; cibles: alliés"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 2,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 2,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 90) vs g2: relance 4 (g1) → 3 (g2)"
+   ],
+   "role": [
+    "heal",
+    "self_ap_buff"
+   ],
+   "tacticalNote": "+1 PA et soin 3 % en zone à chaque passage de portail (2 tours).",
+   "spellLevelId": 44406
+  },
+  {
+   "id": 14621,
+   "pairIndex": 22,
+   "variantOf": 14596,
+   "isBaseVariant": false,
+   "name": "Coalition",
+   "unlockLevel": 200,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Augmente les PA de l'allié ciblé et lui applique l'état Coalition :\n• Soigne la cible lorsqu'elle traverse un portail.\n\nLe bonus est plus important si le sort est projeté dans un portail.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 3,
+     "max": 3,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "I",
+     "via": "31018#1"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Désenvoûte les effets du sort « Coalition » (14621) — cibles: alliés",
+    "+1 PA — cibles: alliés [non lancé via portail]; 2 tours",
+    "+2 PA — cibles: alliés [lancé via portail]; 2 tours",
+    "Applique l'état « Coalition » (6249) — cibles: alliés; 2 tours",
+    "le lanceur lance « Coalition » (31018) niv.1 — cibles: alliés; déclenché quand le porteur passe par un portail (déclencheur actif 2 tour(s))",
+    "↳ Soin = 3% des PV max — cibles: alliés"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Soin = 3% des PV max — cibles: alliés"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 2,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ally_ap_buff",
+    "heal"
+   ],
+   "tacticalNote": "+1 PA (+2 via portail) à un allié + soin 3 % quand il traverse un portail.",
+   "spellLevelId": 44443
+  }
+ ],
+ "recommendedSets": [
+  {
+   "name": "Set « Passeur » (DPS + soutien, recommandé en groupe de 4)",
+   "rationale": "Variante Portail (PO 6, 2/tour) pour un réseau long ; sorts à bonus portail forts (Raillerie -3 PM, Sarcasme -3 PA, Sermon, Extinction) ; Cabale/Coalition pour le groupe ; Cicatrisation/Résilience pour les soins.",
+   "choices": [
+    {
+     "pair": 1,
+     "spell": "Affront",
+     "why": "zone Air"
+    },
+    {
+     "pair": 2,
+     "spell": "Tribulation",
+     "why": "regroupe"
+    },
+    {
+     "pair": 3,
+     "spell": "Commotion",
+     "why": "regroupe"
+    },
+    {
+     "pair": 4,
+     "spell": "Rayon de Wakfu",
+     "why": "soin + dégâts"
+    },
+    {
+     "pair": 5,
+     "spell": "Portail",
+     "why": "réseau long"
+    },
+    {
+     "pair": 6,
+     "spell": "Neutral",
+     "why": "gratuit"
+    },
+    {
+     "pair": 7,
+     "spell": "Persiflage",
+     "why": "-3 PO"
+    },
+    {
+     "pair": 8,
+     "spell": "Cicatrisation",
+     "why": "soin de zone"
+    },
+    {
+     "pair": 9,
+     "spell": "Aplomb",
+     "why": "Eau 32–36 PO 8"
+    },
+    {
+     "pair": 10,
+     "spell": "Odyssée",
+     "why": "placement 1 PA"
+    },
+    {
+     "pair": 11,
+     "spell": "Camouflet",
+     "why": "-40 dommages"
+    },
+    {
+     "pair": 12,
+     "spell": "Cabale",
+     "why": "+200 Puissance +2 PM"
+    },
+    {
+     "pair": 13,
+     "spell": "Cataclysme",
+     "why": "zone + soin"
+    },
+    {
+     "pair": 14,
+     "spell": "Stupeur",
+     "why": "échange + portails"
+    },
+    {
+     "pair": 15,
+     "spell": "Thérapie",
+     "why": "vol/soin"
+    },
+    {
+     "pair": 16,
+     "spell": "Distribution",
+     "why": "soin indirect"
+    },
+    {
+     "pair": 17,
+     "spell": "Affliction",
+     "why": "poison/HoT"
+    },
+    {
+     "pair": 18,
+     "spell": "Transcendance",
+     "why": "portail supplémentaire"
+    },
+    {
+     "pair": 19,
+     "spell": "Raillerie",
+     "why": "-3 PM via portail"
+    },
+    {
+     "pair": 20,
+     "spell": "Résonance",
+     "why": "sauvetage/piège"
+    },
+    {
+     "pair": 21,
+     "spell": "Sermon",
+     "why": "Air 38–42"
+    },
+    {
+     "pair": 22,
+     "spell": "Coalition",
+     "why": "+2 PA allié"
+    }
+   ]
+  }
+ ],
+ "rotations": [
+  {
+   "name": "Tour 1 — réseau + buffs (12 PA)",
+   "context": "Début de combat : groupe au placement, ennemis à 8–12 cases.",
+   "steps": [
+    "Portail (1 PA) à 1–2 cases du groupe.",
+    "Portail (1 PA) le plus loin possible (6 cases) vers les ennemis → réseau de 2 portails (bonus ≈ +12 à +20 %).",
+    "Cabale (2 PA) projetée via le portail sur la croix d’alliés : +200 Puissance, +2 PM.",
+    "Coalition (2 PA) via portail sur le DPS principal : +2 PA (2 tours).",
+    "Raillerie (4 PA) via portail sur l’ennemi le plus dangereux : Air 32–36 ×bonus + -3 PM.",
+    "2 PA restants : Persiflage impossible (3) → garder pour Neutral/placement."
+   ],
+   "expected": "Groupe buffé (+2 PA/+2 PM/+200 Puissance), 3 projections = +6 % finaux."
+  },
+  {
+   "name": "Tour type DPS (12 PA)",
+   "context": "Réseau de 3–4 portails en place.",
+   "steps": [
+    "Extinction (5 PA) via portail : Feu 32–35 + même valeur en poison de fin de tour.",
+    "Sermon (4 PA) via portail : Air 38–42, repousse 4 (dans un portail = téléporter l’ennemi loin, ou dans un mur de bombes).",
+    "Outrage (3 PA) via portail (+1 PO)."
+   ],
+   "expected": "≈ 140 dégâts de base × (1 + 0,02 × distance du réseau) × (1 + passif) — le meilleur rendement PA→dégâts des 4 classes à distance."
+  }
+ ],
+ "strengths": [
+  "Amplification de dégâts/soins par la géométrie (portails) + passif cumulable (+20 %).",
+  "Mobilité de groupe : le réseau de portails déplace tout le groupe (et coupe les distances de la carte).",
+  "Polyvalence : DPS, soins, buffs PA/PM/Puissance, entrave PA/PM via portail.",
+  "Sorts hors ligne de vue directe via portails."
+ ],
+ "weaknesses": [
+  "Très dépendant de la mise en place (2 PA de portails par tour, positions) et de la carte (cases libres, LdV vers les portails).",
+  "Les ennemis peuvent emprunter les portails dès leur 2e tour : risque de « livrer » les ennemis au groupe… ou l’inverse si mal placé.",
+  "Peu de protection propre (pas de bouclier, Intaclable seulement).",
+  "IA complexe : choix du portail d’entrée/sortie, calcul du bonus et de la case d’impact."
+ ],
+ "synergies": [
+  {
+   "with": "Roublard",
+   "description": "Sermon/Poing Fulgurant (repousse 4 via portail) et téléportations d’ennemis vers les bombes ; Cabale +200 Puissance augmente les explosions (les bombes héritent des caractéristiques — INCERTAIN pour la Puissance)."
+  },
+  {
+   "with": "DPS mêlée (Iop, Sacrieur, Zobal Psychopathe)",
+   "description": "Portails = engagement instantané à travers la carte ; Coalition +2 PA ; Orgueil."
+  },
+  {
+   "with": "Steamer",
+   "description": "Les tourelles immobiles profitent des portails pour être « déplacées » (poussées dans un portail) ; double contrôle du terrain."
+  },
+  {
+   "with": "Zobal / Féca (protection)",
+   "description": "Compensent le manque de boucliers de l’Eliotrope."
+  }
+ ],
+ "uncertain": [
+  "Nombre maximum de portails (4 historiquement) et comportement quand on en pose un de plus.",
+  "Case d’impact exacte d’un sort projeté (hypothèse : sortie + vecteur lanceur→entrée) et ligne de vue après projection.",
+  "La téléportation stoppe-t-elle le déplacement ? (hypothèse : oui, PM restants réutilisables).",
+  "Déclencheur `CPT` (Entraide/Totem) interprété comme « une entité traverse un portail du porteur ».",
+  "Les guides antérieurs (Dofus 2.45) mentionnent +25 % de base par portail : les données actuelles (2026) donnent 0 % de base et +2 %/case (désaccord noté, données prioritaires).",
+  "Écart avec DoMath : Sermon 32–36 (CC 38–43) chez DoMath contre 38–42 (CC 46–50) dans les fichiers du jeu (DofusDB 2026) — données DofusDB retenues ; les autres sorts concordent."
+ ],
+ "sources": [
+  "https://api.dofusdb.fr/breeds/16 ; https://api.dofusdb.fr/spell-variants?breedId=16 ; spells/spell-levels (ids cités) ; monsters/5109",
+  "Port C# du client : .cache/domath/haxe/FightContext.cs (GetPortalBonus), Tools/PortalUtils.cs, DamageEffectHandler.cs",
+  "https://dofus.jeuxonline.info/article/13521/portail-eliotrope (4 portails max, projection « symétrique »)",
+  "https://www.breakflip.com/fr/dofus/guide/dofus-guide-des-sorts-et-variantes-de-l-eliotrope-2281 (version 2.45, +25 %, obsolète)"
+ ],
+ "aiHints": [
+  "Évaluer le bonus portail pour chaque couple (portail d’entrée accessible, chaîne) : bonus = 2 × Σ distances ; préférer des réseaux longs et des projections sur les sorts à bonus `R` (Raillerie, Sarcasme, Cabale, Coalition, Extinction).",
+  "Neutral/Interruption au tour ennemi suivant si les portails permettent aux ennemis d’atteindre des alliés fragiles.",
+  "Utiliser les poussées (Sermon/Poing Fulgurant/Affront) pour expédier un ennemi dans un portail (téléportation loin du groupe)."
+ ],
+ "vortexNotes": [
+  "Mobilité de groupe : un réseau de portails permet de sortir des lignes de l’Auroraire sans PM et de rejoindre les monstres (arène en horloge de ≈ 13 cases de large).",
+  "Raillerie (-3 PM) / Sarcasme (-3 PA) via portail pour figer un monstre sur une case/heure donnée ; poussées via portail pour téléporter un monstre.",
+  "Attention : les ennemis peuvent emprunter les portails dès leur 2e tour (Neutral/Interruption pour fermer le réseau).",
+  "Soins amplifiés (Cicatrisation 8 % zone, Résilience 10 %) contre l’érosion des lignes ; Feu (Extinction, Cataclysme, Offense) contre le Vortex (rés. Feu 12 %)."
+ ],
+ "engineRules": [
+  "**Sélection des cibles « instantanée »** : pour UN lancer de sort, les cibles de **tous** les effets (zone + masque, y compris les conditions d’état `E<id>`/`e<id>`) sont calculées **avant** d’appliquer le premier effet (port C# du client : `DamageCalculator.ExecuteSpell → GenerateTargets`, recalcul uniquement après un effet de résurrection). Preuves dans les données : la chaîne d’états Combo du Roublard (20497 : « applique Combo II si Combo I », puis « retire Combo I »…) ou l’Évolution du Steamer (pose « Évolution bloquée » puis teste « sans Évolution bloquée ») n’ont de sens qu’avec cette règle (sinon une bombe passerait de Combo I à XV en un lancer). Les **sous-sorts** (effets 1160, 792, 2794…) sont des lancers séparés : leurs cibles sont calculées au moment où l’effet parent est atteint, donc ils voient les effets déjà appliqués. ⚠ La fiche `cra.md` d’un autre agent suggère une évaluation au moment de l’application : à harmoniser (cette règle-ci est celle du code du client porté).",
+  "**Effets `forClientOnly = true`** : purement descriptifs (info-bulle). Ne jamais les exécuter ; le comportement réel est dans un sous-sort (souvent conditionnel). Exemple : « Rend 1 PA » d’Amarrage n’est réellement appliqué que si la cible est une tourelle (sous-sort 29587).",
+  "**Effets « lance un sort »** (diceNum = id du sort, diceSide = niveau) : 1160 `CasterExecuteSpell` / 2160 (limite globale) = le lanceur lance le sous-sort sur chaque cible ; 792 `TargetExecuteSpell` / 2792 = chaque cible le lance sur elle-même ; 2794 `TargetExecuteSpellOnCell` / 2795 = la cible le lance sur sa cellule ; 2960 `CasterExecuteSpellOnCell` = le lanceur le lance sur la cellule d’impact ; 1017/2017 = la cible le lance sur le déclencheur ; 1018 = le déclencheur le lance sur la cible ; 1019 = le déclencheur sur lui-même. Les effets 3792/3793 (`ExecuteSpellScriptUsage`) sont visuels. `value = 999` apparaît sur certains de ces effets (sens INCERTAIN, sans impact connu).",
+  "**Masques de cibles** (`targetMask`, liste séparée par des virgules ; port C# `SpellManager.IsSelectedByMask`) : lettres **inclusives** (au moins une doit correspondre) : `a` alliés (lanceur compris), `g` alliés sauf lanceur, `A` ennemis, `c` lanceur s’il est dans la zone, `C` lanceur partout, `h/H` joueurs alliés/ennemis (non invoqués), `i/I` invocations non statiques, `j/J` invocations, `s/S` invocations statiques, `m/M` monstres non invoqués, `l/L` joueurs ou compagnons, `d/D` compagnons ; lettres **exclusives** (toutes doivent passer) : `E<n>`/`e<n>` a / n’a pas l’état n, `F<n>`/`f<n>` est / n’est pas le monstre n (plusieurs `F` = OU), `B<n>`/`b<n>` est / n’est pas la classe n, `P`/`p` est / n’est pas dans le groupe du lanceur (lui-même, ses invocations, les invocations du même invocateur, son invocateur), `R`/`r` sort lancé via / hors portail, `V<n>`/`v<n>` PV < n % / ≥ n %, `T` téléfraggé ce tour, `W` téléportation ratée, `K` porté/lancé, `Q`/`q` quota d’invocations atteint / non atteint, `O`/`o` = la cible déclenchante, `U/u` en apparition. Préfixe `*` = la condition porte sur le **lanceur** (ex. `*E98` = le lanceur est en Intrépide).",
+  "**Conditions de lancer** (`statesCriterion`) : `HS=<n>` le lanceur doit avoir l’état n, `HS!<n>` ne doit pas l’avoir, `|` = OU, `&` = ET.",
+  "**Déclencheurs** (`triggers`, séparés par `|`) : `I` immédiat ; `TB`/`TE` début/fin du tour du porteur ; `D` dommages subis ; `DM`/`DR` en mêlée/à distance ; `DBA` par un allié ; `X` mort, `XD` mort par dommages, `XPD` par poussée, `XDBA` tué par un allié ; `P` poussé, `MA` attiré, `M` déplacé, `MS` échange de position, `PD` dommages de poussée subis, `H` soigné, `PT` traverse un portail, `PST` projette un sort via un portail, `PDT` dommages subis via portail, `CI` invoque, `CT` tacle (INCERTAIN), `CPT` une entité traverse un portail du porteur (INCERTAIN), `CMPAS` tentative de retrait PM du lanceur (INCERTAIN), `EON<n>`/`EOFF<n>` l’état n est appliqué/retiré. Pour un effet déclenché, `effectTriggerDuration` = nombre de tours pendant lesquels le déclencheur reste posé sur la cible (affiché « déclencheur actif N tour(s) ») et `duration` = durée de l’effet produit à chaque déclenchement (0 = instantané).",
+  "**Zones** (`zoneDescr.shape` + param1 = rayon, param2 = rayon minimal) : P case, C cercle, X croix, + croix diagonale, * étoile (8 directions), Q/# croix sans centre (orthogonale/diagonale), L ligne depuis l’impact, l ligne depuis le lanceur, T/- barre perpendiculaire, O anneau, G/W carré (plein/contour), D damier, U demi-cercle, V cône, F fourche, B boomerang, R rectangle, A/a toute la carte. `damageDecreaseStepPercent` (10 % par défaut) = dégressivité par case pour les dommages de zone (certaines descriptions précisent « non dégressif »).",
+  "**Boucliers** (1020) = X % du niveau du lanceur ; **soins** 1109 = X % des PV max de la cible ; **2822/3002** = dommages / soins dans le **meilleur élément** du lanceur (caractéristique la plus haute)."
+ ],
+ "portals": {
+  "placeSpells": {
+   "Portail": 14574,
+   "Errance": 14604,
+   "Exil": 14609,
+   "Sillage": 14591,
+   "Stupeur": 14585,
+   "Résonance": 14611,
+   "Totem (Vestige)": 14612
+  },
+  "effect": "FightAddPortal (1181) : diceNum = 2 (% par case), value = 0 (base), durée infinie",
+  "maxPortalsAssumed": 4,
+  "bonusFormula": "1 + (max(baseBonus) + 2 * somme des distances entre portails successifs de la chaîne) / 100, appliqué aux dommages et soins (hors soins splash)",
+  "chainRule": "depuis le portail d’entrée, aller au portail actif le plus proche non visité (égalité : départage angulaire), la sortie est le dernier de la chaîne",
+  "passive": {
+   "spell": 14631,
+   "perProjection": "+2 % dommages finaux et +2 % soins finaux (3 tours)",
+   "maxStacks": 10
+  },
+  "enemyFirstTurnBlock": "état 678 « Téléportail impossible » sur les ennemis au tour 1",
+  "deactivate": {
+   "Neutral": "1 portail, 1 tour, PA remboursé",
+   "Interruption": "tous les portails, 1 tour"
+  },
+  "portalConditionalMasks": {
+   "R": "effet appliqué seulement si le sort est lancé via un portail",
+   "r": "seulement hors portail"
+  }
+ }
+}

@@ -1,0 +1,5320 @@
+{
+ "breedId": 3,
+ "slug": "enutrof",
+ "name": "Enutrof",
+ "nameEn": "Enutrof",
+ "dataSource": "api.dofusdb.fr (fichiers du jeu Dofus 3, données mises à jour le 2026-06-23), extraction 2026-10-04",
+ "officialRoles": [
+  {
+   "roleId": 1,
+   "value": 8,
+   "description": "Retire des points de mouvement, d'action et de la portée à distance."
+  },
+  {
+   "roleId": 7,
+   "value": 6,
+   "description": "Invoque des objets animés qui protègent les alliés, poussent les cibles, détectent les entités invisibles et occasionnent des dommages."
+  },
+  {
+   "roleId": 8,
+   "value": 6,
+   "description": "Augmente les points de mouvement, d'action et la puissance. Augmente aussi ses propres caractéristiques grâce à ses invocations."
+  }
+ ],
+ "roles": [
+  {
+   "role": "entraveur-pm",
+   "element": "Eau (Chance), éventuellement Eau/Air",
+   "priority": 1,
+   "tags": [
+    "mp_removal"
+   ],
+   "description": "Maladresse (1 PA, −2 PM, 4/tour), Pelle Aurifère (−3 PM), Tamisage (−2 PM zone), Pelle des Anciens, Clef de Bras (−1 PM non esquivable), Avarice (−3 PM non esquivables), Retraite Anticipée (−100 PM à tous)."
+  },
+  {
+   "role": "entraveur-pa-po",
+   "element": "Air / Terre",
+   "priority": 2,
+   "tags": [
+    "ap_removal",
+    "range_removal"
+   ],
+   "description": "Abattement, Bêche des Anciens, Décadence (−2 PA) ; Clef du Trésor, Lancer de Pelle (−4 PO), Remblai ; Banqueroute/Obsolescence (−20 esquive)."
+  },
+  {
+   "role": "soutien",
+   "element": "tous",
+   "priority": 3,
+   "tags": [
+    "buff_mp",
+    "buff_ap",
+    "buff_power",
+    "heal",
+    "neutralize"
+   ],
+   "description": "Ruée vers l'Or (+4 PM), Boîte à Outils (+3 PA/+3 PM), Âge d'Or (+200 Puissance), Boîte de Pandore (soin 10 % groupe), Corruption (boss pacifiste + invulnérable 1 tour), objets animés."
+  },
+  {
+   "role": "dps-entrave",
+   "element": "Eau/Air/Terre/Feu selon les états",
+   "priority": 4,
+   "tags": [
+    "damage"
+   ],
+   "description": "Monnaie Sonnante, Orpaillage, Éboulement, Coup de Grisou convertissent les retraits et soins du groupe en dégâts."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Retraits esquivables vs non esquivables",
+   "description": "1079/1080 = retraits esquivables (jet par point) ; 168/169 = malus non esquivables ; 116 = −PO non esquivable.",
+   "implementationNotes": "P(point i) = clamp((PA_actuels−i)/PA_max × Retrait/Esquive / 2, 0.10, 0.90) (émulateurs Dofus 2, INCERTAIN Dofus 3)."
+  },
+  {
+   "name": "États convertisseurs (Monnaie Sonnante, Orpaillage, Éboulement, Coup de Grisou)",
+   "description": "État 3 tours sur la cible ; déclenché par tentative de retrait PA (APA), PM (MPA), perte de PO (R) ou soin (H) → dégâts élémentaires lancés par l'Enutrof, 4 fois max.",
+   "implementationNotes": "Compteur via états I–V ; l'effet de dégât affiché au lancer est forClientOnly (ne pas l'appliquer)."
+  },
+  {
+   "name": "Objets animés",
+   "description": "Sac (interception 3 t.), Musette (partage 2 t.), Pelle (repousse), Bêche (vol Terre), Coffre (tacle, révèle), Malle (soin), Pelle de Fortune (boost statique).",
+   "implementationNotes": "Passif Trésor d'Enutrof : soin de l'attaquant allié = 50 % des dommages (déclencheur DBA)."
+  },
+  {
+   "name": "Retraite Anticipée",
+   "description": "−100 PM + Pesanteur à tous sauf l'Enutrof, puis −100 PM à l'Enutrof au tour suivant.",
+   "implementationNotes": "Effet 169 zone cercle 63 + 950 état 7 zone toute la carte, masque A,g."
+  },
+  {
+   "name": "Avarice",
+   "description": "Cercle 3 : −3 PM non esquivables et +3 PA aux alliés ET ennemis ; au-delà : −50 Puissance et +50 Puissance au lanceur par entité (cumul 10).",
+   "implementationNotes": "Sous-sort 21911 g5/g6 ; maxStack 10 sur le buff du lanceur."
+  },
+  {
+   "name": "Boîte à Outils / Corruption (Pacifiste)",
+   "description": "Pacifiste (218) = ne peut pas infliger de dommages ; Boîte à Outils l'applique aussi aux invocations de l'allié (y compris créées ce tour, déclencheur CI).",
+   "implementationNotes": "Corruption ajoute Invulnérable (269) sur un ennemi."
+  },
+  {
+   "name": "Ruée vers l'Or",
+   "description": "+4 PM ; fin du tour de l'allié : +150 Puissance au tour suivant si au contact d'un ennemi, soin 10 % si au contact d'un objet animé.",
+   "implementationNotes": "Sous-sort 29757 g3 → g6 (TE) → g9/g10 (limite globale 2160)."
+  },
+  {
+   "name": "Tourbière / Tunnel de Fortune (PM utilisés)",
+   "description": "Bonus selon les PM dépensés pendant le tour (Tourbière +5 dommages de base/PM ; Tunnel +20 Puissance/PM au tour suivant).",
+   "implementationNotes": "Compteur pmUsedThisTurn ; déclencheur CCMPARR (INCERTAIN)."
+  }
+ ],
+ "spells": [
+  {
+   "id": 13338,
+   "spellLevelId": 41720,
+   "pairIndex": 1,
+   "variant": "A",
+   "variantOf": 13353,
+   "name": "Lancer de Pièces",
+   "nameEn": "Coin Throwing",
+   "descriptionFr": "Occasionne des dommages Eau.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 132,
+   "unlockLevel": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 12,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 6,
+   "maxPerTarget": 3,
+   "maxStack": 0,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 13,
+    "max": 15,
+    "critMin": 16,
+    "critMax": 18,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "13 à 15 dommages Eau (CC : 16 à 18 dommages Eau)"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "13 à 15 dommages Eau",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 13,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "water",
+    "filler"
+   ],
+   "tactical": "2 PA, 0–12 PO modifiable, 6/tour (3/cible) : dégât Eau modeste mais très souple pour finir les PA à longue portée."
+  },
+  {
+   "id": 13353,
+   "spellLevelId": 60044,
+   "pairIndex": 1,
+   "variant": "B",
+   "variantOf": 13338,
+   "name": "Monnaie Sonnante",
+   "nameEn": "Hard Cash",
+   "descriptionFr": "Occasionne des dommages Air et applique l'état Monnaie Sonnante sur l'ennemi ciblé : • Occasionne des dommages Air si la cible subit une tentative de retrait de PA. Les dommages peuvent être déclenchés 4 fois tant que l'état est actif. L'état est retiré dès la limite atteinte.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 162,
+   "unlockLevel": 95,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 29,
+    "max": 33,
+    "critMin": 35,
+    "critMax": 39,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "29 à 33 dommages Air (CC : 35 à 39 dommages Air)",
+    "applique l'état «Monnaie Sonnante» (5495) — cibles : ennemis ; 3 tour(s)",
+    "11 à 13 dommages Air (CC : 14 à 16 dommages Air) — cibles : ennemis"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "29 à 33 dommages Air",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 29,
+     "max": 33,
+     "critMin": 35,
+     "critMax": 39
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Monnaie Sonnante» (29770, grade 2)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29770,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "air",
+    "combo_ap_removal"
+   ],
+   "tactical": "4 PA, relance 3 : 29–33 Air + état 3 tours : chaque tentative de retrait de PA sur la cible (de n'importe quel allié) inflige 11–13 Air, 4 fois max."
+  },
+  {
+   "id": 13340,
+   "spellLevelId": 41726,
+   "pairIndex": 2,
+   "variant": "A",
+   "variantOf": 13363,
+   "name": "Force de l'Âge",
+   "nameEn": "Prime of Life",
+   "descriptionFr": "Occasionne des dommages Terre et augmente les PM au lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 133,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 28,
+    "max": 32,
+    "critMin": 34,
+    "critMax": 38,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "28 à 32 dommages Terre (CC : 34 à 38 dommages Terre)",
+    "1 PM — cibles : lanceur ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "28 à 32 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 28,
+     "max": 32,
+     "critMin": 34,
+     "critMax": 38
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "text": "1 PM",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "earth",
+    "self_mp"
+   ],
+   "tactical": "3 PA, cible requise : 28–32 Terre et +1 PM au lanceur (1 tour), 3/tour."
+  },
+  {
+   "id": 13363,
+   "spellLevelId": 43684,
+   "pairIndex": 2,
+   "variant": "B",
+   "variantOf": 13340,
+   "name": "Orpaillage",
+   "nameEn": "Placer Mining",
+   "descriptionFr": "Occasionne des dommages Eau et applique l'état Orpaillage sur l'ennemi ciblé : • Occasionne des dommages Eau si la cible subit une tentative de retrait de PM. Les dommages peuvent être déclenchés 4 fois tant que l'état est actif. L'état est retiré dès la limite atteinte.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 167,
+   "unlockLevel": 100,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 28,
+    "max": 32,
+    "critMin": 34,
+    "critMax": 38,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "28 à 32 dommages Eau (CC : 34 à 38 dommages Eau)",
+    "applique l'état «Orpaillage» (5494) — cibles : ennemis ; 3 tour(s)",
+    "10 à 12 dommages Eau (CC : 13 à 15 dommages Eau) — cibles : ennemis"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "28 à 32 dommages Eau",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 28,
+     "max": 32,
+     "critMin": 34,
+     "critMax": 38
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Orpaillage» (29769, grade 2)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29769,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "water",
+    "combo_mp_removal"
+   ],
+   "tactical": "4 PA, relance 3 : 28–32 Eau + état : chaque tentative de retrait de PM inflige 10–12 Eau (4 fois). À poser avant Maladresse/Pelle Aurifère."
+  },
+  {
+   "id": 13331,
+   "spellLevelId": 41699,
+   "pairIndex": 3,
+   "variant": "A",
+   "variantOf": 13352,
+   "name": "Roulage de Pelle",
+   "nameEn": "Shovel Kiss",
+   "descriptionFr": "Occasionne des dommages Feu.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 134,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 0,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 19,
+    "max": 23,
+    "critMin": 24,
+    "critMax": 29,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "19 à 23 dommages Feu (CC : 24 à 29 dommages Feu)"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "19 à 23 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 19,
+     "max": 23,
+     "critMin": 24,
+     "critMax": 29
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "fire",
+    "no_los"
+   ],
+   "tactical": "3 PA sans ligne de vue : 19–23 Feu, 3/tour."
+  },
+  {
+   "id": 13352,
+   "spellLevelId": 43681,
+   "pairIndex": 3,
+   "variant": "B",
+   "variantOf": 13331,
+   "name": "Éboulement",
+   "nameEn": "Collapse",
+   "descriptionFr": "Occasionne des dommages Terre et applique l'état Éboulement sur l'ennemi ciblé : • Occasionne des dommages Terre si la cible subit un retrait de Portée. Les dommages peuvent être déclenchés 4 fois tant que l'état est actif. L'état est retiré dès la limite atteinte.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 172,
+   "unlockLevel": 105,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 31,
+    "max": 35,
+    "critMin": 37,
+    "critMax": 42,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "31 à 35 dommages Terre (CC : 37 à 42 dommages Terre)",
+    "applique l'état «Éboulement» (5493) — cibles : ennemis ; 3 tour(s)",
+    "12 à 14 dommages Terre (CC : 15 à 17 dommages Terre) — cibles : ennemis"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "31 à 35 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Éboulement» (29764, grade 2)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29764,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "earth",
+    "combo_range_removal"
+   ],
+   "tactical": "4 PA, relance 3 : 31–35 Terre + état : chaque perte de PO inflige 12–14 Terre (4 fois) — combo avec Clef du Trésor/Lancer de Pelle/Remblai."
+  },
+  {
+   "id": 13366,
+   "spellLevelId": 43690,
+   "pairIndex": 4,
+   "variant": "A",
+   "variantOf": 13368,
+   "name": "Opportunité",
+   "nameEn": "Opportuneness",
+   "descriptionFr": "Occasionne des dommages Air et augmente la Puissance du lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 136,
+   "unlockLevel": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 14,
+    "max": 16,
+    "critMin": 17,
+    "critMax": 19,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "14 à 16 dommages Air (CC : 17 à 19 dommages Air)",
+    "80 Puissance — cibles : lanceur ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "14 à 16 dommages Air",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 14,
+     "max": 16,
+     "critMin": 17,
+     "critMax": 19
+    },
+    {
+     "effectId": 138,
+     "action": "CharacterBoostDamagesPercent",
+     "text": "80 Puissance",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "air",
+    "self_buff"
+   ],
+   "tactical": "2 PA, 8 PO : 14–16 Air et +80 Puissance au lanceur (2 tours, cumulable 2 fois)."
+  },
+  {
+   "id": 13368,
+   "spellLevelId": 79082,
+   "pairIndex": 4,
+   "variant": "B",
+   "variantOf": 13366,
+   "name": "Coup de Grisou",
+   "nameEn": "Firedamp Explosion",
+   "descriptionFr": "Occasionne des dommages Feu aux ennemis en zone et applique l'état Coup de Grisou sur la cible : • Occasionne des dommages Feu aux ennemis en zone autour de la cible si elle est soignée. Les dommages peuvent être déclenchés 4 fois tant que l'état est actif. L'état est retiré dès la limite atteinte.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 177,
+   "unlockLevel": 110,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 30,
+    "max": 34,
+    "critMin": 36,
+    "critMax": 41,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "30 à 34 dommages Feu (CC : 36 à 41 dommages Feu) — cibles : ennemis ; zone : cercle de taille 2",
+    "applique l'état «Coup de Grisou» (5496) — cibles : ennemis ; 3 tour(s)",
+    "11 à 13 dommages Feu (CC : 14 à 16 dommages Feu) — cibles : ennemis ; zone : cercle de taille 2"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "30 à 34 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 41
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Coup de Grisou» (29771, grade 2)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29771,
+      "grade": 2
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Coup de Grisou» (29772, grade 2)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29772,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "fire",
+    "aoe",
+    "combo_heal"
+   ],
+   "tactical": "4 PA : 30–34 Feu en cercle 2 + état 3 tours sur la cible (ennemi ou allié) : à chaque soin reçu par la cible, 11–13 Feu aux ennemis en cercle 2 autour d'elle (4 fois)."
+  },
+  {
+   "id": 13328,
+   "spellLevelId": 41690,
+   "pairIndex": 5,
+   "variant": "A",
+   "variantOf": 13354,
+   "name": "Sac Animé",
+   "nameEn": "Living Bag",
+   "descriptionFr": "Invoque un Sac Animé maîtrisable qui intercepte les dommages des alliés situés dans sa zone d'invocation. Le Sac Animé est détruit 3 tours après son invocation. Lorsqu'il est attaqué par un allié, ce dernier est soigné.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 139,
+   "unlockLevel": 5,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Sac Animé» (5830, grade 3)",
+    "Intercepte les dommages — cibles : alliés (hors lanceur) ; zone : cercle de taille 2 ; 3 tour(s) ; déclenchement : quand le porteur subit des dommages (buff 3 t.)",
+    "Tue la cible — cibles : lanceur ; effet différé de 3 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Sac Animé» (5830, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 5830,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "summon",
+    "protection",
+    "interception"
+   ],
+   "tactical": "2 PA, relance 4 : Sac Animé qui intercepte pendant 3 tours les dommages des alliés en cercle 2 autour de sa case d'apparition, puis meurt."
+  },
+  {
+   "id": 13354,
+   "spellLevelId": 43682,
+   "pairIndex": 5,
+   "variant": "B",
+   "variantOf": 13328,
+   "name": "Musette Animée",
+   "nameEn": "Living Satchel",
+   "descriptionFr": "Invoque une Musette Animée maîtrisable qui partage les dommages entre tous les alliés situés dans sa zone d'invocation. La Musette Animée est détruite 2 tours après son invocation. Lorsqu'elle est attaquée par un allié, ce dernier est soigné.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 182,
+   "unlockLevel": 115,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Musette Animée» (5838, grade 2)",
+    "Partage les dommages — cibles : alliés (lanceur inclus) ; zone : croix sans centre de taille 1 ; 2 tour(s) ; déclenchement : quand le porteur subit des dommages",
+    "Tue la cible — effet différé de 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Musette Animée» (5838, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 5838,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "summon",
+    "protection",
+    "damage_share"
+   ],
+   "tactical": "2 PA, relance 4 : Musette Animée qui partage les dommages entre les alliés en croix autour d'elle (2 tours)."
+  },
+  {
+   "id": 13342,
+   "spellLevelId": 41732,
+   "pairIndex": 6,
+   "variant": "A",
+   "variantOf": 13356,
+   "name": "Ruée vers l'Or",
+   "nameEn": "Goldrush",
+   "descriptionFr": "Augmente les PM de l'allié ciblé et lui applique l'état Ruée vers l'Or : • À la fin du tour de la cible, augmente sa Puissance au tour suivant si elle est au contact d'un ennemi et la soigne si elle est au contact d'une invocation Enutrof.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 144,
+   "unlockLevel": 10,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 12,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "4 PM — cibles : alliés (lanceur inclus) ; 1 tour(s)",
+    "applique l'état «Ruée vers l'Or» (5472) — cibles : alliés (lanceur inclus) ; 1 tour(s)",
+    "150 Puissance — cibles : alliés (lanceur inclus) ; 1 tour(s) ; effet différé de 1 tour(s)",
+    "Soin : 10% des PV max — cibles : alliés (lanceur inclus)"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Ruée vers l'Or» (29757, grade 3)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29757,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "buff_mp",
+    "buff_power",
+    "heal"
+   ],
+   "tactical": "2 PA, 12 PO, relance 3 : +4 PM à un allié ; à sa fin de tour, +150 Puissance au tour suivant s'il est au contact d'un ennemi, +10 % PV s'il est au contact d'un objet animé."
+  },
+  {
+   "id": 13356,
+   "spellLevelId": 43686,
+   "pairIndex": 6,
+   "variant": "B",
+   "variantOf": 13342,
+   "name": "Déambulation",
+   "nameEn": "Wandering",
+   "descriptionFr": "Réduit la durée des effets sur la cible et échange sa position avec le Sac Animé ou la Musette Animée du lanceur.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 187,
+   "unlockLevel": 120,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Durée des effets : -1",
+    "Échange de positions"
+   ],
+   "effects": [
+    {
+     "effectId": 1075,
+     "action": "CharacterShortenActiveEffectsDuration",
+     "text": "Durée des effets : -1",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Déambulation» (2229)",
+     "targetMask": "a,A,e7",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 2229,
+      "name": "Déambulation"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Déambulation» (13375, grade 1)",
+     "targetMask": "a,P,F5838,F5830",
+     "zone": {
+      "shape": "a",
+      "shapeName": "wholeMap",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 13375,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 951,
+     "action": "FightUnsetState",
+     "text": "retire l'état «Déambulation» (2229)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "a",
+      "shapeName": "wholeMap",
+      "size": 1,
+      "minSize": 0
+     },
+     "state": {
+      "id": 2229,
+      "name": "Déambulation"
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "dispel",
+    "mobility"
+   ],
+   "tactical": "3 PA en ligne : réduit de 1 tour les effets de la cible et l'échange avec le Sac/Musette de l'Enutrof."
+  },
+  {
+   "id": 13334,
+   "spellLevelId": 41708,
+   "pairIndex": 7,
+   "variant": "A",
+   "variantOf": 13357,
+   "name": "Boîte de Pandore",
+   "nameEn": "Pandora's Box",
+   "descriptionFr": "Soigne tous les alliés mais augmente les PM de tous les ennemis.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 149,
+   "unlockLevel": 15,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Soin : 10% des PV max (CC : Soin : 12% des PV max) — cibles : alliés (lanceur inclus) ; zone : toute la carte",
+    "1 PM — cibles : ennemis ; zone : toute la carte ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1109,
+     "action": "FightLifePointsWinPercent",
+     "text": "Soin : 10% des PV max",
+     "targetMask": "a",
+     "zone": {
+      "shape": "a",
+      "shapeName": "wholeMap",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "text": "1 PM",
+     "targetMask": "A",
+     "zone": {
+      "shape": "a",
+      "shapeName": "wholeMap",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "heal",
+    "group_heal"
+   ],
+   "tactical": "2 PA, relance 2 : soigne 10 % PV max (12 % en CC) de tous les alliés, mais +1 PM à tous les ennemis (1 tour)."
+  },
+  {
+   "id": 13357,
+   "spellLevelId": 43687,
+   "pairIndex": 7,
+   "variant": "B",
+   "variantOf": 13334,
+   "name": "Boîte à Outils",
+   "nameEn": "Toolbox",
+   "descriptionFr": "Augmente les PA et les PM de l'allié ciblé mais le rend Pacifiste. Rend également toutes les invocations de l'allié ciblé Pacifistes.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 192,
+   "unlockLevel": 125,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "3 PA — cibles : alliés (lanceur inclus) ; 1 tour(s)",
+    "3 PM — cibles : alliés (lanceur inclus) ; 1 tour(s)",
+    "applique l'état «Pacifiste» (218) — cibles : alliés (lanceur inclus) ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 111,
+     "action": "CharacterBoostActionPoints",
+     "text": "3 PA",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "text": "3 PM",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Pacifiste» (218)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 218,
+      "name": "Pacifiste"
+     }
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Boîte à Outils» (13384, grade 1)",
+     "targetMask": "l",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 13384,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Boîte à Outils» (13384, grade 2)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "delay": 1,
+     "subSpell": {
+      "id": 13384,
+      "grade": 2
+     },
+     "dispellable": 3
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Boîte à Outils» (13384, grade 3)",
+     "targetMask": "l",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 13384,
+      "grade": 3
+     },
+     "dispellable": 3
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Boîte à Outils» (13384, grade 2)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "X",
+     "triggerBuffDuration": 1,
+     "subSpell": {
+      "id": 13384,
+      "grade": 2
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "buff_ap",
+    "buff_mp"
+   ],
+   "tactical": "2 PA : +3 PA et +3 PM (1 tour) à un allié qui devient Pacifiste (ainsi que ses invocations) : pour un soigneur/placeur/entraveur, jamais sur le DPS."
+  },
+  {
+   "id": 13335,
+   "spellLevelId": 41711,
+   "pairIndex": 8,
+   "variant": "A",
+   "variantOf": 13355,
+   "name": "Remblai",
+   "nameEn": "Mound",
+   "descriptionFr": "Occasionne des dommages Terre et retire de la Portée en zone. Les dommages sont plus importants sur les invocations. N'affecte pas le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 154,
+   "unlockLevel": 20,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 20,
+    "max": 22,
+    "critMin": 24,
+    "critMax": 26,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "20 à 22 dommages Terre (CC : 24 à 26 dommages Terre) — cibles : personnages alliés, monstres alliés, compagnons alliés, personnages ennemis, monstres ennemis, compagnons ennemis ; zone : croix de taille 3",
+    "25 à 27 dommages Terre (CC : 30 à 32 dommages Terre) — cibles : invocations alliées, invocations ennemies ; zone : croix de taille 3",
+    "-2 Portée — cibles : alliés (hors lanceur), ennemis ; zone : croix de taille 3 ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "20 à 22 dommages Terre",
+     "targetMask": "h,m,d,H,M,D",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 3,
+      "minSize": 0
+     },
+     "min": 20,
+     "max": 22,
+     "critMin": 24,
+     "critMax": 26
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "25 à 27 dommages Terre",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 3,
+      "minSize": 0
+     },
+     "min": 25,
+     "max": 27,
+     "critMin": 30,
+     "critMax": 32
+    },
+    {
+     "effectId": 116,
+     "action": "CharacterDeboostRange",
+     "text": "-2 Portée",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 3,
+      "minSize": 0
+     },
+     "duration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "range_removal",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "3 PA, croix 3 : 20–22 Terre (25–27 sur les invocations) et −2 PO, n'affecte pas le lanceur."
+  },
+  {
+   "id": 13355,
+   "spellLevelId": 56924,
+   "pairIndex": 8,
+   "variant": "B",
+   "variantOf": 13335,
+   "name": "Feu de Mine",
+   "nameEn": "Mine Fire",
+   "descriptionFr": "Occasionne des dommages Feu. Les entités qui attaquent la cible sont soignées d'une partie des dommages occasionnés.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 197,
+   "unlockLevel": 130,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 32,
+    "max": 36,
+    "critMin": 38,
+    "critMax": 43,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "32 à 36 dommages Feu (CC : 38 à 43 dommages Feu)",
+    "soigne l'attaquant de 15% des dommages subis — déclenchement : quand le porteur subit des dommages (buff 2 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "32 à 36 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43
+    },
+    {
+     "effectId": 786,
+     "action": "CharacterHealAttackers",
+     "text": "soigne l'attaquant de 15% des dommages subis",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "fire",
+    "heal_on_attack"
+   ],
+   "tactical": "4 PA : 32–36 Feu et, pendant 2 tours, quiconque attaque la cible est soigné de 15 % des dommages."
+  },
+  {
+   "id": 13332,
+   "spellLevelId": 41702,
+   "pairIndex": 9,
+   "variant": "A",
+   "variantOf": 13359,
+   "name": "Clef du Trésor",
+   "nameEn": "Treasure Key",
+   "descriptionFr": "Retire de la Portée aux ennemis ou augmente celle de l'allié ciblé.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 159,
+   "unlockLevel": 25,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 9,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "-4 Portée — cibles : ennemis ; 2 tour(s)",
+    "4 Portée — cibles : alliés (lanceur inclus) ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 116,
+     "action": "CharacterDeboostRange",
+     "text": "-4 Portée",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    },
+    {
+     "effectId": 117,
+     "action": "CharacterBoostRange",
+     "text": "4 Portée",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "range_removal",
+    "buff_range"
+   ],
+   "tactical": "2 PA, relance 3 : −4 PO à un ennemi ou +4 PO à un allié (2 tours)."
+  },
+  {
+   "id": 13359,
+   "spellLevelId": 41765,
+   "pairIndex": 9,
+   "variant": "B",
+   "variantOf": 13332,
+   "name": "Clef de Bras",
+   "nameEn": "Armlock",
+   "descriptionFr": "Soigne l'allié ciblé et retire des PM non esquivables.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 135,
+   "unlockLevel": 135,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Soin : 12% des PV max — cibles : alliés (lanceur inclus)",
+    "-1 PM (non esquivable) — 1 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 1109,
+     "action": "FightLifePointsWinPercent",
+     "text": "Soin : 12% des PV max",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 169,
+     "action": "CharacterDeboostMovementPoints",
+     "text": "-1 PM (non esquivable)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "mp_removal",
+    "heal"
+   ],
+   "tactical": "2 PA : −1 PM **non esquivable** (aussi sur un allié !) et soin 12 % PV max sur un allié. 2/tour, 1/cible."
+  },
+  {
+   "id": 13365,
+   "spellLevelId": 60038,
+   "pairIndex": 10,
+   "variant": "A",
+   "variantOf": 13360,
+   "name": "Abattement",
+   "nameEn": "Loafylactic",
+   "descriptionFr": "Occasionne des dommages Air et retire des PA.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 164,
+   "unlockLevel": 30,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 23,
+    "max": 25,
+    "critMin": 25,
+    "critMax": 28,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "23 à 25 dommages Air (CC : 25 à 28 dommages Air)",
+    "-2 PA (esquivable) — 1 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "23 à 25 dommages Air",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 23,
+     "max": 25,
+     "critMin": 25,
+     "critMax": 28
+    },
+    {
+     "effectId": 1079,
+     "action": "CharacterDeboostActionPointsDodgeable",
+     "text": "-2 PA (esquivable)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "ap_removal",
+    "air"
+   ],
+   "tactical": "3 PA, 7 PO : 23–25 Air et −2 PA esquivables, 3/tour 2/cible."
+  },
+  {
+   "id": 13360,
+   "spellLevelId": 41766,
+   "pairIndex": 10,
+   "variant": "B",
+   "variantOf": 13365,
+   "name": "Obsolescence",
+   "nameEn": "Obsolescence",
+   "descriptionFr": "Occasionne des dommages Eau et retire de l'Esquive PM. Les dommages sont plus importants sur les invocations.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 140,
+   "unlockLevel": 140,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 30,
+    "critMin": 31,
+    "critMax": 36,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "26 à 30 dommages Eau (CC : 31 à 36 dommages Eau) — cibles : joueurs/compagnons alliés, monstres alliés, joueurs/compagnons ennemis, monstres ennemis",
+    "34 à 38 dommages Eau (CC : 40 à 45 dommages Eau) — cibles : invocations alliées, invocations ennemies",
+    "-20 Esquive PM — 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "26 à 30 dommages Eau",
+     "targetMask": "l,m,L,M",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 26,
+     "max": 30,
+     "critMin": 31,
+     "critMax": 36
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "34 à 38 dommages Eau",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 34,
+     "max": 38,
+     "critMin": 40,
+     "critMax": 45
+    },
+    {
+     "effectId": 163,
+     "action": "CharacterDeboostMovementPointsLostDodge",
+     "text": "-20 Esquive PM",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "debuff",
+    "water"
+   ],
+   "tactical": "3 PA : 26–30 Eau (34–38 sur invocation) et −20 Esquive PM 2 tours : prépare les retraits PM sur un boss."
+  },
+  {
+   "id": 13344,
+   "spellLevelId": 41738,
+   "pairIndex": 11,
+   "variant": "A",
+   "variantOf": 13361,
+   "name": "Pelle Animée",
+   "nameEn": "Living Shovel",
+   "descriptionFr": "Invoque une Pelle Animée maîtrisable qui peut pousser. Lorsqu'elle est attaquée par un allié, ce dernier est soigné.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 169,
+   "unlockLevel": 35,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Pelle Animée» (5834, grade 3)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Pelle Animée» (5834, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 5834,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "placement"
+   ],
+   "tactical": "2 PA, relance 3 : Pelle Animée (4 PA 6 PM) qui repousse de 3 sans dommages — repositionner un ennemi ou un allié."
+  },
+  {
+   "id": 13361,
+   "spellLevelId": 41767,
+   "pairIndex": 11,
+   "variant": "B",
+   "variantOf": 13344,
+   "name": "Bêche Animée",
+   "nameEn": "Living Spade",
+   "descriptionFr": "Invoque une Bêche Animée maîtrisable qui peut voler de la vie dans l'élément Terre et donner de la Fuite. Lorsqu'elle est attaquée par un allié, ce dernier est soigné.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 145,
+   "unlockLevel": 145,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Bêche Animée» (5841, grade 1)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Bêche Animée» (5841, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 5841,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "damage",
+    "earth"
+   ],
+   "tactical": "2 PA, relance 3 : Bêche Animée (250 Force) qui vole 31–35 Terre et donne +40 Fuite à l'Enutrof et ses invocations."
+  },
+  {
+   "id": 13362,
+   "spellLevelId": 79934,
+   "pairIndex": 12,
+   "variant": "A",
+   "variantOf": 13369,
+   "name": "Avarice",
+   "nameEn": "Miserliness",
+   "descriptionFr": "Retire des PM non esquivables pour augmenter les PA des cibles en zone autour du lanceur. Retire également de la Puissance à toutes les entités hors de la zone d'effet pour augmenter la Puissance du lanceur pour chaque entité touchée (cumulable 10 fois).",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 174,
+   "unlockLevel": 40,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "-3 PM (non esquivable) — cibles : alliés (hors lanceur), ennemis ; zone : cercle de taille 3 (à partir de 1) ; 1 tour(s)",
+    "3 PA — cibles : alliés (hors lanceur), ennemis ; zone : cercle de taille 3 (à partir de 1) ; 1 tour(s)",
+    "-50 Puissance — cibles : alliés (hors lanceur), ennemis ; 1 tour(s)",
+    "50 Puissance — cibles : lanceur ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Avarice» (21911, grade 5)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 21911,
+      "grade": 5
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Avarice» (21911, grade 6)",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 63,
+      "minSize": 4
+     },
+     "subSpell": {
+      "id": 21911,
+      "grade": 6
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "mp_removal",
+    "aoe",
+    "self_buff",
+    "debuff"
+   ],
+   "tactical": "3 PA, relance 4 : −3 PM non esquivables et +3 PA aux entités (alliés et ennemis) en cercle 3 ; −50 Puissance aux entités plus loin et +50 Puissance à l'Enutrof par entité touchée. À utiliser quand les alliés sont proches et les ennemis loin, ou contre des ennemis à court de PM."
+  },
+  {
+   "id": 13369,
+   "spellLevelId": 41775,
+   "pairIndex": 12,
+   "variant": "B",
+   "variantOf": 13362,
+   "name": "Décadence",
+   "nameEn": "Decadence",
+   "descriptionFr": "Retire des PA aux ennemis. Sur un allié : augmente ses dommages finaux occasionnés immédiatement mais les réduit au tour suivant.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 150,
+   "unlockLevel": 150,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 10,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "-2 PA (esquivable) — cibles : ennemis ; 1 tour(s) ; désenvoûtement fort uniquement",
+    "10% Dommages finaux — cibles : alliés (lanceur inclus) ; 1 tour(s)",
+    "-10% Dommages finaux — cibles : alliés (lanceur inclus) ; 1 tour(s) ; effet différé de 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1079,
+     "action": "CharacterDeboostActionPointsDodgeable",
+     "text": "-2 PA (esquivable)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    },
+    {
+     "effectId": 1171,
+     "action": "CharacterBoostDealtDamagePercentMultiplier",
+     "text": "10% Dommages finaux",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    },
+    {
+     "effectId": 1172,
+     "action": "CharacterDeboostDealtDamagePercentMultiplier",
+     "text": "-10% Dommages finaux",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "delay": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "ap_removal",
+    "buff"
+   ],
+   "tactical": "2 PA, 10 PO : −2 PA esquivables à un ennemi, ou +10 % dommages finaux immédiats (puis −10 % au tour suivant) à un allié qui va frapper."
+  },
+  {
+   "id": 13343,
+   "spellLevelId": 41735,
+   "pairIndex": 13,
+   "variant": "A",
+   "variantOf": 13358,
+   "name": "Pelle Aurifère",
+   "nameEn": "Auriferous Shovel",
+   "descriptionFr": "Occasionne des dommages Eau et retire des PM.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 179,
+   "unlockLevel": 45,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 33,
+    "max": 37,
+    "critMin": 40,
+    "critMax": 44,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "33 à 37 dommages Eau (CC : 40 à 44 dommages Eau)",
+    "-3 PM (esquivable) — 1 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "33 à 37 dommages Eau",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44
+    },
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "text": "-3 PM (esquivable)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mp_removal",
+    "water"
+   ],
+   "tactical": "4 PA : 33–37 Eau et −3 PM esquivables, 3/tour 2/cible : sort principal de retrait PM."
+  },
+  {
+   "id": 13358,
+   "spellLevelId": 41764,
+   "pairIndex": 13,
+   "variant": "B",
+   "variantOf": 13343,
+   "name": "Tourbière",
+   "nameEn": "Peat Bog",
+   "descriptionFr": "Occasionne des dommages Terre en zone. Les dommages du sort sont augmentés pour chaque PM utilisé pour le tour en cours.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 155,
+   "unlockLevel": 155,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 31,
+    "max": 35,
+    "critMin": 37,
+    "critMax": 42,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "31 à 35 dommages Terre (CC : 37 à 42 dommages Terre) — zone : ligne de 2 case(s)",
+    "«Tourbière» : +5 dommages de base — cibles : lanceur ; 1 tour(s) ; déclenchement : pour chaque PM dépensé par le porteur ce tour (CCMPARR, sens déduit) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "31 à 35 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "L",
+      "shapeName": "line",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "4 PA en ligne : 31–35 Terre en ligne de 2, +5 dommages de base par PM utilisé ce tour (mécanisme INCERTAIN)."
+  },
+  {
+   "id": 13337,
+   "spellLevelId": 41717,
+   "pairIndex": 14,
+   "variant": "A",
+   "variantOf": 13329,
+   "name": "Maladresse",
+   "nameEn": "Clumsiness",
+   "descriptionFr": "Retire des PM.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 184,
+   "unlockLevel": 50,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 12,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "-2 PM (esquivable) — 1 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "text": "-2 PM (esquivable)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "mp_removal"
+   ],
+   "tactical": "1 PA, 1–12 PO : −2 PM esquivables, 4/tour, 1/cible : le meilleur ratio retrait/PA du jeu, idéal multi-cibles."
+  },
+  {
+   "id": 13329,
+   "spellLevelId": 41691,
+   "pairIndex": 14,
+   "variant": "B",
+   "variantOf": 13337,
+   "name": "Âge d'Or",
+   "nameEn": "Golden Age",
+   "descriptionFr": "Rend l'allié ciblé Intaclable. Augmente sa Puissance au tour suivant.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 160,
+   "unlockLevel": 160,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "applique l'état «Intaclable» (96) — cibles : alliés (lanceur inclus) ; 1 tour(s)",
+    "200 Puissance — cibles : alliés (lanceur inclus) ; 1 tour(s) ; effet différé de 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Intaclable» (96)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 96,
+      "name": "Intaclable"
+     }
+    },
+    {
+     "effectId": 138,
+     "action": "CharacterBoostDamagesPercent",
+     "text": "200 Puissance",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "delay": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "buff_power",
+    "unblock"
+   ],
+   "tactical": "2 PA, relance 3 : allié Intaclable 1 tour (fuite du tacle) puis +200 Puissance au tour suivant."
+  },
+  {
+   "id": 13336,
+   "spellLevelId": 41714,
+   "pairIndex": 15,
+   "variant": "A",
+   "variantOf": 13372,
+   "name": "Pelle Fantomatique",
+   "nameEn": "Ghostly Shovel",
+   "descriptionFr": "Réduit la durée des effets sur la cible et occasionne des dommages Feu aux ennemis.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 189,
+   "unlockLevel": 55,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 0,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 28,
+    "critMin": 31,
+    "critMax": 34,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "Durée des effets : -1",
+    "26 à 28 dommages Feu (CC : 31 à 34 dommages Feu) — cibles : ennemis"
+   ],
+   "effects": [
+    {
+     "effectId": 1075,
+     "action": "CharacterShortenActiveEffectsDuration",
+     "text": "Durée des effets : -1",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "26 à 28 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 26,
+     "max": 28,
+     "critMin": 31,
+     "critMax": 34
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "dispel",
+    "fire"
+   ],
+   "tactical": "3 PA : réduit de 1 la durée des effets de la cible (allié ou ennemi : retirer des buffs ennemis/débuffs alliés) + 26–28 Feu aux ennemis."
+  },
+  {
+   "id": 13372,
+   "spellLevelId": 41778,
+   "pairIndex": 15,
+   "variant": "B",
+   "variantOf": 13336,
+   "name": "Dernier Recours",
+   "nameEn": "Last Resort",
+   "descriptionFr": "Applique l'état Pesanteur sur les cibles et occasionne des dommages Air aux ennemis en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 165,
+   "unlockLevel": 165,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 30,
+    "max": 34,
+    "critMin": 36,
+    "critMax": 41,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "applique l'état «Pesanteur» (7) — zone : cercle de taille 2 ; 1 tour(s) ; indésenvoûtable",
+    "30 à 34 dommages Air (CC : 36 à 41 dommages Air) — cibles : ennemis ; zone : cercle de taille 2"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Pesanteur» (7)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 7,
+      "name": "Pesanteur"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "30 à 34 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 41
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "control",
+    "damage",
+    "aoe",
+    "air"
+   ],
+   "tactical": "3 PA, relance 2 : Pesanteur en cercle 2 (empêche téléportations/échanges, y compris des alliés) + 30–34 Air aux ennemis."
+  },
+  {
+   "id": 14278,
+   "spellLevelId": 43700,
+   "pairIndex": 16,
+   "variant": "A",
+   "variantOf": 13330,
+   "name": "Banqueroute",
+   "nameEn": "Bankruptcy",
+   "descriptionFr": "Occasionne des dommages Air et retire de l'Esquive PA. Les dommages sont plus importants sur les invocations.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 194,
+   "unlockLevel": 60,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 36,
+    "max": 40,
+    "critMin": 43,
+    "critMax": 48,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "36 à 40 dommages Air (CC : 43 à 48 dommages Air) — cibles : joueurs/compagnons alliés, monstres alliés, joueurs/compagnons ennemis, monstres ennemis",
+    "47 à 51 dommages Air (CC : 55 à 60 dommages Air) — cibles : invocations alliées, invocations ennemies",
+    "-20 Esquive PA — 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "36 à 40 dommages Air",
+     "targetMask": "l,m,L,M",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 36,
+     "max": 40,
+     "critMin": 43,
+     "critMax": 48
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "47 à 51 dommages Air",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 47,
+     "max": 51,
+     "critMin": 55,
+     "critMax": 60
+    },
+    {
+     "effectId": 162,
+     "action": "CharacterDeboostActionPointsLostDodge",
+     "text": "-20 Esquive PA",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "debuff",
+    "air"
+   ],
+   "tactical": "4 PA : 36–40 Air (47–51 sur invocation) et −20 Esquive PA 2 tours."
+  },
+  {
+   "id": 13330,
+   "spellLevelId": 41694,
+   "pairIndex": 16,
+   "variant": "B",
+   "variantOf": 14278,
+   "name": "Lancer de Pelle",
+   "nameEn": "Shovel Throwing",
+   "descriptionFr": "Occasionne des dommages Terre et retire de la Portée.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 170,
+   "unlockLevel": 170,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 34,
+    "max": 37,
+    "critMin": 41,
+    "critMax": 44,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "34 à 37 dommages Terre (CC : 41 à 44 dommages Terre)",
+    "-4 Portée — 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "34 à 37 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 34,
+     "max": 37,
+     "critMin": 41,
+     "critMax": 44
+    },
+    {
+     "effectId": 116,
+     "action": "CharacterDeboostRange",
+     "text": "-4 Portée",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "range_removal",
+    "earth"
+   ],
+   "tactical": "4 PA : 34–37 Terre et −4 PO (1 tour)."
+  },
+  {
+   "id": 13364,
+   "spellLevelId": 56937,
+   "pairIndex": 17,
+   "variant": "A",
+   "variantOf": 13367,
+   "name": "Souterrain",
+   "nameEn": "Tunnel",
+   "descriptionFr": "Échange de position avec la cible et occasionne des dommages Terre aux ennemis.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 198,
+   "unlockLevel": 65,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 29,
+    "critMin": 31,
+    "critMax": 35,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "Échange de positions",
+    "26 à 29 dommages Terre (CC : 31 à 35 dommages Terre) — cibles : ennemis"
+   ],
+   "effects": [
+    {
+     "effectId": 8,
+     "action": "CharacterExchangePlaces",
+     "text": "Échange de positions",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "26 à 29 dommages Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 26,
+     "max": 29,
+     "critMin": 31,
+     "critMax": 35
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "mobility",
+    "damage",
+    "earth"
+   ],
+   "tactical": "3 PA en ligne sans LdV : échange de place avec la cible + 26–29 Terre aux ennemis."
+  },
+  {
+   "id": 13367,
+   "spellLevelId": 41773,
+   "pairIndex": 17,
+   "variant": "B",
+   "variantOf": 13364,
+   "name": "Bêche des Anciens",
+   "nameEn": "Spade of the Ancients",
+   "descriptionFr": "Occasionne des dommages Air et retire des PA aux ennemis et repousse les cibles depuis le centre en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 175,
+   "unlockLevel": 175,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 32,
+    "max": 36,
+    "critMin": 38,
+    "critMax": 43,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "32 à 36 dommages Air (CC : 38 à 43 dommages Air) — cibles : ennemis ; zone : croix de taille 2",
+    "-2 PA (esquivable) — cibles : ennemis ; zone : croix de taille 2 ; 1 tour(s) ; désenvoûtement fort uniquement",
+    "Repousse de 2 cases — cibles : alliés (hors lanceur), ennemis ; zone : croix sans centre de taille 2"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "32 à 36 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43
+    },
+    {
+     "effectId": 1079,
+     "action": "CharacterDeboostActionPointsDodgeable",
+     "text": "-2 PA (esquivable)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 2 cases",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "hollowCross",
+      "size": 2,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "ap_removal",
+    "placement",
+    "aoe",
+    "air"
+   ],
+   "tactical": "4 PA : 32–36 Air en croix 2, −2 PA esquivables et repousse de 2 depuis le centre."
+  },
+  {
+   "id": 13345,
+   "spellLevelId": 41740,
+   "pairIndex": 18,
+   "variant": "A",
+   "variantOf": 14273,
+   "name": "Pelle des Anciens",
+   "nameEn": "Shovel of the Ancients",
+   "descriptionFr": "Occasionne des dommages Eau et retire des PM aux ennemis et repousse la cible.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 137,
+   "unlockLevel": 70,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 40,
+    "max": 44,
+    "critMin": 48,
+    "critMax": 53,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "40 à 44 dommages Eau (CC : 48 à 53 dommages Eau) — cibles : ennemis",
+    "-1 PM (esquivable) — cibles : ennemis ; 1 tour(s) ; désenvoûtement fort uniquement",
+    "Repousse de 2 cases"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "40 à 44 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 40,
+     "max": 44,
+     "critMin": 48,
+     "critMax": 53
+    },
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "text": "-1 PM (esquivable)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mp_removal",
+    "placement",
+    "water"
+   ],
+   "tactical": "4 PA : 40–44 Eau, −1 PM esquivable et repousse de 2 (1/cible) : gros dégât Eau + éloignement."
+  },
+  {
+   "id": 14273,
+   "spellLevelId": 43673,
+   "pairIndex": 18,
+   "variant": "B",
+   "variantOf": 13345,
+   "name": "Gisement",
+   "nameEn": "Deposit",
+   "descriptionFr": "Occasionne des dommages Feu aux ennemis et soigne les alliés au début de leur tour en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 180,
+   "unlockLevel": 180,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [
+    "Feu"
+   ],
+   "baseDamage": {
+    "min": 29,
+    "max": 32,
+    "critMin": 35,
+    "critMax": 38,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "29 à 32 dommages Feu (CC : 35 à 38 dommages Feu) — cibles : ennemis ; zone : cercle de taille 2",
+    "29 à 32 soins Feu (CC : 35 à 38 soins Feu) — cibles : alliés (lanceur inclus) ; zone : cercle de taille 2 ; déclenchement : début de tour du porteur (buff 1 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "29 à 32 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 29,
+     "max": 32,
+     "critMin": 35,
+     "critMax": 38
+    },
+    {
+     "effectId": 108,
+     "action": "CharacterLifePointsWinFromFire",
+     "text": "29 à 32 soins Feu",
+     "targetMask": "a",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 29,
+     "max": 32,
+     "critMin": 35,
+     "critMax": 38,
+     "triggers": "TB",
+     "triggerBuffDuration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "heal",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "3 PA : 29–32 Feu aux ennemis en cercle 2 et soin 29–32 Feu aux alliés de la zone au début de leur prochain tour."
+  },
+  {
+   "id": 13333,
+   "spellLevelId": 41704,
+   "pairIndex": 19,
+   "variant": "A",
+   "variantOf": 13370,
+   "name": "Péremption",
+   "nameEn": "Expiry",
+   "descriptionFr": "Occasionne des dommages Feu. Occasionne des dommages Feu supplémentaires aux invocations.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 142,
+   "unlockLevel": 75,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 41,
+    "max": 44,
+    "critMin": 49,
+    "critMax": 53,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "41 à 44 dommages Feu (CC : 49 à 53 dommages Feu)",
+    "41 à 44 dommages Feu (CC : 49 à 53 dommages Feu) — cibles : invocations ennemies, invocations alliées"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "41 à 44 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 41,
+     "max": 44,
+     "critMin": 49,
+     "critMax": 53
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "41 à 44 dommages Feu",
+     "targetMask": "J,j",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 41,
+     "max": 44,
+     "critMin": 49,
+     "critMax": 53
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "fire",
+    "anti_summon"
+   ],
+   "tactical": "4 PA : 41–44 Feu, et autant en plus sur une invocation (≈ ×2) : tueur d'invocations."
+  },
+  {
+   "id": 13370,
+   "spellLevelId": 41776,
+   "pairIndex": 19,
+   "variant": "B",
+   "variantOf": 13333,
+   "name": "Tamisage",
+   "nameEn": "Sieving",
+   "descriptionFr": "Occasionne des dommages Eau et retire des PM en zone. N'affecte pas le lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 185,
+   "unlockLevel": 185,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 25,
+    "max": 29,
+    "critMin": 30,
+    "critMax": 35,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "25 à 29 dommages Eau (CC : 30 à 35 dommages Eau) — cibles : alliés (hors lanceur), ennemis ; zone : carré de taille 1",
+    "-2 PM (esquivable) — cibles : alliés (hors lanceur), ennemis ; zone : carré de taille 1 ; 1 tour(s) ; désenvoûtement fort uniquement"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "25 à 29 dommages Eau",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 25,
+     "max": 29,
+     "critMin": 30,
+     "critMax": 35
+    },
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "text": "-2 PM (esquivable)",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mp_removal",
+    "aoe",
+    "water"
+   ],
+   "tactical": "3 PA, carré 1 (pas le lanceur) : 25–29 Eau et −2 PM esquivables à tout le monde dans la zone (attention aux alliés)."
+  },
+  {
+   "id": 13346,
+   "spellLevelId": 41743,
+   "pairIndex": 20,
+   "variant": "A",
+   "variantOf": 14274,
+   "name": "Corruption",
+   "nameEn": "Bribery",
+   "descriptionFr": "Rend l'ennemi ciblé Pacifiste et Invulnérable. Sur un allié : le rend Pacifiste et le soigne.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 147,
+   "unlockLevel": 80,
+   "apCost": 5,
+   "minRange": 4,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 5,
+   "initialCooldown": 1,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "applique l'état «Pacifiste» (218) — 1 tour(s) ; indésenvoûtable",
+    "applique l'état «Invulnérable» (269) — cibles : ennemis ; 1 tour(s) ; indésenvoûtable",
+    "Soin : 40% des PV max — cibles : alliés (lanceur inclus)"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Pacifiste» (218)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 218,
+      "name": "Pacifiste"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Invulnérable» (269)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 269,
+      "name": "Invulnérable"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 1109,
+     "action": "FightLifePointsWinPercent",
+     "text": "Soin : 40% des PV max",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "control",
+    "neutralize",
+    "heal"
+   ],
+   "tactical": "5 PA, PO 4–8, relance 5 : l'ennemi ciblé devient Pacifiste ET Invulnérable 1 tour (sortir le boss du combat un tour) ; sur un allié : Pacifiste + soin 40 %."
+  },
+  {
+   "id": 14274,
+   "spellLevelId": 43676,
+   "pairIndex": 20,
+   "variant": "B",
+   "variantOf": 13346,
+   "name": "Tunnel de Fortune",
+   "nameEn": "Lucky Tunnel",
+   "descriptionFr": "Rend le lanceur invisible et lui applique l'état Tunnel de Fortune : • Augmente sa Puissance au tour suivant pour chaque PM qu'il a utilisé.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 190,
+   "unlockLevel": 190,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Rend la cible invisible — cibles : lanceur ; 1 tour(s)",
+    "applique l'état «Tunnel de Fortune» (5473) — cibles : lanceur ; 1 tour(s)",
+    "20 Puissance — cibles : lanceur ; 1 tour(s) ; effet différé de 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Tunnel de Fortune» (29756, grade 1)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 29756,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "stealth",
+    "self_buff"
+   ],
+   "tactical": "3 PA, relance 4 : l'Enutrof devient invisible 1 tour et gagne +20 Puissance au tour suivant par PM dépensé."
+  },
+  {
+   "id": 13349,
+   "spellLevelId": 41752,
+   "pairIndex": 21,
+   "variant": "A",
+   "variantOf": 29755,
+   "name": "Retraite Anticipée",
+   "nameEn": "Pull Out",
+   "descriptionFr": "Immobilise les cibles et applique l'état Pesanteur sur tout le monde sauf le lanceur. Immobilise le lanceur au tour suivant.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 152,
+   "unlockLevel": 85,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 7,
+   "initialCooldown": 1,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "-100 PM (non esquivable) — cibles : ennemis, alliés (hors lanceur) ; zone : cercle de taille 63 ; 1 tour(s) ; indésenvoûtable",
+    "applique l'état «Pesanteur» (7) — cibles : ennemis, alliés (hors lanceur) ; zone : toute la carte ; 1 tour(s) ; indésenvoûtable",
+    "-100 PM (non esquivable) — cibles : lanceur ; 1 tour(s) ; effet différé de 1 tour(s) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 169,
+     "action": "CharacterDeboostMovementPoints",
+     "text": "-100 PM (non esquivable)",
+     "targetMask": "A,g",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 63,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Pesanteur» (7)",
+     "targetMask": "A,g",
+     "zone": {
+      "shape": "A",
+      "shapeName": "wholeMap",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 7,
+      "name": "Pesanteur"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 169,
+     "action": "CharacterDeboostMovementPoints",
+     "text": "-100 PM (non esquivable)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "delay": 1,
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "control",
+    "mp_removal",
+    "global"
+   ],
+   "tactical": "4 PA, relance 7 : −100 PM non esquivables + Pesanteur à toutes les entités sauf l'Enutrof (1 tour), qui subit −100 PM au tour suivant. Tour de sécurité absolue contre la mêlée."
+  },
+  {
+   "id": 29755,
+   "spellLevelId": 79083,
+   "pairIndex": 21,
+   "variant": "B",
+   "variantOf": 13349,
+   "name": "Pelle de Fortune",
+   "nameEn": "Lucky Shovel",
+   "descriptionFr": "Invoque une Pelle de Fortune statique. Lorsqu'elle est invoquée, puis à chaque début de tour, elle augmente la Puissance, la Fuite, le Retrait PA et le Retrait PM du lanceur. La Pelle de Fortune est détruite 2 tours après son invocation en soignant le lanceur. Lorsqu'elle est attaquée par un allié, ce dernier est soigné.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 195,
+   "unlockLevel": 195,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Pelle de Fortune» (5829, grade 1)",
+    "le lanceur lance le sort «Pelle de Fortune» (28586, grade 1)",
+    "Soin : 8% des PV max — cibles : lanceur ; effet différé de 2 tour(s)",
+    "Tue la cible — cibles : lanceur ; effet différé de 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Pelle de Fortune» (5829, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 5829,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "summon",
+    "self_buff",
+    "heal"
+   ],
+   "tactical": "2 PA : Pelle de Fortune statique qui donne +40 Puissance, +10 Fuite, +10 Retrait PA/PM à l'Enutrof à chaque début de tour (2 tours), puis le soigne de 8 % en mourant."
+  },
+  {
+   "id": 13347,
+   "spellLevelId": 41746,
+   "pairIndex": 22,
+   "variant": "A",
+   "variantOf": 13371,
+   "name": "Coffre Animé",
+   "nameEn": "Living Chest",
+   "descriptionFr": "Invoque un Coffre Animé maîtrisable qui peut tacler, occasionner des dommages Eau et dévoiler les invisibles. Lorsqu'il est attaqué par un allié, ce dernier est soigné.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 157,
+   "unlockLevel": 90,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Coffre Animé» (5840, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Coffre Animé» (5840, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 5840,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "tank",
+    "damage",
+    "reveal"
+   ],
+   "tactical": "3 PA, relance 4 : Coffre Animé (250 Chance, 30 % rés.) qui tacle, frappe en Eau selon ses PV manquants et révèle les invisibles."
+  },
+  {
+   "id": 13371,
+   "spellLevelId": 41777,
+   "pairIndex": 22,
+   "variant": "B",
+   "variantOf": 13347,
+   "name": "Malle Animée",
+   "nameEn": "Living Trunk",
+   "descriptionFr": "Invoque une Malle Animée maîtrisable qui peut soigner. Lorsqu'elle est attaquée par un allié, ce dernier est soigné.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 200,
+   "unlockLevel": 200,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Malle Animée» (5839, grade 1)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Malle Animée» (5839, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 5839,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "heal"
+   ],
+   "tactical": "3 PA, relance 4 : Malle Animée qui soigne 8 % PV max des alliés en cercle 2 (2/tour)."
+  }
+ ],
+ "summons": [
+  {
+   "monsterId": 5829,
+   "name": "Pelle de Fortune",
+   "gradesSummonedByClassSpells": [
+    1
+   ],
+   "useSummonSlot": false,
+   "summonCost": 0,
+   "canPlay": false,
+   "canTackle": false,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [],
+   "characRatios": [
+    [
+     0,
+     25
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     0.125
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 0,
+     "mp": -1,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 81285
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 0,
+     "mp": -1,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 81285
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 0,
+     "mp": -1,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 81285
+    },
+    {
+     "grade": 4,
+     "level": 1,
+     "ap": 0,
+     "mp": -1,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 81285
+    },
+    {
+     "grade": 5,
+     "level": 1,
+     "ap": 0,
+     "mp": -1,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 81285
+    },
+    {
+     "grade": 6,
+     "level": 1,
+     "ap": 0,
+     "mp": -1,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 0,
+      "water": 0,
+      "air": 0,
+      "neutral": 0
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 30
+     },
+     "startingSpellLevelId": 81285
+    }
+   ]
+  },
+  {
+   "monsterId": 5830,
+   "name": "Sac Animé",
+   "gradesSummonedByClassSpells": [
+    3
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [],
+   "characRatios": [
+    [
+     0,
+     80
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     0.125
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41757
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41757
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41757
+    },
+    {
+     "grade": 4,
+     "level": 4,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41757
+    },
+    {
+     "grade": 5,
+     "level": 5,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41757
+    },
+    {
+     "grade": 6,
+     "level": 6,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41757
+    }
+   ]
+  },
+  {
+   "monsterId": 5834,
+   "name": "Pelle Animée",
+   "gradesSummonedByClassSpells": [
+    3
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    13348
+   ],
+   "characRatios": [
+    [
+     0,
+     180
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     7.5
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 60
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 75
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 4,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 5,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 6,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    }
+   ]
+  },
+  {
+   "monsterId": 5838,
+   "name": "Musette Animée",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [],
+   "characRatios": [
+    [
+     0,
+     200
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     0.125
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41779
+    },
+    {
+     "grade": 2,
+     "level": 2,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41779
+    },
+    {
+     "grade": 3,
+     "level": 3,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41779
+    },
+    {
+     "grade": 4,
+     "level": 4,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41779
+    },
+    {
+     "grade": 5,
+     "level": 5,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41779
+    },
+    {
+     "grade": 6,
+     "level": 6,
+     "ap": 5,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 25,
+      "fire": 25,
+      "water": 25,
+      "air": 25,
+      "neutral": 25
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 60
+     },
+     "startingSpellLevelId": 41779
+    }
+   ]
+  },
+  {
+   "monsterId": 5839,
+   "name": "Malle Animée",
+   "gradesSummonedByClassSpells": [
+    1
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    13381
+   ],
+   "characRatios": [
+    [
+     0,
+     149.99600219726562
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     7.5
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 2,
+     "level": 2,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 3,
+     "level": 3,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 4,
+     "level": 4,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 5,
+     "level": 5,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 6,
+     "level": 6,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    }
+   ]
+  },
+  {
+   "monsterId": 5840,
+   "name": "Coffre Animé",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    13350
+   ],
+   "characRatios": [
+    [
+     0,
+     200
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     0.125
+    ],
+    [
+     13,
+     18.75
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 5,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 30,
+      "water": 30,
+      "air": 30,
+      "neutral": 30
+     },
+     "stats": {
+      "chance": 200
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 5,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 30,
+      "water": 30,
+      "air": 30,
+      "neutral": 30
+     },
+     "stats": {
+      "chance": 250
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 5,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 30,
+      "water": 30,
+      "air": 30,
+      "neutral": 30
+     },
+     "stats": {
+      "chance": 250
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 4,
+     "level": 4,
+     "ap": 5,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 30,
+      "water": 30,
+      "air": 30,
+      "neutral": 30
+     },
+     "stats": {
+      "chance": 250
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 5,
+     "level": 5,
+     "ap": 5,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 30,
+      "water": 30,
+      "air": 30,
+      "neutral": 30
+     },
+     "stats": {
+      "chance": 250
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 6,
+     "level": 6,
+     "ap": 5,
+     "mp": 7,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 30,
+      "water": 30,
+      "air": 30,
+      "neutral": 30
+     },
+     "stats": {
+      "chance": 250
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 120
+     },
+     "startingSpellLevelId": 41782
+    }
+   ]
+  },
+  {
+   "monsterId": 5841,
+   "name": "Bêche Animée",
+   "gradesSummonedByClassSpells": [
+    1
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    13377
+   ],
+   "characRatios": [
+    [
+     0,
+     320
+    ],
+    [
+     10,
+     31.25
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     11.25
+    ],
+    [
+     13,
+     31.25
+    ],
+    [
+     14,
+     31.25
+    ],
+    [
+     15,
+     31.25
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "strength": 250,
+      "agility": 100,
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 2,
+     "level": 2,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "strength": 250,
+      "agility": 100,
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 3,
+     "level": 3,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "strength": 250,
+      "agility": 100,
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 4,
+     "level": 4,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "strength": 250,
+      "agility": 100,
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 5,
+     "level": 5,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "strength": 250,
+      "agility": 100,
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    },
+    {
+     "grade": 6,
+     "level": 6,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 15,
+      "fire": 15,
+      "water": 15,
+      "air": 15,
+      "neutral": 15
+     },
+     "stats": {
+      "strength": 250,
+      "agility": 100,
+      "wisdom": 90
+     },
+     "bonusFromSummonerPercent": {
+      "lifePoints": 90
+     },
+     "startingSpellLevelId": 41782
+    }
+   ]
+  }
+ ],
+ "importantStates": {
+  "5493": {
+   "name": "Éboulement",
+   "note": "Éboulement"
+  },
+  "5494": {
+   "name": "Orpaillage",
+   "note": "Orpaillage"
+  },
+  "5495": {
+   "name": "Monnaie Sonnante",
+   "note": "Monnaie Sonnante"
+  },
+  "5496": {
+   "name": "Coup de Grisou",
+   "note": "Coup de Grisou"
+  },
+  "5472": {
+   "name": "Ruée vers l'Or",
+   "note": "Ruée vers l'Or"
+  },
+  "5474": {
+   "name": "Ruée vers l'Or (cible)",
+   "note": "Ruée vers l'Or (cible)"
+  },
+  "5473": {
+   "name": "Tunnel de Fortune",
+   "note": "Tunnel de Fortune"
+  },
+  "218": {
+   "name": "Pacifiste",
+   "note": "Pacifiste"
+  },
+  "269": {
+   "name": "Invulnérable",
+   "note": "Invulnérable"
+  },
+  "96": {
+   "name": "Intaclable",
+   "note": "Intaclable"
+  },
+  "7": {
+   "name": "Pesanteur",
+   "note": "Pesanteur"
+  },
+  "2229": {
+   "name": "Déambulation",
+   "note": "Déambulation"
+  },
+  "6299": {
+   "name": "Coup de Grisou (blocage)",
+   "note": "Coup de Grisou (blocage, 1 déclenchement allié par tour)"
+  }
+ },
+ "spellSets": {
+  "entraveur_pm": {
+   "A": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    8,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    18,
+    20,
+    21,
+    22
+   ],
+   "B": [
+    2,
+    7,
+    9,
+    10,
+    17,
+    19
+   ]
+  },
+  "entraveur_pa_po_dps": {
+   "A": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    13,
+    14,
+    18,
+    19,
+    20,
+    22
+   ],
+   "B": [
+    1,
+    2,
+    3,
+    11,
+    12,
+    15,
+    16,
+    17,
+    21
+   ]
+  },
+  "soutien": {
+   "A": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    8,
+    9,
+    10,
+    11,
+    13,
+    15,
+    16,
+    17,
+    20,
+    21
+   ],
+   "B": [
+    4,
+    7,
+    12,
+    14,
+    18,
+    19,
+    22
+   ]
+  }
+ },
+ "rotations": [
+  {
+   "name": "Entrave PM boss (12 PA)",
+   "sequence": [
+    "Obsolescence (3)",
+    "Pelle Aurifère (4)",
+    "Pelle Aurifère (4)",
+    "Maladresse (1)"
+   ],
+   "goal": "−20 Esquive PM puis −3/−3/−2 PM tentés ; Orpaillage préalable pour convertir en dégâts."
+  },
+  {
+   "name": "Entrave PM multi-cibles (12 PA)",
+   "sequence": [
+    "Maladresse ×4 (4) sur 4 ennemis",
+    "Pelle Aurifère (4)",
+    "Tamisage (3) ou Clef de Bras (2)"
+   ],
+   "goal": "Immobiliser un paquet de monstres de mêlée."
+  },
+  {
+   "name": "Tour de sécurité (12 PA)",
+   "sequence": [
+    "Retraite Anticipée (4)",
+    "Ruée vers l'Or (2) sur le DPS",
+    "Âge d'Or (2) sur le DPS",
+    "Maladresse ×4 (4)"
+   ],
+   "goal": "Aucun ennemi ne bouge ce tour ; DPS boosté pour le suivant."
+  },
+  {
+   "name": "Soutien (12 PA)",
+   "sequence": [
+    "Boîte à Outils (2) sur le soigneur",
+    "Ruée vers l'Or (2) sur le DPS",
+    "Pelle de Fortune (2)",
+    "Pelle Aurifère (4)",
+    "Maladresse ×2 (2)"
+   ],
+   "goal": "Boost PA/PM et entrave."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "Féca",
+   "how": "Auras −3 PM/−3 PA cumulées ; boucliers pour un Enutrof fragile."
+  },
+  {
+   "with": "Xélor / Sram / Féca",
+   "how": "Retraits PA/PM qui déclenchent Monnaie Sonnante / Orpaillage."
+  },
+  {
+   "with": "Eniripsa / Osamodas",
+   "how": "Soins qui déclenchent Coup de Grisou posé sur un allié."
+  },
+  {
+   "with": "Iop / Crâ / tout DPS",
+   "how": "Ruée vers l'Or +4 PM, Âge d'Or +200 Puissance, Décadence +10 % DF ; ennemis immobilisés pendant le kiting."
+  },
+  {
+   "with": "Osamodas",
+   "how": "Boîte à Outils sur une créature 3 PI (+3 PA/+3 PM)."
+  }
+ ],
+ "strengths": [
+  "Meilleur retrait de PM à distance (Maladresse 1 PA ×4, Pelle Aurifère, Tamisage, Avarice non esquivable)",
+  "Retraits de PA et de PO, réduction d'Esquive PA/PM",
+  "Boosts PM/PA/Puissance pour les alliés",
+  "Neutralisation (Corruption, Retraite Anticipée)",
+  "Objets animés protecteurs (interception, partage, soin)"
+ ],
+ "weaknesses": [
+  "Retraits esquivables dépendant du Retrait vs Esquive des monstres",
+  "Dégâts moyens",
+  "Peu de mobilité",
+  "Contreparties (Avarice +3 PA aux ennemis proches, Boîte de Pandore +1 PM ennemis)"
+ ],
+ "uncertain": [
+  "Formule de retrait PA/PM (jet par point, 10–90 %) issue d'émulateurs Dofus 2.",
+  "Nombre de déclenchements de Monnaie Sonnante/Orpaillage par effet de retrait (1 par effet supposé).",
+  "Mécanisme réel de Tourbière (+5 dommages de base par PM utilisé) : effet uniquement d'affichage dans les données.",
+  "PV des objets animés (bonusCharacteristics.lifePoints = % des PV de l'Enutrof).",
+  "Sens de « durée 1 tour » pour les malus d'Avarice/Retraite Anticipée (jusqu'au prochain tour de l'Enutrof)."
+ ],
+ "sources": [
+  "https://api.dofusdb.fr/breeds/3",
+  "https://api.dofusdb.fr/spell-variants?breedId=3",
+  ".cache/domath/other/otomai.FightActor.cs (RollApLose/RollMpLose)",
+  "https://domath.fr",
+  "https://www.gamosaurus.com/jeux/dofus/dofus-unity-guide-du-stuff-enutrof",
+  "https://www.gamosaurus.com/?p=118412",
+  "https://github.com/PyDofus/pydofus3 (ActionId.py)"
+ ]
+}

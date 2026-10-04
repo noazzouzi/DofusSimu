@@ -1,0 +1,3161 @@
+{
+ "breedId": 9,
+ "name": "Crâ",
+ "slug": "cra",
+ "dataSource": "https://api.dofusdb.fr (breeds/9, spell-variants?breedId=9, spells, spell-levels, spell-states, monsters) — données juin 2026",
+ "roles": [
+  {
+   "role": "dps-distance-zone",
+   "element": "Feu (Intelligence)",
+   "priority": 1,
+   "description": "Dégâts de zone à 5–7 PO : Flèche Explosive (cercle 3), Barrage (barre de 5), Détonante (cercle 2 différé), Enflammées (ligne 4), Fulminante (rebonds). Placement à distance, derrière la ligne de tanks."
+  },
+  {
+   "role": "dps-distance-mono",
+   "element": "Terre (Force) / Eau (Chance) / Air (Agilité)",
+   "priority": 2,
+   "description": "Sorts à rampe sur boss : Punitive (Terre), Expiation/Rédemption (Eau), Persécutrice (Air), Dévorante (Feu), avec Tir Perçant (×115 %) et Tirs Puissants (+250 Puissance)."
+  },
+  {
+   "role": "entrave",
+   "element": "Eau/Air",
+   "priority": 2,
+   "description": "Retrait PM : Cinglante (-2), Paralysante (-2 zone), Boomerang (-2 ligne), Immobilisation (vol 1), Pluie de Flèches (-20 esquive PM). Retrait PA : Glacée (-2), Ralentissante (-2 cône), Évasive (-1). Retrait PO : Détonante, Œil de Taupe."
+  },
+  {
+   "role": "support",
+   "element": "-",
+   "priority": 3,
+   "description": "Tirs Éloignés (+3 PO alliés), Tir Perçant (×115 %), Représailles (×110 %), Balise de Survie (soin 7 %/tour), Flèches Amoureuses (soin 8 % + partage)."
+  },
+  {
+   "role": "placement",
+   "element": "-",
+   "priority": 3,
+   "description": "Poussées multiples, Balise Tactique (attraction de groupe), Vendetta (piège attirant), Flèche Assaillante."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Bonus de dégâts de base auto-cumulatifs (effet 293)",
+   "description": "Beaucoup de sorts Crâ augmentent leurs propres dégâts de base après lancer (Glacée +8, Immobilisation +2/lancer, Œil pour Œil +6/attaque subie, Punitive +24/+32 différés, Expiation +36 différé, Rédemption +6/retrait réussi, Fulminante +15/cible, Massacrante +12/entité).",
+   "implementationNotes": "Buff sur le lanceur `spellBaseDamageBonus[spellId] += value`, ajouté aux min ET max de chaque ligne de dégâts du sort avant application des caractéristiques ; respecter maxStack du sort, delay et duration (les 293 différés ont delay>0 et duration=1)."
+  },
+  {
+   "name": "États silencieux de position (mêlée/distance)",
+   "description": "Flèche Évasive et Flèche Assaillante testent si le lanceur est au contact de la cible via un sous-sort qui pose un état sur le lanceur s'il est dans la zone Q1 (croix sans centre) autour de la cible.",
+   "implementationNotes": "Exécuter les effets dans l'ordre ; supporter les masques `*E<id>`/`*e<id>` (état du lanceur) et `c` (lanceur si dans la zone)."
+  },
+  {
+   "name": "Effets forClientOnly",
+   "description": "Certains effets affichés ne sont que des descriptions (poussée de Barrage, effets de Balise Tactique, Évasive).",
+   "implementationNotes": "Ignorer les effets `forClientOnly=true` lors de l'exécution ; exécuter le sous-sort correspondant."
+  },
+  {
+   "name": "Balises (invocations)",
+   "description": "Balise Tactique (8347, statique, 3 tours, attire/repousse selon le type de coup allié reçu) ; Balise de Survie (8348, joue, 2 tours, soin 7 % PV max aux alliés en LdV au début de son tour, échange avec le Crâ quand il la frappe en LdV).",
+   "implementationNotes": "Créer l'invocation (compte dans la limite), appliquer le passif sous-sort 32476 niv.1 (Tactique) ; pour la Survie, script de tour : soin 7 % sur alliés en LdV, puis mort après 2 tours (141 avec delay). PV des balises : `bonusCharacteristics.lifePoints` (200 / 100) + mise à l'échelle INCERTAINE selon le niveau du Crâ."
+  },
+  {
+   "name": "Modificateurs de portée/LdV temporaires",
+   "description": "Tirs Éloignés (+3 min / +6 max, 1 tour, retiré en fin de tour), Acuité Absolue (+3 PO min, sans LdV, +15 % CC), Tirs Puissants (-3 PO), Sentinelle (+10 PO décroissant).",
+   "implementationNotes": "Effets 280/281 (min/max par sort), 289 (désactive LdV), 116/117 (PO du personnage). La portée finale d'un sort = clamp(range + PO_bonus si rangeCanBeBoosted, ≥ minRange)."
+  },
+  {
+   "name": "Déclencheurs de poussée (PD) et de déplacement (M/TP/PT)",
+   "description": "Détonante explose et Tyrannique frappe dès que la cible subit des dommages de poussée ; le poison Tyrannique se réapplique si la cible est déplacée.",
+   "implementationNotes": "Événements moteur : onPushDamageTaken, onMoved (poussée/attirance/téléportation/portail), onStateRemoved(8 = Porté)."
+  },
+  {
+   "name": "Partage de dommages (Flèches Amoureuses)",
+   "description": "Deux alliés liés (état 7010) se partagent les dommages subis (effet 1061) et gagnent +100 Puissance 2 tours ; lien retiré en fin de tour du Crâ.",
+   "implementationNotes": "Lors d'un dommage sur un porteur de 7010 : répartir (INCERTAIN : 50/50 avant résistances ?) entre les porteurs ; vérifier dans DoMath `CharacterShareDamages`."
+  },
+  {
+   "name": "Rebonds et alignements",
+   "description": "Fulminante rebondit sur l'ennemi le plus proche (cercle 2) non touché ; Boomerang applique ses effets entre cibles alignées et vers le lanceur en fin de tour.",
+   "implementationNotes": "Effet 2160 (CASTER_EXECUTE_SPELL_GLOBAL_LIMITATION) : une seule exécution par lancer même si plusieurs cibles valides → choisir la plus proche (INCERTAIN : départage). Zone `l` (ligne depuis le lanceur) pour Boomerang."
+  },
+  {
+   "name": "Sentinelle (posture)",
+   "description": "+20 % dommages distance, +10 PO pendant 2 tours ; -2 % et -1 PO par PM utilisé.",
+   "implementationNotes": "Déclencheur `CCMPARR` interprété comme « à chaque PM dépensé par le porteur » (INCERTAIN)."
+  }
+ ],
+ "spells": [
+  {
+   "id": 32435,
+   "pairIndex": 1,
+   "variantOf": 32708,
+   "isBaseSpell": true,
+   "name": "Flèche Glacée",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 86146,
+   "description": "Retire des PA et occasionne des dommages Eau.\nLes dommages du sort sont augmentés après son utilisation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "12–14 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "16–19 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "21–24 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Retire 2 PA (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable)",
+    "21 à 24 dommages Eau (CC : 25 à 29) → cible (alliée ou ennemie)",
+    "Flèche Glacée : +8 dégâts de base → lanceur (3 tour(s))"
+   ],
+   "role": [
+    "damage",
+    "single-target",
+    "ap-removal",
+    "ramp"
+   ],
+   "tactic": "Sort Eau de base (3 PA, 3×/tour, 2×/cible) : -2 PA esquivable puis 21–24 Eau ; chaque lancer donne +8 dégâts de base au sort pendant 3 tours (cumul 1 : bonus non cumulable mais rafraîchi). Excellent retrait de PA à distance sur une cible dangereuse avant son tour ; à spammer 2× par cible (2e lancer à 29–32)."
+  },
+  {
+   "id": 32708,
+   "pairIndex": 1,
+   "variantOf": 32435,
+   "isBaseSpell": false,
+   "name": "Flèche Harcelante",
+   "obtainedAtLevel": 100,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 10,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 86195,
+   "description": "Réduit les soins reçus par la cible et lui applique un poison Air de début de tour.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "13–15 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 10,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "17–19 Air"
+    }
+   ],
+   "effectsSummary": [
+    "Soins reçus x70% → cible (alliée ou ennemie) (actif 1 tour(s), déclencheur : quand la cible est soignée)",
+    "17 à 19 dommages Air (CC : 20 à 23) → cible (alliée ou ennemie) (actif 2 tour(s), déclencheur : début de tour du porteur)"
+   ],
+   "role": [
+    "damage",
+    "poison",
+    "heal-reduction"
+   ],
+   "tactic": "Variante Air sans ligne de vue (portée 10 non modifiable) : pose un poison Air 17–19 au début des 2 prochains tours de la cible (déclencheur TB, 2 tours) et réduit ses soins reçus à ×70 % (1 tour). 1×/cible, 3×/tour : idéal contre les soigneurs/boss régénérants et pour toucher derrière les obstacles."
+  },
+  {
+   "id": 32443,
+   "pairIndex": 2,
+   "variantOf": 32459,
+   "isBaseSpell": true,
+   "name": "Flèche de Barrage",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 86148,
+   "description": "Occasionne des dommages Feu aux ennemis et repousse les cibles en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "14–16 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "19–21 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "24–27 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "24 à 27 dommages Feu (CC : 29 à 32) → ennemis dans la zone (zone ligne perpendiculaire (barre en T) taille 2)",
+    "le lanceur lance le sous-sort « Flèche de Barrage » (32463, niv. 1) → tous (alliés+ennemis) dans la zone (zone ligne perpendiculaire (barre en T) taille 2)",
+    "Repousse la cible de 1 case(s) → tous (alliés+ennemis) dans la zone (zone ligne perpendiculaire (barre en T) taille 2, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "push"
+   ],
+   "tactic": "Feu 3 PA en ligne, zone barre perpendiculaire de 2 (5 cases) : 24–27 Feu aux ennemis et repousse de 1 case toutes les cibles de la zone (alliés compris). 2×/tour. Bon nettoyage de lignes d'ennemis et déclencheur de dommages de poussée (Détonante/Tyrannique)."
+  },
+  {
+   "id": 32459,
+   "pairIndex": 2,
+   "variantOf": 32443,
+   "isBaseSpell": false,
+   "name": "Carreaux Destructeurs",
+   "obtainedAtLevel": 105,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 86196,
+   "description": "Occasionne des dommages Terre et retire des dommages aux ennemis et repousse les cibles en zone.\nLes dommages de zone ne sont pas dégressifs.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "31–34 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "38–42 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "38 à 42 dommages Terre (CC : 46 à 50) → ennemis dans la zone (zone fourche taille 2)",
+    "-60 Dommages → ennemis dans la zone (zone fourche taille 2, 1 tour(s))",
+    "Repousse la cible de 3 case(s) → tous (alliés+ennemis) dans la zone (zone fourche taille 2)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "push",
+    "debuff"
+   ],
+   "tactic": "Variante Terre de mêlée-courte portée (1–3 en ligne) : 38–42 Terre non dégressifs en fourche, -60 dommages fixes aux ennemis (1 tour) et repousse de 3 cases. Pour un Crâ Terre qui se fait coller ; retire beaucoup de dégâts à un groupe au contact."
+  },
+  {
+   "id": 32455,
+   "pairIndex": 3,
+   "variantOf": 32531,
+   "isBaseSpell": true,
+   "name": "Flèche Vagabonde",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 86150,
+   "description": "Éloigne le lanceur de la cible et occasionne des dommages Terre aux ennemis.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "16–18 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "21–23 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "27–30 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "Le lanceur recule de 3 case(s) (s’éloigne de la cible) → cible (alliée ou ennemie)",
+    "27 à 30 dommages Terre (CC : 32 à 36) → cible ennemie"
+   ],
+   "role": [
+    "damage",
+    "single-target",
+    "escape",
+    "mobility"
+   ],
+   "tactic": "Terre 3 PA en ligne/diagonale, 27–30 Terre, le Crâ recule de 3 cases (s'éloigne de la cible). Outil d'évasion gratuit (pas de tacle). 2×/tour."
+  },
+  {
+   "id": 32531,
+   "pairIndex": 3,
+   "variantOf": 32455,
+   "isBaseSpell": false,
+   "name": "Flèche Évasive",
+   "obtainedAtLevel": 110,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 86197,
+   "description": "Applique des effets selon la position du lanceur par rapport à la cible et occasionne des dommages Eau aux ennemis :\n• Éloigne le lanceur de la cible et retire des PM aux ennemis s'il est en mêlée.\n• Repousse la cible et retire des PA aux ennemis si le lanceur est à distance.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "21–23 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "26–29 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Le lanceur recule de 2 case(s) (s’éloigne de la cible) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Retire 1 PM (esquivable) → cible ennemie (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Repousse la cible de 2 case(s) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Retire 1 PA (esquivable) → cible ennemie (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Flèche Évasive » (32655, niv. 1) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Flèche Évasive » (32655, niv. 2) → cible (alliée ou ennemie)",
+    "26 à 29 dommages Eau (CC : 31 à 35) → cible ennemie"
+   ],
+   "role": [
+    "damage",
+    "ap-removal",
+    "mp-removal",
+    "push",
+    "escape"
+   ],
+   "tactic": "Variante Eau 3 PA : si le Crâ est au contact → il recule de 2 et retire 1 PM ; à distance → repousse la cible de 2 et retire 1 PA. 26–29 Eau. Très bon outil d'entrave/kite polyvalent (1×/cible)."
+  },
+  {
+   "id": 32426,
+   "pairIndex": 4,
+   "variantOf": 32449,
+   "isBaseSpell": true,
+   "name": "Flèche de Recul",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 86144,
+   "description": "Occasionne des dommages Air aux ennemis et repousse la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "15–17 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "20–22 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "25–28 Air"
+    }
+   ],
+   "effectsSummary": [
+    "25 à 28 dommages Air (CC : 30 à 34) → cible ennemie",
+    "Repousse la cible de 2 case(s) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "single-target",
+    "push"
+   ],
+   "tactic": "Air 3 PA (3×/tour, 2×/cible) : 25–28 Air + repousse de 2. Bon ratio dégâts/PA en Air, déclenche des dommages de poussée contre un obstacle."
+  },
+  {
+   "id": 32449,
+   "pairIndex": 4,
+   "variantOf": 32426,
+   "isBaseSpell": false,
+   "name": "Flèche Éclatante",
+   "obtainedAtLevel": 95,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 3,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 86194,
+   "description": "Vole de la vie dans l'élément Feu aux ennemis et repousse les cibles depuis le centre en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 3,
+     "minRange": 3,
+     "range": 5,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "18–20 vol Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 3,
+     "minRange": 3,
+     "range": 7,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "22–25 vol Feu"
+    }
+   ],
+   "effectsSummary": [
+    "22 à 25 vol Feu (CC : 26 à 30) → ennemis dans la zone (zone croix diagonale taille 1)",
+    "Repousse la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone croix diagonale (taille min) taille 1)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "lifesteal",
+    "push"
+   ],
+   "tactic": "Variante Feu en vol de vie (po 3–7) : 22–25 vol Feu en croix diagonale (taille 1) et repousse de 2 depuis le centre. 1×/tour. Soin personnel + dispersion des ennemis qui entourent un allié."
+  },
+  {
+   "id": 32464,
+   "pairIndex": 5,
+   "variantOf": 32467,
+   "isBaseSpell": true,
+   "name": "Pas Chassé",
+   "obtainedAtLevel": 5,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "spellLevelId": 86152,
+   "description": "Téléporte le lanceur sur la case ciblée.\nAugmente les PM du lanceur au tour suivant.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Téléporte le lanceur sur la case ciblée → cible (alliée ou ennemie)",
+    "1 PM → lanceur (1 tour(s), délai 1 t.)"
+   ],
+   "role": [
+    "mobility",
+    "escape"
+   ],
+   "tactic": "Téléportation 2 PA sur une case libre à 1–2 cases en ligne (relance 2), +1 PM au tour suivant. Interdit sous Pesanteur (état 7). Sert à sortir d'un tacle (téléport = pas de jet de tacle)."
+  },
+  {
+   "id": 32467,
+   "pairIndex": 5,
+   "variantOf": 32464,
+   "isBaseSpell": false,
+   "name": "Balise Tactique",
+   "obtainedAtLevel": 115,
+   "grade": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 5,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 86199,
+   "description": "Invoque une Balise statique qui peut appliquer des effets en zone autour d'elle selon ce qu'elle subit :\n• Elle attire les cibles si un allié lui occasionne des dommages à distance ou la pousse.\n• Elle pousse les cibles si un allié lui occasionne des dommages en mêlée ou de poussée.\n\nLa balise est détruite 3 tours après son invocation.\n\nAugmente également la Puissance du lanceur pour chaque ennemi dans la ligne de vue de la case ciblée.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Balise Tactique » (monstre 8347, grade 2) → cible (alliée ou ennemie)",
+    "Attire la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone croix sans centre taille 3, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Repousse de 2 case(s) sans dommages de poussée → tous (alliés+ennemis) dans la zone (zone croix sans centre taille 1, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Tue la cible → alliés (dont lanceur si dans la zone), invocations du lanceur, U (INCERTAIN) (délai 3 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "+40 Puissance → lanceur (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Balise Tactique » (32476, niv. 9) → ennemis dans la zone (zone cercle illimitée (63) (min 1), si en LdV du centre)"
+   ],
+   "role": [
+    "summon",
+    "placement",
+    "buff",
+    "pull",
+    "push"
+   ],
+   "tactic": "Variante 1 PA (relance 2, po 1–8) : invoque une Balise Tactique statique 3 tours ; le Crâ gagne +40 Puissance (2 tours) par ennemi en ligne de vue de la case ciblée. Les alliés qui frappent la balise à distance (ou la poussent) attirent de 2 cases tout ce qui est en croix autour ; en mêlée/poussée, elle repousse les adjacents. Outil de regroupement avant un sort de zone (Explosive) et gros buff de Puissance en début de combat."
+  },
+  {
+   "id": 32465,
+   "pairIndex": 6,
+   "variantOf": 32471,
+   "isBaseSpell": true,
+   "name": "Tirs Éloignés",
+   "obtainedAtLevel": 10,
+   "grade": 3,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 86154,
+   "description": "Augmente les portées minimale et maximale de tous les sorts offensifs Crâ du lanceur.\nAugmente également la Portée des alliés (hors Crâs) en zone autour du lanceur et de ses Balises.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Coup de poing : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Coup de poing : +6 Portée maximale → lanceur (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Flèche Vagabonde : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Vagabonde : +6 Portée maximale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche de Barrage : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche de Barrage : +6 Portée maximale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Glacée : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Glacée : +6 Portée maximale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche de Recul : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche de Recul : +6 Portée maximale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Détonante : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Détonante : +6 Portée maximale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche d'Abolition : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche d'Abolition : +6 Portée maximale → lanceur (1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "buff",
+    "range"
+   ],
+   "tactic": "1 PA, relance 2 : +3 PO min et +6 PO max à tous les sorts offensifs Crâ et à l'arme jusqu'à la fin du tour ; +3 PO (1 tour) aux alliés non-Crâ dans un cercle de 2 autour du Crâ et de ses balises. Indispensable pour frapper de très loin, mais la PO minimale +3 empêche de toucher au contact."
+  },
+  {
+   "id": 32471,
+   "pairIndex": 6,
+   "variantOf": 32465,
+   "isBaseSpell": false,
+   "name": "Tir Perçant",
+   "obtainedAtLevel": 120,
+   "grade": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 86200,
+   "description": "Érode la cible et augmente les dommages qu'elle subit jusqu'à la prochaine attaque.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 187,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "25% Érosion → cible (alliée ou ennemie) (2 tour(s))",
+    "Dommages subis x115% → cible (alliée ou ennemie) (actif 2 tour(s), déclencheur : quand la cible subit des dommages)",
+    "Retire les effets du sort « Tir Perçant » (32471) → cible (alliée ou ennemie) (actif 2 tour(s), déclencheur : quand la cible subit des dommages)"
+   ],
+   "role": [
+    "debuff",
+    "damage-amp",
+    "erosion"
+   ],
+   "tactic": "Variante 1 PA (2×/tour, 1×/cible) : 25 % d'érosion (2 tours) et ×115 % dommages subis jusqu'à la prochaine attaque reçue (le buff se retire au premier dommage). À placer juste avant la plus grosse frappe du groupe sur la cible (boss)."
+  },
+  {
+   "id": 32444,
+   "pairIndex": 7,
+   "variantOf": 32439,
+   "isBaseSpell": true,
+   "name": "Flèche Détonante",
+   "obtainedAtLevel": 15,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 86156,
+   "description": "Retire de la Portée, occasionne des dommages Feu et applique l'état Flèche Détonante sur la cible :\n• Applique les effets sans l'état sur les ennemis en zone autour de la cible à la fin de son tour.\n\nLes effets peuvent être déclenchés prématurément si la cible subit des dommages de poussée.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "9–11 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "11–14 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "14–17 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "-3 Portée → cible (alliée ou ennemie) (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Flèche Détonante » (32451, niv. 12) → cible (alliée ou ennemie)",
+    "14 à 17 dommages Feu (CC : 18 à 21) → cible (alliée ou ennemie)",
+    "Applique l'état « Flèche Détonante » (656) → cible (alliée ou ennemie) (1 tour(s))",
+    "le lanceur lance le sous-sort « Flèche Détonante » (32451, niv. 9) → cible (alliée ou ennemie) (actif 1 tour(s), déclencheur : fin de tour du porteur OU dommages de poussée subis OU dommages de poussée subis (variante X, INCERTAIN))",
+    "-3 Portée → ennemis dans la zone (zone cercle taille 2 (min 1), 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "14 à 17 dommages Feu (CC : 18 à 21) → ennemis dans la zone (zone cercle taille 2 (min 1), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "range-removal",
+    "delayed"
+   ],
+   "tactic": "Feu 2 PA (3×/tour, 2×/cible) : -3 PO et 14–17 Feu sur la cible + état « Flèche Détonante » ; à la fin du tour de la cible (ou dès qu'elle subit des dommages de poussée), explosion : -3 PO et 14–17 Feu aux ennemis en cercle 2 autour d'elle. Très bon ratio Feu/PA en groupe compact ; combo poussée → explosion immédiate."
+  },
+  {
+   "id": 32439,
+   "pairIndex": 7,
+   "variantOf": 32444,
+   "isBaseSpell": false,
+   "name": "Flèche Ralentissante",
+   "obtainedAtLevel": 125,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 86201,
+   "description": "Retire des PA et des PM et occasionne des dommages Eau en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "28–30 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "32–34 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Retire 2 PA (esquivable) → tous (alliés+ennemis) dans la zone (zone cône taille 2, 1 tour(s), non désenvoûtable)",
+    "Retire 1 PM (esquivable) → tous (alliés+ennemis) dans la zone (zone cône taille 2, 1 tour(s), non désenvoûtable)",
+    "32 à 34 dommages Eau (CC : 38 à 41) → tous (alliés+ennemis) dans la zone (zone cône taille 2)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "ap-removal",
+    "mp-removal"
+   ],
+   "tactic": "Variante Eau 4 PA en ligne, cône de 2 : -2 PA, -1 PM (esquivables) et 32–34 Eau. 1×/tour, CC 20 %. Entrave de zone sur un groupe aligné."
+  },
+  {
+   "id": 32453,
+   "pairIndex": 8,
+   "variantOf": 32433,
+   "isBaseSpell": true,
+   "name": "Flèche d'Abolition",
+   "obtainedAtLevel": 20,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 3,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 86166,
+   "description": "Vole de la vie dans l'élément Terre.\nLes dommages sont plus importants sur les cibles ayant du bouclier.\n\nLa taille de la zone est augmentée après chaque lancer pour le tour en cours.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 2,
+     "minRange": 3,
+     "range": 5,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "5–7 vol Terre, 11–14 vol Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 2,
+     "minRange": 3,
+     "range": 6,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "7–9 vol Terre, 14–18 vol Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 2,
+     "minRange": 3,
+     "range": 7,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "9–11 vol Terre, 18–22 vol Terre"
+    }
+   ],
+   "effectsSummary": [
+    "9 à 11 vol Terre (CC : 12 à 14) → cible (alliée ou ennemie) — si cible n'a PAS de bouclier (INCERTAIN: masque pb) ET si lanceur n'a PAS l'état « Flèche d'Abolition I » (7120) ET si lanceur n'a PAS l'état « Flèche d'Abolition II » (7121)",
+    "9 à 11 vol Terre (CC : 12 à 14) → tous (alliés+ennemis) dans la zone — si cible n'a PAS de bouclier (INCERTAIN: masque pb) ET si lanceur a l'état « Flèche d'Abolition I » (7120) (zone croix taille 1)",
+    "9 à 11 vol Terre (CC : 12 à 14) → tous (alliés+ennemis) dans la zone — si cible n'a PAS de bouclier (INCERTAIN: masque pb) ET si lanceur a l'état « Flèche d'Abolition II » (7121) (zone cercle taille 2)",
+    "18 à 22 vol Terre (CC : 23 à 27) → cible (alliée ou ennemie) — si cible a du bouclier (INCERTAIN: masque PB) ET si lanceur n'a PAS l'état « Flèche d'Abolition I » (7120) ET si lanceur n'a PAS l'état « Flèche d'Abolition II » (7121)",
+    "18 à 22 vol Terre (CC : 23 à 27) → tous (alliés+ennemis) dans la zone — si cible a du bouclier (INCERTAIN: masque PB) ET si lanceur a l'état « Flèche d'Abolition I » (7120) (zone croix taille 1)",
+    "18 à 22 vol Terre (CC : 23 à 27) → tous (alliés+ennemis) dans la zone — si cible a du bouclier (INCERTAIN: masque PB) ET si lanceur a l'état « Flèche d'Abolition II » (7121) (zone cercle taille 2)",
+    "Applique l'état « Flèche d'Abolition I » (7120) → lanceur — si lanceur n'a PAS l'état « Flèche d'Abolition I » (7120) ET si lanceur n'a PAS l'état « Flèche d'Abolition II » (7121) (1 tour(s))",
+    "Retire l'état « Flèche d'Abolition I » (7120) → lanceur — si lanceur a l'état « Flèche d'Abolition I » (7120)",
+    "Applique l'état « Flèche d'Abolition II » (7121) → lanceur — si lanceur a l'état « Flèche d'Abolition I » (7120) (1 tour(s))",
+    "Retire les effets du sort « Flèche d'Abolition » (32453) → lanceur (actif 1 tour(s), déclencheur : fin de tour du porteur)"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "aoe",
+    "ramp"
+   ],
+   "tactic": "Terre 2 PA (po 3–7, 3×/tour) : vol Terre 9–11 (18–22 sur cible avec bouclier) ; la zone grandit à chaque lancer du tour (cible → croix 1 → cercle 2). Bon spam Terre pas cher, excellent contre les monstres qui se boucliérisent."
+  },
+  {
+   "id": 32433,
+   "pairIndex": 8,
+   "variantOf": 32453,
+   "isBaseSpell": false,
+   "name": "Flèche Persécutrice",
+   "obtainedAtLevel": 130,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 3,
+   "range": 9,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 86202,
+   "description": "Vole de la vie dans l'élément Air.\nOccasionne des dommages Air au tour suivant si la cible n'est pas dans la ligne de vue du lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 4,
+     "minRange": 3,
+     "range": 7,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "30–34 vol Air, 30–34 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 4,
+     "minRange": 3,
+     "range": 9,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "34–38 vol Air, 34–38 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Flèche Persécutrice » (32615, niv. 1) → cible (alliée ou ennemie) (délai 1 t.)",
+    "34 à 38 vol Air (CC : 41 à 46) → cible (alliée ou ennemie)",
+    "34 à 38 dommages Air (CC : 41 à 46) → cible (alliée ou ennemie) (délai 1 t.)"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "delayed",
+    "single-target"
+   ],
+   "tactic": "Variante Air 4 PA (po 3–9, 2×/tour, 1×/cible) : vol Air 34–38, puis au tour suivant 34–38 Air supplémentaires **si la cible n'est pas en ligne de vue** du Crâ. Gros mono-cible : tirer puis se cacher derrière un obstacle."
+  },
+  {
+   "id": 32427,
+   "pairIndex": 9,
+   "variantOf": 32458,
+   "isBaseSpell": true,
+   "name": "Flèche Cinglante",
+   "obtainedAtLevel": 25,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 86168,
+   "description": "Retire des PM et occasionne des dommages Air.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "9–11 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "12–14 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "15–18 Air"
+    }
+   ],
+   "effectsSummary": [
+    "Retire 2 PM (esquivable) → cible (alliée ou ennemie) (1 tour(s))",
+    "15 à 18 dommages Air (CC : 19 à 23) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "mp-removal",
+    "single-target"
+   ],
+   "tactic": "Air 2 PA (3×/tour, 2×/cible) : -2 PM esquivables + 15–18 Air. LE sort de retrait PM du Crâ : 2 lancers = -4 PM sur une cible (avant esquive)."
+  },
+  {
+   "id": 32458,
+   "pairIndex": 9,
+   "variantOf": 32427,
+   "isBaseSpell": false,
+   "name": "Flèche Assaillante",
+   "obtainedAtLevel": 135,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 85266,
+   "description": "Applique des effets selon la position du lanceur par rapport à la cible, occasionne des dommages Terre aux ennemis et augmente la Puissance du lanceur :\n• Repousse la cible si le lanceur est en mêlée.\n• Rapproche le lanceur vers la cible s'il est à distance.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–26 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "Repousse la cible de 3 case(s) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Le lanceur avance de 3 case(s) vers la cible → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Flèche Assaillante » (32781, niv. 1) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Flèche Assaillante » (32781, niv. 2) → cible (alliée ou ennemie)",
+    "23 à 26 dommages Terre (CC : 28 à 31) → cible ennemie",
+    "+150 Puissance → lanceur (1 tour(s))"
+   ],
+   "role": [
+    "damage",
+    "buff",
+    "push",
+    "mobility"
+   ],
+   "tactic": "Variante Terre 3 PA (2×/tour) : 23–26 Terre + **+150 Puissance pour le tour** ; au contact repousse la cible de 3, à distance le Crâ avance de 3 vers elle. À lancer en premier dans le tour pour booster tous les sorts suivants (multi-éléments)."
+  },
+  {
+   "id": 32436,
+   "pairIndex": 10,
+   "variantOf": 32448,
+   "isBaseSpell": true,
+   "name": "Flèche d'Immobilisation",
+   "obtainedAtLevel": 30,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 4,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 86170,
+   "description": "Vole des PM et occasionne des dommages Eau\nLes dommages du sort sont augmentés après chaque lancer.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "7–9 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "9–11 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 164,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "11–13 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Vole 1 PM (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable)",
+    "11 à 13 dommages Eau (CC : 14 à 16) → cible (alliée ou ennemie)",
+    "Flèche d'Immobilisation : +2 dégâts de base → lanceur (3 tour(s))"
+   ],
+   "role": [
+    "damage",
+    "mp-removal",
+    "ramp"
+   ],
+   "tactic": "Eau 2 PA (4×/tour, 2×/cible) : vole 1 PM (esquivable) + 11–13 Eau, +2 dégâts de base par lancer (cumul 4, 3 tours). Entrave PM + spam bon marché en Eau."
+  },
+  {
+   "id": 32448,
+   "pairIndex": 10,
+   "variantOf": 32436,
+   "isBaseSpell": false,
+   "name": "Flèche Tyrannique",
+   "obtainedAtLevel": 140,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 2,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 85256,
+   "description": "Occasionne des dommages et applique un poison Feu de fin de tour sur la cible.\nLe poison est renouvelé si la cible est déplacée sous les effets du sort.\n\nOccasionne prématurément des dommages Feu et retire les effets du sort si la cible subit des dommages de poussée.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 4,
+     "minRange": 2,
+     "range": 8,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "28–32 Feu, 20–22 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "28 à 32 dommages Feu (CC : 34 à 38) → cible (alliée ou ennemie)",
+    "20 à 22 dommages Feu (CC : 24 à 26) → cible (alliée ou ennemie) (actif 2 tour(s), déclencheur : fin de tour du porteur, info-bulle uniquement (comportement réel géré côté serveur))",
+    "28 à 32 dommages Feu (CC : 34 à 38) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Flèche Tyrannique » (32488, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "poison",
+    "single-target"
+   ],
+   "tactic": "Variante Feu 4 PA (po 2–8, 2×/tour) : 28–32 Feu + poison Feu 20–22 à la fin du tour de la cible ; le poison est réappliqué si la cible est déplacée et, si elle subit des dommages de poussée, 28–32 Feu immédiats puis retrait du sort. Combo poussée (Recul/Barrage) = double frappe."
+  },
+  {
+   "id": 32466,
+   "pairIndex": 11,
+   "variantOf": 32618,
+   "isBaseSpell": true,
+   "name": "Tirs Puissants",
+   "obtainedAtLevel": 35,
+   "grade": 3,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 86172,
+   "description": "Sacrifie la Portée du lanceur pour augmenter sa Puissance, ses Dommages Poussée et ses Critiques.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 5,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 5,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 5,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "-3 Portée → lanceur (1 tour(s), non désenvoûtable)",
+    "+250 Puissance (CC : 300) → lanceur (1 tour(s), non désenvoûtable)",
+    "150 Dommages Poussée (CC : 170) → lanceur (1 tour(s), non désenvoûtable)",
+    "15% Critique (CC : 17) → lanceur (1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "buff",
+    "self-buff"
+   ],
+   "tactic": "1 PA, relance 2 : -3 PO, +250 Puissance (CC +300), +150 Dommages Poussée, +15 % CC pour le tour. LE buff de dégâts du Crâ ; combiné à Tirs Éloignés pour compenser la portée."
+  },
+  {
+   "id": 32618,
+   "pairIndex": 11,
+   "variantOf": 32466,
+   "isBaseSpell": false,
+   "name": "Flèches Amoureuses",
+   "obtainedAtLevel": 145,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 85650,
+   "description": "Soigne l'allié ciblé.\n\nPartage également les dommages entre le combattant allié initial et un autre combattant allié en augmentant leur Puissance si le sort est lancé sur cet autre combattant.\n\nLes soins n'affectent pas le lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "la cible lance (sur elle-même) le sous-sort « Flèches Amoureuses » (32619, niv. 2) → lanceur (actif 1 tour(s), déclencheur : fin de tour du porteur)",
+    "Soin : 8% des PV max (CC : 10) → allié ciblé (hors lanceur)",
+    "Partage les dommages → lanceur (s'il est dans la zone), personnages joueurs alliés, monstres alliés (non invocations jouantes), compagnons alliés — si cible a l'état « Flèches Amoureuses » (7010) (zone tout le terrain (vivants), actif 1 tour(s), déclencheur : quand la cible subit des dommages, info-bulle uniquement (comportement réel géré côté serveur))",
+    "+100 Puissance → lanceur (s'il est dans la zone), personnages joueurs alliés, monstres alliés (non invocations jouantes), compagnons alliés — si cible a l'état « Flèches Amoureuses » (7010) (zone tout le terrain (vivants), 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Flèches Amoureuses » (7010) → lanceur (s'il est dans la zone), personnages joueurs alliés, monstres alliés (non invocations jouantes), compagnons alliés (1 tour(s))",
+    "le lanceur lance (limitation globale) le sous-sort « Flèches Amoureuses » (32619, niv. 1) → lanceur (s'il est dans la zone), personnages joueurs alliés, monstres alliés (non invocations jouantes), compagnons alliés — si cible a l'état « Flèches Amoureuses » (7010) (zone cercle illimitée (63) (min 1))"
+   ],
+   "role": [
+    "heal",
+    "support",
+    "damage-share"
+   ],
+   "tactic": "Variante soin 3 PA (po 0–8 en ligne/diagonale, 2×/tour, 1×/cible) : soigne 8 % PV max l'allié (pas le lanceur) et lui pose l'état Flèches Amoureuses ; lancé ensuite sur un second allié, les deux se **partagent les dommages** et gagnent +100 Puissance (2 tours). Utile pour protéger un tank fragile ou répartir les dégâts d'un boss mono-cible."
+  },
+  {
+   "id": 32428,
+   "pairIndex": 12,
+   "variantOf": 32447,
+   "isBaseSpell": true,
+   "name": "Flèche de Dispersion",
+   "obtainedAtLevel": 40,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 2,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 86174,
+   "description": "Occasionne des dommages Air aux ennemis et repousse les cibles depuis le centre en zone.\nLa poussée est plus importante aux extrémités de la zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 3,
+     "minRange": 2,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "13–15 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 3,
+     "minRange": 2,
+     "range": 5,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "17–19 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 3,
+     "minRange": 2,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "21–24 Air"
+    }
+   ],
+   "effectsSummary": [
+    "21 à 24 dommages Air (CC : 25 à 29) → ennemis dans la zone (zone croix taille 2)",
+    "Repousse la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone croix sans centre taille 2 (min 2))",
+    "Repousse la cible de 1 case(s) → tous (alliés+ennemis) dans la zone (zone croix sans centre taille 1)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "push",
+    "placement"
+   ],
+   "tactic": "Air 3 PA (po 2–6, 1×/tour) : 21–24 Air en croix 2 aux ennemis, repousse depuis le centre (1 case au centre-adjacent, 2 aux extrémités). Dégagement d'un allié encerclé."
+  },
+  {
+   "id": 32447,
+   "pairIndex": 12,
+   "variantOf": 32428,
+   "isBaseSpell": false,
+   "name": "Flèches Enflammées",
+   "obtainedAtLevel": 150,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 85255,
+   "description": "Éloigne le lanceur des cibles, occasionne des dommages Feu aux ennemis et repousse les cibles en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "34–38 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "Le lanceur recule de 1 case(s) (s’éloigne de la cible) → tous (alliés+ennemis) dans la zone (zone ligne taille 4)",
+    "34 à 38 dommages Feu (CC : 41 à 46) → ennemis dans la zone (zone ligne taille 4)",
+    "Repousse la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone ligne taille 4)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "push",
+    "escape"
+   ],
+   "tactic": "Variante Feu 4 PA en ligne (2×/tour) : 34–38 Feu en ligne de 4, repousse de 2 les cibles et le Crâ recule d'1 case. Fort sort de zone en couloir."
+  },
+  {
+   "id": 32445,
+   "pairIndex": 13,
+   "variantOf": 32457,
+   "isBaseSpell": true,
+   "name": "Flèche Explosive",
+   "obtainedAtLevel": 45,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 4,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 86176,
+   "description": "Occasionne des dommages Feu en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 4,
+     "minRange": 4,
+     "range": 5,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "19–21 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 4,
+     "minRange": 4,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "25–28 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 179,
+     "apCost": 4,
+     "minRange": 4,
+     "range": 7,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "30–34 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "30 à 34 dommages Feu (CC : 36 à 41) → tous (alliés+ennemis) dans la zone (zone cercle taille 3)"
+   ],
+   "role": [
+    "damage",
+    "aoe"
+   ],
+   "tactic": "Feu 4 PA (po 4–7, 1×/tour, CC 20 %) : 30–34 Feu en cercle de 3 (**touche aussi les alliés et le lanceur**). Le sort de zone signature du Crâ Feu ; à combiner avec la Balise Tactique pour regrouper."
+  },
+  {
+   "id": 32457,
+   "pairIndex": 13,
+   "variantOf": 32445,
+   "isBaseSpell": false,
+   "name": "Flèche Massacrante",
+   "obtainedAtLevel": 155,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 2,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 85265,
+   "description": "Augmente les dommages du sort pour chaque entité dans la zone d'effet et occasionne des dommages Terre en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 4,
+     "minRange": 2,
+     "range": 7,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "25–29 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "Flèche Massacrante : +12 dégâts de base → lanceur (zone demi-cercle taille 1, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Flèche Massacrante » (32461, niv. 1) → tous (alliés+ennemis) dans la zone (zone demi-cercle taille 1)",
+    "25 à 29 dommages Terre (CC : 30 à 35) → tous (alliés+ennemis) dans la zone (zone demi-cercle taille 1)",
+    "Retire les effets du sort « Flèche Massacrante » (32461) → lanceur"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "ramp"
+   ],
+   "tactic": "Variante Terre 4 PA (po 2–7 en ligne, 2×/tour) : 25–29 Terre en demi-cercle 1, +12 dégâts de base par entité présente dans la zone (alliés compris) pour ce lancer. Très fort sur un paquet de monstres collés."
+  },
+  {
+   "id": 32437,
+   "pairIndex": 14,
+   "variantOf": 32431,
+   "isBaseSpell": true,
+   "name": "Œil de Taupe",
+   "obtainedAtLevel": 50,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 3,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 86178,
+   "description": "Dévoile les invisibles, retire de la Portée et vole de la vie dans l'élément Eau en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 3,
+     "minRange": 3,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "12–14 vol Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 3,
+     "minRange": 3,
+     "range": 5,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "16–19 vol Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 184,
+     "apCost": 3,
+     "minRange": 3,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "19–22 vol Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Dévoile les entités invisibles → ennemis dans la zone (zone cercle taille 2)",
+    "-3 Portée → tous (alliés+ennemis) dans la zone (zone cercle taille 2, 1 tour(s))",
+    "19 à 22 vol Eau (CC : 23 à 26) → tous (alliés+ennemis) dans la zone (zone cercle taille 2)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "lifesteal",
+    "range-removal",
+    "detection"
+   ],
+   "tactic": "Eau 3 PA (po 3–6, 1×/tour) : révèle les invisibles en cercle 2, -3 PO (1 tour) et vol Eau 19–22 en zone (alliés compris). Anti-Sram/anti-invisibles et anti-distance."
+  },
+  {
+   "id": 32431,
+   "pairIndex": 14,
+   "variantOf": 32437,
+   "isBaseSpell": false,
+   "name": "Pluie de Flèches",
+   "obtainedAtLevel": 160,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 85239,
+   "description": "Retire de l'Esquive PM et occasionne des dommages Air en zone.\nN'affecte pas le lanceur.\n\nLes effets sont relancés à partir de la case ciblée au tour suivant.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "21–23 Air"
+    }
+   ],
+   "effectsSummary": [
+    "-20 Esquive PM → tous sauf le lanceur dans la zone (zone cercle taille 3, 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "la cible lance sur la case ciblée le sous-sort « Pluie de Flèches » (32481, niv. 2) → lanceur",
+    "21 à 23 dommages Air (CC : 25 à 28) → tous sauf le lanceur dans la zone (zone cercle taille 3)",
+    "Pose un glyphe-aura « Pluie de Flèches » (32481, niv. 3) → alliés dans la zone — si cible est le monstre « monstre#50000 » (50000) (zone cercle taille 3, 1 tour(s))",
+    "la cible lance sur la case ciblée le sous-sort « Pluie de Flèches » (32481, niv. 1) → lanceur (délai 1 t.)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "dodge-reduction"
+   ],
+   "tactic": "Variante Air 3 PA (po 0–6, 1×/tour, max 2×/tour pour tous les Crâ) : 21–23 Air et -20 Esquive PM en cercle 3 (n'affecte pas le lanceur), puis les effets se relancent sur la même case au tour suivant. Prépare un retrait PM de groupe (Enutrof/Sacrieur) en réduisant l'esquive PM."
+  },
+  {
+   "id": 32454,
+   "pairIndex": 15,
+   "variantOf": 32441,
+   "isBaseSpell": true,
+   "name": "Œil pour Œil",
+   "obtainedAtLevel": 55,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 4,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 86180,
+   "description": "Vole de la vie dans l'élément Terre en zone.\nN'affecte pas le lanceur.\n\nLes dommages du sort sont augmentés pour chaque attaque ennemie subie au tour précédent.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "18–20 vol Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "24–26 vol Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "27–30 vol Terre"
+    }
+   ],
+   "effectsSummary": [
+    "27 à 30 vol Terre (CC : 32 à 36) → tous sauf le lanceur dans la zone (zone croix taille 1)",
+    "Œil pour Œil : +6 dégâts de base → lanceur (zone croix taille 1, 1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "lifesteal",
+    "ramp"
+   ],
+   "tactic": "Terre 3 PA (po 0–5, 1×/tour) : vol Terre 27–30 en croix 1 (pas le lanceur) ; +6 dégâts de base par attaque ennemie subie au tour précédent (cumul 4 → +24). Bon sort de survie quand on est focus."
+  },
+  {
+   "id": 32441,
+   "pairIndex": 15,
+   "variantOf": 32454,
+   "isBaseSpell": false,
+   "name": "Flèche Paralysante",
+   "obtainedAtLevel": 165,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 3,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 85249,
+   "description": "Retire des PA et des PM et occasionne des dommages Eau en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 4,
+     "minRange": 3,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "30–34 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Retire 1 PA (esquivable) → tous (alliés+ennemis) dans la zone (zone carré taille 1, 1 tour(s), non désenvoûtable)",
+    "Retire 2 PM (esquivable) → tous (alliés+ennemis) dans la zone (zone carré taille 1, 1 tour(s), non désenvoûtable)",
+    "30 à 34 dommages Eau (CC : 36 à 41) → tous (alliés+ennemis) dans la zone (zone carré taille 1)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "ap-removal",
+    "mp-removal"
+   ],
+   "tactic": "Variante Eau 4 PA (po 3–6, 1×/tour, CC 20 %) : -1 PA, -2 PM et 30–34 Eau en carré 1 (9 cases, alliés compris). Meilleur retrait PM de zone du Crâ."
+  },
+  {
+   "id": 32474,
+   "pairIndex": 16,
+   "variantOf": 32472,
+   "isBaseSpell": true,
+   "name": "Balise de Survie",
+   "obtainedAtLevel": 60,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 86186,
+   "description": "Invoque une Balise qui peut soigner tous les alliés dans sa ligne de vue au début de son tour.\nElle peut également échanger de position avec le lanceur s'il l'attaque en étant dans sa ligne de vue.\n\nLa balise est détruite 2 tours après son invocation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Balise de Survie » (monstre 8348, grade 3) → cible (alliée ou ennemie)",
+    "Soin : 7% des PV max → alliés (hors lanceur) dans la zone (zone cercle illimitée (63), si en LdV du centre, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Échange de positions (lanceur ↔ cible) → personnages joueurs alliés, invocations du lanceur (zone cercle illimitée (63), si en LdV du centre, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Tue la cible → alliés (dont lanceur si dans la zone), invocations du lanceur, U (INCERTAIN) (délai 2 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "heal",
+    "support"
+   ],
+   "tactic": "2 PA (po 1–4, relance 3) : Balise de Survie 2 tours qui soigne 7 % PV max à tous les alliés en ligne de vue au début de son tour, et échange de place avec le Crâ si celui-ci l'attaque en étant dans sa ligne de vue (escape)."
+  },
+  {
+   "id": 32472,
+   "pairIndex": 16,
+   "variantOf": 32474,
+   "isBaseSpell": false,
+   "name": "Représailles",
+   "obtainedAtLevel": 170,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 3,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 1,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 85280,
+   "description": "Occasionne des dommages Neutre aux ennemis selon leur vie érodée en zone.\nApplique également l'état Pesanteur sur les cibles et augmente les dommages subis par les ennemis en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 3,
+     "minRange": 3,
+     "range": 6,
+     "critChance": 25,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Dommages Neutre : 20%  PV érodés de la cible (CC : 25) → ennemis dans la zone (zone croix taille 1)",
+    "Applique l'état « Pesanteur » (7) → tous (alliés+ennemis) dans la zone (zone croix taille 1, 1 tour(s))",
+    "Dommages subis x110% → ennemis dans la zone (zone croix taille 1, actif 2 tour(s), déclencheur : quand la cible subit des dommages)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "damage-amp",
+    "debuff"
+   ],
+   "tactic": "Variante Neutre 3 PA (po 3–6, relance 3, 1×/tour global) : dégâts Neutre = 20 % (CC 25 %) des PV **érodés** des ennemis en croix 1, Pesanteur (1 tour) et ×110 % dommages subis jusqu'au prochain coup. Finisher contre des cibles très érodées (Tir Perçant, Punitive)."
+  },
+  {
+   "id": 32470,
+   "pairIndex": 17,
+   "variantOf": 32473,
+   "isBaseSpell": true,
+   "name": "Tir de Repli",
+   "obtainedAtLevel": 65,
+   "grade": 3,
+   "apCost": 1,
+   "minRange": 2,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 86188,
+   "description": "Éloigne le lanceur de l'ennemi ciblé ou rapproche le lanceur vers l'allié ciblé.\nAugmente également la Portée du lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 1,
+     "minRange": 2,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 131,
+     "apCost": 1,
+     "minRange": 2,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 198,
+     "apCost": 1,
+     "minRange": 2,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Le lanceur recule de 2 case(s) (s’éloigne de la cible) → cible ennemie",
+    "Le lanceur avance de 2 case(s) vers la cible → cible alliée",
+    "2 Portée → lanceur (1 tour(s))"
+   ],
+   "role": [
+    "mobility",
+    "buff",
+    "escape"
+   ],
+   "tactic": "1 PA (po 2–8 en ligne/diagonale, 3×/tour) : recule de 2 si cible ennemie, avance de 2 si cible alliée ; +2 PO (1 tour). Repositionnement très bon marché."
+  },
+  {
+   "id": 32473,
+   "pairIndex": 17,
+   "variantOf": 32470,
+   "isBaseSpell": false,
+   "name": "Vendetta",
+   "obtainedAtLevel": 175,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 85281,
+   "description": "Pose un piège mono-cellule qui occasionne des dommages dans le meilleur élément du lanceur aux ennemis et attire les entités vers son centre en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Pose un piège « Vendetta » (32478, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "trap",
+    "damage",
+    "pull",
+    "placement"
+   ],
+   "tactic": "Variante 2 PA : piège mono-cellule (sans LdV, po 1–6) qui inflige 16–18 dégâts dans le meilleur élément du Crâ en croix 3 et attire de 3 vers son centre. Regroupe les ennemis qui marchent dessus."
+  },
+  {
+   "id": 32456,
+   "pairIndex": 18,
+   "variantOf": 32460,
+   "isBaseSpell": true,
+   "name": "Flèche Punitive",
+   "obtainedAtLevel": 70,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 4,
+   "range": 10,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 86189,
+   "description": "Érode la cible et occasionne des dommages Terre.\nLes dommages du sort sont augmentés pour les prochains lancers.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 4,
+     "minRange": 4,
+     "range": 8,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "23–27 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 4,
+     "minRange": 4,
+     "range": 10,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "30–34 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "15% Érosion → cible (alliée ou ennemie) (2 tour(s))",
+    "30 à 34 dommages Terre (CC : 36 à 41) → cible (alliée ou ennemie)",
+    "Flèche Punitive : +24 dégâts de base → lanceur (1 tour(s), délai 1 t.)",
+    "Flèche Punitive : +32 dégâts de base → lanceur (1 tour(s), délai 2 t.)"
+   ],
+   "role": [
+    "damage",
+    "single-target",
+    "erosion",
+    "ramp"
+   ],
+   "tactic": "Terre 4 PA (po 4–10, 1×/tour, CC 20 %) : 15 % d'érosion (2 tours) + 30–34 Terre ; +24 dégâts de base au tour suivant et +32 au tour d'après. À lancer tous les tours sur le boss (dégâts croissants : 30–34 → 54–58 → 62–66)."
+  },
+  {
+   "id": 32460,
+   "pairIndex": 18,
+   "variantOf": 32456,
+   "isBaseSpell": false,
+   "name": "Flèche du Jugement",
+   "obtainedAtLevel": 180,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 3,
+   "range": 9,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 85268,
+   "description": "Retire de la Puissance et occasionne des dommages Terre.\nLa première attaque dépend des PM restants du lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 4,
+     "minRange": 3,
+     "range": 9,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "25–27 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "-150 Puissance → cible (alliée ou ennemie) (2 tour(s))",
+    "36 à 40 dommages Terre (% PM restants) (CC : 43 à 48) → cible (alliée ou ennemie)",
+    "25 à 27 dommages Terre (CC : 30 à 32) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "single-target",
+    "debuff"
+   ],
+   "tactic": "Variante Terre 4 PA (po 3–9, 2×/tour, 1×/cible) : -150 Puissance (2 tours), 36–40 Terre **proportionnels aux PM restants** du Crâ + 25–27 Terre. À lancer avant de se déplacer."
+  },
+  {
+   "id": 32438,
+   "pairIndex": 19,
+   "variantOf": 32442,
+   "isBaseSpell": true,
+   "name": "Flèche d'Expiation",
+   "obtainedAtLevel": 75,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 6,
+   "range": 12,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 86190,
+   "description": "Réduit les soins reçus par la cible et occasionne des dommages Eau.\nLes dommages du sort sont augmentés pour les prochains lancers.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 4,
+     "minRange": 6,
+     "range": 10,
+     "critChance": 25,
+     "cooldown": 2,
+     "damageBrief": "28–30 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 4,
+     "minRange": 6,
+     "range": 12,
+     "critChance": 25,
+     "cooldown": 2,
+     "damageBrief": "35–37 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Soins reçus x50% → cible (alliée ou ennemie) (actif 2 tour(s), déclencheur : quand la cible est soignée)",
+    "35 à 37 dommages Eau (CC : 42 à 44) → cible (alliée ou ennemie)",
+    "Flèche d'Expiation : +36 dégâts de base → lanceur (1 tour(s), délai 2 t.)",
+    "Flèche d'Expiation : +36 dégâts de base → lanceur (1 tour(s), délai 4 t.)"
+   ],
+   "role": [
+    "damage",
+    "single-target",
+    "heal-reduction",
+    "ramp",
+    "long-range"
+   ],
+   "tactic": "Eau 4 PA (po 6–12 !, relance 2, CC 25 %) : 35–37 Eau, soins reçus ×50 % (2 tours) et +36 dégâts de base aux tours N+2 et N+4 (donc 71–73 au prochain lancer). Sort de très longue portée anti-soin."
+  },
+  {
+   "id": 32442,
+   "pairIndex": 19,
+   "variantOf": 32438,
+   "isBaseSpell": false,
+   "name": "Flèche de Rédemption",
+   "obtainedAtLevel": 185,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 4,
+   "range": 9,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 6,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 85250,
+   "description": "Vole de la vie dans l'élément Eau.\nLes dommages du sort sont augmentés pour chaque tentative de retrait de PA ou de PM réussie.\n\nLes dommages sont réinitialisés après utilisation du sort.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 4,
+     "minRange": 4,
+     "range": 9,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "26–29 vol Eau"
+    }
+   ],
+   "effectsSummary": [
+    "26 à 29 vol Eau (CC : 31 à 35) → cible (alliée ou ennemie)",
+    "Flèche de Rédemption : +6 dégâts de base → lanceur (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Retire les effets du rang 2 du sort « Flèche de Rédemption » (32462) → lanceur"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "ramp"
+   ],
+   "tactic": "Variante Eau 4 PA (po 4–9, 2×/tour) : vol Eau 26–29 ; +6 dégâts de base à chaque retrait de PA/PM réussi par le Crâ (cumul 6 → +36), remis à zéro au lancer. Combo : Glacée/Cinglante/Paralysante puis Rédemption."
+  },
+  {
+   "id": 32429,
+   "pairIndex": 20,
+   "variantOf": 32432,
+   "isBaseSpell": true,
+   "name": "Flèche Perforante",
+   "obtainedAtLevel": 80,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 3,
+   "range": 9,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 86191,
+   "description": "Occasionne des dommages Air aux ennemis et repousse les cibles en zone.\nLes dommages de zone ne sont pas dégressifs et sont plus importants sur les cibles ayant du bouclier.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 4,
+     "minRange": 3,
+     "range": 7,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "31–34 Air, 35–39 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 4,
+     "minRange": 3,
+     "range": 9,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "38–42 Air, 44–48 Air"
+    }
+   ],
+   "effectsSummary": [
+    "38 à 42 dommages Air (CC : 46 à 50) → ennemis dans la zone — si cible n'a PAS de bouclier (INCERTAIN: masque pb) (zone ligne taille 3)",
+    "44 à 48 dommages Air (CC : 53 à 58) → ennemis dans la zone — si cible a du bouclier (INCERTAIN: masque PB) (zone ligne taille 3)",
+    "Repousse la cible de 3 case(s) → tous (alliés+ennemis) dans la zone (zone ligne taille 3)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "push"
+   ],
+   "tactic": "Air 4 PA en ligne (po 3–9, 1×/tour, CC 20 %) : 38–42 Air non dégressifs en ligne de 3 (44–48 sur cible avec bouclier), repousse de 3. Gros sort Air de couloir."
+  },
+  {
+   "id": 32432,
+   "pairIndex": 20,
+   "variantOf": 32429,
+   "isBaseSpell": false,
+   "name": "Flèche Boomerang",
+   "obtainedAtLevel": 190,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 85240,
+   "description": "Retire des PM et occasionne des dommages Air.\nN'affecte pas le lanceur.\n\nRetire des PM et vole de la vie à la cible initiale et aux ennemis entre elle et la nouvelle cible si elles sont alignées.\nAffecte également les Balises.\nApplique ces effets entre la dernière cible et le lanceur à la fin du tour de ce dernier s'il est aligné avec elle.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "26–29 Air, 26–29 vol Air"
+    }
+   ],
+   "effectsSummary": [
+    "la cible lance (sur elle-même) le sous-sort « Flèche Boomerang » (32434, niv. 1) → lanceur",
+    "la cible lance sur la case ciblée (limitation globale) le sous-sort « Flèche Boomerang » (32434, niv. 2) → tous (alliés+ennemis) dans la zone — si cible a l'état « Flèche Boomerang » (6975) (zone croix sans centre illimitée (63))",
+    "Retire 2 PM (esquivable) → cible (hors lanceur) (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Flèche Boomerang » (32434, niv. 7) → cible (hors lanceur)",
+    "26 à 29 dommages Air (CC : 31 à 35) → cible (hors lanceur)",
+    "le lanceur lance (limitation globale) le sous-sort « Flèche Boomerang » (32434, niv. 3) → tous (alliés+ennemis) dans la zone — si cible a l'état « Flèche Boomerang » (6975) (zone croix sans centre illimitée (63))",
+    "la cible lance (sur elle-même) le sous-sort « Flèche Boomerang » (32434, niv. 6) → lanceur",
+    "Applique l'état « Flèche Boomerang » (6975) → cible (alliée ou ennemie) (1 tour(s))",
+    "la cible lance (sur elle-même) le sous-sort « Flèche Boomerang » (32434, niv. 4) → lanceur (actif 1 tour(s), déclencheur : fin de tour du porteur)",
+    "26 à 29 vol Air (CC : 31 à 35) → cible ennemie (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "damage",
+    "mp-removal",
+    "lifesteal",
+    "line"
+   ],
+   "tactic": "Variante Air 3 PA (po 0–7, 2×/tour, 1×/cible) : -2 PM et 26–29 Air sur la cible ; si une cible précédente marquée est alignée avec la nouvelle, -2 PM et vol Air 26–29 à tous les ennemis entre elles ; en fin de tour, idem entre la dernière cible et le Crâ s'ils sont alignés. Touche aussi les balises. Retrait PM en ligne très fort si on aligne les ennemis."
+  },
+  {
+   "id": 32446,
+   "pairIndex": 21,
+   "variantOf": 32450,
+   "isBaseSpell": true,
+   "name": "Flèche Dévorante",
+   "obtainedAtLevel": 85,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 4,
+   "maxStack": 3,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 86192,
+   "description": "Vole de la vie dans l'élément Feu.\nN'affecte pas le lanceur.\nLe vol de vie est plus important après chaque lancer sur un même ennemi.\n\nOccasionne également des dommages Feu à l'ennemi initial si le sort est lancé sur une autre cible, ou dans les prochains tours s'il n'est pas relancé.\nLes dommages sont plus importants selon le nombre de lancers effectués sur un même ennemi.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "9–11 vol Feu, 19–22 vol Feu, 27–31 vol Feu, 27–31 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "11–13 vol Feu, 23–27 vol Feu, 34–38 vol Feu, 34–38 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "Retire les effets du sort « Flèche Dévorante » (32446) → ennemis dans la zone (zone cercle illimitée (63))",
+    "Retire les effets du sort « Flèche Dévorante » (32446) → cible ennemie — si cible n'a PAS l'état « Flèche Dévorante III » (662) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "11 à 13 vol Feu (CC : 14 à 16) → allié ciblé (hors lanceur)",
+    "11 à 13 vol Feu (CC : 14 à 16) → cible ennemie — si cible n'a PAS l'état « Flèche Dévorante I » (573) ET si cible n'a PAS l'état « Flèche Dévorante II » (574) ET si cible n'a PAS l'état « Flèche Dévorante III » (662)",
+    "23 à 27 vol Feu (CC : 28 à 32) → cible ennemie — si cible a l'état « Flèche Dévorante I » (573)",
+    "34 à 38 vol Feu (CC : 41 à 46) → cible ennemie — si cible a l'état « Flèche Dévorante II » (574)",
+    "34 à 38 vol Feu (CC : 41 à 46) → cible ennemie — si cible a l'état « Flèche Dévorante III » (662)",
+    "le lanceur lance le sous-sort « Décharge : » (25934, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "34 à 38 dommages Feu (CC : 41 à 46) → cible ennemie — si cible n'a PAS l'état « Flèche Dévorante I » (573) ET si cible n'a PAS l'état « Flèche Dévorante II » (574) ET si cible n'a PAS l'état « Flèche Dévorante III » (662) (délai 3 t.)",
+    "34 à 38 dommages Feu (CC : 41 à 46) → ennemis dans la zone — si cible a l'état « Flèche Dévorante I » (573) (zone cercle illimitée (63) (min 1))",
+    "Applique l'état « Flèche Dévorante I » (573) → cible ennemie — si cible n'a PAS l'état « Flèche Dévorante I » (573) ET si cible n'a PAS l'état « Flèche Dévorante II » (574) ET si cible n'a PAS l'état « Flèche Dévorante III » (662) (3 tour(s))",
+    "52 à 56 dommages Feu (CC : 62 à 67) → cible ennemie — si cible a l'état « Flèche Dévorante I » (573) (délai 3 t.)",
+    "52 à 56 dommages Feu (CC : 62 à 67) → ennemis dans la zone — si cible a l'état « Flèche Dévorante II » (574) (zone cercle illimitée (63) (min 1))",
+    "Applique l'état « Flèche Dévorante II » (574) → cible ennemie — si cible a l'état « Flèche Dévorante I » (573) (3 tour(s))"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "ramp",
+    "delayed"
+   ],
+   "tactic": "Feu 3 PA (po 0–6, 2×/tour, 4×/tour global) : vol Feu croissant sur un même ennemi (11–13 → 23–27 → 34–38, états I/II/III, 3 tours) ; si on change de cible ou qu'on ne relance pas, l'ennemi précédent subit une détonation Feu (34–38 / 52–56 / 70–74 selon le palier) — sinon au bout de 3 tours. Gros mono-cible Feu à entretenir chaque tour."
+  },
+  {
+   "id": 32450,
+   "pairIndex": 21,
+   "variantOf": 32446,
+   "isBaseSpell": false,
+   "name": "Flèche Fulminante",
+   "obtainedAtLevel": 195,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 1,
+   "maxStack": 4,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 85258,
+   "description": "Occasionne des dommages Feu.\nRebondit sur l'ennemi le plus proche dans un cercle de taille 2.\nPeut également rebondir sur les Balises.\n\nLes dommages du sort sont augmentés après chaque cible touchée.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "26–29 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "26 à 29 dommages Feu (CC : 31 à 35) → cible alliée — si cible est le monstre « monstre#50000 » (50000)",
+    "la cible lance (sur elle-même) le sous-sort « Flèche Fulminante » (32452, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « Flèche Fulminante » (32452, niv. 1) → cible (alliée ou ennemie)",
+    "la cible lance (sur elle-même) le sous-sort « Flèche Fulminante » (32452, niv. 3) → lanceur",
+    "Flèche Fulminante : +15 dégâts de base → lanceur (non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "bounce",
+    "ramp"
+   ],
+   "tactic": "Variante Feu 4 PA (po 1–6, 1×/tour, CC 20 %) : 26–29 Feu puis rebond sur l'ennemi le plus proche (cercle 2) non touché, +15 dégâts de base par cible touchée (cumul 4). Peut rebondir sur les balises. Fort sur des groupes espacés de 1–2 cases."
+  },
+  {
+   "id": 32469,
+   "pairIndex": 22,
+   "variantOf": 32475,
+   "isBaseSpell": true,
+   "name": "Acuité Absolue",
+   "obtainedAtLevel": 90,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 4,
+   "initialCooldown": 1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 86193,
+   "description": "Augmente la portée minimale de tous les sorts offensifs Crâ du lanceur pour désactiver la ligne de vue sur tous ses sorts.\nAugmente également ses Critiques.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Coup de poing : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Flèche Vagabonde : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche de Barrage : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Glacée : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche de Recul : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Détonante : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche d'Abolition : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Cinglante : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche d'Immobilisation : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche de Dispersion : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Explosive : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Œil de Taupe : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Œil pour Œil : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)",
+    "Flèche Punitive : +3 Portée minimale → lanceur (1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "buff",
+    "crit",
+    "no-los"
+   ],
+   "tactic": "2 PA (relance 4, 1er lancer au tour 2) : +3 PO min, sorts sans ligne de vue, +15 % CC pour le tour. Permet de tirer par-dessus les obstacles (combo Persécutrice : frapper hors LdV)."
+  },
+  {
+   "id": 32475,
+   "pairIndex": 22,
+   "variantOf": 32469,
+   "isBaseSpell": false,
+   "name": "Sentinelle",
+   "obtainedAtLevel": 200,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 5,
+   "initialCooldown": 1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 1,
+   "maxStack": 10,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 85283,
+   "description": "Augmente les dommages à distance et la Portée du lanceur et dévoile tous les ennemis dans sa ligne de vue.\nLes effets sont réduits pour chaque PM utilisé.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 5,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Change l'apparence → lanceur (2 tour(s))",
+    "20% Dommages distance → lanceur (2 tour(s))",
+    "10 Portée → lanceur (2 tour(s))",
+    "Dévoile les entités invisibles → ennemis dans la zone (zone cercle illimitée (63), si en LdV du centre, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Sentinelle » (32479, niv. 1) → ennemis dans la zone (zone cercle illimitée (63), si en LdV du centre)",
+    "-2% Dommages distance → lanceur (2 tour(s), actif 2 tour(s), déclencheur : à chaque PM utilisé par le porteur (déduit de Sentinelle, INCERTAIN))",
+    "-1 Portée → lanceur (2 tour(s), actif 2 tour(s), déclencheur : à chaque PM utilisé par le porteur (déduit de Sentinelle, INCERTAIN))",
+    "Retire les effets du sort « Sentinelle » (32475) → lanceur (délai 2 t.)"
+   ],
+   "role": [
+    "buff",
+    "range",
+    "detection",
+    "damage-amp"
+   ],
+   "tactic": "Variante niveau 200, 2 PA (relance 5, 1er lancer au tour 2) : 2 tours de +20 % dommages distance, +10 PO, révèle les ennemis invisibles en LdV ; chaque PM utilisé réduit de 2 % et 1 PO. Posture de tourelle : ne plus bouger."
+  }
+ ],
+ "variantChoices": {
+  "cra-feu-zone (PvM groupe)": {
+   "chosen": [
+    32435,
+    32443,
+    32531,
+    32449,
+    32467,
+    32465,
+    32444,
+    32433,
+    32458,
+    32448,
+    32466,
+    32447,
+    32445,
+    32431,
+    32441,
+    32474,
+    32470,
+    32456,
+    32438,
+    32429,
+    32446,
+    32475
+   ],
+   "notes": "Feu principal (Barrage, Éclatante, Détonante, Tyrannique, Enflammées, Explosive, Dévorante) + utilitaires (Glacée -2 PA, Évasive, Paralysante, Balise Tactique, Tirs Éloignés, Tirs Puissants, Balise de Survie, Sentinelle). Assaillante pour +150 Puissance."
+  },
+  "cra-air-entrave": {
+   "chosen": [
+    32435,
+    32443,
+    32531,
+    32426,
+    32464,
+    32465,
+    32444,
+    32433,
+    32427,
+    32436,
+    32466,
+    32428,
+    32445,
+    32431,
+    32441,
+    32474,
+    32470,
+    32456,
+    32442,
+    32432,
+    32446,
+    32469
+   ],
+   "notes": "Cinglante (-2 PM), Boomerang (-2 PM ligne), Paralysante (-2 PM zone), Immobilisation (vol PM), Pluie de Flèches (-esquive PM), Rédemption (rampe sur retraits)."
+  },
+  "cra-terre-mono": {
+   "chosen": [
+    32435,
+    32459,
+    32455,
+    32426,
+    32464,
+    32471,
+    32444,
+    32453,
+    32458,
+    32436,
+    32466,
+    32428,
+    32457,
+    32437,
+    32454,
+    32472,
+    32470,
+    32456,
+    32438,
+    32429,
+    32446,
+    32475
+   ],
+   "notes": "Punitive (rampe), Massacrante, Abolition, Assaillante (+150), Œil pour Œil, Carreaux, Tir Perçant + Représailles pour amplifier."
+  }
+ },
+ "rotations": [
+  {
+   "name": "Crâ Feu — tour d'ouverture (12 PA / 6 PM)",
+   "ap": 12,
+   "sequence": [
+    "Balise Tactique (1 PA) au centre du paquet → +40 Puissance par ennemi en LdV",
+    "Tirs Puissants (1 PA) → +250 Puissance, +15 % CC, -3 PO",
+    "Flèche Explosive (4 PA) sur la balise/paquet",
+    "Flèche Détonante ×2 (4 PA) sur deux ennemis collés",
+    "Tir de Repli (1 PA) pour reculer de 2 cases"
+   ],
+   "notes": "Total 10–12 PA. Frapper la balise à distance avec un sort allié attire les ennemis (Balise Tactique) ⇒ jouer la balise AVANT Explosive."
+  },
+  {
+   "name": "Crâ Feu — tour standard",
+   "ap": 11,
+   "sequence": [
+    "Tirs Puissants (1 PA, si relance OK)",
+    "Flèche Explosive (4 PA)",
+    "Flèche Tyrannique (4 PA) ou Flèche Dévorante (3 PA) sur la cible prioritaire",
+    "Flèche Détonante (2 PA)"
+   ],
+   "notes": "Placer une poussée (Barrage/Recul) sur une cible sous Détonante ou Tyrannique pour déclencher les dégâts immédiatement."
+  },
+  {
+   "name": "Crâ Entrave PM (Air/Eau)",
+   "ap": 12,
+   "sequence": [
+    "Pluie de Flèches (3 PA) : -20 esquive PM en cercle 3",
+    "Flèche Paralysante (4 PA) : -2 PM/-1 PA en carré",
+    "Flèche Cinglante ×2 (4 PA) : -4 PM sur la cible prioritaire",
+    "(Rédemption au tour suivant : +6 par retrait réussi)"
+   ],
+   "notes": "Ordre : réduire l'esquive PM d'abord, puis retirer. Le retrait esquivable dépend de Retrait PM du Crâ vs Esquive PM de la cible (formule DoMath)."
+  },
+  {
+   "name": "Crâ mono-cible boss (Terre)",
+   "ap": 12,
+   "sequence": [
+    "Tir Perçant (1 PA) : ×115 % prochaine attaque + 25 % érosion",
+    "Tirs Puissants (1 PA)",
+    "Flèche Punitive (4 PA) (rampe +24/+32 aux tours suivants)",
+    "Flèche Massacrante ou Flèche du Jugement (4 PA)",
+    "Flèche d'Abolition (2 PA)"
+   ],
+   "notes": "Lancer Tir Perçant juste avant la plus grosse frappe de l'équipe (pas forcément celle du Crâ)."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "Enutrof / Sacrieur / Ouginak (retrait PM)",
+   "why": "Pluie de Flèches -20 Esquive PM en zone puis retrait PM de groupe ; Rédemption profite des retraits réussis du Crâ uniquement."
+  },
+  {
+   "with": "Iop / Pandawa / Sacrieur (corps-à-corps)",
+   "why": "Tirs Éloignés donne +3 PO aux alliés non-Crâ autour du Crâ/balises ; Tir Perçant et Représailles amplifient la grosse frappe d'un DPS mêlée."
+  },
+  {
+   "with": "Pandawa / Steamer / Roublard (placement)",
+   "why": "Regrouper les monstres pour Flèche Explosive ; les poussées alliées déclenchent Détonante/Tyrannique (dommages de poussée)."
+  },
+  {
+   "with": "Féca / Eniripsa (soutien)",
+   "why": "Le Crâ est fragile au contact : boucliers/soins compensent ; Flèches Amoureuses peut lier le tank et un allié pour répartir."
+  },
+  {
+   "with": "Sram / Xélor (érosion)",
+   "why": "Représailles inflige 20 % des PV érodés : synergie avec toute source d'érosion (Tir Perçant, Punitive, Sacrieur)."
+  }
+ ],
+ "strengths": [
+  "Très longue portée (jusqu'à 12 sur Expiation, +6 avec Tirs Éloignés, +10 avec Sentinelle)",
+  "Zone Feu parmi les meilleures du jeu",
+  "Entrave PM/PA à distance",
+  "Nombreuses évasions gratuites (recul, téléport, échange de balise)",
+  "Buffs de groupe (PO, ×115 %/×110 % dégâts subis)"
+ ],
+ "weaknesses": [
+  "Fragile au contact (peu de PV/résistances propres, pas de bouclier)",
+  "Beaucoup de sorts touchent aussi les alliés (Explosive, Paralysante, Œil de Taupe, Massacrante)",
+  "Dépend de la ligne de vue (sauf Harcelante, Vendetta, Acuité Absolue)",
+  "Pas de soin fort ni de résurrection"
+ ],
+ "summons": [
+  {
+   "monsterId": 8347,
+   "name": "Balise Tactique",
+   "static": true,
+   "canPlay": false,
+   "baseLifeBonus": 200,
+   "lifetimeTurns": 3,
+   "passiveSpell": "32476 niv.1"
+  },
+  {
+   "monsterId": 8348,
+   "name": "Balise de Survie",
+   "static": true,
+   "canPlay": true,
+   "baseLifeBonus": 100,
+   "resistancesByGrade": [
+    10,
+    15,
+    20
+   ],
+   "lifetimeTurns": 2
+  }
+ ],
+ "states": [
+  {
+   "id": 7,
+   "name": "Pesanteur",
+   "flags": [
+    "cantSwitchPosition"
+   ],
+   "note": "Empêche téléportations/échanges ; bloque Pas Chassé (statesCriterion HS!7)."
+  },
+  {
+   "id": 656,
+   "name": "Flèche Détonante",
+   "note": "Marque la cible ; explosion en fin de tour ou sur dommages de poussée."
+  },
+  {
+   "id": 573,
+   "name": "Flèche Dévorante I"
+  },
+  {
+   "id": 574,
+   "name": "Flèche Dévorante II"
+  },
+  {
+   "id": 662,
+   "name": "Flèche Dévorante III"
+  },
+  {
+   "id": 6975,
+   "name": "Flèche Boomerang"
+  },
+  {
+   "id": 7010,
+   "name": "Flèches Amoureuses",
+   "note": "Partage de dommages + 100 Puissance"
+  },
+  {
+   "id": 6976,
+   "name": "Flèche Évasive (mêlée)",
+   "silent": true
+  },
+  {
+   "id": 7119,
+   "name": "Flèche Assaillante (mêlée)",
+   "silent": true
+  },
+  {
+   "id": 7120,
+   "name": "Flèche d'Abolition I",
+   "silent": true
+  },
+  {
+   "id": 7121,
+   "name": "Flèche d'Abolition II",
+   "silent": true
+  },
+  {
+   "id": 3551,
+   "name": "Flèche Fulminante (cible)",
+   "silent": true
+  },
+  {
+   "id": 570,
+   "name": "Flèche Fulminante (touché)",
+   "silent": true
+  },
+  {
+   "id": 6978,
+   "name": "Flèche Persécutrice (ligne de vue)"
+  }
+ ],
+ "openQuestions": [
+  "Acuité Absolue : l'effet 289 (LdV désactivée) ne référence que le sort 0 (arme) dans les données, la description annonce tous les sorts.",
+  "Masques `pb`/`PB` interprétés comme « sans / avec bouclier » (Abolition, Perforante).",
+  "Déclencheurs `CCMPARR` (Sentinelle) et préfixe `X` (ex. `XPD`, `XDM`) : sémantique exacte inconnue.",
+  "Formule exacte de l'effet 1016 (dégâts selon PM restants, Flèche du Jugement).",
+  "PV des balises : bonusCharacteristics.lifePoints (200/100) — mise à l'échelle avec le niveau/les PV du Crâ non documentée.",
+  "Effets 3792/3793 (valeurs ~20000–23000) : non référencés comme sorts ; supposés visuels (aucun impact de jeu)."
+ ]
+}

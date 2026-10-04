@@ -1,0 +1,4959 @@
+{
+ "breedId": 13,
+ "name": "Roublard",
+ "slug": "roublard",
+ "dataSource": "https://api.dofusdb.fr (breeds/13, spell-variants?breedId=13, spells, spell-levels, spell-states, monsters, effects) — données du jeu mises à jour en 2026 ; cache .cache/classes/rzse/",
+ "officialRoles": [
+  {
+   "roleId": 5,
+   "value": 10,
+   "description": "Occasionne d'importants dégâts en faisant exploser ses bombes."
+  },
+  {
+   "roleId": 1,
+   "value": 6,
+   "description": "Retire des points d'action, de mouvement et bloque des lignes de vue avec ses bombes."
+  },
+  {
+   "roleId": 7,
+   "value": 5,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 8,
+   "value": 5,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 6,
+   "value": 7,
+   "description": "Attire et repousse les alliés, les ennemis et ses bombes. Peut téléporter ses bombes ou échanger de place avec elles."
+  }
+ ],
+ "roles": [
+  {
+   "role": "dps-zone-burst",
+   "element": "Feu/Air/Eau/Terre selon les bombes (souvent Feu-Air ou multi)",
+   "priority": 1,
+   "description": "Explosions en chaîne de 2–3 bombes à Combo élevé (×2 à ×4,6) en cercle de rayon 2 + murs. Idéal contre des vagues groupées ou des monstres qui avancent vers le groupe (Vortex : vagues prévisibles)."
+  },
+  {
+   "role": "entrave-zone",
+   "element": "Air (PM) / Eau (PA)",
+   "priority": 2,
+   "description": "Tornabombe : -1/-2/-3 PM en zone selon le Combo (I–IV/V–IX/X–XV), Mur d’Air -2 PM ; Bombe à Eau : 0/-1/-2 PA en zone, Mur d’Eau -2 PA ; Mitraille -3 PM ; Resquille -2 PA en anneau ; Cadence/Shrapnel -1 PM/-1 PA autour des bombes. Les bombes bloquent aussi les lignes de vue et les chemins."
+  },
+  {
+   "role": "placement",
+   "element": "-",
+   "priority": 2,
+   "description": "Pousse/attire ennemis et bombes (Botte, Aimantation, Croisement, Espingole, Pulsar, Recel, Bombarde), échanges (Entourloupe, Imposture), téléportations de bombes (Stratagème, Resquille), Roublabot."
+  },
+  {
+   "role": "soutien-buff",
+   "element": "-",
+   "priority": 3,
+   "description": "Kaboom/Imposture : immunité des alliés aux explosions/murs alliés + bonus cumulables (+3 PO, +1 PM, +1 PA, +7 % dommages aux sorts, 3 tours, 1 fois par type de bombe, 3 max). Rémission : contre-poussée de 6 cases sur un allié frappé au contact."
+  },
+  {
+   "role": "érosion",
+   "element": "Air/Eau",
+   "priority": 3,
+   "description": "Dagues Boomerang / Tromblon : +13 % d’érosion (2 tours) en zone — utile contre les boss régénérants ou pour le groupe."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Bombes : pose, coût croissant, limite et PV",
+   "description": "Les sorts Explobombe (13444), Tornabombe (13435), Bombe à Eau (13436), Sismobombe (13491) utilisent l’effet 1008 `SummonBomb` (diceNum = id du monstre bombe 3112/3113/3114/5161, diceSide = grade 1–3 selon le niveau du sort). Une bombe est une invocation **statique** (`canPlay=false`, 0 PA/0 PM, ne tacle pas, `useBombSlot=true` : ne consomme pas d’emplacement d’invocation mais un emplacement de bombe — caractéristique 93 `maxBomb`). À l’apparition, son sort initial « Allumage » (13468) fait lancer au Roublard le sous-sort 20509 qui ajoute **+1 PA au coût** du sort de pose de cet élément (effet 296, durée infinie, retiré à la mort de la bombe) — d’où « le coût augmente de 1 par bombe de cet élément sur le terrain » (2, 3, 4 PA…). Il lance aussi « La Ruse du Roublard » 20577 niv.2 : **+1 Combo immédiat** (la bombe naît en Combo I) et, pour les variantes Résilientes, +40 % de Vitalité. Les variantes « Résiliente » (13471/13474/13478/13486) coûtent toujours 2 PA mais 1 seul lancer/tour. Les sorts de base : 2 lancers/tour, 1/cible, PO 1–6 avec ligne de vue. Lancé **sur une entité** (case occupée), le sort applique directement l’effet d’explosion de la bombe en zone (sort « cast on fighter », p.ex. 13456 pour l’Explobombe : dommages cercle r2 centre inclus, +1 Combo et explosion si la cible est une bombe du lanceur), le lanceur n’est pas affecté.",
+   "implementationNotes": "Bombe = Fighter statique {monsterId, summonerId, element, combo, comboBonus%}. PV : `bonusCharacteristics.lifePoints` = 90 (Résiliente +40 % vitalité) — INCERTAIN : interprété comme 90 % des PV de base du Roublard (le patch 2.61 parlait de 80 % des PV de base, gamosaurus). Résistances propres : 10 % partout et 30 % dans son élément. Limite : 3 bombes (INCERTAIN pour Dofus 3, valeur historique, cf. jeuxonline) via `maxBomb`. Mapping sort de pose → sort « sur entité » : 3112→13456, 3113→13459, 3114→13463, 5161→13503 (déduit des données : seuls sorts « Explosion/Tornade/Averse/Avalanche Roublarde » qui contiennent le +1 Combo + explosion sur bombe et la zone cercle 2 avec centre)."
+  },
+  {
+   "name": "Combo (états I à XV) et multiplicateur « Dommages Combo »",
+   "description": "Chaque bombe porte un état Combo (2484 Combo I … 2533 Combo XV, puis 2751/2752/2753 = « Combo XV » de débordement). Le sous-sort « Combo » 20497 fait monter d’un cran : il applique l’état suivant, lance « Combo » 20500 du niveau correspondant (effet 1027 `BombComboBonus` = +x % « Dommages Combo », cumul max 1 donc remplacé) et retire l’état précédent. Table officielle (sort 24306) : I 0 %, II 20 %, III 40 %, IV 60 %, V 80 %, VI 100 %, VII 120 %, VIII 140 %, IX 160 %, X 190 %, XI 220 %, XII 250 %, XIII 280 %, XIV 320 %, XV 360 %. Sources de Combo : pose (+1), **début de chaque tour du Roublard +2** (20577 niv.1 lancé en TB par le passif « La Ruse du Roublard » 20488), Détonateur (+1 avant explosion), Mousquet/Aimantation/Croisement/Kaboom/Casemate/Entourloupe/Imposture/Plombage/Piège Magnétique/Roublabot (+1, souvent « 1 fois par bombe et par tour »), Poudre (+2 à la destruction), Dernier Souffle (+3 temporaires 2 tours puis -3), Oblitération sur bombe (+0 à +5), Mimésis (copie jusqu’à 7 Combos), chaque explosion qui touche une bombe (+1 via l’effet de la bombe « sur entité »).",
+   "implementationNotes": "Stocker `combo` (0–15+) et `comboBonus` sur la bombe. Formule (port C# du client, DamageSender.GetBoostableDamage) : dégâts boostables = ((base + bonus de base 293) × (1 + (carac + puissance)/100) + dommages fixes) × **(1 + comboBonus/100)**, puis résistances. Le bonus s’applique aux dégâts d’explosion **et** de mur. ⚠ La chaîne d’états fonctionne parce que les **cibles (et donc les conditions d’état des masques) de tous les effets d’un même lancer sont calculées avant d’appliquer le premier effet** (GenerateTargets dans le port C#) : sinon Combo I→XV en un seul appel. Les sous-sorts (1160/792/…) sont des lancers séparés évalués au moment où on les atteint."
+  },
+  {
+   "name": "Explosion et réaction en chaîne",
+   "description": "L’effet 1009 `CharacterActivateBomb` déclenche une bombe : elle lance son sort d’explosion (Feu 13455, Air 13467, Eau 13462, Terre 13504) — dommages dans un **cercle de rayon 2 sans la case centrale** à tous les ennemis et aux alliés non-bombes sans état Kaboom (le Roublard compris), puis se tue (141). Grade 3 (niv. ≥ 132) : Feu 17–19, Air 17–19 + retrait PM selon Combo (I–IV -1, V–IX -2, X–XV -3), Eau 17–19 + retrait PA (I–IV 0, V–IX -1, X–XV -2), Terre 20–22 (+ alimente Oblitération). La **réaction en chaîne** (sorts 13457/13460/13464/13502) fait exploser les autres bombes du lanceur dans le cercle de rayon 2 (sans centre) et les bombes **du même élément** en croix jusqu’à 7 cases. Une explosion retire les états « Bombe Collante » dans la zone (ce qui les déclenche).",
+   "implementationNotes": "Résolution récursive avec ensemble « déjà traitées » (TargetManagement.GetBombsAboutToExplode). Ordre : explosion A (dégâts) → bombes liées. Chaque bombe utilise SON combo. Pas de dégressivité indiquée pour la zone (damageDecreaseStepPercent à vérifier dans zoneDescr ; INCERTAIN). Les explosions ne sont pas des sorts du Roublard : pas de coup critique (CC 0 %)."
+  },
+  {
+   "name": "Murs de bombes",
+   "description": "Deux bombes du **même élément** et du même Roublard, alignées en ligne droite (croix) à ≤ 7 cases, sans bombe du même élément entre elles, créent un **mur** (marque) sur les cases intermédiaires. Le mur blesse les entités qui y entrent/commencent leur tour et celles présentes à sa création. Dommages grade 3 : Mur de Feu 30–33 pendant le tour du Roublard (état « Tour Roublard » 2483) sinon 15–17 ; Mur d’Air 24–27 / 12–14 + -2 PM ; Mur d’Eau 24–27 / 12–14 + -2 PA (hors tour du Roublard) ; Mur de Terre 24–27 / 12–14. Les alliés sans Kaboom sont touchés.",
+   "implementationNotes": "Recalculer les murs après chaque déplacement/pose/mort de bombe (RedefineBombWall). Bonus Combo du mur = max(bonus des 2 bombes les plus proches) + 50 % du bonus des autres bombes liées (ExecuteWallDamage). Un mur nouvellement créé frappe immédiatement les entités sur ses cases. Les cartes du donjon doivent être prises en compte (lignes obstruées)."
+  },
+  {
+   "name": "Kaboom / Imposture",
+   "description": "État Kaboom (92, 2 tours via Kaboom en croix r2 ; 1 tour via Imposture) : l’allié n’est plus touché par les explosions et murs des bombes alliées et gagne, quand une explosion le prend dans sa zone, un bonus selon la bombe (3 tours, 1 fois par type, 3 cumuls max via les états Slot 1–3) : Explobombe +3 PO, Tornabombe +1 PM, Bombe à Eau +1 PA, Sismobombe +7 % dommages aux sorts (effet 2812).",
+   "implementationNotes": "Les explosions lancent le sous-sort « Kaboom » 20752 sur les alliés Kaboom du cercle 2, qui pose un état Slot puis 20744/20747/20748 selon le slot et l’élément. Imposture applique en plus l’état 4068 au tour suivant qui empêche une nouvelle application de Kaboom."
+  },
+  {
+   "name": "Bombe Collante, Poudre, Oblitération, Plombage (états spéciaux)",
+   "description": "Bombe Collante (13479) : pose l’état 2515 sur une entité (non-bombe) ou un piège sur case libre ; activée par Détonateur/Étoupille/explosion, elle inflige 17–19 dans le meilleur élément du Roublard en cercle r2 et fait exploser ses bombes dans la zone. Poudre (13441) : bombe Indéplaçable 2 tours, +2 Combos et explosion si elle est détruite. Oblitération (13469) : Terre 33–37, +10 dégâts de base (effet 293) par explosion de Sismobombe/Bombe Collante (états Oblitération I–V, cumul 5), remis à zéro après usage. Plombage (13488) : sur une bombe élémentaire, Feu 30–34 aux ennemis situés entre deux bombes alignées + 1 Combo à ces bombes.",
+   "implementationNotes": "Bombe Collante : états 641 (alliée) / 665 (ennemie) + déclencheur EOFF (retrait de l’état) → sous-sort 13507. Plombage : chaîne de sous-sorts 23698 niv.1–10 avec états 3449–3454 (marquage des bombes alignées, ligne `l1` depuis le lanceur)."
+  },
+  {
+   "name": "Invocations contrôlables : Roublabot, Bombe Ambulante, Mégabombe",
+   "description": "Roublabot (3120, grade 3 : 4 PA, 9 PM, ne tacle pas, indéplaçable, meurt en fin de tour, n’utilise pas d’emplacement) : Pincettes (porte/jette une bombe, +1 Combo), Détonation (2 PA, +1 Combo + explosion, 2/tour), Poussette (pousse jusqu’à la case ciblée, +1 Combo si bombe déplacée), Aspirateur (attire jusqu’à la case, +1 Combo). Bombe Ambulante (5162 : 2 PA, 7 PM, Intaclable/Intacleur) : Mimésis copie l’élément et jusqu’à 7 Combos d’une bombe du lanceur puis devient cette bombe (Pacifiste jusqu’au début du tour suivant du Roublard) ; meurt à la fin de son 2e tour si elle n’a pas d’élément. Mégabombe (5163 : 6 PA, 6 PM, consomme un emplacement d’invocation) : Mégattaque Neutre 13–15, Absorption Explosive (dévore une bombe : soin 20 %, +50 % dommages finaux, +20 % vitalité, -1 PM, cumul 5), Mégamikaze/à la mort : Neutre 28–32 cercle r2 + explosion des bombes du cercle 2.",
+   "implementationNotes": "Effet 1011 `SummonSlave` = invocation contrôlée par le joueur (l’IA de groupe doit planifier ses actions). Roublabot : sort initial 13454 → Enraciné infini + « Tue la cible » en fin de tour."
+  },
+  {
+   "name": "Murs/boucliers sur bombes et protection",
+   "description": "Botte (175 % du niveau), Ruse (225 %), Roublardise (150 % sur toutes les bombes), Stratagème (50 %), Casemate (Invulnérable 1 tour), Rémission (sur bombe : -20 dommages subis à distance, 3 tours), variantes Résilientes (+40 % vitalité). Les ennemis à distance qui « nettoient » les bombes sont la principale contre-mesure.",
+   "implementationNotes": "Bouclier 1020 = % du niveau du lanceur (niv. 200 → 175 % = 350 PV de bouclier)."
+  }
+ ],
+ "summons": [
+  {
+   "name": "Explobombe",
+   "monsterId": 3112,
+   "grade": "3 (sort grade 3)",
+   "apmp": "0/0",
+   "res": "T10 F30 E10 A10 N10",
+   "canPlay": "non",
+   "slot": "bombe",
+   "notes": "Explosion Feu 13455 ; mur de Feu 13458 ; sur entité 13456"
+  },
+  {
+   "name": "Tornabombe",
+   "monsterId": 3113,
+   "grade": "3",
+   "apmp": "0/0",
+   "res": "A30, 10 ailleurs",
+   "canPlay": "non",
+   "slot": "bombe",
+   "notes": "Explosion Air 13467 (+ -PM par Combo) ; mur d’Air 13461 (-2 PM) ; sur entité 13459"
+  },
+  {
+   "name": "Bombe à Eau",
+   "monsterId": 3114,
+   "grade": "3",
+   "apmp": "0/0",
+   "res": "E30, 10 ailleurs",
+   "canPlay": "non",
+   "slot": "bombe",
+   "notes": "Explosion Eau 13462 (+ -PA par Combo) ; mur d’Eau 13465 (-2 PA) ; sur entité 13463"
+  },
+  {
+   "name": "Sismobombe",
+   "monsterId": 5161,
+   "grade": "3",
+   "apmp": "0/0",
+   "res": "T30, 10 ailleurs",
+   "canPlay": "non",
+   "slot": "bombe",
+   "notes": "Explosion Terre 13504 ; mur de Terre 13501 ; sur entité 13503"
+  },
+  {
+   "name": "Roublabot",
+   "monsterId": 3120,
+   "grade": "3",
+   "apmp": "4/9",
+   "res": "10 partout",
+   "canPlay": "oui (contrôlé)",
+   "slot": "aucun",
+   "notes": "Meurt en fin de tour ; Pincettes, Détonation, Poussette, Aspirateur"
+  },
+  {
+   "name": "Bombe Ambulante",
+   "monsterId": 5162,
+   "grade": "1",
+   "apmp": "2/7",
+   "res": "10 partout",
+   "canPlay": "oui (contrôlée)",
+   "slot": "aucun",
+   "notes": "Mimésis ; Intaclable + Intacleur"
+  },
+  {
+   "name": "Mégabombe",
+   "monsterId": 5163,
+   "grade": "1",
+   "apmp": "6/6",
+   "res": "10 partout",
+   "canPlay": "oui (contrôlée)",
+   "slot": "invocation",
+   "notes": "Mégattaque, Absorption Explosive, Mégamikaze"
+  }
+ ],
+ "keyStates": [
+  {
+   "id": 2484,
+   "name": "Combo I … 2533 Combo XV (+2751–2753 débordement)",
+   "use": "palier de Combo des bombes"
+  },
+  {
+   "id": 2483,
+   "name": "Tour Roublard",
+   "use": "posé sur le Roublard pendant son tour : murs à pleine puissance"
+  },
+  {
+   "id": 92,
+   "name": "Kaboom",
+   "use": "immunité explosions/murs alliés + bonus"
+  },
+  {
+   "id": 2515,
+   "name": "Bombe Collante (641 alliée / 665 ennemie)",
+   "use": "bombe collée sur une entité"
+  },
+  {
+   "id": 2511,
+   "name": "Poudre",
+   "use": "+2 Combos à la destruction"
+  },
+  {
+   "id": 3433,
+   "name": "Oblitération (I–V 3434–3438)",
+   "use": "rampe d’Oblitération"
+  },
+  {
+   "id": 97,
+   "name": "Indéplaçable",
+   "use": "Poudre"
+  },
+  {
+   "id": 7,
+   "name": "Pesanteur",
+   "use": "Entourloupe sur la bombe ; empêche Entourloupe/Roublardise/Imposture si le lanceur l’a (HS!7)"
+  }
+ ],
+ "spells": [
+  {
+   "id": 13444,
+   "pairIndex": 1,
+   "variantOf": 13471,
+   "isBaseVariant": true,
+   "name": "Explobombe",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Bombe qui peut occasionner des dommages Feu en zone à son explosion.\n\nSur une cible : applique les effets de la Bombe en zone.\nN'affecte pas le lanceur.\nAjoute également 1 Combo et déclenche l'explosion d'une Bombe si la cible est une de ses Bombes.\n\nLe coût en PA du sort augmente de 1 pour chaque Explobombe du lanceur présente sur le terrain.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 17,
+     "max": 19,
+     "critMin": null,
+     "critMax": null,
+     "zone": "C2,1",
+     "targetMask": "A (+ alliés non-bombes sans Kaboom)",
+     "duration": 0,
+     "triggers": "I",
+     "via": "explosion 13455 (× (1 + Dommages Combo %))"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 30,
+     "max": 33,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, tour du Roublard",
+     "via": "mur 13458"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 15,
+     "max": 17,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, hors tour du Roublard",
+     "via": "mur 13458"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Pose une bombe Explobombe (3112) grade 3 — cibles: alliés/ennemis",
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "[Explosion de la bombe — sort 13455, grade 3] Dommages Feu 17 à 19 — cercle r2 sans la case centrale ; cibles : ennemis + alliés non-bombes sans Kaboom (Roublard compris) ; × (1 + Dommages Combo %) ; la bombe meurt",
+    "[Réaction en chaîne — 13457] fait exploser les bombes du lanceur à ≤ 2 cases et les Explobombes alignées à ≤ 7 cases",
+    "[Mur de Feu — 13458] 30 à 33 Feu pendant le tour du Roublard, 15 à 17 sinon (14 sur alliés), entités traversant/commençant leur tour dans le mur",
+    "[Sur une entité — 13456] Dommages Feu 17 à 19 en cercle r2 centre inclus (pas le lanceur) ; sur une bombe du lanceur : +1 Combo puis explosion",
+    "[Allumage 13468 → 20509] +1 PA au coût d’Explobombe tant que la bombe vit ; [20577 niv.2] la bombe naît en Combo I"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Pose une bombe Explobombe (3112) grade 1 (g1) → Pose une bombe Explobombe (3112) grade 3 (g3)",
+    "g2 (niv 66) vs g3: Pose une bombe Explobombe (3112) grade 2 (g2) → Pose une bombe Explobombe (3112) grade 3 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "bomb",
+    "damage"
+   ],
+   "tacticalNote": "Bombe Feu de base. Pose 2/tour (2 puis 3 PA). Les Explobombes alignées forment le mur le plus fort (30–33 Feu pendant le tour du Roublard). Kaboom : +3 PO aux alliés.",
+   "spellLevelId": 41924
+  },
+  {
+   "id": 13471,
+   "pairIndex": 1,
+   "variantOf": 13444,
+   "isBaseVariant": false,
+   "name": "Explobombe Résiliente",
+   "unlockLevel": 95,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Bombe qui peut occasionner des dommages Feu en zone à son explosion.\n\nSur une cible : applique les effets de la Bombe en zone.\nN'affecte pas le lanceur.\nAjoute également 1 Combo et déclenche l'explosion d'une Bombe si la cible est une de ses Bombes.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 17,
+     "max": 19,
+     "critMin": null,
+     "critMax": null,
+     "zone": "C2,1",
+     "targetMask": "A (+ alliés non-bombes sans Kaboom)",
+     "duration": 0,
+     "triggers": "I",
+     "via": "explosion 13455 (× (1 + Dommages Combo %))"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 30,
+     "max": 33,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, tour du Roublard",
+     "via": "mur 13458"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 15,
+     "max": 17,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, hors tour du Roublard",
+     "via": "mur 13458"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Pose une bombe Explobombe (3112) grade 3 — cibles: alliés/ennemis",
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "Explosion, chaîne, mur et effet « sur entité » identiques à l’Explobombe (13455/13457/13458/13456)",
+    "[20577 niv.2] +40 % de Vitalité à la bombe (état 3687 « Explobombe Résiliente » sur le lanceur) ; pas d’augmentation de coût (Allumage ne vise que le sort 13444)"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "+40% Vitalité — cibles: alliés [groupe du lanceur; apparaissant]; infini"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 95) vs g2: Pose une bombe Explobombe (3112) grade 2 (g1) → Pose une bombe Explobombe (3112) grade 3 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "bomb",
+    "damage"
+   ],
+   "tacticalNote": "Même bombe, coût fixe 2 PA mais 1/tour et +40 % de vitalité : à préférer si les ennemis frappent les bombes en zone (bombes plus durables) et si on ne joue qu’une bombe de cet élément.",
+   "spellLevelId": 44022
+  },
+  {
+   "id": 13435,
+   "pairIndex": 2,
+   "variantOf": 13474,
+   "isBaseVariant": true,
+   "name": "Tornabombe",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Bombe qui peut occasionner des dommages Air et retirer des PM selon son Combo en zone à son explosion.\n• Combo I à IV : -1 PM\n• Combo V à IX : -2 PM\n• Combo X à XV : -3 PM\n• Mur d'Air : -2 PM\n\nSur une cible : applique les effets de la Bombe en zone.\nN'affecte pas le lanceur.\nAjoute également 1 Combo et déclenche l'explosion d'une Bombe si la cible est une de ses Bombes.\n\nLe coût en PA du sort augmente de 1 pour chaque Tornabombe du lanceur présente sur le terrain.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 17,
+     "max": 19,
+     "critMin": null,
+     "critMax": null,
+     "zone": "C2,1",
+     "targetMask": "A (+ alliés non-bombes sans Kaboom)",
+     "duration": 0,
+     "triggers": "I",
+     "via": "explosion 13467 (× (1 + Dommages Combo %))"
+    },
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 24,
+     "max": 27,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, tour du Roublard",
+     "via": "mur 13461"
+    },
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 12,
+     "max": 14,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, hors tour du Roublard",
+     "via": "mur 13461"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Pose une bombe Tornabombe (3113) grade 3 — cibles: alliés/ennemis",
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "[Explosion — 13467, grade 3] Dommages Air 17 à 19 en cercle r2 sans centre + retrait PM esquivable (1 tour) selon le Combo de la bombe : I–IV -1, V–IX -2, X–XV -3 (sous-sort 25590 → 20681 niv.1/2/3)",
+    "[Réaction en chaîne — 13460] bombes du lanceur à ≤ 2 cases + Tornabombes alignées à ≤ 7 cases",
+    "[Mur d’Air — 13461] 24 à 27 Air pendant le tour du Roublard, 12 à 14 sinon, + -2 PM (20681 niv.2)",
+    "[Sur une entité — 13459] Air 17 à 19 en cercle r2 + -1 PM ; +1 Combo/explosion si bombe du lanceur",
+    "[Allumage] +1 PA au coût de Tornabombe par Tornabombe vivante ; naît en Combo I"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Pose une bombe Tornabombe (3113) grade 1 (g1) → Pose une bombe Tornabombe (3113) grade 3 (g3)",
+    "g2 (niv 67) vs g3: Pose une bombe Tornabombe (3113) grade 2 (g2) → Pose une bombe Tornabombe (3113) grade 3 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "bomb",
+    "damage",
+    "mp_removal"
+   ],
+   "tacticalNote": "Bombe Air, la seule source de retrait PM de zone récurrent (jusqu’à -3 PM en Combo X+). Indispensable en rôle entrave ; Kaboom : +1 PM aux alliés.",
+   "spellLevelId": 41897
+  },
+  {
+   "id": 13474,
+   "pairIndex": 2,
+   "variantOf": 13435,
+   "isBaseVariant": false,
+   "name": "Tornabombe Résiliente",
+   "unlockLevel": 100,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Bombe qui peut occasionner des dommages Air et retirer des PM selon son Combo en zone à son explosion.\n• Combo I à IV : -1 PM\n• Combo V à IX : -2 PM\n• Combo X à XV : -3 PM\n• Mur d'Air : -2 PM\n\nSur une cible : applique les effets de la Bombe en zone.\nN'affecte pas le lanceur.\nAjoute également 1 Combo et déclenche l'explosion d'une Bombe si la cible est une de ses Bombes.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 17,
+     "max": 19,
+     "critMin": null,
+     "critMax": null,
+     "zone": "C2,1",
+     "targetMask": "A (+ alliés non-bombes sans Kaboom)",
+     "duration": 0,
+     "triggers": "I",
+     "via": "explosion 13467 (× (1 + Dommages Combo %))"
+    },
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 24,
+     "max": 27,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, tour du Roublard",
+     "via": "mur 13461"
+    },
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 12,
+     "max": 14,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, hors tour du Roublard",
+     "via": "mur 13461"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Pose une bombe Tornabombe (3113) grade 3 — cibles: alliés/ennemis",
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "Explosion/chaîne/mur/« sur entité » identiques à la Tornabombe (13467/13460/13461/13459) ; +40 % vitalité, coût fixe"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "+40% Vitalité — cibles: alliés [groupe du lanceur; apparaissant]; infini"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 100) vs g2: Pose une bombe Tornabombe (3113) grade 2 (g1) → Pose une bombe Tornabombe (3113) grade 3 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "bomb",
+    "damage",
+    "mp_removal"
+   ],
+   "tacticalNote": "Version durable (1/tour). Un seul exemplaire suffit souvent pour le retrait PM.",
+   "spellLevelId": 44025
+  },
+  {
+   "id": 13436,
+   "pairIndex": 3,
+   "variantOf": 13478,
+   "isBaseVariant": true,
+   "name": "Bombe à Eau",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Bombe qui peut occasionner des dommages Eau et retirer des PA selon son Combo en zone à son explosion.\n• Combo I à IV : -0 PA\n• Combo V à IX : -1 PA\n• Combo X à XV : -2 PA\n\nSur une cible : applique les effets de la Bombe en zone.\nN'affecte pas le lanceur.\nAjoute également 1 Combo et déclenche l'explosion d'une Bombe si la cible est une de ses Bombes.\n\nLe mur de Bombes à Eau retire des PA uniquement aux entités qui le traversent ou commencent leur tour à l'intérieur.\n• Mur d'Eau : -2 PA\n\nLe coût en PA du sort augmente de 1 pour chaque Bombe à Eau du lanceur présente sur le terrain.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 17,
+     "max": 19,
+     "critMin": null,
+     "critMax": null,
+     "zone": "C2,1",
+     "targetMask": "A (+ alliés non-bombes sans Kaboom)",
+     "duration": 0,
+     "triggers": "I",
+     "via": "explosion 13462 (× (1 + Dommages Combo %))"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 24,
+     "max": 27,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, tour du Roublard",
+     "via": "mur 13465"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 12,
+     "max": 14,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, hors tour du Roublard",
+     "via": "mur 13465"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Pose une bombe Bombe à Eau (3114) grade 3 — cibles: alliés/ennemis",
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "[Explosion — 13462, grade 3] Dommages Eau 17 à 19 en cercle r2 sans centre + retrait PA esquivable (1 tour) selon le Combo : I–IV 0, V–IX -1, X–XV -2 (25589 → 20680 niv.1/2)",
+    "[Réaction en chaîne — 13464] bombes du lanceur à ≤ 2 cases + Bombes à Eau alignées à ≤ 7 cases",
+    "[Mur d’Eau — 13465] 24 à 27 Eau pendant le tour du Roublard, 12 à 14 sinon ; hors tour du Roublard : -2 PA (20680 niv.2) aux entités qui le traversent/y commencent leur tour",
+    "[Sur une entité — 13463] Eau 17 à 19 en cercle r2 ; +1 Combo/explosion si bombe du lanceur",
+    "[Allumage] +1 PA au coût de Bombe à Eau par Bombe à Eau vivante ; naît en Combo I"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Pose une bombe Bombe à Eau (3114) grade 1 (g1) → Pose une bombe Bombe à Eau (3114) grade 3 (g3)",
+    "g2 (niv 68) vs g3: Pose une bombe Bombe à Eau (3114) grade 2 (g2) → Pose une bombe Bombe à Eau (3114) grade 3 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "ap_removal",
+    "bomb",
+    "damage"
+   ],
+   "tacticalNote": "Bombe Eau : retrait PA en zone à partir du Combo V (-1) et X (-2) ; Mur d’Eau -2 PA à ceux qui le traversent hors tour du Roublard. Kaboom : +1 PA aux alliés (très fort).",
+   "spellLevelId": 41900
+  },
+  {
+   "id": 13478,
+   "pairIndex": 3,
+   "variantOf": 13436,
+   "isBaseVariant": false,
+   "name": "Bombe à Eau Résiliente",
+   "unlockLevel": 105,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Bombe qui peut occasionner des dommages Eau et retirer des PA selon son Combo en zone à son explosion.\n• Combo I à IV : -0 PA\n• Combo V à IX : -1 PA\n• Combo X à XV : -2 PA\n\nSur une cible : applique les effets de la Bombe en zone.\nN'affecte pas le lanceur.\nAjoute également 1 Combo et déclenche l'explosion d'une Bombe si la cible est une de ses Bombes.\n\nLe mur de Bombes à Eau retire des PA uniquement aux entités qui le traversent ou commencent leur tour à l'intérieur.\n• Mur d'Eau : -2 PA",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 17,
+     "max": 19,
+     "critMin": null,
+     "critMax": null,
+     "zone": "C2,1",
+     "targetMask": "A (+ alliés non-bombes sans Kaboom)",
+     "duration": 0,
+     "triggers": "I",
+     "via": "explosion 13462 (× (1 + Dommages Combo %))"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 24,
+     "max": 27,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, tour du Roublard",
+     "via": "mur 13465"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 12,
+     "max": 14,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, hors tour du Roublard",
+     "via": "mur 13465"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Pose une bombe Bombe à Eau (3114) grade 3 — cibles: alliés/ennemis",
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "Explosion/chaîne/mur/« sur entité » identiques à la Bombe à Eau (13462/13464/13465/13463) ; +40 % vitalité, coût fixe"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "+40% Vitalité — cibles: alliés [groupe du lanceur; apparaissant]; infini"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 105) vs g2: Pose une bombe Bombe à Eau (3114) grade 2 (g1) → Pose une bombe Bombe à Eau (3114) grade 3 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "ap_removal",
+    "bomb",
+    "damage"
+   ],
+   "tacticalNote": "Version durable.",
+   "spellLevelId": 80534
+  },
+  {
+   "id": 13491,
+   "pairIndex": 4,
+   "variantOf": 13486,
+   "isBaseVariant": true,
+   "name": "Sismobombe",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Bombe qui peut occasionner des dommages Terre en zone à son explosion.\n\nSur une cible : applique les effets de la Bombe en zone.\nN'affecte pas le lanceur.\nAjoute également 1 Combo et déclenche l'explosion d'une Bombe si la cible est une de ses Bombes.\n\nLe coût en PA du sort augmente de 1 pour chaque Sismobombe du lanceur présente sur le terrain.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 20,
+     "max": 22,
+     "critMin": null,
+     "critMax": null,
+     "zone": "C2,1",
+     "targetMask": "A (+ alliés non-bombes sans Kaboom)",
+     "duration": 0,
+     "triggers": "I",
+     "via": "explosion 13504 (× (1 + Dommages Combo %))"
+    },
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 24,
+     "max": 27,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, tour du Roublard",
+     "via": "mur 13501"
+    },
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 12,
+     "max": 14,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, hors tour du Roublard",
+     "via": "mur 13501"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Pose une bombe Sismobombe (5161) grade 3 — cibles: alliés/ennemis",
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "[Explosion — 13504, grade 3] Dommages Terre 20 à 22 en cercle r2 sans centre ; si le Roublard a l’état Oblitération (3433) : +1 rang d’Oblitération (+10 dégâts de base au sort 13469)",
+    "[Réaction en chaîne — 13502] bombes du lanceur à ≤ 2 cases + Sismobombes alignées à ≤ 7 cases",
+    "[Mur de Terre — 13501] 24 à 27 Terre pendant le tour du Roublard, 12 à 14 sinon",
+    "[Sur une entité — 13503] Terre 20 à 22 en cercle r2 ; +1 Combo/explosion si bombe du lanceur ; alimente Oblitération",
+    "[Allumage] +1 PA au coût de Sismobombe par Sismobombe vivante ; naît en Combo I"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Pose une bombe Sismobombe (5161) grade 1 (g1) → Pose une bombe Sismobombe (5161) grade 3 (g3)",
+    "g2 (niv 69) vs g3: Pose une bombe Sismobombe (5161) grade 2 (g2) → Pose une bombe Sismobombe (5161) grade 3 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "bomb",
+    "damage"
+   ],
+   "tacticalNote": "Bombe Terre (20–22, la plus forte de base) ; chaque explosion de Sismobombe renforce Oblitération. Kaboom : +7 % dommages aux sorts.",
+   "spellLevelId": 54193
+  },
+  {
+   "id": 13486,
+   "pairIndex": 4,
+   "variantOf": 13491,
+   "isBaseVariant": false,
+   "name": "Sismobombe Résiliente",
+   "unlockLevel": 110,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Bombe qui peut occasionner des dommages Terre en zone à son explosion.\n\nSur une cible : applique les effets de la Bombe en zone.\nN'affecte pas le lanceur.\nAjoute également 1 Combo et déclenche l'explosion d'une Bombe si la cible est une de ses Bombes.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 20,
+     "max": 22,
+     "critMin": null,
+     "critMax": null,
+     "zone": "C2,1",
+     "targetMask": "A (+ alliés non-bombes sans Kaboom)",
+     "duration": 0,
+     "triggers": "I",
+     "via": "explosion 13504 (× (1 + Dommages Combo %))"
+    },
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 24,
+     "max": 27,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, tour du Roublard",
+     "via": "mur 13501"
+    },
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 12,
+     "max": 14,
+     "critMin": null,
+     "critMax": null,
+     "zone": "mur",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "mur, hors tour du Roublard",
+     "via": "mur 13501"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Pose une bombe Sismobombe (5161) grade 3 — cibles: alliés/ennemis",
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "Explosion/chaîne/mur/« sur entité » identiques à la Sismobombe (13504/13502/13501/13503) ; +40 % vitalité, coût fixe"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "+40% Vitalité — cibles: alliés [groupe du lanceur; apparaissant]; infini"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 110) vs g2: Pose une bombe Sismobombe (5161) grade 2 (g1) → Pose une bombe Sismobombe (5161) grade 3 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "bomb",
+    "damage"
+   ],
+   "tacticalNote": "Version durable.",
+   "spellLevelId": 80535
+  },
+  {
+   "id": 13432,
+   "pairIndex": 5,
+   "variantOf": 13470,
+   "isBaseVariant": true,
+   "name": "Détonateur",
+   "unlockLevel": 5,
+   "gradeUsed": 3,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Ajoute 1 Combo à une Bombe du lanceur et déclenche son explosion.\nRend 1 PA au lanceur avant l'explosion.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "le lanceur lance « Détonateur » (20559) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ Applique l'état « Détonateur » (3523) — cibles: lanceur; 1 tour",
+    "le lanceur lance « Détonateur » (20559) niv.1 — cibles: alliés [avec état « Bombe Collante alliée » (641)]",
+    "le lanceur lance « Détonateur » (20559) niv.1 — cibles: ennemis [avec état « Bombe Collante ennemie » (665)]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "le lanceur lance « Détonateur » (20559) niv.2 — cibles: lanceur",
+    "↳ Rend 1 PA — cibles: lanceur [lanceur avec état « Détonateur » (3523)]",
+    "↳ Retire l'état « Détonateur » (3523) — cibles: lanceur [lanceur avec état « Détonateur » (3523)]",
+    "Fait exploser la bombe — cibles: alliés [groupe du lanceur; ses bombes élémentaires]"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur elle-même « +1 Combo » (23537) niv.1 — cibles: alliés/ennemis",
+    "Rend 1 PA — cibles: lanceur"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 1,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 1,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 1,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 5) vs g3: PO max 6 (g1) → 8 (g3)",
+    "g2 (niv 72) vs g3: PO max 7 (g2) → 8 (g3)"
+   ],
+   "role": [
+    "ap_refund",
+    "bomb_trigger",
+    "combo"
+   ],
+   "tacticalNote": "Coût net 0 PA (1 PA rendu avant l’explosion), 2/tour, sans ligne de vue, PO 1–8 modifiable : déclencheur principal. +1 Combo avant explosion. Active aussi les Bombes Collantes.",
+   "spellLevelId": 41888
+  },
+  {
+   "id": 13470,
+   "pairIndex": 5,
+   "variantOf": 13432,
+   "isBaseVariant": false,
+   "name": "Étoupille",
+   "unlockLevel": 115,
+   "gradeUsed": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Déclenche l'explosion d'une Bombe du lanceur.\nRend 3 PA au lanceur avant l'explosion.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Désenvoûte les effets du sort « Poudre » (13441) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "le lanceur lance « Étoupille » (13510) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ Applique l'état « Étoupille » (3522) — cibles: lanceur; 1 tour",
+    "le lanceur lance « Étoupille » (13510) niv.1 — cibles: alliés [avec état « Bombe Collante alliée » (641)]",
+    "le lanceur lance « Étoupille » (13510) niv.1 — cibles: ennemis [avec état « Bombe Collante ennemie » (665)]",
+    "Retire l'état « Bombe Collante alliée » (641) — cibles: alliés",
+    "Retire l'état « Bombe Collante ennemie » (665) — cibles: ennemis",
+    "le lanceur lance « Étoupille » (13510) niv.2 — cibles: lanceur",
+    "↳ Rend 3 PA — cibles: lanceur [lanceur avec état « Étoupille » (3522)]",
+    "↳ Retire l'état « Étoupille » (3522) — cibles: lanceur [lanceur avec état « Étoupille » (3522)]",
+    "Fait exploser la bombe — cibles: alliés [groupe du lanceur; ses bombes élémentaires]"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Rend 3 PA — cibles: lanceur"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 1,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 1,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 115) vs g2: PO max 7 (g1) → 8 (g2)"
+   ],
+   "role": [
+    "ap_refund",
+    "bomb_trigger"
+   ],
+   "tacticalNote": "Rend 3 PA (net +2 PA !) mais 1/tour, avec ligne de vue et SANS +1 Combo. Idéal quand le Combo est déjà haut ou pour financer d’autres sorts.",
+   "spellLevelId": 44020
+  },
+  {
+   "id": 13442,
+   "pairIndex": 6,
+   "variantOf": 14414,
+   "isBaseVariant": true,
+   "name": "Pulsar",
+   "unlockLevel": 10,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu aux ennemis et repousse les cibles vers les extrémités en zone.\nN'affecte pas le lanceur.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 27,
+     "max": 29,
+     "critMin": 32,
+     "critMax": 35,
+     "zone": "+1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix diagonale r1"
+   ],
+   "effectsSummary": [
+    "Dommages Feu 27 à 29 — croix diagonale r1; cibles: ennemis",
+    "Repousse de 2 case(s) — croix diagonale r1; cibles: alliés sauf lanceur/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 32 à 35"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 3,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 3,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 10) vs g3: Dommages Feu 17 à 19 (g1) → Dommages Feu 27 à 29 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 77) vs g3: Dommages Feu 22 à 24 (g2) → Dommages Feu 27 à 29 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Dégâts Feu en croix diagonale + poussée 2 vers l’extérieur (n’affecte pas le lanceur) ; PO 0–6, utile pour pousser des ennemis dans un mur ou sur une bombe.",
+   "spellLevelId": 41918
+  },
+  {
+   "id": 14414,
+   "pairIndex": 6,
+   "variantOf": 13442,
+   "isBaseVariant": false,
+   "name": "Shrapnel",
+   "unlockLevel": 120,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau aux ennemis en zone.\nRetire également des PA aux ennemis en zone autour des Bombes du lanceur dans la zone d'effet.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 17,
+     "max": 19,
+     "critMin": 20,
+     "critMax": 23,
+     "zone": "X1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1",
+    "croix sans centre r1"
+   ],
+   "effectsSummary": [
+    "Dommages Eau 17 à 19 — croix r1; cibles: ennemis",
+    "le lanceur lance « Shrapnel » (14418) niv.1 — croix r1; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "↳ -1 PA (esquivable) — croix sans centre r1; cibles: ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 20 à 23"
+   ],
+   "tooltipOnlyEffects": [
+    "Applique l'état « Shrapnel » (1442) — croix r1; cibles: ennemis; 1 tour",
+    "Retire l'état « Shrapnel » (1442) — croix r1; cibles: ennemis",
+    "-1 PA (esquivable) — croix sans centre r1; cibles: ennemis; 1 tour",
+    "le lanceur lance « Shrapnel » (14418) niv.3 — croix r1; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 2,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 187,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 120) vs g2: Dommages Eau 14 à 16 (g1) → Dommages Eau 17 à 19 (g2) ; PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "ap_removal",
+    "damage"
+   ],
+   "tacticalNote": "Eau 2 PA en croix + -1 PA autour de chaque bombe du lanceur dans la zone (et dégâts autour d’elles) : bon rapport PA/dégâts près des bombes.",
+   "spellLevelId": 81599
+  },
+  {
+   "id": 13440,
+   "pairIndex": 7,
+   "variantOf": 13469,
+   "isBaseVariant": true,
+   "name": "Espingole",
+   "unlockLevel": 15,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air aux ennemis et repousse les cibles vers les extrémités en zone.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 25,
+     "max": 27,
+     "critMin": 30,
+     "critMax": 32,
+     "zone": "-2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "ligne perpendiculaire r2"
+   ],
+   "effectsSummary": [
+    "Dommages Air 25 à 27 — ligne perpendiculaire r2; cibles: ennemis",
+    "Repousse de 2 case(s) — ligne perpendiculaire r2; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 30 à 32"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 3,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 3,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 15) vs g3: Dommages Air 15 à 17 (g1) → Dommages Air 25 à 27 (g3) ; PO max 6 (g1) → 8 (g3)",
+    "g2 (niv 82) vs g3: Dommages Air 20 à 22 (g2) → Dommages Air 25 à 27 (g3) ; PO max 7 (g2) → 8 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Barre de 5 cases Air perpendiculaire (lancer en diagonale uniquement) + poussée 2 : sort de nettoyage de vague.",
+   "spellLevelId": 54373
+  },
+  {
+   "id": 13469,
+   "pairIndex": 7,
+   "variantOf": 13440,
+   "isBaseVariant": false,
+   "name": "Oblitération",
+   "unlockLevel": 125,
+   "gradeUsed": 2,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 5,
+   "critChance": 25,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre.\nLes dommages sont augmentés après chaque explosion de Sismobombe ou de Bombe Collante.\n\nSur une Bombe du lanceur : ajoute du Combo pour chaque explosion de Sismobombe ou de Bombe Collante.\n\nLes effets sont retirés après utilisation du sort.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44,
+     "zone": "P1",
+     "targetMask": "a,P,f3112,f3113,f3114,f5161",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44,
+     "zone": "P1",
+     "targetMask": "a,p",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Terre 33 à 37 — cibles: ennemis",
+    "Dommages Terre 33 à 37 — cibles: alliés [groupe du lanceur; hors bombes élémentaires]",
+    "Dommages Terre 33 à 37 — cibles: alliés [hors groupe du lanceur]",
+    "le lanceur lance « Oblitération » (23602) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération I » (3434); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération II » (3435); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération II » (3435); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération III » (3436); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération III » (3436); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération III » (3436); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération IV » (3437); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération IV » (3437); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération IV » (3437); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération IV » (3437); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération V » (3438); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération V » (3438); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération V » (3438); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération V » (3438); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; lanceur avec état « Oblitération V » (3438); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "Désenvoûte les effets du sort « Oblitération » (13511) — cibles: lanceur"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 40 à 44 ; Dommages Terre 40 à 44 ; Dommages Terre 40 à 44"
+   ],
+   "tooltipOnlyEffects": [
+    "Sort « Oblitération » (13469) : +10 dommages de base — cibles: lanceur; infini",
+    "la cible lance sur elle-même « +0 à 5 Combos » (23601) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 4,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 4,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 125) vs g2: Dommages Terre 29 à 32 (g1) → Dommages Terre 33 à 37 (g2) ; Dommages Terre 29 à 32 (g1) → Dommages Terre 33 à 37 (g2) ; Dommages Terre 29 à 32 (g1) → Dommages Terre 33 à 37 (g2) ; PO max 6 (g1) → 7 (g2)"
+   ],
+   "role": [
+    "damage"
+   ],
+   "tacticalNote": "Mono-cible Terre qui gagne +10 dégâts de base par explosion de Sismobombe/Collante (max +50) ; sur une bombe : convertit ces explosions en Combos. Le plus gros sort direct en fin de chaîne.",
+   "spellLevelId": 81600
+  },
+  {
+   "id": 13434,
+   "pairIndex": 8,
+   "variantOf": 13472,
+   "isBaseVariant": true,
+   "name": "Botte",
+   "unlockLevel": 20,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique un bouclier sur les Bombes du lanceur et les pousse depuis le centre en zone.\nPlus le sort est lancé à proximité d'une Bombe du lanceur, plus elle est poussée.\n\nPousse les autres entités d'une case seulement.\nN'affecte pas le lanceur.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 175,
+     "max": 175,
+     "critMin": null,
+     "critMax": null,
+     "zone": "X3",
+     "targetMask": "a,P,F3112,F3113,F3114,F5161,F5163,F5162",
+     "duration": 2,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1 (rayon min 1)",
+    "croix r2 (rayon min 2)",
+    "croix r3",
+    "croix r3 (rayon min 3)"
+   ],
+   "effectsSummary": [
+    "Bouclier = 175% du niveau du lanceur — croix r3; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 2 tours",
+    "Repousse de 1 case(s) (sans dommages de poussée) — croix r3 (rayon min 3); cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Repousse de 1 case(s) (sans dommages de poussée) — croix r3 (rayon min 3); cibles: ennemis/alliés sauf lanceur [hors bombes]",
+    "Repousse de 1 case(s) (sans dommages de poussée) — croix r3 (rayon min 3); cibles: alliés/ennemis [hors groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Repousse de 2 case(s) (sans dommages de poussée) — croix r2 (rayon min 2); cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Repousse de 1 case(s) (sans dommages de poussée) — croix r2 (rayon min 2); cibles: ennemis/alliés sauf lanceur [hors bombes]",
+    "Repousse de 1 case(s) (sans dommages de poussée) — croix r2 (rayon min 2); cibles: alliés/ennemis [hors groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Repousse de 3 case(s) (sans dommages de poussée) — croix r1 (rayon min 1); cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Repousse de 1 case(s) (sans dommages de poussée) — croix r1 (rayon min 1); cibles: ennemis/alliés sauf lanceur [hors bombes]",
+    "Repousse de 1 case(s) (sans dommages de poussée) — croix r1 (rayon min 1); cibles: alliés/ennemis [hors groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 2,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 2,
+     "range": [
+      0,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 20) vs g3: PO max 6 (g1) → 8 (g3)",
+    "g2 (niv 87) vs g3: PO max 7 (g2) → 8 (g3)"
+   ],
+   "role": [
+    "placement",
+    "push",
+    "shield"
+   ],
+   "tacticalNote": "Repousse les bombes depuis le centre (3/2/1 cases selon la distance) et leur donne 175 % du niveau en bouclier ; les autres entités ne bougent que d’1 case.",
+   "spellLevelId": 41894
+  },
+  {
+   "id": 13472,
+   "pairIndex": 8,
+   "variantOf": 13434,
+   "isBaseVariant": false,
+   "name": "Ruse",
+   "unlockLevel": 130,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Rapproche le lanceur vers la cible.\nApplique également un bouclier si la cible est une Bombe du lanceur.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 225,
+     "max": 225,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,P,F3112,F3113,F3114,F5161,F5163,F5162",
+     "duration": 2,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur avance de 5 case(s) — cibles: alliés/ennemis",
+    "Bouclier = 225% du niveau du lanceur — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 2 tours"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 2,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 130) vs g2: Le lanceur avance de 4 case(s) (g1) → Le lanceur avance de 5 case(s) (g2) ; PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "self_move",
+    "shield"
+   ],
+   "tacticalNote": "Rapproche le lanceur de 5 cases vers la cible (mobilité) ; bouclier 225 % si la cible est une bombe.",
+   "spellLevelId": 81616
+  },
+  {
+   "id": 13477,
+   "pairIndex": 9,
+   "variantOf": 13488,
+   "isBaseVariant": true,
+   "name": "Recel",
+   "unlockLevel": 25,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau aux ennemis et attire la cible.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 28,
+     "max": 30,
+     "critMin": 34,
+     "critMax": 36,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Eau 28 à 30 — cibles: ennemis",
+    "Attire de 2 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 34 à 36"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 25) vs g3: Dommages Eau 17 à 19 (g1) → Dommages Eau 28 à 30 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 92) vs g3: Dommages Eau 23 à 25 (g2) → Dommages Eau 28 à 30 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "damage",
+    "pull"
+   ],
+   "tacticalNote": "Eau + attire 2 : rapproche un ennemi d’une bombe/d’un mur ; 3/tour.",
+   "spellLevelId": 54197
+  },
+  {
+   "id": 13488,
+   "pairIndex": 9,
+   "variantOf": 13477,
+   "isBaseVariant": false,
+   "name": "Plombage",
+   "unlockLevel": 135,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu aux ennemis.\n\nSur une Bombe élémentaire du lanceur : occasionne des dommages Feu aux ennemis situés entre deux Bombes élémentaires alignées et ajoute 1 Combo à ces Bombes.\n\nLe Combo ne s'applique qu'une seule fois par Bombe par tour.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 30,
+     "max": 34,
+     "critMin": 37,
+     "critMax": 42,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 30,
+     "max": 34,
+     "critMin": 37,
+     "critMax": 42,
+     "zone": "a1",
+     "targetMask": "A,E2498",
+     "duration": 0,
+     "triggers": "I",
+     "via": "23698#10"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Feu 30 à 34 — cibles: ennemis",
+    "la cible lance sur elle-même « Plombage » (23698) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ Applique l'état « Plombage Caster » (3452) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]; 1 tour",
+    "↳ Applique l'état « Plombage Touché » (3453) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]; 1 tour",
+    "↳ la cible lance sur elle-même « Plombage » (23698) niv.2 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ ↳ la cible lance sur elle-même « Plombage » (23698) niv.3 — cibles: lanceur",
+    "le lanceur lance « Plombage » (23698) niv.10 — cibles: lanceur",
+    "↳ Dommages Feu 30 à 34 — toute la carte; cibles: ennemis [avec état « Plombage » (2498)]",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Plombage Caster » (3452); sans état « Plombage (cumul Combo) » (2524); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ Applique l'état « Plombage (cumul Combo) » (2524) — toute la carte; cibles: alliés [groupe du lanceur; avec état « Plombage Caster » (3452); sans état « Plombage (cumul Combo) » (2524); ses bombes élémentaires]; 1 tour; non désenvoûtable",
+    "le lanceur lance « Plombage » (23694) niv.1 — cibles: lanceur",
+    "↳ Retire l'état « Plombage » (2498) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Bombe 1 (Plombage) » (3449) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Bombe 2 (Plombage) » (3450) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Bombe 3 (Plombage) » (3451) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Plombage Caster » (3452) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Plombage Touché » (3453) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Plombage Transfert Caster » (3454) — toute la carte; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 37 à 42"
+   ],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « +1 Combo » (23537) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "combo",
+    "damage"
+   ],
+   "tacticalNote": "Feu 30–34 ; sur une bombe : frappe les ennemis entre deux bombes alignées (+1 Combo à ces bombes).",
+   "spellLevelId": 42027
+  },
+  {
+   "id": 14415,
+   "pairIndex": 10,
+   "variantOf": 13483,
+   "isBaseVariant": true,
+   "name": "Bombarde",
+   "unlockLevel": 30,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre aux ennemis et repousse les cibles en zone.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 26,
+     "max": 28,
+     "critMin": 31,
+     "critMax": 34,
+     "zone": "T2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "ligne perpendiculaire r2"
+   ],
+   "effectsSummary": [
+    "Dommages Terre 26 à 28 — ligne perpendiculaire r2; cibles: ennemis",
+    "le lanceur lance « Bombarde » (14416) niv.1 — ligne perpendiculaire r2; cibles: alliés/ennemis",
+    "↳ Repousse de 1 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 31 à 34"
+   ],
+   "tooltipOnlyEffects": [
+    "Repousse de 1 case(s) — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 164,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 30) vs g3: Dommages Terre 16 à 18 (g1) → Dommages Terre 26 à 28 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 97) vs g3: Dommages Terre 21 à 23 (g2) → Dommages Terre 26 à 28 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Terre en barre de 5 (lancer en ligne) + poussée 1.",
+   "spellLevelId": 54194
+  },
+  {
+   "id": 13483,
+   "pairIndex": 10,
+   "variantOf": 14415,
+   "isBaseVariant": false,
+   "name": "Mitraille",
+   "unlockLevel": 140,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air et retire des PM.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 34,
+     "max": 38,
+     "critMin": 41,
+     "critMax": 46,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Air 34 à 38 — cibles: alliés/ennemis",
+    "-3 PM (esquivable) — cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 41 à 46"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 4,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "mp_removal"
+   ],
+   "tacticalNote": "Air 34–38 et -3 PM (esquivable) ; touche aussi les alliés : ne pas viser un allié !",
+   "spellLevelId": 42022
+  },
+  {
+   "id": 13437,
+   "pairIndex": 11,
+   "variantOf": 13480,
+   "isBaseVariant": true,
+   "name": "Aimantation",
+   "unlockLevel": 35,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Attire les Bombes du lanceur vers le centre et leur ajoute 1 Combo en zone.\nLe Combo ne s'applique qu'une seule fois par Bombe par tour et si les Bombes sont déplacées.\n\nAttire les autres entités d'une case seulement.\nN'affecte pas le lanceur.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix r6 (rayon min 1)"
+   ],
+   "effectsSummary": [
+    "le lanceur lance « Aimantation » (20676) niv.1 — croix r6 (rayon min 1); cibles: alliés sauf lanceur [groupe du lanceur; ses bombes élémentaires]; déclenché quand le porteur est attiré (déclencheur actif 1 tour(s))",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ Désenvoûte les effets du sort « Aimantation » (13437) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "Applique l'état « Aimantation » (2136) — croix r6 (rayon min 1); cibles: alliés sauf lanceur [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 1 tour; non désenvoûtable",
+    "la cible lance sur sa cellule « Aimantation » (18652) niv.3 — cibles: lanceur [pas classe 12]",
+    "↳ Attire de 6 case(s) — croix r6 (rayon min 1); cibles: alliés/ennemis [avec état « Aimantation » (2136)]",
+    "↳ Attire de 1 case(s) — croix r6 (rayon min 1); cibles: alliés sauf lanceur/ennemis [sans état « Aimantation » (2136)]",
+    "↳ Retire l'état « Aimantation » (2136) — toute la carte; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur elle-même « +1 Combo » (23537) niv.1 — croix r6 (rayon min 1); cibles: alliés sauf lanceur [groupe du lanceur; ses bombes élémentaires]",
+    "Attire de 6 case(s) — croix r6 (rayon min 1); cibles: alliés sauf lanceur [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 2,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 2,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 35) vs g3: la cible lance sur sa cellule « Aimantation » (18652) niv.1 (g1) → la cible lance sur sa cellule « Aimantation » (18652) niv.3 (g3) ; PO max 5 (g1) → 7 (g3)",
+    "g2 (niv 102) vs g3: la cible lance sur sa cellule « Aimantation » (18652) niv.2 (g2) → la cible lance sur sa cellule « Aimantation » (18652) niv.3 (g3) ; PO max 6 (g2) → 7 (g3)"
+   ],
+   "role": [
+    "combo",
+    "placement",
+    "pull"
+   ],
+   "tacticalNote": "Attire les bombes (6 cases) vers le centre et +1 Combo par bombe déplacée (1 fois/bombe/tour) ; les autres entités ne sont attirées que d’1 case. Clé pour regrouper bombes + ennemis avant explosion.",
+   "spellLevelId": 41903
+  },
+  {
+   "id": 13480,
+   "pairIndex": 11,
+   "variantOf": 13437,
+   "isBaseVariant": false,
+   "name": "Croisement",
+   "unlockLevel": 145,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Attire les Bombes du lanceur jusqu'au centre et leur ajoute 1 Combo en zone.\n\nLe Combo ne s'applique qu'une seule fois par Bombe par tour et si les Bombes sont déplacées.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix diagonale r3 (rayon min 1)",
+    "croix diagonale sans centre r1 (rayon min 1)",
+    "croix diagonale sans centre r2 (rayon min 2)",
+    "croix diagonale sans centre r3 (rayon min 3)",
+    "croix r3 (rayon min 1)",
+    "croix sans centre r1 (rayon min 1)",
+    "croix sans centre r2 (rayon min 2)",
+    "croix sans centre r3 (rayon min 3)",
+    "étoile r3"
+   ],
+   "effectsSummary": [
+    "le lanceur lance « Croisement » (20677) niv.1 — croix r3 (rayon min 1); cibles: alliés sauf lanceur [groupe du lanceur; ses bombes élémentaires]; déclenché quand le porteur est attiré (déclencheur actif 1 tour(s))",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ Désenvoûte les effets du sort « Croisement » (13480) — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "le lanceur lance « Croisement » (20677) niv.1 — croix diagonale r3 (rayon min 1); cibles: alliés sauf lanceur [groupe du lanceur; ses bombes élémentaires]; déclenché quand le porteur est attiré (déclencheur actif 1 tour(s))",
+    "Applique l'état « Croisement / Piège Magnétique » (3691) — croix r3 (rayon min 1); cibles: alliés [groupe du lanceur; sans état « Croisement » (2501); ses bombes élémentaires]; 1 tour; non désenvoûtable",
+    "Applique l'état « Croisement / Piège Magnétique » (3691) — croix diagonale r3 (rayon min 1); cibles: alliés [groupe du lanceur; sans état « Croisement » (2501); ses bombes élémentaires]; 1 tour; non désenvoûtable",
+    "Attire de 1 case(s) — croix sans centre r1 (rayon min 1); cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Attire de 2 case(s) — croix sans centre r2 (rayon min 2); cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Attire de 3 case(s) — croix sans centre r3 (rayon min 3); cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Attire de 2 case(s) — croix diagonale sans centre r1 (rayon min 1); cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Attire de 4 case(s) — croix diagonale sans centre r2 (rayon min 2); cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Attire de 6 case(s) — croix diagonale sans centre r3 (rayon min 3); cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Applique l'état « Croisement » (2501) — croix r3 (rayon min 1); cibles: alliés [groupe du lanceur; sans état « Croisement » (2501); ses bombes élémentaires]; 1 tour; non désenvoûtable",
+    "Applique l'état « Croisement » (2501) — croix diagonale r3 (rayon min 1); cibles: alliés [groupe du lanceur; sans état « Croisement » (2501); ses bombes élémentaires]; 1 tour; non désenvoûtable",
+    "Retire l'état « Croisement / Piège Magnétique » (3691) — croix r3 (rayon min 1); cibles: alliés [groupe du lanceur; sans état « Croisement » (2501); ses bombes élémentaires]; 1 tour",
+    "Retire l'état « Croisement / Piège Magnétique » (3691) — croix diagonale r3 (rayon min 1); cibles: alliés [groupe du lanceur; sans état « Croisement » (2501); ses bombes élémentaires]; 1 tour"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur elle-même « +1 Combo » (23537) niv.1 — étoile r3; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Attire de 3 case(s) — étoile r3; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 2,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "combo",
+    "placement",
+    "pull"
+   ],
+   "tacticalNote": "Attire les bombes en étoile r3 jusqu’au centre (+1 Combo) : rassemble en un point.",
+   "spellLevelId": 42016
+  },
+  {
+   "id": 13439,
+   "pairIndex": 12,
+   "variantOf": 13487,
+   "isBaseVariant": true,
+   "name": "Entourloupe",
+   "unlockLevel": 40,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "description": "Ajoute 1 Combo à une Bombe du lanceur, échange de position avec elle et lui applique l'état Pesanteur.\nLes effets ne s'appliquent que si l'échange de positions peut s'effectuer.\n\nSur un allié : échange uniquement de position avec la cible.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; cible et lanceur déplaçables; ses bombes (élémentaires, Ambulante, Méga)]",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "Échange de positions avec le lanceur — cibles: alliés [cible et lanceur déplaçables]",
+    "Applique l'état « Pesanteur » (7) — cibles: alliés [groupe du lanceur; cible et lanceur déplaçables; ses bombes (élémentaires, Ambulante, Méga)]; 1 tour"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur elle-même « +1 Combo » (23537) niv.1 — cibles: alliés [groupe du lanceur; cible et lanceur déplaçables; ses bombes (élémentaires, Ambulante, Méga)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 40) vs g3: PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 107) vs g3: PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "combo",
+    "gravity",
+    "swap"
+   ],
+   "tacticalNote": "Échange avec une bombe (+1 Combo, Pesanteur sur la bombe) ou un allié ; relance 3. Sauvetage/repositionnement.",
+   "spellLevelId": 41909
+  },
+  {
+   "id": 13487,
+   "pairIndex": 12,
+   "variantOf": 13439,
+   "isBaseVariant": false,
+   "name": "Bombe Ambulante",
+   "unlockLevel": 150,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Invoque une Bombe contrôlable qui peut copier l'élément et une partie du Combo d'une Bombe du lanceur.\n\nElle est détruite à la fin de son deuxième tour de jeu si elle n'a pas obtenu d'élément.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque (contrôlable) Bombe Ambulante (5162) grade 1 — cibles: alliés/ennemis",
+    "le lanceur lance « Mimésis » (13493) niv.1 — cibles: alliés/ennemis [apparaissant]",
+    "↳ le lanceur lance « Mimésis » (13493) niv.2 — cibles: alliés/ennemis; déclenché en fin de tour (déclencheur actif 2 tour(s))",
+    "↳ ↳ le lanceur lance « Mimésis » (13493) niv.4 — cibles: alliés/ennemis [avec état « Casemate » (2499); =monstre Bombe Ambulante (5162)]",
+    "↳ ↳ Tue la cible — cibles: alliés/ennemis [lanceur avec état « Mimésis - Explobombe » (637); =monstre Bombe Ambulante (5162)]",
+    "↳ ↳ Tue la cible — cibles: alliés/ennemis [lanceur avec état « Mimésis - Tornabombe » (638); =monstre Bombe Ambulante (5162)]",
+    "↳ ↳ Tue la cible — cibles: alliés/ennemis [lanceur avec état « Mimésis - Bombe à Eau » (639); =monstre Bombe Ambulante (5162)]",
+    "↳ ↳ Tue la cible — cibles: alliés/ennemis [lanceur avec état « Mimésis - Sismobombe » (640); =monstre Bombe Ambulante (5162)]",
+    "↳ ↳ Tue la cible — cibles: alliés/ennemis [lanceur avec état « Mimésis - Mégabombe » (6706); =monstre Bombe Ambulante (5162)]",
+    "↳ ↳ Pose une bombe Explobombe (3112) grade 1 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Explobombe » (637); lanceur avec état « Explobombe rang 1 » (3808)]",
+    "↳ ↳ Pose une bombe Explobombe (3112) grade 2 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Explobombe » (637); lanceur avec état « Explobombe rang 2 » (3809)]",
+    "↳ ↳ Pose une bombe Explobombe (3112) grade 3 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Explobombe » (637); lanceur avec état « Explobombe rang 3 » (3810)]",
+    "↳ ↳ Pose une bombe Tornabombe (3113) grade 1 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Tornabombe » (638); lanceur avec état « Tornabombe rang 1 » (3805)]",
+    "↳ ↳ Pose une bombe Tornabombe (3113) grade 2 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Tornabombe » (638); lanceur avec état « Tornabombe rang 2 » (3806)]",
+    "↳ ↳ Pose une bombe Tornabombe (3113) grade 3 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Tornabombe » (638); lanceur avec état « Tornabombe rang 3 » (3807)]",
+    "↳ ↳ Pose une bombe Bombe à Eau (3114) grade 1 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Bombe à Eau » (639); lanceur avec état « Bombe à Eau rang 1 » (3799)]",
+    "↳ ↳ Pose une bombe Bombe à Eau (3114) grade 2 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Bombe à Eau » (639); lanceur avec état « Bombe à Eau rang 2 » (3800)]",
+    "↳ ↳ Pose une bombe Bombe à Eau (3114) grade 3 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Bombe à Eau » (639); lanceur avec état « Bombe à Eau rang 3 » (3801)]",
+    "↳ ↳ Pose une bombe Sismobombe (5161) grade 1 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Sismobombe » (640); lanceur avec état « Sismobombe rang 1 » (3802)]",
+    "↳ ↳ Pose une bombe Sismobombe (5161) grade 2 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Sismobombe » (640); lanceur avec état « Sismobombe rang 2 » (3803)]",
+    "↳ ↳ Pose une bombe Sismobombe (5161) grade 3 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Sismobombe » (640); lanceur avec état « Sismobombe rang 3 » (3804)]",
+    "↳ ↳ Invoque (contrôlable) Mégabombe (5163) grade 1 — cibles: alliés/ennemis [lanceur avec état « Mimésis - Mégabombe » (6706)]",
+    "↳ ↳ Retire l'état « Casemate » (2499) — cibles: lanceur",
+    "↳ ↳ Désenvoûte les effets du sort « Mimésis » (13494) — cibles: lanceur",
+    "↳ ↳ Retire l'état « Tour Roublard » (2483) — cibles: lanceur",
+    "↳ Tue la cible — cibles: alliés/ennemis; après 1 tour(s); déclenché en fin de tour (déclencheur actif 1 tour(s))"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 2,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "bomb",
+    "combo",
+    "summon"
+   ],
+   "tacticalNote": "Bombe contrôlable qui copie élément + Combos (≤7) d’une bombe : permet une 4e bombe ou de « téléporter » un Combo.",
+   "spellLevelId": 42026
+  },
+  {
+   "id": 13429,
+   "pairIndex": 13,
+   "variantOf": 13490,
+   "isBaseVariant": true,
+   "name": "Roublabot",
+   "unlockLevel": 45,
+   "gradeUsed": 3,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Invoque un robot contrôlable qui peut déplacer ou déclencher les Bombes du lanceur.\nLe robot est détruit à la fin de son tour de jeu.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque (contrôlable) Roublabot (3120) grade 3 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 4,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 4,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 179,
+     "apCost": 4,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 45) vs g3: Invoque (contrôlable) Roublabot (3120) grade 1 (g1) → Invoque (contrôlable) Roublabot (3120) grade 3 (g3)",
+    "g2 (niv 112) vs g3: Invoque (contrôlable) Roublabot (3120) grade 2 (g2) → Invoque (contrôlable) Roublabot (3120) grade 3 (g3)"
+   ],
+   "role": [
+    "bomb_trigger",
+    "combo",
+    "summon"
+   ],
+   "tacticalNote": "Robot contrôlable (4 PA/9 PM, meurt en fin de tour) : porte/jette/pousse/attire les bombes avec +1 Combo et Détonation 2×/tour.",
+   "spellLevelId": 41942
+  },
+  {
+   "id": 13490,
+   "pairIndex": 13,
+   "variantOf": 13429,
+   "isBaseVariant": false,
+   "name": "Mégabombe",
+   "unlockLevel": 155,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Invoque une Mégabombe contrôlable qui peut occasionner des dommages Neutre et dévorer des Bombes pour augmenter ses dommages.\n\nLorsqu'elle est détruite, elle explose en ajoutant 1 Combo aux Bombes du lanceur et déclenche leur explosion dans un cercle de taille 2.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque (contrôlable) Mégabombe (5163) grade 1 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 3,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "bomb_trigger",
+    "summon"
+   ],
+   "tacticalNote": "Invocation offensive Neutre qui dévore des bombes ; kamikaze final en cercle 2.",
+   "spellLevelId": 42029
+  },
+  {
+   "id": 13438,
+   "pairIndex": 14,
+   "variantOf": 13449,
+   "isBaseVariant": true,
+   "name": "Dagues Boomerang",
+   "unlockLevel": 50,
+   "gradeUsed": 3,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Érode les cibles et occasionne des dommages Air en zone.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 16,
+     "max": 18,
+     "critMin": 19,
+     "critMax": 21,
+     "zone": "U2",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 16,
+     "max": 18,
+     "critMin": 19,
+     "critMax": 21,
+     "zone": "U2",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "demi-cercle r2"
+   ],
+   "effectsSummary": [
+    "+13% Érosion — demi-cercle r2; cibles: alliés/ennemis; 2 tours",
+    "Dommages Air 16 à 18 — demi-cercle r2; cibles: alliés/ennemis",
+    "Dommages Air 16 à 18 — demi-cercle r2; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 19 à 21 ; Dommages Air 19 à 21"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 4,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 4,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 184,
+     "apCost": 4,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 50) vs g3: Dommages Air 12 à 14 (g1) → Dommages Air 16 à 18 (g3) ; Dommages Air 12 à 14 (g1) → Dommages Air 16 à 18 (g3) ; PO max 5 (g1) → 7 (g3)",
+    "g2 (niv 117) vs g3: Dommages Air 14 à 16 (g2) → Dommages Air 16 à 18 (g3) ; Dommages Air 14 à 16 (g2) → Dommages Air 16 à 18 (g3) ; PO max 6 (g2) → 7 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "erosion"
+   ],
+   "tacticalNote": "Air ×2 lignes en demi-cercle r2 + 13 % d’érosion ; touche les alliés.",
+   "spellLevelId": 41906
+  },
+  {
+   "id": 13449,
+   "pairIndex": 14,
+   "variantOf": 13438,
+   "isBaseVariant": false,
+   "name": "Tromblon",
+   "unlockLevel": 160,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 25,
+   "statesCriterion": null,
+   "description": "Érode les cibles et occasionne des dommages Eau en zone.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 35,
+     "max": 39,
+     "critMin": 42,
+     "critMax": 47,
+     "zone": "V1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "cône r1"
+   ],
+   "effectsSummary": [
+    "+13% Érosion — cône r1; cibles: alliés/ennemis; 2 tours",
+    "Dommages Eau 35 à 39 — cône r1; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 42 à 47"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 4,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "erosion"
+   ],
+   "tacticalNote": "Eau 35–39 en cône + 13 % d’érosion ; touche les alliés.",
+   "spellLevelId": 41935
+  },
+  {
+   "id": 13431,
+   "pairIndex": 15,
+   "variantOf": 13476,
+   "isBaseVariant": true,
+   "name": "Roublardise",
+   "unlockLevel": 55,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "description": "Applique un bouclier sur toutes les Bombes du lanceur.\n\nCrée des illusions du lanceur et le téléporte sur la case ciblée.\nTermine le tour en cours du lanceur.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 150,
+     "max": 150,
+     "critMin": null,
+     "critMax": null,
+     "zone": "a1",
+     "targetMask": "a,P,F3112,F3113,F3114,F5161,F5163,F5162",
+     "duration": 1,
+     "triggers": "I",
+     "via": "20662#1"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Roublardise » (20662) niv.1 — cibles: lanceur",
+    "↳ Bouclier = 150% du niveau du lanceur — toute la carte; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 1 tour",
+    "Crée des illusions du lanceur (param 3) — cibles: alliés/ennemis",
+    "Termine le tour — cibles: lanceur"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Bouclier = 150% du niveau du lanceur — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 1 tour"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 55) vs g3: PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 122) vs g3: PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "shield",
+    "teleport"
+   ],
+   "tacticalNote": "Bouclier sur toutes les bombes, illusions et téléportation (ligne, case libre) puis FIN DU TOUR : sort d’évasion à jouer en dernier.",
+   "spellLevelId": 41885
+  },
+  {
+   "id": 13476,
+   "pairIndex": 15,
+   "variantOf": 13431,
+   "isBaseVariant": false,
+   "name": "Stratagème",
+   "unlockLevel": 165,
+   "gradeUsed": 1,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Téléporte une Bombe du lanceur à sa position précédente et lui applique un bouclier.\nLe bouclier ne s'applique que si la téléportation peut s'effectuer.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 50,
+     "max": 50,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,P,F3112,F3113,F3114,F5161,F5163,F5162",
+     "duration": 2,
+     "triggers": "I",
+     "via": "25580#1"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Stratagème » (25580) niv.1 — cibles: alliés [groupe du lanceur; cible déplaçable; ses bombes (élémentaires, Ambulante, Méga)]; déclenché quand le porteur est téléporté (INCERTAIN) (déclencheur actif 1 tour(s))",
+    "↳ Désenvoûte les effets du sort « Stratagème » (13476) — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "↳ Bouclier = 50% du niveau du lanceur — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 2 tours",
+    "Retour à la position précédente — cibles: alliés [groupe du lanceur; cible déplaçable; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Désenvoûte les effets du sort « Stratagème » (13476) — cibles: alliés [groupe du lanceur; cible déplaçable; ses bombes (élémentaires, Ambulante, Méga)]"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Bouclier = 50% du niveau du lanceur — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 2 tours"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 1,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "shield",
+    "teleport"
+   ],
+   "tacticalNote": "Renvoie une bombe à sa position précédente (annule une poussée ennemie) + bouclier ; 1 PA, 3/tour.",
+   "spellLevelId": 42012
+  },
+  {
+   "id": 13433,
+   "pairIndex": 16,
+   "variantOf": 13475,
+   "isBaseVariant": true,
+   "name": "Extraction",
+   "unlockLevel": 60,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 25,
+   "statesCriterion": null,
+   "description": "Vole de la vie dans l'élément Feu.\nLe vol de vie est réduit de moitié sur les alliés.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "lifesteal",
+     "element": "Feu",
+     "min": 28,
+     "max": 30,
+     "critMin": 32,
+     "critMax": 36,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "lifesteal",
+     "element": "Feu",
+     "min": 14,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18,
+     "zone": "P1",
+     "targetMask": "a",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Vol de vie Feu 28 à 30 — cibles: ennemis",
+    "Vol de vie Feu 14 à 15 — cibles: alliés"
+   ],
+   "criticalSummary": [
+    "[CC] Vol de vie Feu 32 à 36 ; Vol de vie Feu 16 à 18"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 3,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 3,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 60) vs g3: Vol de vie Feu 16 à 18 (g1) → Vol de vie Feu 28 à 30 (g3) ; Vol de vie Feu 8 à 9 (g1) → Vol de vie Feu 14 à 15 (g3) ; PO max 6 (g1) → 8 (g3)",
+    "g2 (niv 127) vs g3: Vol de vie Feu 22 à 24 (g2) → Vol de vie Feu 28 à 30 (g3) ; Vol de vie Feu 11 à 12 (g2) → Vol de vie Feu 14 à 15 (g3) ; PO max 7 (g2) → 8 (g3)"
+   ],
+   "role": [
+    "damage",
+    "lifesteal"
+   ],
+   "tacticalNote": "Vol de vie Feu 28–30 (moitié sur allié) : sustain.",
+   "spellLevelId": 41891
+  },
+  {
+   "id": 13475,
+   "pairIndex": 16,
+   "variantOf": 13433,
+   "isBaseVariant": false,
+   "name": "Cadence",
+   "unlockLevel": 170,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air aux ennemis en zone.\nRetire également des PM aux ennemis en zone autour des Bombes du lanceur dans la zone d'effet.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 26,
+     "max": 28,
+     "critMin": 31,
+     "critMax": 34,
+     "zone": "X1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1",
+    "croix sans centre r1"
+   ],
+   "effectsSummary": [
+    "Dommages Air 26 à 28 — croix r1; cibles: ennemis",
+    "le lanceur lance « Cadence » (13505) niv.1 — croix r1; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "↳ -1 PM (esquivable) — croix sans centre r1; cibles: ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 31 à 34"
+   ],
+   "tooltipOnlyEffects": [
+    "Applique l'état « Cadence » (2504) — croix r1; cibles: ennemis; 1 tour",
+    "le lanceur lance « Cadence » (13505) niv.2 — croix r1; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "Retire l'état « Cadence » (2504) — croix r1; cibles: alliés/ennemis",
+    "-1 PM (esquivable) — croix sans centre r1; cibles: ennemis; 1 tour"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "mp_removal"
+   ],
+   "tacticalNote": "Air en croix + -1 PM autour des bombes de la zone.",
+   "spellLevelId": 42011
+  },
+  {
+   "id": 13445,
+   "pairIndex": 17,
+   "variantOf": 14412,
+   "isBaseVariant": true,
+   "name": "Rémission",
+   "unlockLevel": 65,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "description": "Applique l'état Rémission sur la cible :\n• Repousse les attaquants si la cible subit des dommages en mêlée.\n\nSur une Bombe du lanceur : réduit les dommages reçus à distance.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Blocage Rémission » (3795) — cibles: ennemis; 1 tour; déclenché quand le porteur subit des dommages en mêlée (déclencheur actif 1 tour(s))",
+    "Applique l'état « Blocage Rémission » (3795) — cibles: alliés [hors bombes]; 1 tour; déclenché quand le porteur subit des dommages en mêlée (déclencheur actif 1 tour(s))",
+    "le lanceur lance « Rémission » (13430) niv.3 — cibles: ennemis; déclenché quand le porteur subit des dommages en mêlée (déclencheur actif 1 tour(s))",
+    "↳ Retire l'état « Blocage Rémission » (3795) — toute la carte; cibles: alliés/ennemis",
+    "↳ Repousse de 6 case(s) — cibles: alliés/ennemis [= cible déclenchante; sans état « Blocage Rémission » (3795)]",
+    "le lanceur lance « Rémission » (13430) niv.3 — cibles: alliés [hors bombes]; déclenché quand le porteur subit des dommages en mêlée (déclencheur actif 1 tour(s))",
+    "Applique l'état « Rémission » (2512) — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 3 tours",
+    "Applique l'état « Rémission » (2512) — cibles: alliés [hors bombes]; 1 tour",
+    "Applique l'état « Rémission » (2512) — cibles: ennemis; 1 tour",
+    "Réduit les dommages subis de 20 — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 3 tours; déclenché quand le porteur subit des dommages à distance (déclencheur actif 3 tour(s))"
+   ],
+   "criticalSummary": [
+    "[CC] Applique l'état « Rémission » (2512) ; Applique l'état « Rémission » (2512) ; Réduit les dommages subis de 23"
+   ],
+   "tooltipOnlyEffects": [
+    "Repousse de 6 case(s) — cibles: alliés/ennemis; déclenché quand le porteur subit des dommages en mêlée (déclencheur actif 1 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 131,
+     "apCost": 2,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 198,
+     "apCost": 2,
+     "range": [
+      0,
+      8
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 65) vs g3: le lanceur lance « Rémission » (13430) niv.1 (g1) → le lanceur lance « Rémission » (13430) niv.3 (g3) ; le lanceur lance « Rémission » (13430) niv.1 (g1) → le lanceur lance « Rémission » (13430) niv.3 (g3) ; Réduit les dommages subis de 10 (g1) → Réduit les dommages subis de 20 (g3) ; PO max 6 (g1) → 8 (g3)",
+    "g2 (niv 131) vs g3: le lanceur lance « Rémission » (13430) niv.2 (g2) → le lanceur lance « Rémission » (13430) niv.3 (g3) ; le lanceur lance « Rémission » (13430) niv.2 (g2) → le lanceur lance « Rémission » (13430) niv.3 (g3) ; Réduit les dommages subis de 15 (g2) → Réduit les dommages subis de 20 (g3) ; PO max 7 (g2) → 8 (g3)"
+   ],
+   "role": [
+    "damage_reduction",
+    "push"
+   ],
+   "tacticalNote": "Allié/ennemi : repousse de 6 l’attaquant au contact ; sur bombe : -20 dommages subis à distance (3 tours).",
+   "spellLevelId": 41927
+  },
+  {
+   "id": 14412,
+   "pairIndex": 17,
+   "variantOf": 13445,
+   "isBaseVariant": false,
+   "name": "Casemate",
+   "unlockLevel": 175,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Rend une Bombe du lanceur Invulnérable et lui ajoute 1 Combo.\n\nLes effets sont transmis à la Bombe issue d'une Ambulante.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Invulnérable » (56) — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 1 tour",
+    "Applique l'état « Casemate » (2499) — cibles: alliés [groupe du lanceur; =monstre Bombe Ambulante (5162)]; 1 tour",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur elle-même « +1 Combo » (23537) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 2,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "combo",
+    "invulnerability"
+   ],
+   "tacticalNote": "Bombe Invulnérable 1 tour + 1 Combo : protège la bombe-clé avant l’explosion.",
+   "spellLevelId": 44010
+  },
+  {
+   "id": 13473,
+   "pairIndex": 18,
+   "variantOf": 14411,
+   "isBaseVariant": true,
+   "name": "Mousquet",
+   "unlockLevel": 70,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre aux ennemis en zone.\nAjoute également 1 Combo aux Bombes du lanceur en zone.\n\nLe Combo ne s'applique qu'une seule fois par Bombe par tour.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 19,
+     "max": 21,
+     "critMin": 23,
+     "critMax": 25,
+     "zone": "X1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1"
+   ],
+   "effectsSummary": [
+    "Dommages Terre 19 à 21 — croix r1; cibles: ennemis",
+    "le lanceur lance « Mousquet » (20643) niv.1 — croix r1; cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; sans état « Mousquet (cumul Combo) » (2523); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ Applique l'état « Mousquet (cumul Combo) » (2523) — cibles: alliés [groupe du lanceur; sans état « Mousquet (cumul Combo) » (2523); ses bombes élémentaires]; 1 tour; non désenvoûtable"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 23 à 25"
+   ],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Mousquet » (20643) niv.2 — croix r1; cibles: alliés/ennemis",
+    "la cible lance sur elle-même « +1 Combo » (23537) niv.1 — croix r1; cibles: alliés [groupe du lanceur; ses bombes élémentaires]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 2,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 70) vs g2: Dommages Terre 15 à 17 (g1) → Dommages Terre 19 à 21 (g2) ; PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "combo",
+    "damage"
+   ],
+   "tacticalNote": "Terre en croix 2 PA + 1 Combo aux bombes de la zone (1/bombe/tour) : rentable pour monter le Combo.",
+   "spellLevelId": 60031
+  },
+  {
+   "id": 14411,
+   "pairIndex": 18,
+   "variantOf": 13473,
+   "isBaseVariant": false,
+   "name": "Grenaille",
+   "unlockLevel": 180,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Vole de la vie dans l'élément Feu en zone.\nLe vol de vie est réduit de moitié sur les alliés.\n\nN'affecte pas le lanceur.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "lifesteal",
+     "element": "Feu",
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 40,
+     "zone": "X1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "lifesteal",
+     "element": "Feu",
+     "min": 15,
+     "max": 17,
+     "critMin": 18,
+     "critMax": 20,
+     "zone": "X1",
+     "targetMask": "g",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1"
+   ],
+   "effectsSummary": [
+    "Vol de vie Feu 30 à 34 — croix r1; cibles: ennemis",
+    "Vol de vie Feu 15 à 17 — croix r1; cibles: alliés sauf lanceur"
+   ],
+   "criticalSummary": [
+    "[CC] Vol de vie Feu 36 à 40 ; Vol de vie Feu 18 à 20"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 4,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "lifesteal"
+   ],
+   "tacticalNote": "Vol de vie Feu en croix (sans LdV).",
+   "spellLevelId": 44007
+  },
+  {
+   "id": 13441,
+   "pairIndex": 19,
+   "variantOf": 13479,
+   "isBaseVariant": true,
+   "name": "Poudre",
+   "unlockLevel": 75,
+   "gradeUsed": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Rend une Bombe du lanceur Indéplaçable.\nAjoute 2 Combo à la Bombe :\n• En déclenchant son explosion si elle est détruite.\n• En retirant les effets du sort s'il est lancé sur une autre Bombe.\n\nLes effets sont retirés si la Bombe est déclenchée par un effet d'explosion.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "Désenvoûte les effets du sort « Poudre » (13441) — toute la carte; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Poudre » (2511); ses bombes élémentaires]",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Poudre » (2511); ses bombes élémentaires]",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "Applique l'état « Indéplaçable » (97) — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 2 tours; non désenvoûtable",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]; déclenché à la mort du porteur (déclencheur actif 2 tour(s))",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]; déclenché à la mort du porteur (déclencheur actif 2 tour(s))",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "Fait exploser la bombe — cibles: alliés [groupe du lanceur; ses bombes élémentaires]; déclenché à la mort du porteur (déclencheur actif 2 tour(s))",
+    "Applique l'état « Poudre » (2511) — cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]; 2 tours; non désenvoûtable"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur elle-même « +2 Combos » (23538) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]; déclenché à la mort du porteur (déclencheur actif 2 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 1,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 1,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 75) vs g2: PO max 6 (g1) → 8 (g2)"
+   ],
+   "role": [
+    "bomb_trigger",
+    "combo",
+    "immovable"
+   ],
+   "tacticalNote": "Indéplaçable + 2 Combos à la destruction : protège la position d’une bombe contre les poussées.",
+   "spellLevelId": 41914
+  },
+  {
+   "id": 13479,
+   "pairIndex": 19,
+   "variantOf": 13441,
+   "isBaseVariant": false,
+   "name": "Bombe Collante",
+   "unlockLevel": 185,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Bombe Collante sur la cible.\nSur une case libre : pose un piège qui pose une Bombe Collante sur l'entité qui le déclenche ou déclenche l'explosion d'une Bombe du lanceur.\n\nLa Bombe peut être activée avec les sorts d'activation ou les explosions de bombe.\nLorsqu'elle est activée, elle occasionne des dommages dans le meilleur élément du lanceur et déclenche l'explosion de ses Bombes en zone.\n\nUne Bombe Collante ne peut pas être appliquée sur une Bombe élémentaire.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "la cible lance sur sa cellule « Bombe Collante » (25584) niv.1 — cibles: lanceur",
+    "↳ le lanceur lance « Bombe Collante » (25582) niv.2 — cibles: ennemis",
+    "↳ ↳ Applique l'état « Bombe collé » (4069) — cibles: lanceur; 1 tour",
+    "↳ le lanceur lance « Bombe Collante » (25582) niv.2 — cibles: alliés [≠monstre Explobombe (3112); ≠monstre Tornabombe (3113); ≠monstre Bombe à Eau (3114); ≠monstre Sismobombe (5161); ≠monstre Bombola (4146); ≠monstre Exploboum (3523); ≠monstre Mégabombe (5163); ≠monstre Bombe Ambulante (5162)]",
+    "↳ le lanceur lance « Bombe Collante » (25582) niv.1 — cibles: ennemis",
+    "↳ ↳ le lanceur lance « Bombe Collante » (13507) niv.1 — cibles: alliés [hors bombes élémentaires]; déclenché quand l'état « Bombe Collante alliée » (641) est retiré (déclencheur actif 63 tour(s))",
+    "↳ ↳ le lanceur lance « Bombe Collante » (13507) niv.1 — cibles: ennemis; déclenché quand l'état « Bombe Collante ennemie » (665) est retiré (déclencheur actif 63 tour(s))",
+    "↳ ↳ Applique l'état « Bombe Collante alliée » (641) — cibles: alliés [hors bombes élémentaires]; infini",
+    "↳ ↳ Applique l'état « Bombe Collante ennemie » (665) — cibles: ennemis [sans état « Bombe Collante ennemie » (665)]; infini",
+    "↳ ↳ Applique l'état « Bombe Collante » (2515) — cibles: ennemis [sans état « Bombe Collante » (2515)]; infini",
+    "↳ ↳ Applique l'état « Bombe Collante » (2515) — cibles: alliés [hors bombes élémentaires]; infini",
+    "↳ ↳ Fait exploser la bombe — cibles: alliés [groupe du lanceur; lanceur sans état « Bombe collé » (4069); ses bombes élémentaires]",
+    "↳ le lanceur lance « Bombe Collante » (25582) niv.1 — cibles: alliés [≠monstre Explobombe (3112); ≠monstre Tornabombe (3113); ≠monstre Bombe à Eau (3114); ≠monstre Sismobombe (5161); ≠monstre Bombola (4146); ≠monstre Exploboum (3523); ≠monstre Mégabombe (5163); ≠monstre Bombe Ambulante (5162)]",
+    "↳ le lanceur lance « Bombe Collante » (25584) niv.4 — cibles: alliés [monstre ∈ {Explobombe (3112), Tornabombe (3113), Bombe à Eau (3114), Sismobombe (5161), Bombola (4146), Exploboum (3523), Mégabombe (5163), Bombe Ambulante (5162)}]",
+    "↳ ↳ Applique l'état « Bombe collé » (4069) — cibles: lanceur; 1 tour",
+    "la cible lance sur sa cellule « Bombe Collante » (25584) niv.2 — cibles: lanceur",
+    "↳ la cible lance sur sa cellule « Bombe Collante » (25591) niv.1 — cibles: lanceur [lanceur sans état « Bombe collé » (4069)]",
+    "↳ ↳ Pose un piège lançant « Bombe Collante » (25582) niv.1 — cibles: alliés/ennemis [lanceur sans état « Bombe collé » (4069)]",
+    "↳ Retire l'état « Bombe collé » (4069) — cibles: lanceur [lanceur avec état « Bombe collé » (4069)]",
+    "Retire l'état « Bombe collé » (4069) — cibles: lanceur"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Pose un piège lançant « Bombe Collante » (25582) niv.1 — cibles: alliés/ennemis",
+    "Applique l'état « Bombe Collante » (2515) — cibles: alliés/ennemis [sans état « Bombe Collante » (2515); hors bombes élémentaires]; infini",
+    "Dommages meilleur élément 17 à 19 — cibles: alliés/ennemis [=monstre monstre #99999]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "bomb_trigger",
+    "damage",
+    "state",
+    "trap"
+   ],
+   "tacticalNote": "Colle une bombe sur un ennemi (ou piège) : l’explosion suit la cible, utile contre des monstres mobiles.",
+   "spellLevelId": 42015
+  },
+  {
+   "id": 13443,
+   "pairIndex": 20,
+   "variantOf": 13482,
+   "isBaseVariant": true,
+   "name": "Resquille",
+   "unlockLevel": 80,
+   "gradeUsed": 2,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau et retire des PA en zone.\nN'affecte pas le lanceur.\n\nSur des Bombes du lanceur : les téléporte symétriquement par rapport au centre de la zone.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44,
+     "zone": "O2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44,
+     "zone": "O2",
+     "targetMask": "g,p",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44,
+     "zone": "O2",
+     "targetMask": "g,P,f3112,f3113,f3114,f5161,f5162,f5163",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "anneau r2"
+   ],
+   "effectsSummary": [
+    "Dommages Eau 33 à 37 — anneau r2; cibles: ennemis",
+    "Dommages Eau 33 à 37 — anneau r2; cibles: alliés sauf lanceur [hors groupe du lanceur]",
+    "Dommages Eau 33 à 37 — anneau r2; cibles: alliés sauf lanceur [groupe du lanceur; hors bombes]",
+    "-2 PA (esquivable) — anneau r2; cibles: ennemis; 1 tour",
+    "-2 PA (esquivable) — anneau r2; cibles: alliés sauf lanceur [hors groupe du lanceur]; 1 tour",
+    "-2 PA (esquivable) — anneau r2; cibles: alliés sauf lanceur [groupe du lanceur; hors bombes]; 1 tour",
+    "Téléportation symétrique par rapport au point d'impact — anneau r2; cibles: alliés [groupe du lanceur; ses bombes (élémentaires, Ambulante, Méga)]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 40 à 44 ; Dommages Eau 40 à 44 ; Dommages Eau 40 à 44"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 4,
+     "range": [
+      0,
+      2
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 4,
+     "range": [
+      0,
+      2
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 80) vs g2: Dommages Eau 27 à 30 (g1) → Dommages Eau 33 à 37 (g2) ; Dommages Eau 27 à 30 (g1) → Dommages Eau 33 à 37 (g2) ; Dommages Eau 27 à 30 (g1) → Dommages Eau 33 à 37 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "ap_removal",
+    "damage",
+    "teleport"
+   ],
+   "tacticalNote": "Eau en anneau r2 (-2 PA) autour du lanceur/case + téléportation symétrique des bombes : réorganise le terrain.",
+   "spellLevelId": 41920
+  },
+  {
+   "id": 13482,
+   "pairIndex": 20,
+   "variantOf": 13443,
+   "isBaseVariant": false,
+   "name": "Arquebuse",
+   "unlockLevel": 190,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Réduit la durée des effets sur la cible et occasionne des dommages Terre aux ennemis.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 35,
+     "max": 39,
+     "critMin": 42,
+     "critMax": 47,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Réduit la durée des effets de 1 tour(s) — cibles: alliés/ennemis",
+    "Dommages Terre 35 à 39 — cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 42 à 47"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 4,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "shorten_effects"
+   ],
+   "tacticalNote": "Terre 35–39 + réduit d’1 tour la durée des effets de la cible (désenvoûtement partiel) — anti-boucliers/buffs du boss.",
+   "spellLevelId": 42021
+  },
+  {
+   "id": 13446,
+   "pairIndex": 21,
+   "variantOf": 13484,
+   "isBaseVariant": true,
+   "name": "Dernier Souffle",
+   "unlockLevel": 85,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Réduit la Vitalité maximale du lanceur pour ajouter temporairement 3 Combo à ses Bombes.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "cercle r9"
+   ],
+   "effectsSummary": [
+    "-50% Vitalité — cibles: lanceur; 2 tours",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — cercle r9; cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — cercle r9; cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — cercle r9; cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "la cible lance sur elle-même « Combo » (20502) niv.1 — cercle r9; cibles: alliés [groupe du lanceur; ses bombes élémentaires]; après 2 tour(s)",
+    "↳ -1 Combo (redescend d’un état Combo)",
+    "la cible lance sur elle-même « Combo » (20502) niv.1 — cercle r9; cibles: alliés [groupe du lanceur; ses bombes élémentaires]; après 2 tour(s)",
+    "↳ -1 Combo (redescend d’un état Combo)",
+    "la cible lance sur elle-même « Combo » (20502) niv.1 — cercle r9; cibles: alliés [groupe du lanceur; ses bombes élémentaires]; après 2 tour(s)",
+    "↳ -1 Combo (redescend d’un état Combo)"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur elle-même « +3 Combos » (23540) niv.1 — cercle r9; cibles: alliés [groupe du lanceur; ses bombes élémentaires]; 2 tours",
+    "la cible lance sur elle-même « -3 Combos » (23539) niv.1 — cercle r9; cibles: alliés [groupe du lanceur; ses bombes élémentaires]; après 2 tour(s)"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 2,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 2,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "combo"
+   ],
+   "tacticalNote": "-50 % vitalité max pendant 2 tours pour +3 Combos (2 tours) sur toutes les bombes dans 9 cases : pic de dégâts.",
+   "spellLevelId": 41929
+  },
+  {
+   "id": 13484,
+   "pairIndex": 21,
+   "variantOf": 13446,
+   "isBaseVariant": false,
+   "name": "Piège Magnétique",
+   "unlockLevel": 195,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose un piège mono-cellule qui attire les cibles, ajoute 1 Combo aux Bombes du lanceur et déclenche leur explosion en zone.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Pose un piège lançant « Piège Magnétique » (13485) niv.1 — cibles: alliés/ennemis",
+    "↳ Désenvoûte les effets du sort « Poudre » (13441) — cercle r3; cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ Attire de 2 case(s) — cercle r3; cibles: alliés/ennemis",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cercle r3; cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; avec état « Aimantation » (2136); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; avec état « Croisement / Piège Magnétique » (3691); ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ Fait exploser la bombe — cercle r3; cibles: alliés [groupe du lanceur; ses bombes élémentaires + Mégabombe]"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 3,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "bomb_trigger",
+    "combo",
+    "pull",
+    "trap"
+   ],
+   "tacticalNote": "Piège mono-case : attire en cercle 3, +1 Combo et explosion des bombes en cercle 3 quand un ennemi marche dessus.",
+   "spellLevelId": 42023
+  },
+  {
+   "id": 13450,
+   "pairIndex": 22,
+   "variantOf": 13489,
+   "isBaseVariant": true,
+   "name": "Kaboom",
+   "unlockLevel": 90,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique l'état Kaboom sur les alliés en zone.\n\nSur des Bombes élémentaires du lanceur : ajoute 1 Combo.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix r2"
+   ],
+   "effectsSummary": [
+    "Applique l'état « Kaboom » (92) — croix r2; cibles: alliés [hors bombes élémentaires]; 2 tours",
+    "la cible lance sur elle-même « Combo » (20497) niv.1 — croix r2; cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur elle-même « +1 Combo » (23537) niv.1 — croix r2; cibles: alliés [groupe du lanceur; ses bombes élémentaires]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 3,
+     "range": [
+      0,
+      3
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 90) vs g2: PO max 3 (g1) → 5 (g2)"
+   ],
+   "role": [
+    "ally_buff",
+    "combo",
+    "state"
+   ],
+   "tacticalNote": "Kaboom en croix r2 sur les alliés (2 tours) + 1 Combo aux bombes de la zone ; relance 3. À poser avant une chaîne qui touche les alliés.",
+   "spellLevelId": 41940
+  },
+  {
+   "id": 13489,
+   "pairIndex": 22,
+   "variantOf": 13450,
+   "isBaseVariant": false,
+   "name": "Imposture",
+   "unlockLevel": 200,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "description": "Échange de positions avec la cible et applique l'état Kaboom sur le lanceur.\n• Sur un allié : lui applique également l'état.\n• Sur une Bombe élémentaire du lanceur : ajoute 1 Combo à la Bombe.\nApplique l'état Imposture sur le lanceur et l'allié ciblé au tour suivant, empêchant l'application de l'état Kaboom.\n\nLe Combo et l'état Kaboom ne s'appliquent que si l'échange de positions peut s'effectuer.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Imposture » (20673) niv.1 — cibles: alliés [groupe du lanceur; cible et lanceur déplaçables; ses bombes élémentaires]; déclenché quand le porteur échange de position (déclencheur actif 1 tour(s))",
+    "↳ Désenvoûte les effets du sort « Imposture » (13489) — cibles: alliés",
+    "↳ la cible lance sur elle-même « Combo » (20497) niv.1 — cibles: alliés [groupe du lanceur; ses bombes élémentaires]",
+    "↳ ↳ +1 Combo à la bombe (passe à l’état Combo suivant, cf. §3.1)",
+    "↳ Applique l'état « Kaboom » (92) — cibles: lanceur/alliés [sans état « Imposture » (4068); hors bombes élémentaires]; 1 tour",
+    "↳ Applique l'état « Imposture » (4068) — cibles: lanceur/alliés [sans état « Imposture » (4068); hors bombes élémentaires]; 1 tour, après 1 tour(s)",
+    "le lanceur lance « Imposture » (20673) niv.2 — cibles: alliés [hors groupe du lanceur; cible et lanceur déplaçables]; déclenché quand le porteur échange de position (déclencheur actif 1 tour(s))",
+    "↳ Désenvoûte les effets du sort « Imposture » (13489) — cibles: alliés",
+    "↳ Applique l'état « Kaboom » (92) — cibles: lanceur/alliés [sans état « Imposture » (4068); hors bombes élémentaires]; 1 tour",
+    "↳ Applique l'état « Imposture » (4068) — cibles: lanceur/alliés [sans état « Imposture » (4068); hors bombes élémentaires]; 1 tour, après 1 tour(s)",
+    "le lanceur lance « Imposture » (20673) niv.2 — cibles: alliés [groupe du lanceur; cible et lanceur déplaçables; hors bombes élémentaires]; déclenché quand le porteur échange de position (déclencheur actif 1 tour(s))",
+    "le lanceur lance « Imposture » (20673) niv.2 — cibles: ennemis [cible et lanceur déplaçables]; déclenché quand le porteur échange de position (déclencheur actif 1 tour(s))",
+    "Échange de positions avec le lanceur — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Applique l'état « Kaboom » (92) — cibles: lanceur/alliés [cible et lanceur déplaçables; hors bombes élémentaires]; 1 tour",
+    "la cible lance sur elle-même « +1 Combo » (23537) niv.1 — cibles: alliés [groupe du lanceur; cible et lanceur déplaçables; ses bombes élémentaires]",
+    "Applique l'état « Imposture » (4068) — cibles: lanceur/alliés [cible et lanceur déplaçables; hors bombes élémentaires]; 1 tour, après 1 tour(s)"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 3,
+     "range": [
+      1,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ally_buff",
+    "combo",
+    "swap"
+   ],
+   "tacticalNote": "Échange avec la cible + Kaboom (1 tour) ; +1 Combo si bombe.",
+   "spellLevelId": 42028
+  }
+ ],
+ "recommendedSets": [
+  {
+   "name": "Set « Artificier » (DPS zone, recommandé PvM)",
+   "rationale": "Maximiser les explosions en chaîne et les murs : bombes de base (2 poses/tour), Détonateur (0 PA net + Combo), Aimantation/Mousquet/Kaboom pour monter les Combos, Dernier Souffle pour le pic, Oblitération en finisher Terre.",
+   "choices": [
+    {
+     "pair": 1,
+     "spell": "Explobombe",
+     "why": "2 poses/tour, murs de Feu"
+    },
+    {
+     "pair": 2,
+     "spell": "Tornabombe",
+     "why": "retrait PM de zone"
+    },
+    {
+     "pair": 3,
+     "spell": "Bombe à Eau",
+     "why": "retrait PA, Kaboom +1 PA"
+    },
+    {
+     "pair": 4,
+     "spell": "Sismobombe",
+     "why": "meilleure base 20–22"
+    },
+    {
+     "pair": 5,
+     "spell": "Détonateur",
+     "why": "coût net 0, +1 Combo"
+    },
+    {
+     "pair": 6,
+     "spell": "Pulsar",
+     "why": "zone Feu + poussée vers les murs"
+    },
+    {
+     "pair": 7,
+     "spell": "Oblitération",
+     "why": "finisher Terre à rampe"
+    },
+    {
+     "pair": 8,
+     "spell": "Botte",
+     "why": "replace les bombes + bouclier"
+    },
+    {
+     "pair": 9,
+     "spell": "Recel",
+     "why": "attire un ennemi dans la zone"
+    },
+    {
+     "pair": 10,
+     "spell": "Mitraille",
+     "why": "-3 PM mono-cible"
+    },
+    {
+     "pair": 11,
+     "spell": "Aimantation",
+     "why": "regroupe + Combo"
+    },
+    {
+     "pair": 12,
+     "spell": "Entourloupe",
+     "why": "sauvetage, Combo"
+    },
+    {
+     "pair": 13,
+     "spell": "Roublabot",
+     "why": "Combos et détonations gratuites"
+    },
+    {
+     "pair": 14,
+     "spell": "Tromblon",
+     "why": "érosion + Eau"
+    },
+    {
+     "pair": 15,
+     "spell": "Roublardise",
+     "why": "évasion"
+    },
+    {
+     "pair": 16,
+     "spell": "Extraction",
+     "why": "sustain"
+    },
+    {
+     "pair": 17,
+     "spell": "Casemate",
+     "why": "bombe-clé invulnérable"
+    },
+    {
+     "pair": 18,
+     "spell": "Mousquet",
+     "why": "2 PA, +1 Combo de zone"
+    },
+    {
+     "pair": 19,
+     "spell": "Poudre",
+     "why": "+2 Combos, anti-poussée"
+    },
+    {
+     "pair": 20,
+     "spell": "Arquebuse",
+     "why": "désenvoûtement partiel"
+    },
+    {
+     "pair": 21,
+     "spell": "Dernier Souffle",
+     "why": "+3 Combos"
+    },
+    {
+     "pair": 22,
+     "spell": "Kaboom",
+     "why": "protège et buffe le groupe"
+    }
+   ]
+  },
+  {
+   "name": "Set « Contrôleur » (entrave PA/PM, groupe à 4)",
+   "rationale": "Privilégier la durabilité des bombes (Résilientes Air/Eau), le retrait (Mitraille, Cadence, Shrapnel, Resquille) et la protection du groupe (Kaboom, Rémission).",
+   "choices": [
+    {
+     "pair": 2,
+     "spell": "Tornabombe Résiliente",
+     "why": "bombe Air durable"
+    },
+    {
+     "pair": 3,
+     "spell": "Bombe à Eau Résiliente",
+     "why": "bombe Eau durable"
+    },
+    {
+     "pair": 6,
+     "spell": "Shrapnel",
+     "why": "-1 PA autour des bombes"
+    },
+    {
+     "pair": 10,
+     "spell": "Mitraille",
+     "why": "-3 PM"
+    },
+    {
+     "pair": 16,
+     "spell": "Cadence",
+     "why": "-1 PM autour des bombes"
+    },
+    {
+     "pair": 17,
+     "spell": "Rémission",
+     "why": "protège un allié au contact"
+    },
+    {
+     "pair": 20,
+     "spell": "Resquille",
+     "why": "-2 PA en anneau"
+    },
+    {
+     "pair": 21,
+     "spell": "Piège Magnétique",
+     "why": "regroupe + explose"
+    }
+   ]
+  }
+ ],
+ "rotations": [
+  {
+   "name": "Tour 1 — mise en place (12 PA)",
+   "context": "Ennemis à 5–8 cases (début de vague), aucun bombe en jeu.",
+   "steps": [
+    "Explobombe (2 PA) entre le groupe et les ennemis (Combo I).",
+    "Tornabombe (2 PA) à ≤2 cases de l’Explobombe (même zone d’explosion, éléments différents → pas de mur mais chaîne).",
+    "Bombe à Eau (2 PA) idem (3 bombes = limite).",
+    "Mousquet (2 PA) sur une case qui couvre 2 bombes (+1 Combo chacune, Combo II = +20 %).",
+    "Kaboom (3 PA) sur les alliés exposés (immunité + bombes de la croix +1 Combo).",
+    "Poudre (1 PA) sur la bombe la plus exposée aux poussées."
+   ],
+   "expected": "Au début du tour 2 : +2 Combos → Combo IV–V (+60/+80 %)."
+  },
+  {
+   "name": "Tour 2 — explosion (12 PA)",
+   "context": "Ennemis entrés dans les cercles de rayon 2 des bombes (ou attirés).",
+   "steps": [
+    "Aimantation (2 PA) pour resserrer bombes/ennemis (+1 Combo par bombe déplacée).",
+    "Dernier Souffle (2 PA) : +3 Combos (→ Combo VIII–IX, ×2,4–2,6).",
+    "Recel (3 PA) pour attirer un ennemi dans la zone si besoin.",
+    "Détonateur (1 PA, rendu) sur la bombe centrale : +1 Combo puis explosion → réaction en chaîne (cercle 2 + même élément en ligne 7).",
+    "Oblitération (4 PA) ou Pulsar (3 PA) avec les PA restants."
+   ],
+   "expected": "3 explosions à ×2,6–2,8 en cercle 2 (≈ 50 dégâts de base chacune avant caractéristiques), -2 PM/-1 PA de zone, bonus Kaboom pour les alliés."
+  },
+  {
+   "name": "Tour « sans bombe » (12 PA)",
+   "context": "Boss isolé, bombes détruites.",
+   "steps": [
+    "Mitraille (4 PA, -3 PM)",
+    "Oblitération (4 PA)",
+    "Recel ×1 (3 PA) ou Extraction (3 PA)",
+    "1 PA : Poudre/Détonateur selon le terrain."
+   ],
+   "expected": "≈ 100–120 dégâts de base mono-cible + retrait PM."
+  }
+ ],
+ "strengths": [
+  "Dégâts de zone parmi les plus élevés du jeu une fois les Combos montés (×4,6 max) et cumulables sur 3 bombes + murs.",
+  "Entrave de zone PA/PM et blocage des lignes de vue/chemins grâce aux bombes (obstacles).",
+  "Économie de PA : Détonateur gratuit, Étoupille +2 PA nets, Roublabot.",
+  "Placement très riche (bombes et ennemis) et buff Kaboom pour tout le groupe."
+ ],
+ "weaknesses": [
+  "Mise en place lente (1–2 tours) : faible en burst immédiat et contre des ennemis qui se dispersent.",
+  "Bombes vulnérables (PV moyens) aux dégâts de zone et aux poussées ennemies ; limite de 3 bombes.",
+  "Explosions et murs blessent les alliés sans Kaboom : contrainte de placement du groupe.",
+  "Dépend fortement de la géométrie de la carte (lignes de 7 cases pour les murs, obstacles)."
+ ],
+ "synergies": [
+  {
+   "with": "Iop / Sacrieur / Zobal (tanks de contact)",
+   "description": "Gardent les ennemis groupés au contact dans le cercle 2 des bombes ; Kaboom les protège des explosions."
+  },
+  {
+   "with": "Pandawa / Ouginak / Steamer (attirances)",
+   "description": "Regroupent les ennemis sur les bombes (Gouvernail, Turbine du Steamer, attirances Pandawa)."
+  },
+  {
+   "with": "Xélor / Enutrof / Sram (entrave)",
+   "description": "Immobiliser les ennemis dans la zone pendant la montée des Combos."
+  },
+  {
+   "with": "Eniripsa / Féca",
+   "description": "Le Roublard perd 50 % de vitalité avec Dernier Souffle et prend ses propres explosions : soins et boucliers bienvenus."
+  },
+  {
+   "with": "Tous les alliés (Kaboom)",
+   "description": "+1 PA (Bombe à Eau) / +1 PM (Tornabombe) / +3 PO (Explobombe) / +7 % dommages aux sorts (Sismobombe) pour 3 tours si une explosion les touche en état Kaboom."
+  }
+ ],
+ "uncertain": [
+  "Limite de bombes simultanées (3 historiquement) en Dofus 3 : caractéristique `maxBomb` (93) dont la valeur de base n’est pas exposée.",
+  "Interprétation de `bonusCharacteristics` des bombes (PV = 90 % des PV de base du Roublard ? caractéristiques héritées à 100 %).",
+  "Choix du sort « sur entité » par élément (13456/13459/13463/13503) déduit de la structure des données (le lien SpellBomb n’est pas exposé par DofusDB).",
+  "Ordre exact des explosions en chaîne et dégressivité éventuelle de la zone d’explosion.",
+  "Le mur touche-t-il une entité qui ne fait que traverser une case (déplacement) ? D’après les descriptions (Bombe à Eau) oui pour le retrait PA ; supposé oui pour les dommages.",
+  "Validation croisée : les dégâts de base de 17 sorts directs du Roublard concordent exactement avec la table de DoMath (domath.fr) ; DoMath affiche Oblitération à 83–87 (= 33–37 + 50, rampe maximale de 5 explosions) et traite la Bombe Collante (meilleur élément) comme Neutre."
+ ],
+ "sources": [
+  "https://api.dofusdb.fr/breeds/13 ; https://api.dofusdb.fr/spell-variants?breedId=13 ; spells/spell-levels (ids cités) ; spell-states",
+  "Table des Combos : description du sort 24306 « Combo » (DofusDB)",
+  "Port C# du calcul de dégâts du client (cache .cache/domath/haxe : DamageSender.GetBoostableDamage, DamageCalculator.ExecuteWallDamage, DamageEffectHandler.RedefineBombWall, SpellManager.IsSelectedByMask)",
+  "https://www.gamosaurus.com/?p=94801 (refonte Roublard 2.61), https://www.gamosaurus.com/?p=106817 (2.62 : 2 Combos/tour, 15 paliers)",
+  "https://dofus.jeuxonline.info/article/9058/ruse-roublard (limite historique de 3 bombes)"
+ ],
+ "aiHints": [
+  "Évaluer chaque bombe comme un « potentiel » = Σ dégâts attendus (ennemis dans cercle 2 au moment prévu de l’explosion) × (1 + bonus Combo).",
+  "Planifier sur 2 tours : poser hors de portée des ennemis qui frappent en zone, exploser quand ≥2 ennemis sont dans la zone.",
+  "Ne jamais faire exploser une bombe si un allié non-Kaboom est dans le cercle 2 sauf si le gain dépasse la perte (score pondéré).",
+  "Utiliser Détonateur en premier (gratuit), Étoupille quand le Combo est déjà ≥ X pour financer d’autres sorts."
+ ],
+ "vortexNotes": [
+  "Timing des morts : les monstres doivent mourir à « Même heure » pour être corrompus (docs/research/vortex.md §0). Les bombes posées à l’avance et déclenchées par Détonateur (0 PA net, sans ligne de vue) permettent de tuer **au tour exact voulu** plusieurs monstres d’une vague (N monstres = N joueurs) — atout majeur.",
+  "Le Vortex a ses résistances les plus basses en Feu (12 %) et Neutre (6 %) : Explobombe/Pulsar/Extraction (Feu) et Mégabombe (Neutre) sont pertinents en phase 2.",
+  "Danger : *En temps et en heure* frappe tous les ennemis du Vortex en ligne avec l’Auroraire (pas de LdV requise) ; les bombes (alliées du Roublard) peuvent aussi être touchées → bombes « Résilientes »/Casemate pour les préserver (INCERTAIN : les invocations sont-elles visées ? masque à vérifier dans le sort du Vortex).",
+  "Les vagues réapparaissent sur les cases de départ des monstres (ligne 19) : bombes pré-placées près de cette ligne = dégâts dès l’arrivée (vague invulnérable 1 tour : attendre le tour suivant pour exploser)."
+ ],
+ "engineRules": [
+  "**Sélection des cibles « instantanée »** : pour UN lancer de sort, les cibles de **tous** les effets (zone + masque, y compris les conditions d’état `E<id>`/`e<id>`) sont calculées **avant** d’appliquer le premier effet (port C# du client : `DamageCalculator.ExecuteSpell → GenerateTargets`, recalcul uniquement après un effet de résurrection). Preuves dans les données : la chaîne d’états Combo du Roublard (20497 : « applique Combo II si Combo I », puis « retire Combo I »…) ou l’Évolution du Steamer (pose « Évolution bloquée » puis teste « sans Évolution bloquée ») n’ont de sens qu’avec cette règle (sinon une bombe passerait de Combo I à XV en un lancer). Les **sous-sorts** (effets 1160, 792, 2794…) sont des lancers séparés : leurs cibles sont calculées au moment où l’effet parent est atteint, donc ils voient les effets déjà appliqués. ⚠ La fiche `cra.md` d’un autre agent suggère une évaluation au moment de l’application : à harmoniser (cette règle-ci est celle du code du client porté).",
+  "**Effets `forClientOnly = true`** : purement descriptifs (info-bulle). Ne jamais les exécuter ; le comportement réel est dans un sous-sort (souvent conditionnel). Exemple : « Rend 1 PA » d’Amarrage n’est réellement appliqué que si la cible est une tourelle (sous-sort 29587).",
+  "**Effets « lance un sort »** (diceNum = id du sort, diceSide = niveau) : 1160 `CasterExecuteSpell` / 2160 (limite globale) = le lanceur lance le sous-sort sur chaque cible ; 792 `TargetExecuteSpell` / 2792 = chaque cible le lance sur elle-même ; 2794 `TargetExecuteSpellOnCell` / 2795 = la cible le lance sur sa cellule ; 2960 `CasterExecuteSpellOnCell` = le lanceur le lance sur la cellule d’impact ; 1017/2017 = la cible le lance sur le déclencheur ; 1018 = le déclencheur le lance sur la cible ; 1019 = le déclencheur sur lui-même. Les effets 3792/3793 (`ExecuteSpellScriptUsage`) sont visuels. `value = 999` apparaît sur certains de ces effets (sens INCERTAIN, sans impact connu).",
+  "**Masques de cibles** (`targetMask`, liste séparée par des virgules ; port C# `SpellManager.IsSelectedByMask`) : lettres **inclusives** (au moins une doit correspondre) : `a` alliés (lanceur compris), `g` alliés sauf lanceur, `A` ennemis, `c` lanceur s’il est dans la zone, `C` lanceur partout, `h/H` joueurs alliés/ennemis (non invoqués), `i/I` invocations non statiques, `j/J` invocations, `s/S` invocations statiques, `m/M` monstres non invoqués, `l/L` joueurs ou compagnons, `d/D` compagnons ; lettres **exclusives** (toutes doivent passer) : `E<n>`/`e<n>` a / n’a pas l’état n, `F<n>`/`f<n>` est / n’est pas le monstre n (plusieurs `F` = OU), `B<n>`/`b<n>` est / n’est pas la classe n, `P`/`p` est / n’est pas dans le groupe du lanceur (lui-même, ses invocations, les invocations du même invocateur, son invocateur), `R`/`r` sort lancé via / hors portail, `V<n>`/`v<n>` PV < n % / ≥ n %, `T` téléfraggé ce tour, `W` téléportation ratée, `K` porté/lancé, `Q`/`q` quota d’invocations atteint / non atteint, `O`/`o` = la cible déclenchante, `U/u` en apparition. Préfixe `*` = la condition porte sur le **lanceur** (ex. `*E98` = le lanceur est en Intrépide).",
+  "**Conditions de lancer** (`statesCriterion`) : `HS=<n>` le lanceur doit avoir l’état n, `HS!<n>` ne doit pas l’avoir, `|` = OU, `&` = ET.",
+  "**Déclencheurs** (`triggers`, séparés par `|`) : `I` immédiat ; `TB`/`TE` début/fin du tour du porteur ; `D` dommages subis ; `DM`/`DR` en mêlée/à distance ; `DBA` par un allié ; `X` mort, `XD` mort par dommages, `XPD` par poussée, `XDBA` tué par un allié ; `P` poussé, `MA` attiré, `M` déplacé, `MS` échange de position, `PD` dommages de poussée subis, `H` soigné, `PT` traverse un portail, `PST` projette un sort via un portail, `PDT` dommages subis via portail, `CI` invoque, `CT` tacle (INCERTAIN), `CPT` une entité traverse un portail du porteur (INCERTAIN), `CMPAS` tentative de retrait PM du lanceur (INCERTAIN), `EON<n>`/`EOFF<n>` l’état n est appliqué/retiré. Pour un effet déclenché, `effectTriggerDuration` = nombre de tours pendant lesquels le déclencheur reste posé sur la cible (affiché « déclencheur actif N tour(s) ») et `duration` = durée de l’effet produit à chaque déclenchement (0 = instantané).",
+  "**Zones** (`zoneDescr.shape` + param1 = rayon, param2 = rayon minimal) : P case, C cercle, X croix, + croix diagonale, * étoile (8 directions), Q/# croix sans centre (orthogonale/diagonale), L ligne depuis l’impact, l ligne depuis le lanceur, T/- barre perpendiculaire, O anneau, G/W carré (plein/contour), D damier, U demi-cercle, V cône, F fourche, B boomerang, R rectangle, A/a toute la carte. `damageDecreaseStepPercent` (10 % par défaut) = dégressivité par case pour les dommages de zone (certaines descriptions précisent « non dégressif »).",
+  "**Boucliers** (1020) = X % du niveau du lanceur ; **soins** 1109 = X % des PV max de la cible ; **2822/3002** = dommages / soins dans le **meilleur élément** du lanceur (caractéristique la plus haute)."
+ ],
+ "bombs": {
+  "comboBonusPercentByState": {
+   "I": 0,
+   "II": 20,
+   "III": 40,
+   "IV": 60,
+   "V": 80,
+   "VI": 100,
+   "VII": 120,
+   "VIII": 140,
+   "IX": 160,
+   "X": 190,
+   "XI": 220,
+   "XII": 250,
+   "XIII": 280,
+   "XIV": 320,
+   "XV": 360
+  },
+  "comboStateIds": [
+   2484,
+   2485,
+   2486,
+   2487,
+   2488,
+   2489,
+   2490,
+   2491,
+   2492,
+   2493,
+   2529,
+   2530,
+   2531,
+   2532,
+   2533
+  ],
+  "comboOnSummon": 1,
+  "comboAtCasterTurnStart": 2,
+  "comboMultiplierFormula": "((base + spellBaseDamageBonus) * (1 + (stat + power)/100) + fixedDamage) * (1 + comboBonus/100), puis résistances",
+  "explosionZone": "C2 sans la case centrale (rayon min 1)",
+  "chainReaction": "bombes du lanceur dans C2 (rayon min 1) + bombes du même élément en croix jusqu’à 7 cases",
+  "wall": {
+   "alignment": "même élément, même Roublard, croix (lignes) <= 7 cases, sans bombe du même élément entre",
+   "comboBonus": "max(bonus des 2 bombes les plus proches) + 50% du bonus des autres bombes liées"
+  },
+  "byElement": [
+   {
+    "monsterId": 3112,
+    "name": "Explobombe",
+    "element": "Feu",
+    "castSpell": 13444,
+    "resilientSpell": 13471,
+    "explosionSpell": 13455,
+    "chainSpell": 13457,
+    "wallSpell": 13458,
+    "onEntitySpell": 13456,
+    "explosion": {
+     "min": 17,
+     "max": 19
+    },
+    "wallCasterTurn": {
+     "min": 30,
+     "max": 33
+    },
+    "wallOtherTurns": {
+     "min": 15,
+     "max": 17
+    },
+    "extra": "Kaboom : +3 PO (3 tours)"
+   },
+   {
+    "monsterId": 3113,
+    "name": "Tornabombe",
+    "element": "Air",
+    "castSpell": 13435,
+    "resilientSpell": 13474,
+    "explosionSpell": 13467,
+    "chainSpell": 13460,
+    "wallSpell": 13461,
+    "onEntitySpell": 13459,
+    "explosion": {
+     "min": 17,
+     "max": 19
+    },
+    "wallCasterTurn": {
+     "min": 24,
+     "max": 27
+    },
+    "wallOtherTurns": {
+     "min": 12,
+     "max": 14
+    },
+    "extra": "explosion -1/-2/-3 PM (Combo I–IV/V–IX/X–XV) ; mur -2 PM ; Kaboom +1 PM"
+   },
+   {
+    "monsterId": 3114,
+    "name": "Bombe à Eau",
+    "element": "Eau",
+    "castSpell": 13436,
+    "resilientSpell": 13478,
+    "explosionSpell": 13462,
+    "chainSpell": 13464,
+    "wallSpell": 13465,
+    "onEntitySpell": 13463,
+    "explosion": {
+     "min": 17,
+     "max": 19
+    },
+    "wallCasterTurn": {
+     "min": 24,
+     "max": 27
+    },
+    "wallOtherTurns": {
+     "min": 12,
+     "max": 14
+    },
+    "extra": "explosion 0/-1/-2 PA (Combo I–IV/V–IX/X–XV) ; mur -2 PA hors tour du Roublard ; Kaboom +1 PA"
+   },
+   {
+    "monsterId": 5161,
+    "name": "Sismobombe",
+    "element": "Terre",
+    "castSpell": 13491,
+    "resilientSpell": 13486,
+    "explosionSpell": 13504,
+    "chainSpell": 13502,
+    "wallSpell": 13501,
+    "onEntitySpell": 13503,
+    "explosion": {
+     "min": 20,
+     "max": 22
+    },
+    "wallCasterTurn": {
+     "min": 24,
+     "max": 27
+    },
+    "wallOtherTurns": {
+     "min": 12,
+     "max": 14
+    },
+    "extra": "chaque explosion +1 rang d’Oblitération (+10 dégâts de base) ; Kaboom +7 % dommages aux sorts"
+   }
+  ],
+  "bombStats": {
+   "ap": 0,
+   "mp": 0,
+   "canPlay": false,
+   "canTackle": false,
+   "resistances": "10 % partout, 30 % dans son élément",
+   "bonusCharacteristicsPercent": {
+    "lifePoints": 90,
+    "strength": 100,
+    "intelligence": 100,
+    "chance": 100,
+    "agility": 100,
+    "wisdom": 100,
+    "elementalDamages": 100
+   },
+   "maxBombsAssumed": 3
+  }
+ }
+}

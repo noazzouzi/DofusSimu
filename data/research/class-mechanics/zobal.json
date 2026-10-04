@@ -1,0 +1,4751 @@
+{
+ "breedId": 14,
+ "name": "Zobal",
+ "slug": "zobal",
+ "dataSource": "https://api.dofusdb.fr (breeds/14, spell-variants?breedId=14, spells, spell-levels, spell-states, monsters, effects) — données du jeu mises à jour en 2026 ; cache .cache/classes/rzse/",
+ "officialRoles": [
+  {
+   "roleId": 7,
+   "value": 1,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 8,
+   "value": 6,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 6,
+   "value": 5,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 2,
+   "value": 7,
+   "description": "Utilise son masque de l'intrépide pour voler de la vie et maintenir ses adversaires au contact."
+  },
+  {
+   "roleId": 1,
+   "value": 5,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 5,
+   "value": 7,
+   "description": "Utilise son masque du psychopathe pour occasionner d'importants dommages."
+  },
+  {
+   "roleId": 3,
+   "value": 7,
+   "description": "Applique des boucliers qui absorbent les dommages."
+  }
+ ],
+ "roles": [
+  {
+   "role": "protection-bouclier",
+   "element": "-",
+   "priority": 1,
+   "description": "Plastron (1 200 PV de bouclier niv. 200 en cercle 3, 2 tours, relance 3), Ginga (1 440 + Indéplaçable), Scudo, Tortoruga (à distance), Transe, Diffraction (attention : protège aussi les ennemis proches). Le meilleur « absorbeur » de burst de groupe parmi ces 4 classes."
+  },
+  {
+   "role": "tank-contact",
+   "element": "Terre/Eau/Feu (vols de vie)",
+   "priority": 2,
+   "description": "Intrépide : vols de vie (Catalepsie, Parafuso, Appeau, Rétention), -40 Fuite en zone, attirances ; Psychopathe : +20 Tacle ; Masque Grimaçant tacleur."
+  },
+  {
+   "role": "soutien-PA-PM",
+   "element": "-",
+   "priority": 2,
+   "description": "Masques : +1 PA (Intrépide/Infatigable) ou +1 PM +40 Fuite (Pleutre) ou +10 % dégâts mêlée +20 Tacle (Psychopathe) ou +10 % distance +1 PO (Couard) ou +80 dommages de poussée (Hystérique) aux alliés adjacents (2 tours) ; Armadur +2 PM, Névrose +250 Puissance, Fougue Intaclable."
+  },
+  {
+   "role": "dps-melee",
+   "element": "Feu/Terre/Air (Psychopathe)",
+   "priority": 3,
+   "description": "Inferno ×2 (+200 Puissance auto) puis Furia / Cavalcade / Ronda."
+  },
+  {
+   "role": "entrave",
+   "element": "Terre/Air/Eau",
+   "priority": 3,
+   "description": "Pleutre : Apathie -3 PM, Picada -2 PA, Martelo -2 PM zone, Brincadeira -4 PO ; Rétention -2 PA (Intrépide) ; Ponteira -50 Dommages ; Agular/Fougue anti-soin."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Masques (états 98/99/100) et changement de masque",
+   "description": "Les 6 sorts de masque (paires 5, 8, 10) coûtent 1 PA, relance 2 tours, 0 PO. Séquence à l’application : (1) sous-sort 18634 « Gestion des masques » : selon le masque ACTUEL, fixe à 1 tour la relance des deux sorts de ce masque, retire l’état actuel (98/99/100) et réduit de 1 tour la relance de Carnavalo et de Transfiguration ; (2) applique le nouvel état (infini, non désenvoûtable) ; (3) 18636 désenvoûte les bonus des masques dont le Zobal n’a plus l’état, sur lui et sur les alliés non-Zobal en croix r1 ; (4) 18637 change l’apparence ; (5) applique les bonus du nouveau masque : sur le Zobal (durée infinie = tant que le masque est porté) et sur les alliés en croix r1 hors Zobal et hors Masque Grimaçant (2 tours) ; (6) fait lancer au Masque Grimaçant sa version du masque. Bonus (niv. 200) : Intrépide +1 PA + attire de 2 en croix r3 ; Infatigable (variante, état Intrépide) bouclier 100 % du niveau + 1 PA ; Pleutre +1 PM +40 Fuite ; Couard (variante, état Pleutre) +10 % dommages distance +1 PO ; Psychopathe +10 % dommages mêlée +20 Tacle ; Hystérique (variante, état Psychopathe) +80 Dommages poussée + repousse de 1 les entités adjacentes. Au début du combat, le passif 18633 pose l’état Intrépide (sans les bonus du sort).",
+   "implementationNotes": "`mask ∈ {98,99,100}` stocké comme état. Conditions de lancer `statesCriterion` : `HS=98|HS=100` = le lanceur doit avoir l’état 98 OU 100 ; `HS!7` = ne pas avoir Pesanteur ; `&` = ET. Effet 1045 (relance fixée) sur les sorts de l’ancien masque. L’ordre des sous-sorts compte : les masques des effets de 18636 testent l’état APRÈS l’étape (2) (sous-sort = nouveau lancer)."
+  },
+  {
+   "name": "Boucliers en % du niveau (effet 1020) et règle des invocations",
+   "description": "Tous les boucliers du Zobal sont « X % du niveau du lanceur » (niv. 200 : 100 % = 200 PV). Les invocations reçoivent la moitié (lignes séparées dans les données, masque `i/j`). Diffraction : bouclier selon la distance au Zobal au moment du lancer (0–5 cases 450 %, 6–11 cases 250 %, 12+ 50 %), sur TOUTES les entités (alliés et ennemis), 2 tours ; mécanique implémentée par des états temporaires 2223/2224/2225 posés en anneaux puis lus.",
+   "implementationNotes": "Bouclier = PV temporaires absorbés avant les PV, durée en tours, non cumulable avec lui-même (cumul max 1 sur la plupart des sorts → remplacement). Diffraction : l’IA doit soustraire la valeur des boucliers donnés aux ennemis (score négatif)."
+  },
+  {
+   "name": "Masque Grimaçant (invocation 5152)",
+   "description": "Grimace (3 PA, PO 1, case libre, relance 2) invoque le Masque Grimaçant (grade 3 : 6 PA, 6 PM, 20 % de résistances, tacle, consomme un emplacement d’invocation). Son sort initial 13427 : **partage des dommages** avec le Zobal et ses alliés joueurs du groupe (effet 1061, état Sacrifice 583), +bouclier 120 % du niveau au Zobal et à lui-même quand il tacle un ennemi (déclencheur CT), réduit de 1 la portée minimale de Mascarade (pour pouvoir permuter à distance), et à sa mort fixe la relance de Grimace à 2. Il copie le masque : Intrépide = attire de 2 en croix r3 autour de lui ; Pleutre = +2 PM ; Psychopathe = repousse de 1 les adjacents. Relancer Grimace quand il est vivant le **téléporte** sur la case ciblée.",
+   "implementationNotes": "Effet 1061 `CharacterShareDamages` : INCERTAIN — répartir les dommages subis entre les entités liées (au prorata ? à parts égales ?) ; à défaut, partage à parts égales entre le Masque et le Zobal. L’IA du Masque : se placer au contact du plus de ennemis possible (tacle), il ne frappe pas."
+  },
+  {
+   "name": "Dommages basés sur les PV du lanceur (Mascarade)",
+   "description": "Mascarade (3 PA, PO 1) : si le Zobal a ≥ 50 % de ses PV, la cible subit 25 % des PV actuels du Zobal (Neutre) et le Zobal subit 25 % de ses PV manquants ; sinon les effets sont inversés. Sur le lanceur (via le Masque Grimaçant) : échange de position avec le Masque.",
+   "implementationNotes": "Effets 89 (`LifePointsLostBasedOnCasterLife`) et 279 (`…CasterLifeMissing`). INCERTAIN : ces dommages ne sont pas augmentés par les caractéristiques (DamageSender.GetDamageBasedOnCasterLife multiplie la base par les PV) mais subissent les résistances Neutre."
+  },
+  {
+   "name": "Transfiguration et Carnavalo (sorts liés aux changements de masque)",
+   "description": "Transfiguration (2 PA, relance 5) : état 4464/4465 sur le Zobal et l’ennemi ciblé (2 tours) ; applique selon le masque -20 % dommages finaux (Intrépide), -10 % résistance distance (Pleutre), -10 % résistance mêlée (Psychopathe) ; chaque changement de masque réapplique l’effet correspondant (déclencheurs EON98/99/100) et réduit la relance d’1 tour. Carnavalo (3 PA, relance 5) : bouclier 100 %/300 % (Intrépide), dommages meilleur élément 24–28 / 39–43 (Psychopathe), poussée 1/4 (Pleutre).",
+   "implementationNotes": "Déclencheur `EON<id>` = quand l’état id est appliqué sur le porteur. Le cumul de Transfiguration est partagé entre les trois effets (cumul max 1)."
+  },
+  {
+   "name": "Débuffs particuliers",
+   "description": "Ponteira -50 Dommages fixes (1 tour) ; Agular : état « soins reçus ×75 % » déclenché à chaque soin (zone cercle 2, n’affecte pas le lanceur) ; Fougue : Insoignable (76) sur un ennemi ou Intaclable (96) sur un allié ; Purgatorio : réduit la durée des effets de la cible d’1 tour (désenvoûtement partiel) ; Névrose : +250 Puissance à un allié et Pesanteur (7) sur la cible (empêche les échanges/téléportations).",
+   "implementationNotes": "1159 `CharacterMultiplyReceivedHeal` en buff déclenché (H). 1075 `ShortenActiveEffectsDuration` : décrémente toutes les durées de buffs désenvoûtables de la cible."
+  }
+ ],
+ "summons": [
+  {
+   "name": "Masque Grimaçant",
+   "monsterId": 5152,
+   "grade": "3",
+   "apmp": "6/6",
+   "res": "20 partout",
+   "canPlay": "oui (IA, tacle)",
+   "slot": "invocation",
+   "notes": "PV : bonusCharacteristics.lifePoints 100 (INCERTAIN : 100 % des PV de base du Zobal) ; partage des dommages"
+  }
+ ],
+ "keyStates": [
+  {
+   "id": 98,
+   "name": "Intrépide",
+   "use": "masque tank/protection"
+  },
+  {
+   "id": 99,
+   "name": "Psychopathe",
+   "use": "masque dégâts mêlée"
+  },
+  {
+   "id": 100,
+   "name": "Pleutre",
+   "use": "masque entrave/distance"
+  },
+  {
+   "id": 4105,
+   "name": "Masque Grimaçant invoqué",
+   "use": "relancer Grimace téléporte le masque"
+  },
+  {
+   "id": 4464,
+   "name": "Transfiguration",
+   "use": "lien Zobal/ennemi"
+  },
+  {
+   "id": 76,
+   "name": "Insoignable",
+   "use": "Fougue"
+  },
+  {
+   "id": 96,
+   "name": "Intaclable",
+   "use": "Fougue"
+  }
+ ],
+ "spells": [
+  {
+   "id": 13425,
+   "pairIndex": 1,
+   "variantOf": 13405,
+   "isBaseVariant": true,
+   "name": "Brincadeira",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 5,
+   "statesCriterion": "HS=98|HS=100",
+   "description": "Occasionne des dommages Feu et retire de la Portée.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 13,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Feu 13 à 15 — cibles: alliés/ennemis",
+    "-4 PO — cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 16 à 18"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 4,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 4,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 2,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 4,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Dommages Feu 7 à 9 (g1) → Dommages Feu 13 à 15 (g3) ; -2 PO (g1) → -4 PO (g3) ; PO max 6 (g1) → 8 (g3)",
+    "g2 (niv 66) vs g3: Dommages Feu 10 à 12 (g2) → Dommages Feu 13 à 15 (g3) ; -3 PO (g2) → -4 PO (g3) ; PO max 7 (g2) → 8 (g3)"
+   ],
+   "role": [
+    "damage",
+    "range_removal"
+   ],
+   "tacticalNote": "2 PA, 4/tour : Feu 13–15 et -4 PO (1 tour) ; contre les lanceurs à distance. Intrépide ou Pleutre.",
+   "spellLevelId": 67054
+  },
+  {
+   "id": 13405,
+   "pairIndex": 1,
+   "variantOf": 13425,
+   "isBaseVariant": false,
+   "name": "Picada",
+   "unlockLevel": 95,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 2,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "HS=100",
+   "description": "Occasionne des dommages Air et retire des PA.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 25,
+     "max": 28,
+     "critMin": 30,
+     "critMax": 33,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Air 25 à 28 — cibles: alliés/ennemis",
+    "-2 PA (esquivable) — cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 30 à 33"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 3,
+     "range": [
+      2,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 3,
+     "range": [
+      2,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 95) vs g2: Dommages Air 20 à 22 (g1) → Dommages Air 25 à 28 (g2) ; PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "ap_removal",
+    "damage"
+   ],
+   "tacticalNote": "Air 25–28 + -2 PA (esquivable), en ligne 2–6 sans LdV ; Pleutre.",
+   "spellLevelId": 41835
+  },
+  {
+   "id": 13420,
+   "pairIndex": 2,
+   "variantOf": 13421,
+   "isBaseVariant": true,
+   "name": "Catalepsie",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "HS=98",
+   "description": "Vole de la vie dans l'élément Terre et retire de la Fuite en zone.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "lifesteal",
+     "element": "Terre",
+     "min": 23,
+     "max": 25,
+     "critMin": 28,
+     "critMax": 30,
+     "zone": "Q1",
+     "targetMask": "g,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix sans centre r1"
+   ],
+   "effectsSummary": [
+    "Vol de vie Terre 23 à 25 — croix sans centre r1; cibles: alliés sauf lanceur/ennemis",
+    "-40 Fuite — croix sans centre r1; cibles: alliés sauf lanceur/ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Vol de vie Terre 28 à 30"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 3,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 3,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Vol de vie Terre 13 à 15 (g1) → Vol de vie Terre 23 à 25 (g3) ; -10 Fuite (g1) → -40 Fuite (g3)",
+    "g2 (niv 67) vs g3: Vol de vie Terre 18 à 20 (g2) → Vol de vie Terre 23 à 25 (g3) ; -20 Fuite (g2) → -40 Fuite (g3)"
+   ],
+   "role": [
+    "damage",
+    "dodge_debuff",
+    "lifesteal"
+   ],
+   "tacticalNote": "Vol de vie Terre en croix autour du Zobal (cases adjacentes) + -40 Fuite : sustain tank au milieu des ennemis.",
+   "spellLevelId": 67052
+  },
+  {
+   "id": 13421,
+   "pairIndex": 2,
+   "variantOf": 13420,
+   "isBaseVariant": false,
+   "name": "Apostasie",
+   "unlockLevel": 100,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "HS=100",
+   "description": "Éloigne le lanceur de la cible, la repousse et occasionne des dommages Feu aux ennemis.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 27,
+     "max": 30,
+     "critMin": 32,
+     "critMax": 36,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur recule de 2 case(s) — cibles: alliés/ennemis",
+    "Repousse de 2 case(s) — cibles: alliés/ennemis",
+    "Dommages Feu 27 à 30 — cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 32 à 36"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 100) vs g2: Dommages Feu 22 à 24 (g1) → Dommages Feu 27 à 30 (g2) ; PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "damage",
+    "push",
+    "self_move"
+   ],
+   "tacticalNote": "Recule le Zobal de 2 et repousse la cible de 2 + Feu 27–30 : désengagement.",
+   "spellLevelId": 80545
+  },
+  {
+   "id": 13391,
+   "pairIndex": 3,
+   "variantOf": 13389,
+   "isBaseVariant": true,
+   "name": "Parafuso",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "HS=98",
+   "description": "Vole de la vie dans l'élément Eau aux ennemis et attire les cibles vers le centre en zone.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "lifesteal",
+     "element": "Eau",
+     "min": 21,
+     "max": 24,
+     "critMin": 25,
+     "critMax": 29,
+     "zone": "+1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix diagonale r1",
+    "croix diagonale r1 (rayon min 1)"
+   ],
+   "effectsSummary": [
+    "Vol de vie Eau 21 à 24 — croix diagonale r1; cibles: ennemis",
+    "Attire de 1 case(s) — croix diagonale r1 (rayon min 1); cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Vol de vie Eau 25 à 29"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Vol de vie Eau 13 à 15 (g1) → Vol de vie Eau 21 à 24 (g3)",
+    "g2 (niv 68) vs g3: Vol de vie Eau 17 à 19 (g2) → Vol de vie Eau 21 à 24 (g3)"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "pull"
+   ],
+   "tacticalNote": "Vol de vie Eau en X (diagonales) et attire d’1 vers le centre : regroupe autour d’une case.",
+   "spellLevelId": 41828
+  },
+  {
+   "id": 13389,
+   "pairIndex": 3,
+   "variantOf": 13391,
+   "isBaseVariant": false,
+   "name": "Martelo",
+   "unlockLevel": 105,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "HS=98|HS=100",
+   "description": "Occasionne des dommages Terre et retire des PM en zone.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 22,
+     "max": 25,
+     "critMin": 26,
+     "critMax": 30,
+     "zone": "U1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "demi-cercle r1"
+   ],
+   "effectsSummary": [
+    "Dommages Terre 22 à 25 — demi-cercle r1; cibles: alliés/ennemis",
+    "-2 PM (esquivable) — demi-cercle r1; cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 26 à 30"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 105) vs g2: Dommages Terre 20 à 22 (g1) → Dommages Terre 22 à 25 (g2) ; PO max 4 (g1) → 5 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "mp_removal"
+   ],
+   "tacticalNote": "Terre 22–25 + -2 PM en demi-cercle r1 : entrave au contact (touche les alliés de la zone).",
+   "spellLevelId": 41812
+  },
+  {
+   "id": 13415,
+   "pairIndex": 4,
+   "variantOf": 13408,
+   "isBaseVariant": true,
+   "name": "Cavalcade",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": "HS=98|HS=99",
+   "description": "Rapproche le lanceur vers la cible et occasionne des dommages Air aux ennemis.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 38,
+     "max": 42,
+     "critMin": 46,
+     "critMax": 50,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur avance de 4 case(s) — cibles: ennemis/alliés",
+    "Dommages Air 38 à 42 — cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 46 à 50"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 4,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 4,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 4,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Dommages Air 23 à 25 (g1) → Dommages Air 38 à 42 (g3)",
+    "g2 (niv 69) vs g3: Dommages Air 30 à 33 (g2) → Dommages Air 38 à 42 (g3)"
+   ],
+   "role": [
+    "damage",
+    "self_move"
+   ],
+   "tacticalNote": "Avance de 4 + Air 38–42 (CC 46–50) : engagement + dégâts. Intrépide ou Psychopathe.",
+   "spellLevelId": 80544
+  },
+  {
+   "id": 13408,
+   "pairIndex": 4,
+   "variantOf": 13415,
+   "isBaseVariant": false,
+   "name": "Appeau",
+   "unlockLevel": 110,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "HS=98",
+   "description": "Attire la cible et vole de la vie dans l'élément Feu aux ennemis.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "lifesteal",
+     "element": "Feu",
+     "min": 24,
+     "max": 28,
+     "critMin": 29,
+     "critMax": 33,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Attire de 3 case(s) — cibles: alliés/ennemis",
+    "Vol de vie Feu 24 à 28 — cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Vol de vie Feu 29 à 33"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 110) vs g2: Vol de vie Feu 20 à 23 (g1) → Vol de vie Feu 24 à 28 (g2)"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "pull"
+   ],
+   "tacticalNote": "Attire de 3 + vol de vie Feu : ramène une cible au contact (et dans le Masque Grimaçant).",
+   "spellLevelId": 44590
+  },
+  {
+   "id": 13386,
+   "pairIndex": 5,
+   "variantOf": 13409,
+   "isBaseVariant": true,
+   "name": "Masque de l'Intrépide",
+   "unlockLevel": 5,
+   "gradeUsed": 3,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique le Masque de l'Intrépide sur le lanceur :\n• Applique l'état Intrépide sur le lanceur.\n• Augmente les PA du lanceur et de ses alliés (hors Zobals) dans une croix d'une case.\n• Attire les entités vers le centre en zone.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix r1",
+    "croix sans centre r3 (rayon min 1)",
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "la cible lance sur sa cellule « Gestion des masques » (18634) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : fixe à 1 tour la relance des sorts de l’ANCIEN masque, retire l’ancien état de masque et réduit d’1 tour la relance de Carnavalo et Transfiguration (cf. §3.1)",
+    "Applique l'état « Intrépide » (98) — cibles: lanceur; infini; non désenvoûtable",
+    "la cible lance sur sa cellule « Gestion des masques » (18636) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : désenvoûte les bonus de l’ancien masque sur le Zobal et sur les alliés non-Zobal adjacents",
+    "la cible lance sur sa cellule « Gestion des masques » (18637) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : change l’apparence du masque (visuel)",
+    "+1 PA — cibles: lanceur; infini",
+    "+1 PA — croix r1; cibles: alliés sauf lanceur [pas classe 14; ≠monstre Masque Grimaçant (5152)]; 2 tours",
+    "Attire de 2 case(s) — croix sans centre r3 (rayon min 1); cibles: alliés/ennemis",
+    "la cible lance sur elle-même « Masque de l'Intrépide » (28708) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; =monstre Masque Grimaçant (5152)]",
+    "↳ Désenvoûte les effets du sort « Masque du Pleutre » (28599) — cibles: lanceur",
+    "↳ Attire de 2 case(s) — croix sans centre r3; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 5) vs g3: +1 PA : durée 1 (g1) → 2 (g3) ; Attire de 1 case(s) (g1) → Attire de 2 case(s) (g3)",
+    "g2 (niv 72) vs g3: +1 PA : durée 1 (g2) → 2 (g3)"
+   ],
+   "role": [
+    "ally_ap_buff",
+    "mask",
+    "pull",
+    "self_ap_buff"
+   ],
+   "tacticalNote": "Masque tank : +1 PA permanent au Zobal, +1 PA 2 tours aux alliés adjacents, attire les entités de la croix r3.",
+   "spellLevelId": 41848
+  },
+  {
+   "id": 13409,
+   "pairIndex": 5,
+   "variantOf": 13386,
+   "isBaseVariant": false,
+   "name": "Masque de l'Infatigable",
+   "unlockLevel": 115,
+   "gradeUsed": 2,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique le Masque de l'Infatigable sur le lanceur :\n• Applique un bouclier sur le lanceur.\n• Augmente les PA du lanceur et de ses alliés (hors Zobals) en zone.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 100,
+     "max": 100,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "C",
+     "duration": -1,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1",
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "la cible lance sur sa cellule « Gestion des masques » (18634) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : fixe à 1 tour la relance des sorts de l’ANCIEN masque, retire l’ancien état de masque et réduit d’1 tour la relance de Carnavalo et Transfiguration (cf. §3.1)",
+    "Applique l'état « Intrépide » (98) — cibles: lanceur; infini; non désenvoûtable",
+    "la cible lance sur sa cellule « Gestion des masques » (18636) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : désenvoûte les bonus de l’ancien masque sur le Zobal et sur les alliés non-Zobal adjacents",
+    "la cible lance sur sa cellule « Gestion des masques » (18637) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : change l’apparence du masque (visuel)",
+    "Bouclier = 100% du niveau du lanceur — cibles: lanceur; infini",
+    "+1 PA — cibles: lanceur; infini",
+    "+1 PA — croix r1; cibles: alliés sauf lanceur [pas classe 14; ≠monstre Masque Grimaçant (5152)]; 2 tours",
+    "la cible lance sur elle-même « Masque de l'Intrépide » (28708) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; =monstre Masque Grimaçant (5152)]",
+    "↳ Désenvoûte les effets du sort « Masque du Pleutre » (28599) — cibles: lanceur",
+    "↳ Attire de 2 case(s) — croix sans centre r3; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 115) vs g2: Bouclier = 75% du niveau du lanceur (g1) → Bouclier = 100% du niveau du lanceur (g2)"
+   ],
+   "role": [
+    "ally_ap_buff",
+    "mask",
+    "pull",
+    "self_ap_buff",
+    "shield"
+   ],
+   "tacticalNote": "Variante : bouclier 200 PV + 1 PA (pas d’attirance) — plus sûr.",
+   "spellLevelId": 44591
+  },
+  {
+   "id": 13397,
+   "pairIndex": 6,
+   "variantOf": 13417,
+   "isBaseVariant": true,
+   "name": "Plastron",
+   "unlockLevel": 10,
+   "gradeUsed": 3,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "HS=98",
+   "description": "Applique un bouclier sur les alliés en zone.\nLe bouclier est réduit de moitié sur les invocations.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 600,
+     "max": 600,
+     "critMin": 720,
+     "critMax": 720,
+     "zone": "C3",
+     "targetMask": "l,m,c",
+     "duration": 2,
+     "triggers": "I"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 300,
+     "max": 300,
+     "critMin": 360,
+     "critMax": 360,
+     "zone": "C3",
+     "targetMask": "j",
+     "duration": 2,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "cercle r3"
+   ],
+   "effectsSummary": [
+    "Bouclier = 600% du niveau du lanceur — cercle r3; cibles: alliés joueurs/compagnons/monstres alliés/lanceur(si dans zone); 2 tours",
+    "Bouclier = 300% du niveau du lanceur — cercle r3; cibles: invocs alliées; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Bouclier = 720% du niveau du lanceur ; Bouclier = 360% du niveau du lanceur"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 4,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 4,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 4,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 10) vs g3: Bouclier = 500% du niveau du lanceur (g1) → Bouclier = 600% du niveau du lanceur (g3) ; Bouclier = 250% du niveau du lanceur (g1) → Bouclier = 300% du niveau du lanceur (g3)",
+    "g2 (niv 77) vs g3: Bouclier = 550% du niveau du lanceur (g2) → Bouclier = 600% du niveau du lanceur (g3) ; Bouclier = 275% du niveau du lanceur (g2) → Bouclier = 300% du niveau du lanceur (g3)"
+   ],
+   "role": [
+    "shield"
+   ],
+   "tacticalNote": "LE sort de protection : 1 200 PV de bouclier (niv. 200) à tous les alliés dans un cercle de 3 autour du Zobal, 2 tours, relance 3. Intrépide.",
+   "spellLevelId": 41820
+  },
+  {
+   "id": 13417,
+   "pairIndex": 6,
+   "variantOf": 13397,
+   "isBaseVariant": false,
+   "name": "Ginga",
+   "unlockLevel": 120,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "HS=98",
+   "description": "Applique un bouclier sur l'allié ciblé et rend la cible Indéplaçable.\nLe bouclier est réduit de moitié sur les invocations.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 720,
+     "max": 720,
+     "critMin": 840,
+     "critMax": 840,
+     "zone": "P1",
+     "targetMask": "l,m,c",
+     "duration": 1,
+     "triggers": "I"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 360,
+     "max": 360,
+     "critMin": 420,
+     "critMax": 420,
+     "zone": "P1",
+     "targetMask": "j",
+     "duration": 1,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Bouclier = 720% du niveau du lanceur — cibles: alliés joueurs/compagnons/monstres alliés/lanceur(si dans zone); 1 tour",
+    "Bouclier = 360% du niveau du lanceur — cibles: invocs alliées; 1 tour",
+    "Applique l'état « Indéplaçable » (97) — cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Bouclier = 840% du niveau du lanceur ; Bouclier = 420% du niveau du lanceur"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 2,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 187,
+     "apCost": 2,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 120) vs g2: Bouclier = 600% du niveau du lanceur (g1) → Bouclier = 720% du niveau du lanceur (g2) ; Bouclier = 300% du niveau du lanceur (g1) → Bouclier = 360% du niveau du lanceur (g2)"
+   ],
+   "role": [
+    "immovable",
+    "shield"
+   ],
+   "tacticalNote": "1 440 PV de bouclier mono-cible + Indéplaçable, 2 PA, relance 3. Intrépide.",
+   "spellLevelId": 80546
+  },
+  {
+   "id": 13403,
+   "pairIndex": 7,
+   "variantOf": 13410,
+   "isBaseVariant": true,
+   "name": "Appui",
+   "unlockLevel": 15,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Éloigne le lanceur de la cible et occasionne des dommages Feu, Terre, Eau et Air aux ennemis et repousse la cible.",
+   "elements": [
+    "Air",
+    "Eau",
+    "Feu",
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 8,
+     "max": 9,
+     "critMin": 10,
+     "critMax": 11,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 8,
+     "max": 9,
+     "critMin": 10,
+     "critMax": 11,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 8,
+     "max": 9,
+     "critMin": 10,
+     "critMax": 11,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 8,
+     "max": 9,
+     "critMin": 10,
+     "critMax": 11,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur recule de 3 case(s) — cibles: alliés/ennemis",
+    "Dommages Feu 8 à 9 — cibles: ennemis",
+    "Dommages Terre 8 à 9 — cibles: ennemis",
+    "Dommages Eau 8 à 9 — cibles: ennemis",
+    "Dommages Air 8 à 9 — cibles: ennemis",
+    "Repousse de 3 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 10 à 11 ; Dommages Terre 10 à 11 ; Dommages Eau 10 à 11 ; Dommages Air 10 à 11"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 3,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 3,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 3,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 15) vs g3: Le lanceur recule de 2 case(s) (g1) → Le lanceur recule de 3 case(s) (g3) ; Dommages Feu 6 à 7 (g1) → Dommages Feu 8 à 9 (g3) ; Dommages Terre 6 à 7 (g1) → Dommages Terre 8 à 9 (g3) ; Dommages Eau 6 à 7 (g1) → Dommages Eau 8 à 9 (g3) ; Dommages Air 6 à 7 (g1) → Dommages Air 8 à 9 (g3)",
+    "g2 (niv 82) vs g3: Le lanceur recule de 2 case(s) (g2) → Le lanceur recule de 3 case(s) (g3) ; Dommages Feu 7 à 8 (g2) → Dommages Feu 8 à 9 (g3) ; Dommages Terre 7 à 8 (g2) → Dommages Terre 8 à 9 (g3) ; Dommages Eau 7 à 8 (g2) → Dommages Eau 8 à 9 (g3) ; Dommages Air 7 à 8 (g2) → Dommages Air 8 à 9 (g3)"
+   ],
+   "role": [
+    "damage",
+    "push",
+    "self_move"
+   ],
+   "tacticalNote": "Mêlée : recule de 3, 4 éléments 8–9 chacun, repousse de 3 la cible (6 cases d’écart).",
+   "spellLevelId": 41815
+  },
+  {
+   "id": 13410,
+   "pairIndex": 7,
+   "variantOf": 13403,
+   "isBaseVariant": false,
+   "name": "Pivot",
+   "unlockLevel": 125,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "description": "Téléporte le lanceur symétriquement par rapport à la cible.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Téléportation symétrique par rapport à la cible — cibles: lanceur"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 2,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 2,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 125) vs g2: relance 2 (g1) → 0 (g2) ; lancers/tour 0 (g1) → 1 (g2)"
+   ],
+   "role": [
+    "teleport"
+   ],
+   "tacticalNote": "Téléport symétrique par rapport à une entité adjacente (passer derrière la cible / se dégager).",
+   "spellLevelId": 44592
+  },
+  {
+   "id": 13387,
+   "pairIndex": 8,
+   "variantOf": 13406,
+   "isBaseVariant": true,
+   "name": "Masque du Pleutre",
+   "unlockLevel": 20,
+   "gradeUsed": 3,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique le Masque du Pleutre sur le lanceur :\n• Applique l'état Pleutre sur le lanceur.\n• Augmente les PM et la Fuite du lanceur et de ses alliés (hors Zobals) en zone.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix r1",
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "la cible lance sur sa cellule « Gestion des masques » (18634) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : fixe à 1 tour la relance des sorts de l’ANCIEN masque, retire l’ancien état de masque et réduit d’1 tour la relance de Carnavalo et Transfiguration (cf. §3.1)",
+    "Applique l'état « Pleutre » (100) — cibles: lanceur; infini; non désenvoûtable",
+    "la cible lance sur sa cellule « Gestion des masques » (18636) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : désenvoûte les bonus de l’ancien masque sur le Zobal et sur les alliés non-Zobal adjacents",
+    "la cible lance sur sa cellule « Gestion des masques » (18637) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : change l’apparence du masque (visuel)",
+    "+1 PM — cibles: lanceur; infini",
+    "+40 Fuite — cibles: lanceur; infini",
+    "+1 PM — croix r1; cibles: alliés sauf lanceur [pas classe 14; ≠monstre Masque Grimaçant (5152)]; 2 tours",
+    "+40 Fuite — croix r1; cibles: alliés sauf lanceur [pas classe 14; ≠monstre Masque Grimaçant (5152)]; 2 tours",
+    "la cible lance sur elle-même « Masque du Pleutre » (28599) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; =monstre Masque Grimaçant (5152)]",
+    "↳ +2 PM — cibles: alliés/ennemis; infini"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 20) vs g3: +20 Fuite (g1) → +40 Fuite (g3) ; +20 Fuite (g1) → +40 Fuite (g3)",
+    "g2 (niv 87) vs g3: +30 Fuite (g2) → +40 Fuite (g3) ; +30 Fuite (g2) → +40 Fuite (g3)"
+   ],
+   "role": [
+    "ally_dodge_buff",
+    "ally_mp_buff",
+    "mask",
+    "self_dodge_buff",
+    "self_mp_buff"
+   ],
+   "tacticalNote": "Masque d’entrave/fuite : +1 PM +40 Fuite au Zobal et aux adjacents.",
+   "spellLevelId": 41846
+  },
+  {
+   "id": 13406,
+   "pairIndex": 8,
+   "variantOf": 13387,
+   "isBaseVariant": false,
+   "name": "Masque du Couard",
+   "unlockLevel": 130,
+   "gradeUsed": 2,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique le Masque du Couard sur le lanceur :\n• Augmente les dommages à distance et la Portée du lanceur et de ses alliés (hors Zobals) en zone.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix r1",
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "la cible lance sur sa cellule « Gestion des masques » (18634) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : fixe à 1 tour la relance des sorts de l’ANCIEN masque, retire l’ancien état de masque et réduit d’1 tour la relance de Carnavalo et Transfiguration (cf. §3.1)",
+    "Applique l'état « Pleutre » (100) — cibles: lanceur; infini; non désenvoûtable",
+    "la cible lance sur sa cellule « Gestion des masques » (18636) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : désenvoûte les bonus de l’ancien masque sur le Zobal et sur les alliés non-Zobal adjacents",
+    "la cible lance sur sa cellule « Gestion des masques » (18637) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : change l’apparence du masque (visuel)",
+    "+10% Dommages distance — cibles: lanceur; infini",
+    "+1 PO — cibles: lanceur; infini",
+    "+10% Dommages distance — croix r1; cibles: alliés sauf lanceur [pas classe 14; ≠monstre Masque Grimaçant (5152)]; 2 tours",
+    "+1 PO — croix r1; cibles: alliés sauf lanceur [pas classe 14; ≠monstre Masque Grimaçant (5152)]; 2 tours",
+    "la cible lance sur elle-même « Masque du Pleutre » (28599) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; =monstre Masque Grimaçant (5152)]",
+    "↳ +2 PM — cibles: alliés/ennemis; infini"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 130) vs g2: +7% Dommages distance (g1) → +10% Dommages distance (g2) ; +7% Dommages distance (g1) → +10% Dommages distance (g2)"
+   ],
+   "role": [
+    "ally_mp_buff",
+    "ally_range_buff",
+    "ally_range_damage_buff",
+    "mask",
+    "self_range_buff",
+    "self_range_damage_buff"
+   ],
+   "tacticalNote": "Variante distance : +10 % dommages distance +1 PO au Zobal et aux adjacents — bon buff pour un allié DPS distance collé au Zobal.",
+   "spellLevelId": 44588
+  },
+  {
+   "id": 13422,
+   "pairIndex": 9,
+   "variantOf": 13407,
+   "isBaseVariant": true,
+   "name": "Ponteira",
+   "unlockLevel": 25,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "HS=98|HS=100",
+   "description": "Occasionne des dommages Eau et retire des Dommages.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 31,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Eau 23 à 26 — cibles: alliés/ennemis",
+    "-50 Dommages — cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 28 à 31"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 3,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 25) vs g3: Dommages Eau 14 à 16 (g1) → Dommages Eau 23 à 26 (g3) ; -20 Dommages (g1) → -50 Dommages (g3) ; PO max 5 (g1) → 7 (g3)",
+    "g2 (niv 92) vs g3: Dommages Eau 19 à 21 (g2) → Dommages Eau 23 à 26 (g3) ; -35 Dommages (g2) → -50 Dommages (g3) ; PO max 6 (g2) → 7 (g3)"
+   ],
+   "role": [
+    "damage",
+    "damage_debuff"
+   ],
+   "tacticalNote": "Eau 23–26 et -50 Dommages (1 tour) : réduit les frappes d’un monstre (fixes).",
+   "spellLevelId": 67058
+  },
+  {
+   "id": 13407,
+   "pairIndex": 9,
+   "variantOf": 13422,
+   "isBaseVariant": false,
+   "name": "Agular",
+   "unlockLevel": 135,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "HS=98|HS=100",
+   "description": "Réduit les soins reçus par les cibles et occasionne des dommages Air en zone.\nN'affecte pas le lanceur.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 41,
+     "zone": "C2",
+     "targetMask": "g,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "cercle r2"
+   ],
+   "effectsSummary": [
+    "Soins reçus x75% — cercle r2; cibles: alliés sauf lanceur/ennemis; déclenché quand le porteur est soigné (déclencheur actif 1 tour(s))",
+    "Dommages Air 30 à 34 — cercle r2; cibles: alliés sauf lanceur/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 36 à 41"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 4,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "heal_modifier"
+   ],
+   "tacticalNote": "Air 30–34 en cercle 2 (pas le lanceur, touche les alliés !) + soins reçus ×75 % : anti-soin de zone.",
+   "spellLevelId": 41852
+  },
+  {
+   "id": 13388,
+   "pairIndex": 10,
+   "variantOf": 13414,
+   "isBaseVariant": true,
+   "name": "Masque du Psychopathe",
+   "unlockLevel": 30,
+   "gradeUsed": 3,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique le Masque du Psychopathe sur le lanceur :\n• Applique l'état Psychopathe sur le lanceur.\n• Augmente les dommages en mêlée et le Tacle du lanceur et de ses alliés (hors Zobals) en zone.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix r1",
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "la cible lance sur sa cellule « Gestion des masques » (18634) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : fixe à 1 tour la relance des sorts de l’ANCIEN masque, retire l’ancien état de masque et réduit d’1 tour la relance de Carnavalo et Transfiguration (cf. §3.1)",
+    "Applique l'état « Psychopathe » (99) — cibles: lanceur; infini; non désenvoûtable",
+    "la cible lance sur sa cellule « Gestion des masques » (18636) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : désenvoûte les bonus de l’ancien masque sur le Zobal et sur les alliés non-Zobal adjacents",
+    "la cible lance sur sa cellule « Gestion des masques » (18637) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : change l’apparence du masque (visuel)",
+    "+10% Dommages mêlée — cibles: lanceur; infini",
+    "+20 Tacle — cibles: lanceur; infini",
+    "+10% Dommages mêlée — croix r1; cibles: alliés sauf lanceur [pas classe 14; ≠monstre Masque Grimaçant (5152)]; 2 tours",
+    "+20 Tacle — croix r1; cibles: alliés sauf lanceur [pas classe 14; ≠monstre Masque Grimaçant (5152)]; 2 tours",
+    "la cible lance sur elle-même « Masque du Psychopathe » (28707) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; =monstre Masque Grimaçant (5152)]",
+    "↳ Désenvoûte les effets du sort « Masque du Pleutre » (28599) — cibles: lanceur",
+    "↳ Repousse de 1 case(s) — croix sans centre r1; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 164,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 30) vs g3: +7% Dommages mêlée (g1) → +10% Dommages mêlée (g3) ; +10 Tacle (g1) → +20 Tacle (g3) ; +7% Dommages mêlée (g1) → +10% Dommages mêlée (g3) ; +10 Tacle (g1) → +20 Tacle (g3)",
+    "g2 (niv 97) vs g3: +7% Dommages mêlée (g2) → +10% Dommages mêlée (g3) ; +15 Tacle (g2) → +20 Tacle (g3) ; +7% Dommages mêlée (g2) → +10% Dommages mêlée (g3) ; +15 Tacle (g2) → +20 Tacle (g3)"
+   ],
+   "role": [
+    "ally_melee_damage_buff",
+    "ally_tackle_buff",
+    "mask",
+    "push",
+    "self_melee_damage_buff",
+    "self_tackle_buff"
+   ],
+   "tacticalNote": "Masque DPS : +10 % dommages mêlée +20 Tacle au Zobal et aux adjacents (Iop/Sacrieur/Ouginak au contact).",
+   "spellLevelId": 41850
+  },
+  {
+   "id": 13414,
+   "pairIndex": 10,
+   "variantOf": 13388,
+   "isBaseVariant": false,
+   "name": "Masque de l'Hystérique",
+   "unlockLevel": 140,
+   "gradeUsed": 1,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique le Masque de l'Hystérique sur le lanceur :\n• Augmente les Dommages Poussée du lanceur et de ses alliés (hors Zobals) en zone.\n• Repousse les cibles en zone.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix r1",
+    "croix sans centre r1 (rayon min 1)",
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "la cible lance sur sa cellule « Gestion des masques » (18634) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : fixe à 1 tour la relance des sorts de l’ANCIEN masque, retire l’ancien état de masque et réduit d’1 tour la relance de Carnavalo et Transfiguration (cf. §3.1)",
+    "Applique l'état « Psychopathe » (99) — cibles: lanceur; infini; non désenvoûtable",
+    "la cible lance sur sa cellule « Gestion des masques » (18636) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : désenvoûte les bonus de l’ancien masque sur le Zobal et sur les alliés non-Zobal adjacents",
+    "la cible lance sur sa cellule « Gestion des masques » (18637) niv.1 — cibles: lanceur",
+    "↳ Gestion des masques : change l’apparence du masque (visuel)",
+    "+80 Dommages de poussée — cibles: lanceur; infini",
+    "+80 Dommages de poussée — croix r1; cibles: alliés sauf lanceur [pas classe 14; ≠monstre Masque Grimaçant (5152)]; 2 tours",
+    "Repousse de 1 case(s) — croix sans centre r1 (rayon min 1); cibles: alliés/ennemis",
+    "la cible lance sur elle-même « Masque du Psychopathe » (28707) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; =monstre Masque Grimaçant (5152)]",
+    "↳ Désenvoûte les effets du sort « Masque du Pleutre » (28599) — cibles: lanceur",
+    "↳ Repousse de 1 case(s) — croix sans centre r1; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 1,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ally_push_damage_buff",
+    "mask",
+    "push",
+    "self_push_damage_buff"
+   ],
+   "tacticalNote": "Variante : +80 Dommages poussée + repousse de 1 les adjacents : combo avec Apostasie/Distance/Appui.",
+   "spellLevelId": 41859
+  },
+  {
+   "id": 13394,
+   "pairIndex": 11,
+   "variantOf": 13419,
+   "isBaseVariant": true,
+   "name": "Furia",
+   "unlockLevel": 35,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "HS=99",
+   "description": "Occasionne des dommages Terre et augmente les Dommages du lanceur.\nLes dommages n'affectent pas le lanceur.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 35,
+     "max": 39,
+     "critMin": 42,
+     "critMax": 47,
+     "zone": "P1",
+     "targetMask": "g,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Terre 35 à 39 — cibles: alliés sauf lanceur/ennemis",
+    "+40 Dommages — cibles: lanceur; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 42 à 47"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 3,
+     "range": [
+      0,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 3,
+     "range": [
+      0,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 3,
+     "range": [
+      0,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 35) vs g3: Dommages Terre 21 à 23 (g1) → Dommages Terre 35 à 39 (g3) ; +20 Dommages (g1) → +40 Dommages (g3)",
+    "g2 (niv 102) vs g3: Dommages Terre 28 à 31 (g2) → Dommages Terre 35 à 39 (g3) ; +30 Dommages (g2) → +40 Dommages (g3)"
+   ],
+   "role": [
+    "damage",
+    "self_damage_buff"
+   ],
+   "tacticalNote": "Terre 35–39 + 40 Dommages (2 tours, non cumulable) ; Psychopathe, PO 0–3 en ligne.",
+   "spellLevelId": 41842
+  },
+  {
+   "id": 13419,
+   "pairIndex": 11,
+   "variantOf": 13394,
+   "isBaseVariant": false,
+   "name": "Bocciara",
+   "unlockLevel": 145,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "HS=99",
+   "description": "Occasionne des dommages Eau aux ennemis et augmente les Dommages Poussée du lanceur.\nLes dommages n'affectent pas le lanceur.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 19,
+     "max": 22,
+     "critMin": 23,
+     "critMax": 26,
+     "zone": "P1",
+     "targetMask": "g,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Eau 19 à 22 — cibles: alliés sauf lanceur/ennemis",
+    "+80 Dommages de poussée — cibles: lanceur; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 23 à 26"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 2,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "self_push_damage_buff"
+   ],
+   "tacticalNote": "Eau 19–22 (2 PA) + 80 Dommages poussée (2 tours).",
+   "spellLevelId": 41864
+  },
+  {
+   "id": 13398,
+   "pairIndex": 12,
+   "variantOf": 13411,
+   "isBaseVariant": true,
+   "name": "Tortoruga",
+   "unlockLevel": 40,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 4,
+   "range": 10,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "HS=100",
+   "description": "Applique un bouclier sur l'allié ciblé.\nLe bouclier est réduit de moitié sur les invocations.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 300,
+     "max": 300,
+     "critMin": 360,
+     "critMax": 360,
+     "zone": "P1",
+     "targetMask": "l,m,c",
+     "duration": 3,
+     "triggers": "I"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 150,
+     "max": 150,
+     "critMin": 180,
+     "critMax": 180,
+     "zone": "P1",
+     "targetMask": "j",
+     "duration": 3,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Bouclier = 300% du niveau du lanceur — cibles: alliés joueurs/compagnons/monstres alliés/lanceur(si dans zone); 3 tours",
+    "Bouclier = 150% du niveau du lanceur — cibles: invocs alliées; 3 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Bouclier = 360% du niveau du lanceur ; Bouclier = 180% du niveau du lanceur"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 3,
+     "range": [
+      4,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 3,
+     "range": [
+      4,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 3,
+     "range": [
+      4,
+      10
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 4,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 40) vs g3: PO max 6 (g1) → 10 (g3) ; lancers/tour 2 (g1) → 4 (g3)",
+    "g2 (niv 107) vs g3: PO max 8 (g2) → 10 (g3) ; lancers/tour 3 (g2) → 4 (g3)"
+   ],
+   "role": [
+    "shield"
+   ],
+   "tacticalNote": "Bouclier 600 PV à 4–10 PO (sans LdV), 4/tour au niveau 174+ (1/cible) : protège les alliés éloignés. Pleutre.",
+   "spellLevelId": 41838
+  },
+  {
+   "id": 13411,
+   "pairIndex": 12,
+   "variantOf": 13398,
+   "isBaseVariant": false,
+   "name": "Armadur",
+   "unlockLevel": 150,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 3,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "HS=100",
+   "description": "Augmente les PM et la Fuite de l'allié ciblé.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "+2 PM — cibles: alliés; 2 tours",
+    "+40 Fuite — cibles: alliés; 2 tours"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 2,
+     "range": [
+      3,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ally_dodge_buff",
+    "ally_mp_buff"
+   ],
+   "tacticalNote": "+2 PM +40 Fuite (2 tours) à un allié à 3–7 PO. Pleutre.",
+   "spellLevelId": 44593
+  },
+  {
+   "id": 13395,
+   "pairIndex": 13,
+   "variantOf": 14682,
+   "isBaseVariant": true,
+   "name": "Cabriole",
+   "unlockLevel": 45,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "HS=99",
+   "description": "Téléporte le lanceur sur la case ciblée ou symétriquement par rapport à la cible et occasionne des dommages Air aux ennemis en zone.\nLes dommages de zone ne sont pas dégressifs.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42,
+     "zone": "X1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1"
+   ],
+   "effectsSummary": [
+    "Téléporte le lanceur sur la case ciblée — cibles: alliés sauf lanceur/ennemis [lanceur sans état « Pesanteur » (7)]",
+    "le lanceur lance « Cabriole » (26216) niv.1 — cibles: alliés sauf lanceur/ennemis",
+    "↳ Téléportation symétrique par rapport à la cible — cibles: lanceur",
+    "Dommages Air 31 à 35 — croix r1; cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 37 à 42"
+   ],
+   "tooltipOnlyEffects": [
+    "Téléportation symétrique par rapport à la cible — cibles: alliés sauf lanceur/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 3,
+     "range": [
+      0,
+      1
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 3,
+     "range": [
+      0,
+      1
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 179,
+     "apCost": 3,
+     "range": [
+      0,
+      1
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 45) vs g3: Dommages Air 20 à 23 (g1) → Dommages Air 31 à 35 (g3)",
+    "g2 (niv 112) vs g3: Dommages Air 26 à 29 (g2) → Dommages Air 31 à 35 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "teleport"
+   ],
+   "tacticalNote": "Téléporte sur la case (ou derrière la cible) + Air 31–35 en croix non dégressif.",
+   "spellLevelId": 41826
+  },
+  {
+   "id": 14682,
+   "pairIndex": 13,
+   "variantOf": 13395,
+   "isBaseVariant": false,
+   "name": "Purgatorio",
+   "unlockLevel": 155,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "HS=98|HS=99",
+   "description": "Réduit la durée des effets sur la cible et occasionne des dommages Feu aux ennemis.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Réduit la durée des effets de 1 tour(s) — cibles: alliés/ennemis",
+    "Dommages Feu 32 à 36 — cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 38 à 43"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 3,
+     "range": [
+      0,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "shorten_effects"
+   ],
+   "tacticalNote": "Feu 32–36 + réduit la durée des effets de la cible d’1 tour ; 1/tour.",
+   "spellLevelId": 44586
+  },
+  {
+   "id": 13401,
+   "pairIndex": 14,
+   "variantOf": 13418,
+   "isBaseVariant": true,
+   "name": "Débandade",
+   "unlockLevel": 50,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "HS=100&HS!7",
+   "description": "Téléporte le lanceur sur la case ciblée et augmente ses PM.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Téléporte le lanceur sur la case ciblée — cibles: alliés/ennemis",
+    "+1 PM — cibles: lanceur; 1 tour"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 2,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 2,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 1,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 184,
+     "apCost": 2,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 50) vs g3: relance 2 (g1) → 0 (g3) ; lancers/tour 0 (g1) → 2 (g3)",
+    "g2 (niv 117) vs g3: relance 1 (g2) → 0 (g3) ; lancers/tour 0 (g2) → 2 (g3)"
+   ],
+   "role": [
+    "self_mp_buff",
+    "teleport"
+   ],
+   "tacticalNote": "Téléporte d’1 case en ligne +1 PM ; 2/tour au niv. 184 : mobilité Pleutre.",
+   "spellLevelId": 41824
+  },
+  {
+   "id": 13418,
+   "pairIndex": 14,
+   "variantOf": 13401,
+   "isBaseVariant": false,
+   "name": "Comédie",
+   "unlockLevel": 160,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS=100",
+   "description": "Téléporte les cibles symétriquement par rapport au centre puis les repousse en zone.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix sans centre r1"
+   ],
+   "effectsSummary": [
+    "Téléportation symétrique par rapport au point d'impact — croix sans centre r1; cibles: alliés/ennemis",
+    "le lanceur lance « Comédie » (32163) niv.1 — cibles: alliés/ennemis",
+    "↳ Repousse de 3 case(s) — croix sans centre r1; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Repousse de 3 case(s) — croix sans centre r1; cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "push",
+    "teleport"
+   ],
+   "tacticalNote": "Téléport symétrique des entités adjacentes à la cible puis repousse 3 : désorganise un groupe ennemi.",
+   "spellLevelId": 41863
+  },
+  {
+   "id": 13423,
+   "pairIndex": 15,
+   "variantOf": 13392,
+   "isBaseVariant": true,
+   "name": "Inferno",
+   "unlockLevel": 55,
+   "gradeUsed": 3,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "HS=99",
+   "description": "Occasionne des dommages Feu et augmente la Puissance du lanceur.\nLes dommages n'affectent pas le lanceur.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 41,
+     "max": 45,
+     "critMin": 49,
+     "critMax": 54,
+     "zone": "P1",
+     "targetMask": "g,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Feu 41 à 45 — cibles: alliés sauf lanceur/ennemis",
+    "+200 Puissance — cibles: lanceur; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 49 à 54"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 4,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 4,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 4,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 55) vs g3: Dommages Feu 27 à 29 (g1) → Dommages Feu 41 à 45 (g3) ; +100 Puissance (g1) → +200 Puissance (g3)",
+    "g2 (niv 122) vs g3: Dommages Feu 36 à 39 (g2) → Dommages Feu 41 à 45 (g3) ; +150 Puissance (g2) → +200 Puissance (g3)"
+   ],
+   "role": [
+    "damage",
+    "self_power_buff"
+   ],
+   "tacticalNote": "Feu 41–45 (CC 49–54) + 200 Puissance (2 tours, cumul 1) ; le 2e lancer du tour profite déjà du bonus. Psychopathe.",
+   "spellLevelId": 67056
+  },
+  {
+   "id": 13392,
+   "pairIndex": 15,
+   "variantOf": 13423,
+   "isBaseVariant": false,
+   "name": "Distance",
+   "unlockLevel": 165,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 2,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": "HS=100",
+   "description": "Occasionne des dommages Eau aux ennemis et repousse la cible.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 28,
+     "max": 30,
+     "critMin": 33,
+     "critMax": 36,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Eau 28 à 30 — cibles: ennemis",
+    "Repousse de 3 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 33 à 36"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 3,
+     "range": [
+      2,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Eau 28–30 + repousse 3 (2–8 PO en ligne) : garder un ennemi à distance.",
+   "spellLevelId": 41799
+  },
+  {
+   "id": 13400,
+   "pairIndex": 16,
+   "variantOf": 13412,
+   "isBaseVariant": true,
+   "name": "Reuche",
+   "unlockLevel": 60,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 2,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 1,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "HS=98|HS=99",
+   "description": "Rapproche le lanceur vers la cible.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur avance de 7 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 2,
+     "range": [
+      2,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 0,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 2,
+     "range": [
+      2,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 0,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 2,
+     "range": [
+      2,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 0,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 60) vs g3: Le lanceur avance de 5 case(s) (g1) → Le lanceur avance de 7 case(s) (g3) ; PO max 6 (g1) → 8 (g3)",
+    "g2 (niv 127) vs g3: Le lanceur avance de 6 case(s) (g2) → Le lanceur avance de 7 case(s) (g3) ; PO max 7 (g2) → 8 (g3)"
+   ],
+   "role": [
+    "self_move"
+   ],
+   "tacticalNote": "Avance de 7 cases vers la cible (2–8 en ligne) : la meilleure mobilité offensive.",
+   "spellLevelId": 41818
+  },
+  {
+   "id": 13412,
+   "pairIndex": 16,
+   "variantOf": 13400,
+   "isBaseVariant": false,
+   "name": "Scudo",
+   "unlockLevel": 170,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "HS=98",
+   "description": "Applique un bouclier sur l'allié ciblé.\nLe bouclier est réduit de moitié sur les invocations.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 360,
+     "max": 360,
+     "critMin": 420,
+     "critMax": 420,
+     "zone": "P1",
+     "targetMask": "l,m,c",
+     "duration": 2,
+     "triggers": "I"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 180,
+     "max": 180,
+     "critMin": 210,
+     "critMax": 210,
+     "zone": "P1",
+     "targetMask": "j",
+     "duration": 2,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Bouclier = 360% du niveau du lanceur — cibles: alliés joueurs/compagnons/monstres alliés/lanceur(si dans zone); 2 tours",
+    "Bouclier = 180% du niveau du lanceur — cibles: invocs alliées; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Bouclier = 420% du niveau du lanceur ; Bouclier = 210% du niveau du lanceur"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 3,
+     "range": [
+      1,
+      2
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "shield"
+   ],
+   "tacticalNote": "Bouclier 720 PV (niv. 200) mono-cible à 1–2 PO.",
+   "spellLevelId": 41857
+  },
+  {
+   "id": 13393,
+   "pairIndex": 17,
+   "variantOf": 13390,
+   "isBaseVariant": true,
+   "name": "Apathie",
+   "unlockLevel": 65,
+   "gradeUsed": 3,
+   "apCost": 4,
+   "minRange": 2,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": "HS=100",
+   "description": "Occasionne des dommages Terre et retire des PM.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Terre 31 à 35 — cibles: alliés/ennemis",
+    "-3 PM (esquivable) — cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 37 à 42"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 4,
+     "range": [
+      2,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 131,
+     "apCost": 4,
+     "range": [
+      2,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 198,
+     "apCost": 4,
+     "range": [
+      2,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 65) vs g3: Dommages Terre 23 à 26 (g1) → Dommages Terre 31 à 35 (g3) ; PO max 6 (g1) → 8 (g3)",
+    "g2 (niv 131) vs g3: Dommages Terre 28 à 31 (g2) → Dommages Terre 31 à 35 (g3) ; PO max 7 (g2) → 8 (g3)"
+   ],
+   "role": [
+    "damage",
+    "mp_removal"
+   ],
+   "tacticalNote": "Terre 31–35 + -3 PM (esquivable), 2/cible : le retrait PM principal. Pleutre.",
+   "spellLevelId": 80543
+  },
+  {
+   "id": 13390,
+   "pairIndex": 17,
+   "variantOf": 13393,
+   "isBaseVariant": false,
+   "name": "Rétention",
+   "unlockLevel": 175,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "HS=98",
+   "description": "Vole de la vie dans l'élément Air et retire des PA.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "lifesteal",
+     "element": "Air",
+     "min": 27,
+     "max": 31,
+     "critMin": 33,
+     "critMax": 37,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Vol de vie Air 27 à 31 — cibles: alliés/ennemis",
+    "-2 PA (esquivable) — cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Vol de vie Air 33 à 37"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 3,
+     "range": [
+      1,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ap_removal",
+    "damage",
+    "lifesteal"
+   ],
+   "tacticalNote": "Vol de vie Air 27–31 + -2 PA. Intrépide.",
+   "spellLevelId": 41797
+  },
+  {
+   "id": 13396,
+   "pairIndex": 18,
+   "variantOf": 14681,
+   "isBaseVariant": true,
+   "name": "Boliche",
+   "unlockLevel": 70,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": "HS=98|HS=99",
+   "description": "Rapproche le lanceur vers la cible, occasionne des dommages Eau aux ennemis et repousse la cible.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 29,
+     "max": 32,
+     "critMin": 35,
+     "critMax": 38,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur avance de 4 case(s) — cibles: alliés/ennemis",
+    "Dommages Eau 29 à 32 — cibles: ennemis",
+    "Repousse de 3 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 35 à 38"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 70) vs g2: Le lanceur avance de 3 case(s) (g1) → Le lanceur avance de 4 case(s) (g2) ; Dommages Eau 23 à 25 (g1) → Dommages Eau 29 à 32 (g2) ; PO max 4 (g1) → 5 (g2)"
+   ],
+   "role": [
+    "damage",
+    "push",
+    "self_move"
+   ],
+   "tacticalNote": "Avance de 4, Eau 29–32, repousse de 3 : « charge » qui replace la cible.",
+   "spellLevelId": 41834
+  },
+  {
+   "id": 14681,
+   "pairIndex": 18,
+   "variantOf": 13396,
+   "isBaseVariant": false,
+   "name": "Ronda",
+   "unlockLevel": 180,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "HS=98|HS=99",
+   "description": "Occasionne des dommages Terre aux ennemis et attire les cibles vers le lanceur en zone.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 38,
+     "max": 42,
+     "critMin": 46,
+     "critMax": 50,
+     "zone": "O2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "anneau r2"
+   ],
+   "effectsSummary": [
+    "Dommages Terre 38 à 42 — anneau r2; cibles: ennemis",
+    "le lanceur lance « Ronda » (14683) niv.1 — anneau r2; cibles: alliés/ennemis",
+    "↳ Attire de 2 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 46 à 50"
+   ],
+   "tooltipOnlyEffects": [
+    "Attire de 2 case(s) — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 4,
+     "range": [
+      0,
+      1
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "pull"
+   ],
+   "tacticalNote": "Terre 38–42 en anneau r2 autour d’une case adjacente + attire 2 : nettoyage de vague au corps-à-corps.",
+   "spellLevelId": 44585
+  },
+  {
+   "id": 13402,
+   "pairIndex": 19,
+   "variantOf": 13404,
+   "isBaseVariant": true,
+   "name": "Fougue",
+   "unlockLevel": 75,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Rend l'allié ciblé Intaclable ou l'ennemi ciblé Insoignable.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Intaclable » (96) — cibles: alliés; 1 tour",
+    "Applique l'état « Insoignable » (76) — cibles: ennemis; 1 tour"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 2,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 75) vs g2: PO max 5 (g1) → 6 (g2) ; relance 4 (g1) → 3 (g2)"
+   ],
+   "role": [
+    "anti_heal",
+    "untackleable"
+   ],
+   "tacticalNote": "Allié Intaclable (fuir un tacle) ou ennemi Insoignable 1 tour (boss soigneur).",
+   "spellLevelId": 76854
+  },
+  {
+   "id": 13404,
+   "pairIndex": 19,
+   "variantOf": 13402,
+   "isBaseVariant": false,
+   "name": "Mascarade",
+   "unlockLevel": 185,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Neutre au lanceur et à la cible :\n• Les dommages sur la cible dépendent de la vie restante du lanceur.\n• Les dommages sur le lanceur dépendent de sa vie manquante.\n• Les effets sont permutés si le lanceur est à moins de 50% de sa vie.\n\nSur le lanceur : échange de position avec son Masque Grimaçant.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "damage_percent_caster_hp",
+     "element": "Neutre",
+     "min": 25,
+     "max": 25,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "g,A,*v50",
+     "duration": 0,
+     "triggers": "I",
+     "via": "28595#1"
+    },
+    {
+     "kind": "damage_percent_caster_missing_hp",
+     "element": "Neutre",
+     "min": 25,
+     "max": 25,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "C,*v50",
+     "duration": 0,
+     "triggers": "I",
+     "via": "28595#1"
+    },
+    {
+     "kind": "damage_percent_caster_missing_hp",
+     "element": "Neutre",
+     "min": 25,
+     "max": 25,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,A,*V50",
+     "duration": 0,
+     "triggers": "I",
+     "via": "28595#1"
+    },
+    {
+     "kind": "damage_percent_caster_hp",
+     "element": "Neutre",
+     "min": 25,
+     "max": 25,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "C,*V50",
+     "duration": 0,
+     "triggers": "I",
+     "via": "28595#1"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Mascarade » (28595) niv.1 — cibles: alliés sauf lanceur/ennemis",
+    "↳ Dommages Neutre = 25% des PV du lanceur — cibles: alliés sauf lanceur/ennemis [lanceur PV ≥ 50%]",
+    "↳ Dommages Neutre = 25% des PV manquants du lanceur — cibles: lanceur [lanceur PV ≥ 50%]",
+    "↳ Dommages Neutre = 25% des PV manquants du lanceur — cibles: alliés/ennemis [lanceur PV < 50%]",
+    "↳ Dommages Neutre = 25% des PV du lanceur — cibles: lanceur [lanceur PV < 50%]",
+    "le lanceur lance « Mascarade » (28595) niv.2 — cibles: lanceur(si dans zone)",
+    "↳ le lanceur lance « Mascarade » (28595) niv.3 — toute la carte; cibles: alliés [groupe du lanceur; lanceur sans état « Pesanteur » (7); sans état « Pesanteur » (7); =monstre Masque Grimaçant (5152)]",
+    "↳ ↳ Échange de positions avec le lanceur — cibles: alliés"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Dommages Neutre = 25% des PV du lanceur — cibles: alliés sauf lanceur/ennemis [lanceur PV ≥ 50%]",
+    "Dommages Neutre = 25% des PV manquants du lanceur — cibles: lanceur [lanceur PV ≥ 50%]",
+    "Dommages Neutre = 25% des PV manquants du lanceur — cibles: alliés sauf lanceur/ennemis [lanceur PV < 50%]",
+    "Dommages Neutre = 25% des PV du lanceur — cibles: lanceur [lanceur PV < 50%]",
+    "Échange de positions avec le lanceur — cibles: alliés"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 3,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "swap"
+   ],
+   "tacticalNote": "25 % des PV actuels du Zobal en Neutre à la cible (si ≥ 50 % PV) : très fort sur un Zobal vitalité.",
+   "spellLevelId": 41811
+  },
+  {
+   "id": 13399,
+   "pairIndex": 20,
+   "variantOf": 13426,
+   "isBaseVariant": true,
+   "name": "Transe",
+   "unlockLevel": 80,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "HS=99",
+   "description": "Sacrifie une partie de la vie du lanceur pour appliquer un bouclier sur les alliés en zone.\nLe bouclier est réduit de moitié sur les invocations.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 450,
+     "max": 450,
+     "critMin": 600,
+     "critMax": 600,
+     "zone": "X1",
+     "targetMask": "l,m,c",
+     "duration": 2,
+     "triggers": "I"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 225,
+     "max": 225,
+     "critMin": 300,
+     "critMax": 300,
+     "zone": "X1",
+     "targetMask": "j",
+     "duration": 2,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1"
+   ],
+   "effectsSummary": [
+    "Désenvoûte les effets du sort « Transe » (13399) — croix r1; cibles: alliés joueurs/compagnons/monstres alliés/lanceur(si dans zone)",
+    "-70% PV (érosion de PV max, INCERTAIN) — croix r1; cibles: lanceur; 2 tours",
+    "Bouclier = 450% du niveau du lanceur — croix r1; cibles: alliés joueurs/compagnons/monstres alliés/lanceur(si dans zone); 2 tours",
+    "Bouclier = 225% du niveau du lanceur — croix r1; cibles: invocs alliées; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Bouclier = 600% du niveau du lanceur ; Bouclier = 300% du niveau du lanceur"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 3,
+     "range": [
+      0,
+      1
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 3,
+     "range": [
+      0,
+      1
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 80) vs g2: -75% PV (érosion de PV max, INCERTAIN) (g1) → -70% PV (érosion de PV max, INCERTAIN) (g2)"
+   ],
+   "role": [
+    "shield"
+   ],
+   "tacticalNote": "Perd 70 % de ses PV (érosion, 2 tours, INCERTAIN) pour 900 PV de bouclier aux alliés en croix r1. Psychopathe.",
+   "spellLevelId": 41829
+  },
+  {
+   "id": 13426,
+   "pairIndex": 20,
+   "variantOf": 13399,
+   "isBaseVariant": false,
+   "name": "Névrose",
+   "unlockLevel": 190,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "HS=99",
+   "description": "Augmente la Puissance de l'allié ciblé et applique l'état Pesanteur sur la cible.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "+250 Puissance — cibles: alliés; 2 tours",
+    "Applique l'état « Pesanteur » (7) — cibles: alliés/ennemis; 1 tour"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 2,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ally_power_buff",
+    "gravity"
+   ],
+   "tacticalNote": "+250 Puissance (2 tours) à un allié + Pesanteur : buff DPS.",
+   "spellLevelId": 41871
+  },
+  {
+   "id": 13424,
+   "pairIndex": 21,
+   "variantOf": 13385,
+   "isBaseVariant": true,
+   "name": "Grimace",
+   "unlockLevel": 85,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!4106",
+   "description": "Invoque un Masque Grimaçant maîtrisable qui tacle les ennemis et partage ses dommages avec son invocateur tant qu'il est en vie.\nLorsqu'un ennemi se fait tacler par le Masque, lui et son invocateur gagnent du bouclier.\n\nLe Masque Grimaçant s'applique également des effets selon le masque porté par son invocateur :\n• Intrépide : attire les entités en zone autour de lui.\n• Pleutre : augmente ses PM.\n• Psychopathe : repousse les entités à son contact.\n\nLe Masque est téléporté sur la case ciblée si le sort est relancé quand il est en vie.\nÀ sa mort, le temps de relance du sort est fixé à 2 tours.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix sans centre r1",
+    "croix sans centre r3"
+   ],
+   "effectsSummary": [
+    "Invoque Masque Grimaçant (5152) grade 3 — cibles: alliés/ennemis [lanceur sans état « Masque Grimaçant invoqué » (4105)]",
+    "la cible lance sur sa cellule « Grimace » (28600) niv.1 — cibles: lanceur [lanceur avec état « Masque Grimaçant invoqué » (4105)]",
+    "↳ la cible lance sur sa cellule « Grimace » (28600) niv.2 — toute la carte; cibles: alliés [groupe du lanceur; sans état « Pesanteur » (7); =monstre Masque Grimaçant (5152)]",
+    "↳ ↳ Téléporte le lanceur sur la case ciblée — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Bouclier = 120% du niveau du lanceur — cibles: alliés joueurs/compagnons [groupe du lanceur]; 2 tours",
+    "Attire de 2 case(s) — croix sans centre r3; cibles: alliés/ennemis",
+    "+2 PM — cibles: alliés/ennemis; infini",
+    "Repousse de 2 case(s) — croix sans centre r1; cibles: alliés/ennemis",
+    "Sort « Grimace » (13424) : relance fixée à 2 tour(s) — cibles: lanceur",
+    "Téléporte le lanceur sur la case ciblée — cibles: alliés [groupe du lanceur; =monstre Masque Grimaçant (5152)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 3,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 3,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 85) vs g2: Invoque Masque Grimaçant (5152) grade 1 (g1) → Invoque Masque Grimaçant (5152) grade 3 (g2)"
+   ],
+   "role": [
+    "ally_mp_buff",
+    "pull",
+    "push",
+    "shield",
+    "summon",
+    "tackle",
+    "teleport"
+   ],
+   "tacticalNote": "Masque Grimaçant tacleur et absorbeur de dommages.",
+   "spellLevelId": 41876
+  },
+  {
+   "id": 13385,
+   "pairIndex": 21,
+   "variantOf": 13424,
+   "isBaseVariant": false,
+   "name": "Diffraction",
+   "unlockLevel": 195,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique un bouclier sur tout le monde selon la distance avec le lanceur :\n• 0 à 5 cases : 450% du niveau en bouclier.\n• 6 à 11 cases : 250% du niveau en bouclier.\n• 12 cases et plus : 50% du niveau en bouclier.\nLe bouclier est réduit de moitié sur les invocations.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 450,
+     "max": 450,
+     "critMin": null,
+     "critMax": null,
+     "zone": "a1",
+     "targetMask": "l,m,L,M,c,E2223",
+     "duration": 2,
+     "triggers": "I",
+     "via": "18967#1"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 225,
+     "max": 225,
+     "critMin": null,
+     "critMax": null,
+     "zone": "a1",
+     "targetMask": "j,J,E2223",
+     "duration": 2,
+     "triggers": "I",
+     "via": "18967#1"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 250,
+     "max": 250,
+     "critMin": null,
+     "critMax": null,
+     "zone": "a1",
+     "targetMask": "l,m,L,M,c,E2224",
+     "duration": 2,
+     "triggers": "I",
+     "via": "18967#2"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 125,
+     "max": 125,
+     "critMin": null,
+     "critMax": null,
+     "zone": "a1",
+     "targetMask": "j,J,E2224",
+     "duration": 2,
+     "triggers": "I",
+     "via": "18967#2"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 50,
+     "max": 50,
+     "critMin": null,
+     "critMax": null,
+     "zone": "a1",
+     "targetMask": "l,m,L,M,c,E2225",
+     "duration": 2,
+     "triggers": "I",
+     "via": "18967#3"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 25,
+     "max": 25,
+     "critMin": null,
+     "critMax": null,
+     "zone": "a1",
+     "targetMask": "j,J,E2225",
+     "duration": 2,
+     "triggers": "I",
+     "via": "18967#3"
+    }
+   ],
+   "zones": [
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "le lanceur lance « Diffraction » (18967) niv.5 — cibles: lanceur",
+    "↳ Applique l'état « Diffraction 0-5 » (2223) — cercle r5; cibles: alliés/ennemis; 1 tour; non désenvoûtable",
+    "↳ Applique l'état « Diffraction 6-11 » (2224) — cercle r11 (rayon min 6); cibles: alliés/ennemis; 1 tour; non désenvoûtable",
+    "↳ Applique l'état « Diffraction 12+ » (2225) — cercle r63 (rayon min 12); cibles: alliés/ennemis; 1 tour; non désenvoûtable",
+    "le lanceur lance « Diffraction » (18967) niv.1 — cibles: lanceur",
+    "↳ Bouclier = 450% du niveau du lanceur — toute la carte; cibles: alliés joueurs/compagnons/monstres alliés/ennemis joueurs/compagnons/monstres ennemis/lanceur(si dans zone) [avec état « Diffraction 0-5 » (2223)]; 2 tours",
+    "↳ Bouclier = 225% du niveau du lanceur — toute la carte; cibles: invocs alliées/invocs ennemies [avec état « Diffraction 0-5 » (2223)]; 2 tours",
+    "le lanceur lance « Diffraction » (18967) niv.2 — cibles: lanceur",
+    "↳ Bouclier = 250% du niveau du lanceur — toute la carte; cibles: alliés joueurs/compagnons/monstres alliés/ennemis joueurs/compagnons/monstres ennemis/lanceur(si dans zone) [avec état « Diffraction 6-11 » (2224)]; 2 tours",
+    "↳ Bouclier = 125% du niveau du lanceur — toute la carte; cibles: invocs alliées/invocs ennemies [avec état « Diffraction 6-11 » (2224)]; 2 tours",
+    "le lanceur lance « Diffraction » (18967) niv.3 — cibles: lanceur",
+    "↳ Bouclier = 50% du niveau du lanceur — toute la carte; cibles: alliés joueurs/compagnons/monstres alliés/ennemis joueurs/compagnons/monstres ennemis/lanceur(si dans zone) [avec état « Diffraction 12+ » (2225)]; 2 tours",
+    "↳ Bouclier = 25% du niveau du lanceur — toute la carte; cibles: invocs alliées/invocs ennemies [avec état « Diffraction 12+ » (2225)]; 2 tours",
+    "le lanceur lance « Diffraction » (18967) niv.4 — cibles: lanceur",
+    "↳ Retire l'état « Diffraction 0-5 » (2223) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Diffraction 6-11 » (2224) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Diffraction 12+ » (2225) — toute la carte; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Bouclier = 450% du niveau du lanceur — toute la carte; cibles: alliés joueurs/compagnons/monstres alliés/ennemis joueurs/compagnons/monstres ennemis; 2 tours",
+    "Bouclier = 225% du niveau du lanceur — toute la carte; cibles: invocs alliées/invocs ennemies; 2 tours",
+    "Bouclier = 250% du niveau du lanceur — toute la carte; cibles: alliés joueurs/compagnons/monstres alliés/ennemis joueurs/compagnons/monstres ennemis; 2 tours",
+    "Bouclier = 125% du niveau du lanceur — toute la carte; cibles: invocs alliées/invocs ennemies; 2 tours",
+    "Bouclier = 50% du niveau du lanceur — toute la carte; cibles: alliés joueurs/compagnons/monstres alliés/ennemis joueurs/compagnons/monstres ennemis; 2 tours",
+    "Bouclier = 25% du niveau du lanceur — toute la carte; cibles: invocs alliées/invocs ennemies; 2 tours"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 3,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "shield"
+   ],
+   "tacticalNote": "Boucliers de 900/500/100 PV selon la distance… y compris aux ennemis : se placer pour couvrir les alliés et éloigner les ennemis (≥ 12 cases).",
+   "spellLevelId": 41792
+  },
+  {
+   "id": 18651,
+   "pairIndex": 22,
+   "variantOf": 18650,
+   "isBaseVariant": true,
+   "name": "Carnavalo",
+   "unlockLevel": 90,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 5,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Applique un bouclier sur le lanceur, occasionne des dommages dans son meilleur élément d'attaque aux ennemis et repousse la cible.\nChaque effet devient plus important selon le masque porté par le lanceur :\n• État Intrépide : le bouclier est plus important.\n• État Pleutre : la poussée est plus importante.\n• État Psychopathe : les dommages sont plus importants.\n\nChaque changement de masque diminue l'intervalle de relance du sort d'un tour.",
+   "elements": [
+    "Meilleur élément"
+   ],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 100,
+     "max": 100,
+     "critMin": 100,
+     "critMax": 100,
+     "zone": "P1",
+     "targetMask": "C,*e98",
+     "duration": 2,
+     "triggers": "I"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 300,
+     "max": 300,
+     "critMin": 300,
+     "critMax": 300,
+     "zone": "P1",
+     "targetMask": "C,*E98",
+     "duration": 2,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Meilleur élément",
+     "min": 24,
+     "max": 28,
+     "critMin": 29,
+     "critMax": 34,
+     "zone": "P1",
+     "targetMask": "A,*e99",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Meilleur élément",
+     "min": 39,
+     "max": 43,
+     "critMin": 45,
+     "critMax": 50,
+     "zone": "P1",
+     "targetMask": "A,*E99",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Bouclier = 100% du niveau du lanceur — cibles: lanceur [lanceur sans état « Intrépide » (98)]; 2 tours",
+    "Bouclier = 300% du niveau du lanceur — cibles: lanceur [lanceur avec état « Intrépide » (98)]; 2 tours",
+    "Dommages meilleur élément 24 à 28 — cibles: ennemis [lanceur sans état « Psychopathe » (99)]",
+    "Dommages meilleur élément 39 à 43 — cibles: ennemis [lanceur avec état « Psychopathe » (99)]",
+    "Repousse de 1 case(s) — cibles: alliés/ennemis [lanceur sans état « Pleutre » (100)]",
+    "Repousse de 4 case(s) — cibles: alliés/ennemis [lanceur avec état « Pleutre » (100)]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages meilleur élément 29 à 34 ; Dommages meilleur élément 45 à 50"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 3,
+     "range": [
+      1,
+      3
+     ],
+     "cooldown": 5,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 3,
+     "range": [
+      1,
+      3
+     ],
+     "cooldown": 5,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 90) vs g2: Dommages meilleur élément 19 à 23 (g1) → Dommages meilleur élément 24 à 28 (g2) ; Dommages meilleur élément 29 à 33 (g1) → Dommages meilleur élément 39 à 43 (g2)"
+   ],
+   "role": [
+    "damage",
+    "push",
+    "shield"
+   ],
+   "tacticalNote": "Effet selon le masque, relance 5 réduite d’1 à chaque changement de masque.",
+   "spellLevelId": 67060
+  },
+  {
+   "id": 18650,
+   "pairIndex": 22,
+   "variantOf": 18651,
+   "isBaseVariant": false,
+   "name": "Transfiguration",
+   "unlockLevel": 200,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 5,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique l'état Transfiguration sur le lanceur et l'ennemi ciblé, en appliquant des effets sur l'ennemi selon le masque porté :\n• État Intrépide : réduit les dommages finaux occasionnés.\n• État Pleutre : réduit les résistances à distance.\n• État Psychopathe : réduit les résistances en mêlée.\nLe cumul est partagé entre les effets.\n\nChaque changement de masque réduit le temps de relance du sort d'un tour et réapplique les effets du sort si le lanceur est dans l'état Transfiguration.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Transfiguration » (26244) niv.1 — cibles: ennemis",
+    "↳ Applique l'état « Transfiguration » (4466) — cibles: lanceur/ennemis; 2 tours",
+    "↳ Applique l'état « Transfiguration » (4464) — cibles: lanceur; 2 tours",
+    "↳ Applique l'état « Transfiguration » (4465) — cibles: ennemis; 2 tours",
+    "↳ le lanceur lance « Transfiguration » (26244) niv.2 — cibles: ennemis [lanceur avec état « Intrépide » (98)]",
+    "↳ ↳ -20% Dommages finaux — toute la carte; cibles: ennemis [avec état « Transfiguration » (4465)]; 2 tours",
+    "↳ le lanceur lance « Transfiguration » (26244) niv.3 — cibles: ennemis [lanceur avec état « Pleutre » (100)]",
+    "↳ ↳ -10% Résistance distance — toute la carte; cibles: ennemis [avec état « Transfiguration » (4465)]; 2 tours",
+    "↳ le lanceur lance « Transfiguration » (26244) niv.4 — cibles: ennemis [lanceur avec état « Psychopathe » (99)]",
+    "↳ ↳ -10% Résistance mêlée — toute la carte; cibles: ennemis [avec état « Transfiguration » (4465)]; 2 tours",
+    "↳ la cible lance sur elle-même « Transfiguration » (26244) niv.2 — cibles: lanceur; déclenché quand l'état « Intrépide » (98) est appliqué (déclencheur actif 2 tour(s))",
+    "↳ la cible lance sur elle-même « Transfiguration » (26244) niv.3 — cibles: lanceur; déclenché quand l'état « Pleutre » (100) est appliqué (déclencheur actif 2 tour(s))",
+    "↳ la cible lance sur elle-même « Transfiguration » (26244) niv.4 — cibles: lanceur; déclenché quand l'état « Psychopathe » (99) est appliqué (déclencheur actif 2 tour(s))"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Applique l'état « Transfiguration » (4464) — cibles: lanceur/ennemis; 2 tours",
+    "-20% Dommages finaux — cibles: ennemis [lanceur avec état « Intrépide » (98)]; 2 tours; déclenché quand l'état « Intrépide » (98) est appliqué (déclencheur actif 2 tour(s))",
+    "-10% Résistance distance — cibles: ennemis [lanceur avec état « Pleutre » (100)]; 2 tours; déclenché quand l'état « Pleutre » (100) est appliqué (déclencheur actif 2 tour(s))",
+    "-10% Résistance mêlée — cibles: ennemis [lanceur avec état « Psychopathe » (99)]; 2 tours; déclenché quand l'état « Psychopathe » (99) est appliqué (déclencheur actif 2 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 5,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "debuff",
+    "final_damage_debuff",
+    "melee_res_debuff",
+    "range_res_debuff"
+   ],
+   "tacticalNote": "Débuff qui suit les changements de masque (-20 % dommages finaux / -10 % rés. distance / -10 % rés. mêlée).",
+   "spellLevelId": 51219
+  }
+ ],
+ "recommendedSets": [
+  {
+   "name": "Set « Rempart » (protection/tank, recommandé en groupe de 4)",
+   "rationale": "Rester majoritairement en Intrépide (+1 PA) : Plastron + Scudo/Ginga, vols de vie, attirances, Grimace pour tacler ; Pleutre en dépannage pour Apathie/Tortoruga.",
+   "choices": [
+    {
+     "pair": 1,
+     "spell": "Brincadeira",
+     "why": "2 PA, -4 PO, Intrépide/Pleutre"
+    },
+    {
+     "pair": 2,
+     "spell": "Catalepsie",
+     "why": "sustain au contact"
+    },
+    {
+     "pair": 3,
+     "spell": "Parafuso",
+     "why": "vol de vie + regroupement"
+    },
+    {
+     "pair": 4,
+     "spell": "Cavalcade",
+     "why": "engagement"
+    },
+    {
+     "pair": 5,
+     "spell": "Masque de l’Intrépide",
+     "why": "+1 PA, attirance"
+    },
+    {
+     "pair": 6,
+     "spell": "Plastron",
+     "why": "bouclier de groupe"
+    },
+    {
+     "pair": 7,
+     "spell": "Pivot",
+     "why": "repositionnement"
+    },
+    {
+     "pair": 8,
+     "spell": "Masque du Pleutre",
+     "why": "+1 PM +Fuite"
+    },
+    {
+     "pair": 9,
+     "spell": "Ponteira",
+     "why": "-50 dommages"
+    },
+    {
+     "pair": 10,
+     "spell": "Masque du Psychopathe",
+     "why": "+Tacle, DPS"
+    },
+    {
+     "pair": 11,
+     "spell": "Furia",
+     "why": "dégâts Psychopathe"
+    },
+    {
+     "pair": 12,
+     "spell": "Tortoruga",
+     "why": "bouclier à distance"
+    },
+    {
+     "pair": 13,
+     "spell": "Purgatorio",
+     "why": "désenvoûtement partiel"
+    },
+    {
+     "pair": 14,
+     "spell": "Débandade",
+     "why": "mobilité"
+    },
+    {
+     "pair": 15,
+     "spell": "Inferno",
+     "why": "gros dégâts"
+    },
+    {
+     "pair": 16,
+     "spell": "Scudo",
+     "why": "bouclier 720"
+    },
+    {
+     "pair": 17,
+     "spell": "Apathie",
+     "why": "-3 PM"
+    },
+    {
+     "pair": 18,
+     "spell": "Ronda",
+     "why": "zone + attirance"
+    },
+    {
+     "pair": 19,
+     "spell": "Fougue",
+     "why": "Insoignable/Intaclable"
+    },
+    {
+     "pair": 20,
+     "spell": "Névrose",
+     "why": "+250 Puissance allié"
+    },
+    {
+     "pair": 21,
+     "spell": "Grimace",
+     "why": "tacleur + partage"
+    },
+    {
+     "pair": 22,
+     "spell": "Transfiguration",
+     "why": "-20 % dommages finaux du boss"
+    }
+   ]
+  },
+  {
+   "name": "Set « Psychopathe » (DPS mêlée + soutien Tacle)",
+   "rationale": "Inferno/Furia/Ronda/Cavalcade, Masque du Psychopathe pour +10 % mêlée aux alliés adjacents, Névrose sur le meilleur DPS.",
+   "choices": [
+    {
+     "pair": 10,
+     "spell": "Masque du Psychopathe",
+     "why": ""
+    },
+    {
+     "pair": 15,
+     "spell": "Inferno",
+     "why": ""
+    },
+    {
+     "pair": 11,
+     "spell": "Furia",
+     "why": ""
+    },
+    {
+     "pair": 18,
+     "spell": "Ronda",
+     "why": ""
+    },
+    {
+     "pair": 13,
+     "spell": "Cabriole",
+     "why": "téléport + Air"
+    },
+    {
+     "pair": 20,
+     "spell": "Névrose",
+     "why": ""
+    },
+    {
+     "pair": 22,
+     "spell": "Carnavalo",
+     "why": "39–43 meilleur élément en Psychopathe"
+    }
+   ]
+  }
+ ],
+ "rotations": [
+  {
+   "name": "Ouverture protection (Intrépide, 12 PA)",
+   "context": "Début de vague/boss, groupe regroupé autour du Zobal.",
+   "steps": [
+    "(Déjà Intrépide au tour 1.) Plastron (4 PA) : 1 200 PV de bouclier aux alliés dans le cercle 3.",
+    "Cavalcade (4 PA) vers l’ennemi le plus menaçant (avance 4 + Air 38–42).",
+    "Catalepsie (3 PA) au contact (vol de vie Terre + -40 Fuite).",
+    "Masque de l’Intrépide (1 PA) au tour suivant seulement si besoin de l’attirance (relance 2) ; sinon Brincadeira (2 PA) si 13 PA."
+   ],
+   "expected": "Groupe protégé (≈ 1 200 PV absorbés chacun) et ennemi principal tacle/au contact."
+  },
+  {
+   "name": "Burst Psychopathe (12–13 PA)",
+   "context": "Boss au contact, alliés adjacents au Zobal.",
+   "steps": [
+    "Masque du Psychopathe (1 PA) : +10 % mêlée, +20 Tacle au Zobal et aux adjacents.",
+    "Inferno (4 PA) : Feu 41–45 + 200 Puissance.",
+    "Inferno (4 PA) : profite des +200 Puissance.",
+    "Furia (3 PA) : Terre 35–39 + 40 Dommages."
+   ],
+   "expected": "≈ 125 dégâts de base mono-cible + buffs, puis reprendre Intrépide 2 tours plus tard."
+  },
+  {
+   "name": "Tour entrave (Pleutre, 12 PA)",
+   "context": "Ennemis rapides à ralentir, Zobal à distance.",
+   "steps": [
+    "Masque du Pleutre (1 PA) : +1 PM +40 Fuite.",
+    "Apathie (4 PA) : -3 PM.",
+    "Apathie (4 PA) sur une 2e cible (2/cible) ou la même.",
+    "Picada (3 PA) : -2 PA."
+   ],
+   "expected": "Jusqu’à -6 PM et -2 PA (esquivables) répartis."
+  }
+ ],
+ "strengths": [
+  "Boucliers de groupe énormes et à faible coût (Plastron 4 PA = 1 200 PV × N alliés), relances courtes.",
+  "Polyvalence : tank, protection, entrave et dégâts selon le masque, changement de masque à 1 PA.",
+  "Buff +1 PA / +1 PM aux alliés adjacents (masques) et +250 Puissance (Névrose).",
+  "Très mobile (Reuche 7 cases, Cavalcade, Pivot, Cabriole, Débandade)."
+ ],
+ "weaknesses": [
+  "Contraintes d’état : un sort n’est lançable que dans le bon masque ; relance de 2 tours par masque.",
+  "Dégâts moyens hors Psychopathe ; portée courte de la plupart des sorts offensifs.",
+  "Diffraction et Agular touchent aussi les ennemis/alliés : risque de mauvais usage par l’IA.",
+  "Masque Grimaçant : partage des dommages qui peut tuer le Zobal si le masque est focalisé."
+ ],
+ "synergies": [
+  {
+   "with": "Iop / Sacrieur / Ouginak / Forgelance (DPS mêlée)",
+   "description": "Masque du Psychopathe (+10 % mêlée, +20 Tacle) et Intrépide (+1 PA) aux alliés adjacents ; Névrose +250 Puissance."
+  },
+  {
+   "with": "Crâ / Eliotrope / Roublard (DPS distance)",
+   "description": "Masque du Couard (+10 % distance, +1 PO) ; Tortoruga/Scudo protègent ; Pleutre +1 PM pour garder la distance."
+  },
+  {
+   "with": "Eniripsa / Steamer (soigneurs)",
+   "description": "Boucliers + soins = très haute survivabilité ; éviter Agular sur les alliés."
+  },
+  {
+   "with": "Sram / Enutrof (entrave)",
+   "description": "Apathie/Martelo complètent le retrait PM ; le Masque Grimaçant bloque les couloirs."
+  }
+ ],
+ "uncertain": [
+  "Effet 1061 (partage de dommages) du Masque Grimaçant : règle exacte de répartition.",
+  "Transe : effet 1048 « -70 % PV » interprété comme une perte de 70 % des PV actuels/érosion (2 tours) — à vérifier en jeu.",
+  "Mascarade : dommages basés sur les PV non boostés par les caractéristiques (hypothèse).",
+  "PV du Masque Grimaçant (`bonusCharacteristics.lifePoints` = 100).",
+  "Validation croisée : 22 sorts du Zobal concordent avec la table de DoMath ; Carnavalo y est noté « Neutre » alors que les données donnent « meilleur élément » (effet 2822)."
+ ],
+ "sources": [
+  "https://api.dofusdb.fr/breeds/14 ; https://api.dofusdb.fr/spell-variants?breedId=14 ; spells/spell-levels (ids cités) ; spell-states ; monsters/5152",
+  "Port C# du calcul de dégâts du client (.cache/domath/haxe, SpellManager/DamageSender) pour les masques et les dommages basés sur les PV"
+ ],
+ "aiHints": [
+  "Garder Plastron pour le tour où ≥ 3 alliés sont dans le cercle 3 et où une grosse attaque ennemie est attendue (boss qui charge).",
+  "Coller les DPS mêlée au Zobal au moment du changement de masque (bonus en croix r1).",
+  "Score de Diffraction = Σ boucliers alliés - Σ boucliers ennemis (pondérés par la menace) : ne lancer que si positif.",
+  "Planifier les masques : Intrépide (protéger) → Psychopathe (burst) → Intrépide, en tenant compte de la relance 1 tour imposée à l’ancien masque."
+ ],
+ "vortexNotes": [
+  "*En temps et en heure* inflige 500 Terre de base + 50 % des PV érodés : Plastron (1 200 PV de bouclier à tout le groupe en cercle 3) / Scudo / Ginga absorbent ce pic — le Zobal est le meilleur « filet de sécurité » des 4 classes.",
+  "Masque du Pleutre (+1 PM +40 Fuite au groupe adjacent) et Reuche/Débandade aident à sortir des lignes de l’Auroraire ; Masque de l’Intrépide (+1 PA) augmente le burst nécessaire pour tuer au bon moment.",
+  "Diffraction est risquée : elle protège aussi les monstres proches (qu’il faut tuer à l’heure exacte).",
+  "Transfiguration (-20 % dommages finaux) et Ponteira (-50 dommages) sur le Vortex en phase 2 (16 PA)."
+ ],
+ "engineRules": [
+  "**Sélection des cibles « instantanée »** : pour UN lancer de sort, les cibles de **tous** les effets (zone + masque, y compris les conditions d’état `E<id>`/`e<id>`) sont calculées **avant** d’appliquer le premier effet (port C# du client : `DamageCalculator.ExecuteSpell → GenerateTargets`, recalcul uniquement après un effet de résurrection). Preuves dans les données : la chaîne d’états Combo du Roublard (20497 : « applique Combo II si Combo I », puis « retire Combo I »…) ou l’Évolution du Steamer (pose « Évolution bloquée » puis teste « sans Évolution bloquée ») n’ont de sens qu’avec cette règle (sinon une bombe passerait de Combo I à XV en un lancer). Les **sous-sorts** (effets 1160, 792, 2794…) sont des lancers séparés : leurs cibles sont calculées au moment où l’effet parent est atteint, donc ils voient les effets déjà appliqués. ⚠ La fiche `cra.md` d’un autre agent suggère une évaluation au moment de l’application : à harmoniser (cette règle-ci est celle du code du client porté).",
+  "**Effets `forClientOnly = true`** : purement descriptifs (info-bulle). Ne jamais les exécuter ; le comportement réel est dans un sous-sort (souvent conditionnel). Exemple : « Rend 1 PA » d’Amarrage n’est réellement appliqué que si la cible est une tourelle (sous-sort 29587).",
+  "**Effets « lance un sort »** (diceNum = id du sort, diceSide = niveau) : 1160 `CasterExecuteSpell` / 2160 (limite globale) = le lanceur lance le sous-sort sur chaque cible ; 792 `TargetExecuteSpell` / 2792 = chaque cible le lance sur elle-même ; 2794 `TargetExecuteSpellOnCell` / 2795 = la cible le lance sur sa cellule ; 2960 `CasterExecuteSpellOnCell` = le lanceur le lance sur la cellule d’impact ; 1017/2017 = la cible le lance sur le déclencheur ; 1018 = le déclencheur le lance sur la cible ; 1019 = le déclencheur sur lui-même. Les effets 3792/3793 (`ExecuteSpellScriptUsage`) sont visuels. `value = 999` apparaît sur certains de ces effets (sens INCERTAIN, sans impact connu).",
+  "**Masques de cibles** (`targetMask`, liste séparée par des virgules ; port C# `SpellManager.IsSelectedByMask`) : lettres **inclusives** (au moins une doit correspondre) : `a` alliés (lanceur compris), `g` alliés sauf lanceur, `A` ennemis, `c` lanceur s’il est dans la zone, `C` lanceur partout, `h/H` joueurs alliés/ennemis (non invoqués), `i/I` invocations non statiques, `j/J` invocations, `s/S` invocations statiques, `m/M` monstres non invoqués, `l/L` joueurs ou compagnons, `d/D` compagnons ; lettres **exclusives** (toutes doivent passer) : `E<n>`/`e<n>` a / n’a pas l’état n, `F<n>`/`f<n>` est / n’est pas le monstre n (plusieurs `F` = OU), `B<n>`/`b<n>` est / n’est pas la classe n, `P`/`p` est / n’est pas dans le groupe du lanceur (lui-même, ses invocations, les invocations du même invocateur, son invocateur), `R`/`r` sort lancé via / hors portail, `V<n>`/`v<n>` PV < n % / ≥ n %, `T` téléfraggé ce tour, `W` téléportation ratée, `K` porté/lancé, `Q`/`q` quota d’invocations atteint / non atteint, `O`/`o` = la cible déclenchante, `U/u` en apparition. Préfixe `*` = la condition porte sur le **lanceur** (ex. `*E98` = le lanceur est en Intrépide).",
+  "**Conditions de lancer** (`statesCriterion`) : `HS=<n>` le lanceur doit avoir l’état n, `HS!<n>` ne doit pas l’avoir, `|` = OU, `&` = ET.",
+  "**Déclencheurs** (`triggers`, séparés par `|`) : `I` immédiat ; `TB`/`TE` début/fin du tour du porteur ; `D` dommages subis ; `DM`/`DR` en mêlée/à distance ; `DBA` par un allié ; `X` mort, `XD` mort par dommages, `XPD` par poussée, `XDBA` tué par un allié ; `P` poussé, `MA` attiré, `M` déplacé, `MS` échange de position, `PD` dommages de poussée subis, `H` soigné, `PT` traverse un portail, `PST` projette un sort via un portail, `PDT` dommages subis via portail, `CI` invoque, `CT` tacle (INCERTAIN), `CPT` une entité traverse un portail du porteur (INCERTAIN), `CMPAS` tentative de retrait PM du lanceur (INCERTAIN), `EON<n>`/`EOFF<n>` l’état n est appliqué/retiré. Pour un effet déclenché, `effectTriggerDuration` = nombre de tours pendant lesquels le déclencheur reste posé sur la cible (affiché « déclencheur actif N tour(s) ») et `duration` = durée de l’effet produit à chaque déclenchement (0 = instantané).",
+  "**Zones** (`zoneDescr.shape` + param1 = rayon, param2 = rayon minimal) : P case, C cercle, X croix, + croix diagonale, * étoile (8 directions), Q/# croix sans centre (orthogonale/diagonale), L ligne depuis l’impact, l ligne depuis le lanceur, T/- barre perpendiculaire, O anneau, G/W carré (plein/contour), D damier, U demi-cercle, V cône, F fourche, B boomerang, R rectangle, A/a toute la carte. `damageDecreaseStepPercent` (10 % par défaut) = dégressivité par case pour les dommages de zone (certaines descriptions précisent « non dégressif »).",
+  "**Boucliers** (1020) = X % du niveau du lanceur ; **soins** 1109 = X % des PV max de la cible ; **2822/3002** = dommages / soins dans le **meilleur élément** du lanceur (caractéristique la plus haute)."
+ ],
+ "masks": {
+  "stateIds": {
+   "Intrépide": 98,
+   "Psychopathe": 99,
+   "Pleutre": 100
+  },
+  "initialMask": "Intrépide (98) posé par le passif 18633 au début du combat (sans les bonus du sort)",
+  "maskSpells": [
+   {
+    "id": 13386,
+    "name": "Masque de l’Intrépide",
+    "state": 98,
+    "selfBonus": "+1 PA (permanent tant que le masque est porté)",
+    "allyBonus": "+1 PA (2 tours), croix r1, hors Zobal",
+    "other": "attire de 2 en croix r3 (rayon min 1)"
+   },
+   {
+    "id": 13409,
+    "name": "Masque de l’Infatigable",
+    "state": 98,
+    "selfBonus": "+1 PA, bouclier 100 % du niveau",
+    "allyBonus": "+1 PA (2 tours)",
+    "other": ""
+   },
+   {
+    "id": 13387,
+    "name": "Masque du Pleutre",
+    "state": 100,
+    "selfBonus": "+1 PM, +40 Fuite",
+    "allyBonus": "+1 PM, +40 Fuite (2 tours)",
+    "other": ""
+   },
+   {
+    "id": 13406,
+    "name": "Masque du Couard",
+    "state": 100,
+    "selfBonus": "+10 % dommages distance, +1 PO",
+    "allyBonus": "idem (2 tours)",
+    "other": ""
+   },
+   {
+    "id": 13388,
+    "name": "Masque du Psychopathe",
+    "state": 99,
+    "selfBonus": "+10 % dommages mêlée, +20 Tacle",
+    "allyBonus": "idem (2 tours)",
+    "other": ""
+   },
+   {
+    "id": 13414,
+    "name": "Masque de l’Hystérique",
+    "state": 99,
+    "selfBonus": "+80 Dommages poussée",
+    "allyBonus": "+80 Dommages poussée (2 tours)",
+    "other": "repousse de 1 les entités adjacentes"
+   }
+  ],
+  "switchRules": "coût 1 PA, relance 2 ; à l’activation : relance des sorts de l’ancien masque fixée à 1 tour, ancien état retiré, -1 tour de relance à Carnavalo (18651) et Transfiguration (18650), bonus de l’ancien masque désenvoûtés (soi + alliés adjacents non-Zobal)",
+  "spellRequirements": {
+   "13396": {
+    "name": "Boliche",
+    "statesCriterion": "HS=98|HS=99"
+   },
+   "14681": {
+    "name": "Ronda",
+    "statesCriterion": "HS=98|HS=99"
+   },
+   "13420": {
+    "name": "Catalepsie",
+    "statesCriterion": "HS=98"
+   },
+   "13421": {
+    "name": "Apostasie",
+    "statesCriterion": "HS=100"
+   },
+   "13387": {
+    "name": "Masque du Pleutre",
+    "statesCriterion": null
+   },
+   "13406": {
+    "name": "Masque du Couard",
+    "statesCriterion": null
+   },
+   "13425": {
+    "name": "Brincadeira",
+    "statesCriterion": "HS=98|HS=100"
+   },
+   "13405": {
+    "name": "Picada",
+    "statesCriterion": "HS=100"
+   },
+   "13403": {
+    "name": "Appui",
+    "statesCriterion": null
+   },
+   "13410": {
+    "name": "Pivot",
+    "statesCriterion": "HS!7"
+   },
+   "13388": {
+    "name": "Masque du Psychopathe",
+    "statesCriterion": null
+   },
+   "13414": {
+    "name": "Masque de l'Hystérique",
+    "statesCriterion": null
+   },
+   "13394": {
+    "name": "Furia",
+    "statesCriterion": "HS=99"
+   },
+   "13419": {
+    "name": "Bocciara",
+    "statesCriterion": "HS=99"
+   },
+   "13395": {
+    "name": "Cabriole",
+    "statesCriterion": "HS=99"
+   },
+   "14682": {
+    "name": "Purgatorio",
+    "statesCriterion": "HS=98|HS=99"
+   },
+   "13398": {
+    "name": "Tortoruga",
+    "statesCriterion": "HS=100"
+   },
+   "13411": {
+    "name": "Armadur",
+    "statesCriterion": "HS=100"
+   },
+   "13400": {
+    "name": "Reuche",
+    "statesCriterion": "HS=98|HS=99"
+   },
+   "13412": {
+    "name": "Scudo",
+    "statesCriterion": "HS=98"
+   },
+   "13393": {
+    "name": "Apathie",
+    "statesCriterion": "HS=100"
+   },
+   "13390": {
+    "name": "Rétention",
+    "statesCriterion": "HS=98"
+   },
+   "13397": {
+    "name": "Plastron",
+    "statesCriterion": "HS=98"
+   },
+   "13417": {
+    "name": "Ginga",
+    "statesCriterion": "HS=98"
+   },
+   "13402": {
+    "name": "Fougue",
+    "statesCriterion": null
+   },
+   "13404": {
+    "name": "Mascarade",
+    "statesCriterion": null
+   },
+   "13401": {
+    "name": "Débandade",
+    "statesCriterion": "HS=100&HS!7"
+   },
+   "13418": {
+    "name": "Comédie",
+    "statesCriterion": "HS=100"
+   },
+   "13391": {
+    "name": "Parafuso",
+    "statesCriterion": "HS=98"
+   },
+   "13389": {
+    "name": "Martelo",
+    "statesCriterion": "HS=98|HS=100"
+   },
+   "13422": {
+    "name": "Ponteira",
+    "statesCriterion": "HS=98|HS=100"
+   },
+   "13407": {
+    "name": "Agular",
+    "statesCriterion": "HS=98|HS=100"
+   },
+   "13399": {
+    "name": "Transe",
+    "statesCriterion": "HS=99"
+   },
+   "13426": {
+    "name": "Névrose",
+    "statesCriterion": "HS=99"
+   },
+   "13415": {
+    "name": "Cavalcade",
+    "statesCriterion": "HS=98|HS=99"
+   },
+   "13408": {
+    "name": "Appeau",
+    "statesCriterion": "HS=98"
+   },
+   "13423": {
+    "name": "Inferno",
+    "statesCriterion": "HS=99"
+   },
+   "13392": {
+    "name": "Distance",
+    "statesCriterion": "HS=100"
+   },
+   "18651": {
+    "name": "Carnavalo",
+    "statesCriterion": null
+   },
+   "18650": {
+    "name": "Transfiguration",
+    "statesCriterion": null
+   },
+   "13386": {
+    "name": "Masque de l'Intrépide",
+    "statesCriterion": null
+   },
+   "13409": {
+    "name": "Masque de l'Infatigable",
+    "statesCriterion": null
+   },
+   "13424": {
+    "name": "Grimace",
+    "statesCriterion": "HS!4106"
+   },
+   "13385": {
+    "name": "Diffraction",
+    "statesCriterion": null
+   }
+  }
+ }
+}

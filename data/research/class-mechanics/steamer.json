@@ -1,0 +1,4881 @@
+{
+ "breedId": 15,
+ "name": "Steamer",
+ "slug": "steamer",
+ "dataSource": "https://api.dofusdb.fr (breeds/15, spell-variants?breedId=15, spells, spell-levels, spell-states, monsters, effects) — données du jeu mises à jour en 2026 ; cache .cache/classes/rzse/",
+ "officialRoles": [
+  {
+   "roleId": 3,
+   "value": 3,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 7,
+   "value": 6,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 6,
+   "value": 7,
+   "description": "Pousse, attire et échange de position avec une cible. Peut utiliser ses tourelles Tactirelle et Chalutier pour les mêmes effets."
+  },
+  {
+   "roleId": 1,
+   "value": 3,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 4,
+   "value": 7,
+   "description": "Soigne avec ses sorts. Peut soigner davantage et appliquer des boucliers avec ses tourelles Gardienne et Bathyscaphe."
+  },
+  {
+   "roleId": 5,
+   "value": 7,
+   "description": "Occasionne des dommages de plus en plus importants en faisant évoluer ses tourelles Harponneuse et Foreuse."
+  },
+  {
+   "roleId": 2,
+   "value": 2,
+   "description": "Rôle"
+  },
+  {
+   "roleId": 8,
+   "value": 5,
+   "description": "Rôle"
+  }
+ ],
+ "roles": [
+  {
+   "role": "soutien-soin",
+   "element": "meilleur élément",
+   "priority": 1,
+   "description": "Secourisme 25–29 (CC 30–35) mono-cible à 1–6 PO + Intervention de la Gardienne III (12 % PV + 2 PM) + Décompression du Bathyscaphe III (+2 PA, bouclier 300) ; Gardienne posée = Maintenance 6–10 % PV max jusqu’à 3 fois par tour. Soigneur « secondaire » solide en groupe de 4."
+  },
+  {
+   "role": "placement",
+   "element": "-",
+   "priority": 1,
+   "description": "Le meilleur placeur des 4 : échanges (Marée, Compas, Boussole), téléports symétriques (Cabestan, Aiguillage, Récursivité, Tactirelle III), attirances de zone (Gouvernail, Turbine, Chalutier jusqu’à 6 cases), poussées (Torpille, Courant/Écume Marée Haute, Harmattan rebondissant, Tactirelle)."
+  },
+  {
+   "role": "dps-multi-tourelles",
+   "element": "Eau/Terre/Feu/Air + meilleur élément",
+   "priority": 2,
+   "description": "Harponneuse/Foreuse III (vols de vie 30–34 par lancer, 3/tour sur leur propre tour) + Armada/Excavation à distance + sorts directs (Marée 34–38, Ancrage 35–38, Gouvernail 31–34, Turbine/Vapor zone)."
+  },
+  {
+   "role": "entrave",
+   "element": "Terre/Eau",
+   "priority": 3,
+   "description": "Ancrage (-3 PM croix), Plongée (-3 PM), Longue-vue (-2 PM en Marée Haute), Périscope (vol 1 PM quand la cible est déplacée), Mortier (-2 PM zone), Submersion (-4 PO), Sabotage (-30 dommages)."
+  },
+  {
+   "role": "protection",
+   "element": "-",
+   "priority": 3,
+   "description": "Bathyscaphe (Revêtement 300 PV, aura bouclier), Blindage (500/1000 PV + Indéplaçable), Scaphandre (400 PV + Intaclable), Brise l’Âme (la tourelle intercepte les dommages mêlée des alliés adjacents)."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Tourelles : pose, limite, statistiques",
+   "description": "Les 6 sorts de tourelle coûtent 2 PA, PO 1–7 avec ligne de vue sur case libre, relance 3, 1 lancer/tour et **1/tour en limite globale** (une seule tourelle posée par tour, quel que soit le type). Effet 181 `SummonCreature` (monstres 5836 Harponneuse, 5832 Chalutier, 5835 Gardienne, 5833 Foreuse, 5837 Tactirelle, 5831 Bathyscaphe ; grade = grade du sort). Statistiques : 6 PA, 0 PM (immobiles), 15 % de résistance partout, `bonusCharacteristics` = 100 % Force/Intelligence/Chance/Agilité/Sagesse et dommages élémentaires du Steamer, `lifePoints` 180 (INCERTAIN : 180 % des PV de base du Steamer), tacle hérité à 100 % (seul le Chalutier peut tacler). Les tourelles ne consomment pas d’emplacement d’invocation (`useSummonSlot=false`). Sort initial de chaque tourelle (14279, 14289…) : pose l’état « Tourelle Rang 1/2/3 » (selon le grade, utilisé par les sorts spéciaux), tue l’éventuelle tourelle du **même type** déjà présente, et programme les auras d’Évolution II/III au début de son tour.",
+   "implementationNotes": "IA des tourelles non contrôlées (Évolution I/II) : à leur tour, lancer leur sort de base sur la meilleure cible à portée (Espadon/Forage : ennemi au plus bas PV effectif ; Maintenance/Revêtement : allié le plus blessé/menacé ; Chalutage/Barycentre : si ≥ 1 ennemi dans la zone et que le déplacement est favorable). INCERTAIN : comportement exact de l’IA serveur des tourelles."
+  },
+  {
+   "name": "Évolution des tourelles (états 134/135) et contrôle",
+   "description": "Évolution I = pas d’état. Évolution II = état 134 + « Tourelle évoluée » (6093). Évolution III = état 135 + « Contrôlé » (2130) + effet 2027 `ControlEntity` : la tourelle est jouée par le joueur (6 PA) et ses sorts conditionnés `HS=135` deviennent disponibles. Sources : Évolution (1 PA, 1/tour, +1 niveau + soin 50 % PV max, 25 % si déjà III ; sur un allié non-tourelle : +100 Puissance 2 tours), Surtension (2 PA, relance 2 : passe directement en III pour 1 tour puis redescend d’un niveau au tour suivant, soin 100 % ; sur allié +200 Puissance 1 tour), Vapor/Turbine (+1 niveau aux tourelles dans la zone du sort), Court-circuit (+1 niveau + 100 % CC à la tourelle 1 tour). L’état « Évolution bloquée » (6094, 1 tour) empêche une 2e évolution le même tour. Rétrogradation : Soupape et Sabotage (-1 niveau, et la relance du sort de pose de cette tourelle est réduite d’1 tour).",
+   "implementationNotes": "Machine à états {I, II, III} par tourelle + verrou par tour. Aura de début de tour : sous-sorts 14280/14281 (etc.) avec masque `l,m,P,*E134` → ne vise que le Steamer (seul joueur du « groupe » de la tourelle) dans un cercle de 7 (rayon min 1) ; la description exige aussi la ligne de vue. Le contrôle (2027) signifie que l’IA de groupe doit planifier le tour de la tourelle comme celui d’un personnage."
+  },
+  {
+   "name": "Sorts spéciaux de tourelle (activation à distance)",
+   "description": "Sonar/Embuscade (offensifs), Secourisme/Sauvetage (défensifs), Plongée/Submersion (tactiques) posent un état d’activation sur la cible (130/131/132) puis « Activation Steamer » (23872 niv.1/2/3) fait lancer à chaque tourelle du Steamer en Évolution III de la bonne famille son sort spécial sur cette cible, à n’importe quelle distance (PO 0–63, sans ligne de vue) : Armada (Harponneuse), Excavation (Foreuse), Intervention (Gardienne), Décompression (Bathyscaphe), Écoutille (Tactirelle), Mortier (Chalutier). La puissance dépend du « Tourelle Rang » (grade du sort de pose).",
+   "implementationNotes": "Effets 2794 (`TargetExecuteSpellOnCell`) : la tourelle lance le sort spécial sur sa propre cellule mais la cible est l’entité marquée (état 130/131/132, masques `E130`…). Implémenter : pour chaque tourelle III du lanceur → lancer spécial(rang) sur la cible marquée."
+  },
+  {
+   "name": "Marée (états Marée Basse 5283 / Marée Haute 5282)",
+   "description": "Le passif « Marée » (29129 niv.1) met le Steamer en Marée Basse au début du combat. Le sort Marée (13820, 3 PA, PO 0–3 en ligne/diagonale) : sur une cible, échange de position et Eau 34–38 ; **sur soi**, bascule la marée, rend 3 PA et +1 lancer (2 fois max par tour : états Marée I/II). Effets dépendants : Longue-vue (Basse : +3 PO au Steamer et à l’allié ciblé ; Haute : -2 PM), Écume (Basse : attire de 5 ; Haute : repousse de 3), Courant (Basse : attire de 6 ; Haute : repousse de 4 — une même cible ne peut être déplacée qu’une fois par tour par une marée), Périscope (Basse : sans ligne de vue et portée non modifiable ; Haute : portée modifiable et ligne de vue).",
+   "implementationNotes": "Booléen `tideHigh`. Basculer coûte 0 PA net. Les sous-sorts « Marée Basse : »/« Marée Haute : » (29146/29147) sont des info-bulles ; les vrais effets portent des masques `*E5282`/`*e5282` (état du lanceur)."
+  },
+  {
+   "name": "Interactions sorts ↔ tourelles (remboursements, mouvements)",
+   "description": "Amarrage sur une tourelle : rend 1 PA ; Ressac sur une tourelle : rend 2 PA et la poussée est sans dommages ; Gouvernail et Ancrage : +1 PA si une tourelle est dans la zone ; Aspiration/Piston : déplacement de 6 cases (au lieu de 3) vers/depuis une tourelle ; Boussole : téléport symétrique par rapport à une tourelle ou échange/téléport adjacent ; Aiguillage/Récursivité : si la cible finit son déplacement au contact d’une tourelle, elle est téléportée symétriquement et l’effet est réappliqué ; Cabestan sur une tourelle : téléport symétrique des entités du carré ; Assistance : téléporte un allié près du Steamer (et soigne la tourelle 25 %) ; Brise l’Âme : état Automatique (la tourelle intercepte les dommages de mêlée des alliés adjacents et riposte avec son sort automatique quand un allié subit des dommages à distance).",
+   "implementationNotes": "Ces effets passent par des sous-sorts ciblant `TOURELLES` (`a,F5831…F5837`) — les effets de premier niveau « Rend 1 PA » sont souvent `forClientOnly` (info-bulle) : NE PAS les appliquer, seul le sous-sort conditionnel compte."
+  }
+ ],
+ "summons": [
+  {
+   "name": "Harponneuse",
+   "monsterId": 5836,
+   "grade": "3 (sort g3)",
+   "apmp": "6/0",
+   "res": "15 partout",
+   "canPlay": "oui (IA ; contrôlée en Évol III)",
+   "slot": "aucun",
+   "notes": "Espadon, Harponnage (III), Armada"
+  },
+  {
+   "name": "Chalutier",
+   "monsterId": 5832,
+   "grade": "2",
+   "apmp": "6/0",
+   "res": "15",
+   "canPlay": "oui",
+   "slot": "aucun",
+   "notes": "Chalutage, Hauban (III), Mortier ; tacle"
+  },
+  {
+   "name": "Gardienne",
+   "monsterId": 5835,
+   "grade": "3",
+   "apmp": "6/0",
+   "res": "15",
+   "canPlay": "oui",
+   "slot": "aucun",
+   "notes": "Maintenance, Faro (III), Intervention"
+  },
+  {
+   "name": "Foreuse",
+   "monsterId": 5833,
+   "grade": "2",
+   "apmp": "6/0",
+   "res": "15",
+   "canPlay": "oui",
+   "slot": "aucun",
+   "notes": "Forage, Tunnelier (III), Excavation"
+  },
+  {
+   "name": "Tactirelle",
+   "monsterId": 5837,
+   "grade": "3",
+   "apmp": "6/0",
+   "res": "15",
+   "canPlay": "oui",
+   "slot": "aucun",
+   "notes": "Barycentre, Sextant (III), Écoutille"
+  },
+  {
+   "name": "Bathyscaphe",
+   "monsterId": 5831,
+   "grade": "1",
+   "apmp": "6/0",
+   "res": "15",
+   "canPlay": "oui",
+   "slot": "aucun",
+   "notes": "Revêtement, Rivet (III), Décompression"
+  }
+ ],
+ "keyStates": [
+  {
+   "id": 134,
+   "name": "Évolution II",
+   "use": "tourelle niveau 2"
+  },
+  {
+   "id": 135,
+   "name": "Évolution III",
+   "use": "tourelle niveau 3 (contrôlable)"
+  },
+  {
+   "id": 6094,
+   "name": "Évolution bloquée",
+   "use": "1 évolution par tour"
+  },
+  {
+   "id": 3495,
+   "name": "Tourelle Rang 1/2/3 (3495–3497)",
+   "use": "puissance des spéciaux"
+  },
+  {
+   "id": 5283,
+   "name": "Marée Basse",
+   "use": "état de départ"
+  },
+  {
+   "id": 5282,
+   "name": "Marée Haute",
+   "use": "après bascule"
+  },
+  {
+   "id": 5313,
+   "name": "Mal de Mer",
+   "use": "Périscope : vol de PM si la cible est déplacée"
+  },
+  {
+   "id": 5294,
+   "name": "Automatique",
+   "use": "Brise l’Âme"
+  },
+  {
+   "id": 130,
+   "name": "Activation offensive (131 défensive, 132 tactique)",
+   "use": "marque la cible des sorts spéciaux"
+  }
+ ],
+ "spells": [
+  {
+   "id": 13837,
+   "pairIndex": 1,
+   "variantOf": 13866,
+   "isBaseVariant": true,
+   "name": "Longue-vue",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau aux ennemis et applique des effets selon la Marée :\n• Marée Basse : augmente la Portée du lanceur et de l'allié ciblé.\n• Marée Haute : retire des PM aux ennemis.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 25,
+     "max": 29,
+     "critMin": 30,
+     "critMax": 35,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Eau 25 à 29 — cibles: ennemis",
+    "+3 PO — cibles: lanceur/alliés [lanceur sans état « Marée Haute » (5282)]; 2 tours",
+    "-2 PM (esquivable) — cibles: ennemis [lanceur avec état « Marée Haute » (5282)]; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 30 à 35"
+   ],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Marée Basse : » (29147) niv.1 — cibles: alliés/ennemis",
+    "le lanceur lance « Marée Haute : » (29146) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 3,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Dommages Eau 15 à 17 (g1) → Dommages Eau 25 à 29 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 66) vs g3: Dommages Eau 20 à 23 (g2) → Dommages Eau 25 à 29 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "ally_range_buff",
+    "damage",
+    "mp_removal",
+    "tide"
+   ],
+   "tacticalNote": "Eau 25–29 ; Marée Basse : +3 PO au Steamer et à l’allié ciblé ; Marée Haute : -2 PM. 3/tour.",
+   "spellLevelId": 42781
+  },
+  {
+   "id": 13866,
+   "pairIndex": 1,
+   "variantOf": 13837,
+   "isBaseVariant": false,
+   "name": "Corrosion",
+   "unlockLevel": 95,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air et réduit les Résistances Poussée.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 17,
+     "max": 19,
+     "critMin": 20,
+     "critMax": 22,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Air 17 à 19 — cibles: alliés/ennemis",
+    "-60 Résistance poussée — cibles: alliés/ennemis; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 20 à 22"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 2,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 95) vs g2: Dommages Air 13 à 14 (g1) → Dommages Air 17 à 19 (g2) ; -40 Résistance poussée (g1) → -60 Résistance poussée (g2) ; PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "damage",
+    "push_res_debuff"
+   ],
+   "tacticalNote": "Air 2 PA, -60 résistance poussée (2 tours) : prépare les dommages de poussée (Tactirelle, Torpille, Harmattan).",
+   "spellLevelId": 77727
+  },
+  {
+   "id": 13857,
+   "pairIndex": 2,
+   "variantOf": 13867,
+   "isBaseVariant": true,
+   "name": "Amarrage",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre aux ennemis et attire la cible.\n\nRend 1 PA au lanceur si le sort est lancé sur une Tourelle.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 16,
+     "max": 18,
+     "critMin": 19,
+     "critMax": 22,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Amarrage » (29587) niv.1 — cibles: alliés [tourelles]",
+    "↳ Rend 1 PA — cibles: lanceur",
+    "Dommages Terre 16 à 18 — cibles: ennemis",
+    "Attire de 2 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 19 à 22"
+   ],
+   "tooltipOnlyEffects": [
+    "Rend 1 PA — cibles: lanceur"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 2,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Dommages Terre 11 à 13 (g1) → Dommages Terre 16 à 18 (g3) ; PO max 5 (g1) → 7 (g3)",
+    "g2 (niv 67) vs g3: Dommages Terre 14 à 16 (g2) → Dommages Terre 16 à 18 (g3) ; PO max 6 (g2) → 7 (g3)"
+   ],
+   "role": [
+    "ap_refund",
+    "damage",
+    "pull"
+   ],
+   "tacticalNote": "Terre 16–18 + attire 2 ; sur une tourelle : rend 1 PA (2 PA → 1 PA net) et la rapproche.",
+   "spellLevelId": 78586
+  },
+  {
+   "id": 13867,
+   "pairIndex": 2,
+   "variantOf": 13857,
+   "isBaseVariant": false,
+   "name": "Soupape",
+   "unlockLevel": 100,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu et réduit les chances de Critique.\n\nSur une Tourelle : appliquer les effets sur les ennemis en zone et la rétrograde pour réduire son temps de relance.\n• Évolution III : cercle de taille 3.\n• Évolution II : cercle de taille 2.\n• Évolution I : cercle de taille 1. Le temps de relance de la Tourelle n'est pas réduit.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 13,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18,
+     "zone": "C3,1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I",
+     "via": "23832#6"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 13,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18,
+     "zone": "C2,1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I",
+     "via": "23832#5"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 13,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18,
+     "zone": "C1,1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I",
+     "via": "23832#4"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 13,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 13,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18,
+     "zone": "P1",
+     "targetMask": "a,f5836,f5832,f5835,f5833,f5837,f5831",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Soupape » (23832) niv.6 — cibles: alliés [avec état « Évolution III » (135); tourelles]",
+    "↳ la cible lance sur le déclencheur « Soupape » (23832) niv.7 — cibles: alliés [tourelles]",
+    "↳ ↳ Sort « Harponneuse » (13829) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Harponneuse (5836)]",
+    "↳ ↳ Sort « Gardienne » (13830) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Gardienne (5835)]",
+    "↳ ↳ Sort « Tactirelle » (13831) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Tactirelle (5837)]",
+    "↳ ↳ Sort « Chalutier » (13859) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Chalutier (5832)]",
+    "↳ ↳ Sort « Foreuse » (13864) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Foreuse (5833)]",
+    "↳ ↳ Sort « Bathyscaphe » (13869) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Bathyscaphe (5831)]",
+    "↳ ↳ Retire l'état « Évolution bloquée » (6094) — cibles: lanceur",
+    "↳ Dommages Feu 13 à 15 — cercle r3 (rayon min 1); cibles: ennemis",
+    "↳ le lanceur lance « Soupape » (23832) niv.9 — cercle r3 (rayon min 1); cibles: ennemis",
+    "↳ ↳ -20% Critique — cibles: alliés/ennemis; 1 tour",
+    "↳ le lanceur lance « Évolution II » (13851) niv.3 — cibles: alliés [tourelles]",
+    "↳ ↳ fait passer la tourelle en Évolution II (état 134, apparence, « Tourelle évoluée »)",
+    "le lanceur lance « Soupape » (23832) niv.5 — cibles: alliés [avec état « Évolution II » (134); tourelles]",
+    "↳ la cible lance sur le déclencheur « Soupape » (23832) niv.7 — cibles: alliés [tourelles]",
+    "↳ Dommages Feu 13 à 15 — cercle r2 (rayon min 1); cibles: ennemis",
+    "↳ le lanceur lance « Soupape » (23832) niv.9 — cercle r2 (rayon min 1); cibles: ennemis",
+    "↳ le lanceur lance « Évolution I » (29247) niv.3 — cibles: alliés [tourelles]",
+    "↳ ↳ rétrograde la tourelle en Évolution I (retire les états II/III)",
+    "le lanceur lance « Soupape » (23832) niv.4 — cibles: alliés [sans état « Évolution II » (134); sans état « Évolution III » (135); tourelles]",
+    "↳ Dommages Feu 13 à 15 — cercle r1 (rayon min 1); cibles: ennemis",
+    "↳ le lanceur lance « Soupape » (23832) niv.9 — cercle r1 (rayon min 1); cibles: ennemis",
+    "Dommages Feu 13 à 15 — cibles: ennemis",
+    "Dommages Feu 13 à 15 — cibles: alliés [hors tourelles]",
+    "le lanceur lance « Soupape » (23832) niv.9 — cibles: ennemis",
+    "le lanceur lance « Soupape » (23832) niv.9 — cibles: alliés [hors tourelles]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 16 à 18 ; Dommages Feu 16 à 18"
+   ],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « -1 Évolution » (29132) niv.1 — cibles: alliés/ennemis",
+    "-20% Critique — cibles: alliés/ennemis; 1 tour"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 100) vs g2: le lanceur lance « Soupape » (23832) niv.3 (g1) → le lanceur lance « Soupape » (23832) niv.6 (g2) ; le lanceur lance « Soupape » (23832) niv.2 (g1) → le lanceur lance « Soupape » (23832) niv.5 (g2) ; le lanceur lance « Soupape » (23832) niv.1 (g1) → le lanceur lance « Soupape » (23832) niv.4 (g2) ; Dommages Feu 10 à 12 (g1) → Dommages Feu 13 à 15 (g2) ; Dommages Feu 10 à 12 (g1) → Dommages Feu 13 à 15 (g2) ; le lanceur lance « Soupape » (23832) niv.8 (g1) → le lanceur lance « Soupape » (23832) niv.9 (g2) ; le lanceur lance « Soupape » (23832) niv.8 (g1) → le lanceur lance « Soupape » (23832) niv.9 (g2) ; PO max 6 (g1) → 7 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "crit_debuff",
+    "damage"
+   ],
+   "tacticalNote": "Feu + -20 % CC ; sur une tourelle : frappe en cercle 1/2/3 autour d’elle selon son évolution, la rétrograde et réduit la relance de son sort de pose.",
+   "spellLevelId": 81419
+  },
+  {
+   "id": 13865,
+   "pairIndex": 3,
+   "variantOf": 13828,
+   "isBaseVariant": true,
+   "name": "Torpille",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air aux ennemis et repousse la cible.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 25,
+     "max": 29,
+     "critMin": 30,
+     "critMax": 35,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Dommages Air 25 à 29 — cibles: ennemis",
+    "Repousse de 3 case(s) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 30 à 35"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: Dommages Air 15 à 17 (g1) → Dommages Air 25 à 29 (g3) ; Repousse de 2 case(s) (g1) → Repousse de 3 case(s) (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 68) vs g3: Dommages Air 20 à 23 (g2) → Dommages Air 25 à 29 (g3) ; Repousse de 2 case(s) (g2) → Repousse de 3 case(s) (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Air 25–29 + repousse 3 (en ligne) : classique.",
+   "spellLevelId": 43760
+  },
+  {
+   "id": 13828,
+   "pairIndex": 3,
+   "variantOf": 13865,
+   "isBaseVariant": false,
+   "name": "Gouvernail",
+   "unlockLevel": 105,
+   "gradeUsed": 2,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre aux ennemis et attire les cibles jusqu'au centre en zone.\nLes dommages de zone ne sont pas dégressifs.\n\nRend 1 PA au lanceur si une Tourelle est dans la zone d'effet.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 31,
+     "max": 34,
+     "critMin": 37,
+     "critMax": 41,
+     "zone": "*2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix diagonale sans centre r1",
+    "croix diagonale sans centre r2 (rayon min 2)",
+    "croix sans centre r1",
+    "croix sans centre r2 (rayon min 2)",
+    "étoile r2"
+   ],
+   "effectsSummary": [
+    "le lanceur lance (limite globale) « Gouvernail » (29589) niv.1 — étoile r2; cibles: alliés [tourelles]",
+    "↳ Rend 1 PA — cibles: lanceur",
+    "Dommages Terre 31 à 34 — étoile r2; cibles: ennemis",
+    "Attire de 1 case(s) — croix sans centre r1; cibles: alliés/ennemis",
+    "Attire de 2 case(s) — croix diagonale sans centre r1; cibles: alliés/ennemis",
+    "Attire de 2 case(s) — croix sans centre r2 (rayon min 2); cibles: alliés/ennemis",
+    "Attire de 4 case(s) — croix diagonale sans centre r2 (rayon min 2); cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 37 à 41"
+   ],
+   "tooltipOnlyEffects": [
+    "Rend 1 PA — cibles: lanceur",
+    "Attire de 2 case(s) — étoile r2; cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 4,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 4,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 105) vs g2: Dommages Terre 26 à 29 (g1) → Dommages Terre 31 à 34 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "ap_refund",
+    "damage",
+    "pull"
+   ],
+   "tacticalNote": "Terre 31–34 en étoile r2 non dégressif + attire tout vers le centre ; +1 PA si une tourelle est dans la zone.",
+   "spellLevelId": 42791
+  },
+  {
+   "id": 13858,
+   "pairIndex": 4,
+   "variantOf": 13870,
+   "isBaseVariant": true,
+   "name": "Sabotage",
+   "unlockLevel": 1,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu et retire des Dommages aux ennemis en zone.\nLes dommages du sort sont augmentés pour chaque Tourelle évoluée dans la zone avant d'appliquer les effets.\n\nRétrograde les Tourelles touchées pour réduire leur temps de relance.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 22,
+     "max": 25,
+     "critMin": 26,
+     "critMax": 30,
+     "zone": "C2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "cercle r2"
+   ],
+   "effectsSummary": [
+    "le lanceur lance « Sabotage » (29162) niv.3 — cercle r2; cibles: alliés [avec état « Tourelle évoluée » (6093); tourelles]",
+    "↳ la cible lance sur le déclencheur « Sabotage » (29162) niv.4 — cibles: alliés [tourelles]",
+    "↳ ↳ Sort « Harponneuse » (13829) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Harponneuse (5836)]",
+    "↳ ↳ Sort « Gardienne » (13830) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Gardienne (5835)]",
+    "↳ ↳ Sort « Tactirelle » (13831) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Tactirelle (5837)]",
+    "↳ ↳ Sort « Chalutier » (13859) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Chalutier (5832)]",
+    "↳ ↳ Sort « Foreuse » (13864) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Foreuse (5833)]",
+    "↳ ↳ Sort « Bathyscaphe » (13869) : -1 tour(s) de relance — cibles: alliés [lanceur =monstre Bathyscaphe (5831)]",
+    "↳ ↳ Retire l'état « Évolution bloquée » (6094) — cibles: lanceur",
+    "↳ Sort « Sabotage » (13858) : +9 dommages de base — cibles: lanceur; 1 tour",
+    "Dommages Feu 22 à 25 — cercle r2; cibles: ennemis",
+    "-30 Dommages — cercle r2; cibles: ennemis; 1 tour",
+    "le lanceur lance « Sabotage » (29162) niv.5 — cercle r2; cibles: alliés [avec état « Tourelle évoluée » (6093); tourelles]",
+    "↳ le lanceur lance « Évolution I » (29247) niv.3 — cibles: alliés [avec état « Évolution II » (134); tourelles]",
+    "↳ ↳ rétrograde la tourelle en Évolution I (retire les états II/III)",
+    "↳ le lanceur lance « Évolution II » (13851) niv.3 — cibles: alliés [avec état « Évolution III » (135); tourelles]",
+    "↳ ↳ fait passer la tourelle en Évolution II (état 134, apparence, « Tourelle évoluée »)",
+    "Désenvoûte les effets du sort « Sabotage » (29162) — cibles: lanceur"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 26 à 30"
+   ],
+   "tooltipOnlyEffects": [
+    "Sort « Sabotage » (13858) : +9 dommages de base — cibles: lanceur",
+    "le lanceur lance « -1 Évolution » (29132) niv.1 — cercle r2; cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "range": [
+      0,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 3,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 1) vs g3: le lanceur lance « Sabotage » (29162) niv.1 (g1) → le lanceur lance « Sabotage » (29162) niv.3 (g3) ; Dommages Feu 13 à 15 (g1) → Dommages Feu 22 à 25 (g3) ; -10 Dommages (g1) → -30 Dommages (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 69) vs g3: le lanceur lance « Sabotage » (29162) niv.2 (g2) → le lanceur lance « Sabotage » (29162) niv.3 (g3) ; Dommages Feu 18 à 21 (g2) → Dommages Feu 22 à 25 (g3) ; -20 Dommages (g2) → -30 Dommages (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "damage_debuff"
+   ],
+   "tacticalNote": "Feu 22–25 en cercle 2 + -30 Dommages ; +9 dégâts de base par tourelle évoluée dans la zone ; rétrograde les tourelles touchées.",
+   "spellLevelId": 77763
+  },
+  {
+   "id": 13870,
+   "pairIndex": 4,
+   "variantOf": 13858,
+   "isBaseVariant": false,
+   "name": "Périscope",
+   "unlockLevel": 110,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau aux ennemis et leur applique l'état Mal de Mer :\n• Vole des PM si la cible est attirée, poussée ou transposée (cumulable 3 fois).\n\n• Marée Basse : désactive la portée modifiable et la ligne de vue du sort.\n• Marée Haute : rend sa portée modifiable et active sa ligne de vue.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 28,
+     "max": 32,
+     "critMin": 34,
+     "critMax": 38,
+     "zone": "X1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1"
+   ],
+   "effectsSummary": [
+    "Dommages Eau 28 à 32 — croix r1; cibles: ennemis",
+    "le lanceur lance « Périscope » (29154) niv.3 — croix r1; cibles: ennemis",
+    "↳ Applique l'état « Mal de Mer » (5313) — cibles: alliés/ennemis; 2 tours",
+    "le lanceur lance « Périscope » (29154) niv.1 — croix r1; cibles: ennemis; déclenché quand le porteur se déplace/est déplacé (déclencheur actif 2 tour(s))",
+    "↳ le lanceur lance « Périscope » (29154) niv.2 — cibles: ennemis [sans état « Flibuste III » (3557)]",
+    "↳ ↳ la cible lance sur elle-même « Périscope » (30758) niv.1 — cibles: lanceur",
+    "↳ ↳ -1 PM (esquivable) — cibles: alliés/ennemis; 1 tour",
+    "↳ ↳ Désenvoûte les effets du sort « Périscope » (30758) — cibles: lanceur"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 34 à 38"
+   ],
+   "tooltipOnlyEffects": [
+    "Applique l'état « Mal de Mer » (5313) — croix r1; cibles: ennemis; 2 tours",
+    "Vole 1 PM — croix r1; cibles: ennemis; 1 tour; déclenché quand le porteur se déplace/est déplacé (déclencheur actif 2 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 110) vs g2: Dommages Eau 24 à 28 (g1) → Dommages Eau 28 à 32 (g2) ; PO max 4 (g1) → 5 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "mp_removal",
+    "mp_steal",
+    "tide"
+   ],
+   "tacticalNote": "Eau 28–32 en croix + état Mal de Mer (vol 1 PM à chaque déplacement forcé, 3 cumuls).",
+   "spellLevelId": 77721
+  },
+  {
+   "id": 13829,
+   "pairIndex": 5,
+   "variantOf": 13859,
+   "isBaseVariant": true,
+   "name": "Harponneuse",
+   "unlockLevel": 5,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Tourelle offensive qui vole de la vie dans le meilleur élément du lanceur.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque Harponneuse (5836) grade 3 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Évolutions Harponneuse » (29190) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 5) vs g3: Invoque Harponneuse (5836) grade 1 (g1) → Invoque Harponneuse (5836) grade 3 (g3)",
+    "g2 (niv 72) vs g3: Invoque Harponneuse (5836) grade 2 (g2) → Invoque Harponneuse (5836) grade 3 (g3)"
+   ],
+   "role": [
+    "summon",
+    "turret"
+   ],
+   "tacticalNote": "Tourelle offensive principale (vol de vie meilleur élément, aura +Dommages/+CC).",
+   "spellLevelId": 42755
+  },
+  {
+   "id": 13859,
+   "pairIndex": 5,
+   "variantOf": 13829,
+   "isBaseVariant": false,
+   "name": "Chalutier",
+   "unlockLevel": 115,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Tourelle tactique qui attire les cibles en zone autour d'elle et qui peut tacler.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque Chalutier (5832) grade 2 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Évolutions Chalutier » (29198) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 115) vs g2: Invoque Chalutier (5832) grade 1 (g1) → Invoque Chalutier (5832) grade 2 (g2)"
+   ],
+   "role": [
+    "summon",
+    "turret"
+   ],
+   "tacticalNote": "Tourelle tactique : regroupe les ennemis vers elle et tacle ; aura +Tacle/+Retrait PM.",
+   "spellLevelId": 43763
+  },
+  {
+   "id": 13832,
+   "pairIndex": 6,
+   "variantOf": 13868,
+   "isBaseVariant": true,
+   "name": "Évolution",
+   "unlockLevel": 10,
+   "gradeUsed": 3,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Évolue et soigne une Tourelle.\nLes soins sont plus importants sur une Tourelle qui évolue.\n\nSur un allié : augmente sa Puissance.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 50,
+     "max": 50,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,F5836,F5832,F5835,F5833,F5837,F5831,e135,e6094",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 25,
+     "max": 25,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,F5836,F5832,F5835,F5833,F5837,F5831,E135",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 25,
+     "max": 25,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,F5836,F5832,F5835,F5833,F5837,F5831,e135,E6094",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Évolution bloquée » (6094) — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]; 1 tour; non désenvoûtable",
+    "le lanceur lance « Évolution II » (13851) niv.3 — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution II » (134); sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ fait passer la tourelle en Évolution II (état 134, apparence, « Tourelle évoluée »)",
+    "le lanceur lance « Évolution III » (13852) niv.3 — cibles: alliés [avec état « Évolution II » (134); sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ fait passer la tourelle en Évolution III (état 135, devient CONTRÔLABLE, sort avancé débloqué)",
+    "Soin = 50% des PV max — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]",
+    "Soin = 25% des PV max — cibles: alliés [avec état « Évolution III » (135); tourelles]",
+    "Soin = 25% des PV max — cibles: alliés [sans état « Évolution III » (135); avec état « Évolution bloquée » (6094); tourelles]",
+    "+100 Puissance — cibles: alliés [hors tourelles]; 2 tours"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « +1 Évolution » (23844) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 1,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 1,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 1,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 10) vs g3: +40 Puissance (g1) → +100 Puissance (g3) ; PO max 5 (g1) → 7 (g3)",
+    "g2 (niv 77) vs g3: +70 Puissance (g2) → +100 Puissance (g3) ; PO max 6 (g2) → 7 (g3)"
+   ],
+   "role": [
+    "ally_power_buff",
+    "heal",
+    "turret_evolution"
+   ],
+   "tacticalNote": "1 PA : +1 évolution + soin 50 % de la tourelle ; sur un allié +100 Puissance (2 tours).",
+   "spellLevelId": 42761
+  },
+  {
+   "id": 13868,
+   "pairIndex": 6,
+   "variantOf": 13832,
+   "isBaseVariant": false,
+   "name": "Surtension",
+   "unlockLevel": 120,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Évolue au maximum et soigne une Tourelle.\nLes soins sont plus importants sur une Tourelle qui évolue.\n\nSur un allié : augmente sa Puissance.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 100,
+     "max": 100,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,F5836,F5832,F5835,F5833,F5837,F5831,e135,e6094",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 50,
+     "max": 50,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,F5836,F5832,F5835,F5833,F5837,F5831,E135",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 50,
+     "max": 50,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,F5836,F5832,F5835,F5833,F5837,F5831,e135,E6094",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Évolution bloquée » (6094) — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]; 1 tour; non désenvoûtable",
+    "le lanceur lance « Évolution III » (13852) niv.3 — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ fait passer la tourelle en Évolution III (état 135, devient CONTRÔLABLE, sort avancé débloqué)",
+    "Soin = 100% des PV max — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]",
+    "Soin = 50% des PV max — cibles: alliés [avec état « Évolution III » (135); tourelles]",
+    "Soin = 50% des PV max — cibles: alliés [sans état « Évolution III » (135); avec état « Évolution bloquée » (6094); tourelles]",
+    "+200 Puissance — cibles: alliés [hors tourelles]; 1 tour"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Surtension » (29149) niv.3 — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]",
+    "le lanceur lance « +1 à 2 Évolutions » (29131) niv.1 — cibles: alliés/ennemis; 1 tour",
+    "Applique l'état « Surtension » (2921) — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]; 2 tours",
+    "le lanceur lance « -1 Évolution » (29132) niv.1 — cibles: alliés [sans état « Évolution bloquée » (6094); tourelles]; après 1 tour(s)"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 2,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 187,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 120) vs g2: +150 Puissance (g1) → +200 Puissance (g2) ; PO max 6 (g1) → 7 (g2)"
+   ],
+   "role": [
+    "ally_power_buff",
+    "heal",
+    "turret_evolution"
+   ],
+   "tacticalNote": "Évolution III immédiate (1 tour) puis -1 : permet le sort spécial/contrôle dès la pose.",
+   "spellLevelId": 77661
+  },
+  {
+   "id": 13830,
+   "pairIndex": 7,
+   "variantOf": 13864,
+   "isBaseVariant": true,
+   "name": "Gardienne",
+   "unlockLevel": 15,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Tourelle défensive qui soigne.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque Gardienne (5835) grade 3 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Évolutions Gardienne » (29193) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 15) vs g3: Invoque Gardienne (5835) grade 1 (g1) → Invoque Gardienne (5835) grade 3 (g3)",
+    "g2 (niv 82) vs g3: Invoque Gardienne (5835) grade 2 (g2) → Invoque Gardienne (5835) grade 3 (g3)"
+   ],
+   "role": [
+    "summon",
+    "turret"
+   ],
+   "tacticalNote": "Tourelle de soin (Maintenance 3×/tour) ; aura +Vitalité/+PM.",
+   "spellLevelId": 42769
+  },
+  {
+   "id": 13864,
+   "pairIndex": 7,
+   "variantOf": 13830,
+   "isBaseVariant": false,
+   "name": "Foreuse",
+   "unlockLevel": 125,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Tourelle offensive qui vole de la vie dans le meilleur élément du lanceur.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque Foreuse (5833) grade 2 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Évolutions Foreuse » (29200) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 125) vs g2: Invoque Foreuse (5833) grade 1 (g1) → Invoque Foreuse (5833) grade 2 (g2)"
+   ],
+   "role": [
+    "summon",
+    "turret"
+   ],
+   "tacticalNote": "Seconde tourelle offensive (vol de vie en ligne sans LdV) ; aura +Puissance/+PO.",
+   "spellLevelId": 43768
+  },
+  {
+   "id": 13838,
+   "pairIndex": 8,
+   "variantOf": 14308,
+   "isBaseVariant": true,
+   "name": "Aspiration",
+   "unlockLevel": 20,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 2,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Rapproche le lanceur vers l'allié ciblé.\nLe rapprochement est plus important sur les Tourelles.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur avance de 3 case(s) — cibles: alliés [hors tourelles]",
+    "Le lanceur avance de 6 case(s) — cibles: alliés [tourelles]"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 2,
+     "range": [
+      2,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 2,
+     "range": [
+      2,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 2,
+     "range": [
+      2,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 20) vs g3: PO max 6 (g1) → 8 (g3) ; lancers/tour 1 (g1) → 2 (g3)",
+    "g2 (niv 87) vs g3: PO max 7 (g2) → 8 (g3) ; lancers/tour 1 (g2) → 2 (g3)"
+   ],
+   "role": [
+    "self_move"
+   ],
+   "tacticalNote": "Se rapproche de 3 (6 vers une tourelle) — mobilité.",
+   "spellLevelId": 42777
+  },
+  {
+   "id": 14308,
+   "pairIndex": 8,
+   "variantOf": 13838,
+   "isBaseVariant": false,
+   "name": "Piston",
+   "unlockLevel": 130,
+   "gradeUsed": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Éloigne le lanceur de la cible.\nLe recul est plus important sur les Tourelles.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Le lanceur recule de 3 case(s) — cibles: alliés [hors tourelles]",
+    "Le lanceur recule de 3 case(s) — cibles: ennemis",
+    "Le lanceur recule de 6 case(s) — cibles: alliés [tourelles]"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 1,
+     "range": [
+      1,
+      2
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 1,
+     "range": [
+      1,
+      2
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 130) vs g2: lancers/tour 1 (g1) → 2 (g2)"
+   ],
+   "role": [
+    "self_move"
+   ],
+   "tacticalNote": "Recule de 3 (6 depuis une tourelle) — désengagement 1 PA.",
+   "spellLevelId": 77900
+  },
+  {
+   "id": 13820,
+   "pairIndex": 9,
+   "variantOf": 13826,
+   "isBaseVariant": true,
+   "name": "Marée",
+   "unlockLevel": 25,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Échange de position avec la cible et occasionne des dommages Eau aux ennemis.\n\nSur le lanceur : modifie l'état de Marée et rembourse le coût en PA et l'utilisation du sort.\nCet effet peut être déclenché 2 fois maximum par tour.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 34,
+     "max": 38,
+     "critMin": 41,
+     "critMax": 46,
+     "zone": "P1",
+     "targetMask": "A,*e5317",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Échange de positions avec le lanceur — cibles: alliés sauf lanceur/ennemis [lanceur sans état « Marée cible » (5317)]",
+    "Dommages Eau 34 à 38 — cibles: ennemis [lanceur sans état « Marée cible » (5317)]",
+    "la cible lance sur elle-même « Marée » (29129) niv.3 — cibles: lanceur(si dans zone)",
+    "↳ Applique l'état « Marée I » (5304) — cibles: lanceur [lanceur sans état « Marée I » (5304)]; 1 tour; non désenvoûtable",
+    "↳ Retire l'état « Marée I » (5304) — cibles: lanceur [lanceur avec état « Marée I » (5304)]",
+    "↳ Applique l'état « Marée II » (5307) — cibles: lanceur [lanceur avec état « Marée I » (5304)]; 1 tour; non désenvoûtable",
+    "↳ Sort « Marée » (13820) : +1 portée min — cibles: lanceur [lanceur avec état « Marée I » (5304); lanceur sans état « Marée cible » (5317)]; 1 tour",
+    "↳ la cible lance sur elle-même « Marée » (29129) niv.2 — cibles: lanceur [lanceur sans état « Marée II » (5307)]",
+    "↳ ↳ Retire l'état « Marée Basse » (5283) — cibles: lanceur [lanceur avec état « Marée Basse » (5283)]",
+    "↳ ↳ Applique l'état « Marée Haute » (5282) — cibles: lanceur [lanceur avec état « Marée Basse » (5283)]; infini; non désenvoûtable",
+    "↳ ↳ Retire l'état « Marée Haute » (5282) — cibles: lanceur [lanceur avec état « Marée Haute » (5282)]",
+    "↳ ↳ Applique l'état « Marée Basse » (5283) — cibles: lanceur [lanceur avec état « Marée Haute » (5282)]; infini; non désenvoûtable",
+    "↳ Rend 3 PA — cibles: lanceur [lanceur sans état « Marée II » (5307)]; 1 tour",
+    "↳ Sort « Marée » (13820) : +1 lancer(s)/tour — cibles: lanceur [lanceur sans état « Marée II » (5307)]; 1 tour",
+    "↳ Sort « Marée » (13820) : relance fixée à 1 tour(s) — cibles: lanceur [lanceur avec état « Marée I » (5304); lanceur avec état « Marée cible » (5317)]",
+    "le lanceur lance « Marée » (29129) niv.4 — cibles: alliés sauf lanceur/ennemis [lanceur sans état « Marée cible » (5317)]",
+    "↳ Applique l'état « Marée cible » (5317) — cibles: lanceur; 1 tour; non désenvoûtable",
+    "↳ Sort « Marée » (13820) : +1 lancer(s)/tour — cibles: lanceur [lanceur sans état « Marée II » (5307)]; 1 tour",
+    "↳ Sort « Marée » (13820) : portée min fixée à 0 — cibles: lanceur [lanceur sans état « Marée II » (5307)]; 1 tour",
+    "↳ Sort « Marée » (13820) : portée max fixée à 0 — cibles: lanceur [lanceur sans état « Marée II » (5307)]; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 41 à 46"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 3,
+     "range": [
+      0,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 3,
+     "range": [
+      0,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 3,
+     "range": [
+      0,
+      3
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 25) vs g3: Dommages Eau 21 à 24 (g1) → Dommages Eau 34 à 38 (g3)",
+    "g2 (niv 92) vs g3: Dommages Eau 27 à 31 (g2) → Dommages Eau 34 à 38 (g3)"
+   ],
+   "role": [
+    "ap_refund",
+    "damage",
+    "swap",
+    "tide"
+   ],
+   "tacticalNote": "Échange + Eau 34–38 ; sur soi : bascule la marée (gratuit, 2×/tour).",
+   "spellLevelId": 42773
+  },
+  {
+   "id": 13826,
+   "pairIndex": 9,
+   "variantOf": 13820,
+   "isBaseVariant": false,
+   "name": "Vapor",
+   "unlockLevel": 135,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu aux ennemis et repousse les cibles depuis le centre en zone.\n\nÉvolue également les Tourelles dans la zone d'effet.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 29,
+     "max": 33,
+     "critMin": 35,
+     "critMax": 40,
+     "zone": "X2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r2",
+    "croix sans centre r2"
+   ],
+   "effectsSummary": [
+    "Dommages Feu 29 à 33 — croix r2; cibles: ennemis",
+    "Repousse de 2 case(s) — croix sans centre r2; cibles: alliés/ennemis",
+    "le lanceur lance « Évolution » (30136) niv.1 — croix r2; cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ le lanceur lance « Évolution » (30136) niv.3 — cibles: alliés/ennemis",
+    "↳ ↳ le lanceur lance « Évolution » (30136) niv.2 — cibles: alliés/ennemis [avec état « Évolution II » (134); lanceur sans état « Évolution en cours » (6095)]",
+    "↳ ↳ Applique l'état « Évolution bloquée » (6094) — cibles: alliés/ennemis [avec état « Évolution II » (134); lanceur sans état « Évolution en cours » (6095)]; 1 tour; non désenvoûtable",
+    "↳ ↳ Applique l'état « Évolution bloquée » (6094) — cibles: alliés/ennemis [sans état « Évolution II » (134); sans état « Évolution III » (135)]; 1 tour; non désenvoûtable",
+    "↳ ↳ le lanceur lance « Évolution II » (13851) niv.3 — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution II » (134); sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ ↳ ↳ fait passer la tourelle en Évolution II (état 134, apparence, « Tourelle évoluée »)",
+    "↳ ↳ le lanceur lance « Évolution III » (13852) niv.3 — cibles: alliés [avec état « Évolution II » (134); sans état « Évolution bloquée » (6094); lanceur sans état « Évolution en cours » (6095); tourelles]",
+    "↳ ↳ ↳ fait passer la tourelle en Évolution III (état 135, devient CONTRÔLABLE, sort avancé débloqué)",
+    "Retire l'état « Évolution en cours » (6095) — cibles: lanceur"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 35 à 40"
+   ],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « +1 Évolution » (23844) niv.1 — croix r2; cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 3,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Feu 29–33 en croix r2 + repousse depuis le centre ; évolue les tourelles de la zone.",
+   "spellLevelId": 42731
+  },
+  {
+   "id": 13874,
+   "pairIndex": 10,
+   "variantOf": 13823,
+   "isBaseVariant": true,
+   "name": "Turbine",
+   "unlockLevel": 30,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu aux ennemis et attire les cibles jusqu'au centre en zone.\n\nÉvolue également les Tourelles dans la zone d'effet.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 27,
+     "max": 31,
+     "critMin": 32,
+     "critMax": 37,
+     "zone": "X3",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r3",
+    "croix sans centre r1",
+    "croix sans centre r2 (rayon min 2)",
+    "croix sans centre r3 (rayon min 3)"
+   ],
+   "effectsSummary": [
+    "Dommages Feu 27 à 31 — croix r3; cibles: ennemis",
+    "Attire de 1 case(s) — croix sans centre r1; cibles: alliés/ennemis",
+    "Attire de 2 case(s) — croix sans centre r2 (rayon min 2); cibles: alliés/ennemis",
+    "Attire de 3 case(s) — croix sans centre r3 (rayon min 3); cibles: alliés/ennemis",
+    "le lanceur lance « Évolution » (30136) niv.1 — croix r3; cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ le lanceur lance « Évolution » (30136) niv.3 — cibles: alliés/ennemis",
+    "↳ ↳ le lanceur lance « Évolution » (30136) niv.2 — cibles: alliés/ennemis [avec état « Évolution II » (134); lanceur sans état « Évolution en cours » (6095)]",
+    "↳ ↳ Applique l'état « Évolution bloquée » (6094) — cibles: alliés/ennemis [avec état « Évolution II » (134); lanceur sans état « Évolution en cours » (6095)]; 1 tour; non désenvoûtable",
+    "↳ ↳ Applique l'état « Évolution bloquée » (6094) — cibles: alliés/ennemis [sans état « Évolution II » (134); sans état « Évolution III » (135)]; 1 tour; non désenvoûtable",
+    "↳ ↳ le lanceur lance « Évolution II » (13851) niv.3 — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution II » (134); sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ ↳ ↳ fait passer la tourelle en Évolution II (état 134, apparence, « Tourelle évoluée »)",
+    "↳ ↳ le lanceur lance « Évolution III » (13852) niv.3 — cibles: alliés [avec état « Évolution II » (134); sans état « Évolution bloquée » (6094); lanceur sans état « Évolution en cours » (6095); tourelles]",
+    "↳ ↳ ↳ fait passer la tourelle en Évolution III (état 135, devient CONTRÔLABLE, sort avancé débloqué)",
+    "Retire l'état « Évolution en cours » (6095) — cibles: lanceur"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 32 à 37"
+   ],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « +1 Évolution » (23844) niv.1 — croix r3; cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 3,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 164,
+     "apCost": 3,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 30) vs g3: Dommages Feu 17 à 20 (g1) → Dommages Feu 27 à 31 (g3) ; PO max 5 (g1) → 7 (g3)",
+    "g2 (niv 97) vs g3: Dommages Feu 22 à 25 (g2) → Dommages Feu 27 à 31 (g3) ; PO max 6 (g2) → 7 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "pull"
+   ],
+   "tacticalNote": "Feu 27–31 en croix r3 + attire vers le centre ; évolue les tourelles de la zone.",
+   "spellLevelId": 77777
+  },
+  {
+   "id": 13823,
+   "pairIndex": 10,
+   "variantOf": 13874,
+   "isBaseVariant": false,
+   "name": "Flibuste",
+   "unlockLevel": 140,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air et applique l'état Flibuste sur l'ennemi ciblé :\n• Occasionne des dommages Air aux ennemis en zone et retire l'état si la cible subit des dommages de poussée.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 23,
+     "max": 25,
+     "critMin": 28,
+     "critMax": 30,
+     "zone": "G1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I",
+     "via": "31025#2"
+    }
+   ],
+   "zones": [
+    "carré r1"
+   ],
+   "effectsSummary": [
+    "Dommages Air 33 à 37 — cibles: alliés/ennemis",
+    "Applique l'état « Flibuste » (5383) — cibles: ennemis; 2 tours",
+    "le lanceur lance « Flibuste » (31025) niv.1 — cibles: ennemis; déclenché quand le porteur subit des dommages de poussée ou à la mort du porteur (tué par dommages de poussée) (déclencheur actif 2 tour(s))",
+    "↳ le lanceur lance « Flibuste » (31025) niv.2 — cibles: ennemis",
+    "↳ ↳ Désenvoûte les effets du sort « Flibuste » (13823) — cibles: ennemis",
+    "↳ ↳ Dommages Air 23 à 25 — carré r1; cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 40 à 44 ; Dommages Air 28 à 30"
+   ],
+   "tooltipOnlyEffects": [
+    "Dommages Air 23 à 25 — carré r1; cibles: ennemis; déclenché quand le porteur subit des dommages de poussée ou à la mort du porteur (tué par dommages de poussée) (déclencheur actif 2 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 4,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage"
+   ],
+   "tacticalNote": "Air 33–37 + état Flibuste : si la cible subit des dommages de poussée, Air 23–25 en carré autour.",
+   "spellLevelId": 42728
+  },
+  {
+   "id": 13831,
+   "pairIndex": 11,
+   "variantOf": 13869,
+   "isBaseVariant": true,
+   "name": "Tactirelle",
+   "unlockLevel": 35,
+   "gradeUsed": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Tourelle tactique qui repousse les cibles en zone.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque Tactirelle (5837) grade 3 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Évolutions Tactirelle » (29196) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 35) vs g3: Invoque Tactirelle (5837) grade 1 (g1) → Invoque Tactirelle (5837) grade 3 (g3)",
+    "g2 (niv 102) vs g3: Invoque Tactirelle (5837) grade 2 (g2) → Invoque Tactirelle (5837) grade 3 (g3)"
+   ],
+   "role": [
+    "summon",
+    "turret"
+   ],
+   "tacticalNote": "Tourelle tactique : repousse en zone ; aura +dommages poussée/+Fuite.",
+   "spellLevelId": 42779
+  },
+  {
+   "id": 13869,
+   "pairIndex": 11,
+   "variantOf": 13831,
+   "isBaseVariant": false,
+   "name": "Bathyscaphe",
+   "unlockLevel": 145,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Pose une Tourelle défensive qui applique du bouclier.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Invoque Bathyscaphe (5831) grade 1 — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Évolutions Bathyscaphe » (29201) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "summon",
+    "turret"
+   ],
+   "tacticalNote": "Tourelle défensive (Revêtement 3×/tour) ; aura bouclier/+1 PA.",
+   "spellLevelId": 42849
+  },
+  {
+   "id": 13819,
+   "pairIndex": 12,
+   "variantOf": 13863,
+   "isBaseVariant": true,
+   "name": "Scaphandre",
+   "unlockLevel": 40,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Applique un bouclier sur le lanceur et les Tourelles et le rend Intaclable.\nLe bouclier est plus important sur le lanceur.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 200,
+     "max": 200,
+     "critMin": 250,
+     "critMax": 250,
+     "zone": "P1",
+     "targetMask": "C",
+     "duration": 2,
+     "triggers": "I"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 125,
+     "max": 125,
+     "critMin": 150,
+     "critMax": 150,
+     "zone": "a1",
+     "targetMask": "a,F5831,F5832,F5833,F5835,F5836,F5837",
+     "duration": 2,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "Bouclier = 200% du niveau du lanceur — cibles: lanceur; 2 tours",
+    "Bouclier = 125% du niveau du lanceur — toute la carte; cibles: alliés [tourelles]; 2 tours",
+    "Applique l'état « Intaclable » (96) — cibles: lanceur; 1 tour",
+    "Change d'apparence (look 1035) — cibles: lanceur; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Bouclier = 250% du niveau du lanceur ; Bouclier = 150% du niveau du lanceur"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 3,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 3,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 3,
+     "range": [
+      0,
+      0
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 40) vs g3: Bouclier = 100% du niveau du lanceur (g1) → Bouclier = 200% du niveau du lanceur (g3) ; Bouclier = 75% du niveau du lanceur (g1) → Bouclier = 125% du niveau du lanceur (g3)",
+    "g2 (niv 107) vs g3: Bouclier = 150% du niveau du lanceur (g2) → Bouclier = 200% du niveau du lanceur (g3) ; Bouclier = 100% du niveau du lanceur (g2) → Bouclier = 125% du niveau du lanceur (g3)"
+   ],
+   "role": [
+    "shield",
+    "untackleable"
+   ],
+   "tacticalNote": "Bouclier 400 PV au Steamer + 250 PV à toutes les tourelles + Intaclable.",
+   "spellLevelId": 77901
+  },
+  {
+   "id": 13863,
+   "pairIndex": 12,
+   "variantOf": 13819,
+   "isBaseVariant": false,
+   "name": "Blindage",
+   "unlockLevel": 150,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Applique un bouclier sur l'allié ciblé et le rend Indéplaçable.\nLe bouclier est plus important sur les Tourelles.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 250,
+     "max": 250,
+     "critMin": 300,
+     "critMax": 300,
+     "zone": "P1",
+     "targetMask": "c,a,f5836,f5832,f5835,f5833,f5837,f5831",
+     "duration": 2,
+     "triggers": "I"
+    },
+    {
+     "kind": "shield_percent_level",
+     "element": null,
+     "min": 500,
+     "max": 500,
+     "critMin": 600,
+     "critMax": 600,
+     "zone": "P1",
+     "targetMask": "a,F5836,F5832,F5835,F5833,F5837,F5831",
+     "duration": 2,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Bouclier = 250% du niveau du lanceur — cibles: lanceur(si dans zone)/alliés [hors tourelles]; 2 tours",
+    "Bouclier = 500% du niveau du lanceur — cibles: alliés [tourelles]; 2 tours",
+    "Applique l'état « Indéplaçable » (97) — cibles: alliés; 1 tour",
+    "Change d'apparence (look 1035) — cibles: lanceur; 2 tours"
+   ],
+   "criticalSummary": [
+    "[CC] Bouclier = 300% du niveau du lanceur ; Bouclier = 600% du niveau du lanceur"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 3,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "immovable",
+    "shield"
+   ],
+   "tacticalNote": "Bouclier 500 PV (1 000 sur une tourelle) + Indéplaçable.",
+   "spellLevelId": 42843
+  },
+  {
+   "id": 13824,
+   "pairIndex": 13,
+   "variantOf": 13875,
+   "isBaseVariant": true,
+   "name": "Foène",
+   "unlockLevel": 45,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Air aux ennemis et repousse les cibles en zone.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 28,
+     "max": 32,
+     "critMin": 34,
+     "critMax": 38,
+     "zone": "F1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "fourche r1"
+   ],
+   "effectsSummary": [
+    "Dommages Air 28 à 32 — fourche r1; cibles: ennemis",
+    "Repousse de 2 case(s) — fourche r1; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 34 à 38"
+   ],
+   "tooltipOnlyEffects": [],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 45) vs g3: Dommages Air 18 à 20 (g1) → Dommages Air 28 à 32 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 112) vs g3: Dommages Air 23 à 26 (g2) → Dommages Air 28 à 32 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Air 28–32 en fourche + poussée 2.",
+   "spellLevelId": 78578
+  },
+  {
+   "id": 13875,
+   "pairIndex": 13,
+   "variantOf": 13824,
+   "isBaseVariant": false,
+   "name": "Cabestan",
+   "unlockLevel": 155,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre aux ennemis et attire les cibles jusqu'au centre en zone.\nTéléporte également symétriquement les entités par rapport au centre si le sort est ciblé sur une Tourelle.\n\nLes dommages de zone ne sont pas dégressifs.\nL'attirance n'affecte pas le lanceur.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 29,
+     "max": 33,
+     "critMin": 35,
+     "critMax": 40,
+     "zone": "G1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "carré r1",
+    "croix diagonale sans centre r1",
+    "croix sans centre r1"
+   ],
+   "effectsSummary": [
+    "Dommages Terre 29 à 33 — carré r1; cibles: ennemis",
+    "Attire de 1 case(s) — croix sans centre r1; cibles: alliés sauf lanceur/ennemis",
+    "Attire de 2 case(s) — croix diagonale sans centre r1; cibles: alliés sauf lanceur/ennemis",
+    "le lanceur lance « Cabestan » (29262) niv.1 — cibles: alliés [tourelles]",
+    "↳ Téléportation symétrique par rapport au point d'impact — carré r1; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 35 à 40"
+   ],
+   "tooltipOnlyEffects": [
+    "Attire de 2 case(s) — carré r1; cibles: alliés sauf lanceur/ennemis",
+    "Téléportation symétrique par rapport au point d'impact — carré r1; cibles: alliés sauf lanceur/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 3,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "pull",
+    "teleport"
+   ],
+   "tacticalNote": "Terre 29–33 en carré r1 + attire ; sur une tourelle : téléport symétrique des entités autour.",
+   "spellLevelId": 42855
+  },
+  {
+   "id": 13821,
+   "pairIndex": 14,
+   "variantOf": 13825,
+   "isBaseVariant": true,
+   "name": "Ressac",
+   "unlockLevel": 50,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre aux ennemis et repousse la cible.\n\nRend 2 PA au lanceur et la poussée ne fait pas de dommages si le sort est lancé sur une Tourelle.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 23,
+     "max": 27,
+     "critMin": 28,
+     "critMax": 32,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "le lanceur lance « Ressac » (29588) niv.1 — cibles: alliés [tourelles]",
+    "↳ Rend 2 PA — cibles: lanceur",
+    "Dommages Terre 23 à 27 — cibles: ennemis",
+    "Repousse de 2 case(s) — cibles: ennemis",
+    "Repousse de 2 case(s) — cibles: alliés [hors tourelles]",
+    "Repousse de 2 case(s) (sans dommages de poussée) — cibles: alliés [tourelles]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 28 à 32"
+   ],
+   "tooltipOnlyEffects": [
+    "Rend 2 PA — cibles: lanceur"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 184,
+     "apCost": 3,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 50) vs g3: Dommages Terre 15 à 17 (g1) → Dommages Terre 23 à 27 (g3) ; PO max 5 (g1) → 7 (g3)",
+    "g2 (niv 117) vs g3: Dommages Terre 20 à 23 (g2) → Dommages Terre 23 à 27 (g3) ; PO max 6 (g2) → 7 (g3)"
+   ],
+   "role": [
+    "ap_refund",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Terre 23–27 + repousse 2 ; sur une tourelle : rend 2 PA et poussée sans dommages (repositionner une tourelle gratuitement).",
+   "spellLevelId": 78526
+  },
+  {
+   "id": 13825,
+   "pairIndex": 14,
+   "variantOf": 13821,
+   "isBaseVariant": false,
+   "name": "Écume",
+   "unlockLevel": 160,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau aux ennemis et déplace les cibles selon la Marée en zone :\n• Marée Basse : attire les cibles vers le lanceur.\n• Marée Haute : repousse les cibles depuis le lanceur.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43,
+     "zone": "V2",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "cône r2"
+   ],
+   "effectsSummary": [
+    "Dommages Eau 32 à 36 — cône r2; cibles: ennemis",
+    "le lanceur lance « Écume » (29585) niv.2 — cône r2; cibles: alliés/ennemis [lanceur sans état « Marée Haute » (5282)]",
+    "↳ Attire de 5 case(s) — cibles: alliés/ennemis",
+    "Applique l'état « Écume » (5314) — cône r2; cibles: alliés/ennemis [lanceur avec état « Marée Haute » (5282)]; 1 tour",
+    "le lanceur lance « Écume » (29585) niv.1 — cône r2; cibles: lanceur [lanceur avec état « Marée Haute » (5282)]",
+    "↳ Repousse de 3 case(s) — toute la carte; cibles: alliés/ennemis [avec état « Écume » (5314)]",
+    "↳ Retire l'état « Écume » (5314) — toute la carte; cibles: alliés/ennemis [avec état « Écume » (5314)]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 38 à 43"
+   ],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Marée Basse : » (29147) niv.1 — cibles: alliés/ennemis",
+    "Attire de 5 case(s) — cône r2; cibles: alliés/ennemis [lanceur sans état « Marée Haute » (5282)]",
+    "le lanceur lance « Marée Haute : » (29146) niv.1 — cibles: alliés/ennemis",
+    "Repousse de 3 case(s) — cône r2; cibles: alliés/ennemis [lanceur avec état « Marée Haute » (5282)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 4,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "pull",
+    "push",
+    "tide"
+   ],
+   "tacticalNote": "Eau 32–36 en cône ; Basse : attire de 5 ; Haute : repousse de 3.",
+   "spellLevelId": 42730
+  },
+  {
+   "id": 13873,
+   "pairIndex": 15,
+   "variantOf": 13835,
+   "isBaseVariant": true,
+   "name": "Sonar",
+   "unlockLevel": 55,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Active les sorts spéciaux des Tourelles offensives du lanceur sur l'ennemi ciblé.\n\nOccasionne des dommages dans le meilleur élément du lanceur aux ennemis.\n\nSur un allié : repousse les cibles depuis le centre et dévoile les invisibles en zone.\nN'affecte pas le lanceur.",
+   "elements": [
+    "Meilleur élément"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Meilleur élément",
+     "min": 11,
+     "max": 13,
+     "critMin": 14,
+     "critMax": 16,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "cercle r2",
+    "cercle r2 (rayon min 1)"
+   ],
+   "effectsSummary": [
+    "Applique l'état « Activation offensive » (130) — cibles: ennemis; 1 tour",
+    "le lanceur lance « Activation Steamer » (23872) niv.1 — cibles: ennemis",
+    "↳ la cible lance sur elle-même « Armada » (23850) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Harponneuse (5836)]",
+    "↳ ↳ le lanceur lance « Armada » (13893) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Harponneuse (5836)]",
+    "↳ ↳ le lanceur lance « Armada » (13893) niv.2 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 2 » (3496); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Harponneuse (5836)]",
+    "↳ ↳ le lanceur lance « Armada » (13893) niv.3 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 3 » (3497); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Harponneuse (5836)]",
+    "↳ la cible lance sur elle-même « Excavation » (23854) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Foreuse (5833)]",
+    "↳ ↳ le lanceur lance « Excavation » (13888) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Foreuse (5833)]",
+    "↳ ↳ le lanceur lance « Excavation » (13888) niv.2 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 2 » (3496); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Foreuse (5833)]",
+    "↳ Retire l'état « Activation offensive » (130) — toute la carte; cibles: ennemis [avec état « Activation offensive » (130)]",
+    "Dommages meilleur élément 11 à 13 — cibles: ennemis",
+    "le lanceur lance « Sonar » (13880) niv.1 — cibles: alliés",
+    "↳ Repousse de 2 case(s) — cercle r2 (rayon min 1); cibles: alliés sauf lanceur/ennemis",
+    "↳ Révèle les entités invisibles — cercle r2; cibles: ennemis",
+    "Retire l'état « Activation offensive » (130) — cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages meilleur élément 14 à 16"
+   ],
+   "tooltipOnlyEffects": [
+    "la cible lance sur sa cellule « Spécial : Armada » (24232) niv.3 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Harponneuse (5836)]",
+    "la cible lance sur sa cellule « Spécial : Excavation » (24236) niv.2 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Foreuse (5833)]",
+    "Repousse de 2 case(s) — cercle r2 (rayon min 1); cibles: alliés sauf lanceur/ennemis",
+    "Révèle les entités invisibles — cercle r2; cibles: ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 55) vs g3: Dommages meilleur élément 5 à 7 (g1) → Dommages meilleur élément 11 à 13 (g3)",
+    "g2 (niv 122) vs g3: Dommages meilleur élément 8 à 10 (g2) → Dommages meilleur élément 11 à 13 (g3)"
+   ],
+   "role": [
+    "damage",
+    "push",
+    "reveal_invisible",
+    "turret_special"
+   ],
+   "tacticalNote": "Active les spéciaux offensifs (Armada/Excavation) + meilleur élément 11–13 ; sur un allié : repousse et révèle les invisibles.",
+   "spellLevelId": 77716
+  },
+  {
+   "id": 13835,
+   "pairIndex": 15,
+   "variantOf": 13873,
+   "isBaseVariant": false,
+   "name": "Embuscade",
+   "unlockLevel": 165,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 2,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "description": "Active les sorts spéciaux des Tourelles offensives du lanceur sur la cible.\n\nOccasionne des dommages Eau, Terre, Air et Feu.",
+   "elements": [
+    "Air",
+    "Eau",
+    "Feu",
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 7,
+     "max": 9,
+     "critMin": 10,
+     "critMax": 12,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 7,
+     "max": 9,
+     "critMin": 10,
+     "critMax": 12,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 7,
+     "max": 9,
+     "critMin": 10,
+     "critMax": 12,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 7,
+     "max": 9,
+     "critMin": 10,
+     "critMax": 12,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Activation offensive » (130) — cibles: ennemis; 1 tour",
+    "le lanceur lance « Activation Steamer » (23872) niv.1 — cibles: ennemis",
+    "↳ la cible lance sur elle-même « Armada » (23850) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Harponneuse (5836)]",
+    "↳ ↳ le lanceur lance « Armada » (13893) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Harponneuse (5836)]",
+    "↳ ↳ le lanceur lance « Armada » (13893) niv.2 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 2 » (3496); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Harponneuse (5836)]",
+    "↳ ↳ le lanceur lance « Armada » (13893) niv.3 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 3 » (3497); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Harponneuse (5836)]",
+    "↳ la cible lance sur elle-même « Excavation » (23854) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Foreuse (5833)]",
+    "↳ ↳ le lanceur lance « Excavation » (13888) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Foreuse (5833)]",
+    "↳ ↳ le lanceur lance « Excavation » (13888) niv.2 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 2 » (3496); lanceur avec état « Évolution III » (135); avec état « Activation offensive » (130); lanceur =monstre Foreuse (5833)]",
+    "↳ Retire l'état « Activation offensive » (130) — toute la carte; cibles: ennemis [avec état « Activation offensive » (130)]",
+    "Dommages Eau 7 à 9 — cibles: alliés/ennemis",
+    "Dommages Terre 7 à 9 — cibles: alliés/ennemis",
+    "Dommages Feu 7 à 9 — cibles: alliés/ennemis",
+    "Dommages Air 7 à 9 — cibles: alliés/ennemis",
+    "Retire l'état « Activation offensive » (130) — cibles: ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] la cible lance sur sa cellule « Spécial : Armada » (24232) niv.4 ; la cible lance sur sa cellule « Spécial : Excavation » (24236) niv.3 ; Dommages Eau 10 à 12 ; Dommages Terre 10 à 12 ; Dommages Feu 10 à 12 ; Dommages Air 10 à 12"
+   ],
+   "tooltipOnlyEffects": [
+    "la cible lance sur sa cellule « Spécial : Armada » (24232) niv.1 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Harponneuse (5836)]",
+    "la cible lance sur sa cellule « Spécial : Excavation » (24236) niv.1 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Foreuse (5833)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 4,
+     "range": [
+      2,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "damage",
+    "turret_special"
+   ],
+   "tacticalNote": "Spéciaux offensifs + 4 éléments 7–9.",
+   "spellLevelId": 42740
+  },
+  {
+   "id": 13822,
+   "pairIndex": 16,
+   "variantOf": 13861,
+   "isBaseVariant": true,
+   "name": "Courant",
+   "unlockLevel": 60,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Eau aux ennemis et déplace la cible selon la Marée :\n• Marée Basse : attire la cible.\n• Marée Haute : repousse la cible.\n\nUne même cible ne peut être affectée qu'une seule fois par le déplacement d'une Marée dans le tour en cours.",
+   "elements": [
+    "Eau"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Eau",
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 41,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Courant Bas » (5306) — cibles: alliés/ennemis [sans état « Courant Bas » (5306); lanceur sans état « Marée Haute » (5282)]; 1 tour; non désenvoûtable",
+    "Applique l'état « Courant Haut » (5305) — cibles: alliés/ennemis [sans état « Courant Haut » (5305); lanceur avec état « Marée Haute » (5282)]; 1 tour; non désenvoûtable",
+    "Dommages Eau 30 à 34 — cibles: ennemis",
+    "Attire de 6 case(s) — cibles: alliés/ennemis [sans état « Courant Bas » (5306); lanceur sans état « Marée Haute » (5282)]",
+    "Repousse de 4 case(s) — cibles: alliés/ennemis [sans état « Courant Haut » (5305); lanceur avec état « Marée Haute » (5282)]"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Eau 36 à 41"
+   ],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « Marée Basse : » (29147) niv.1 — cibles: alliés/ennemis",
+    "le lanceur lance « Marée Haute : » (29146) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "maxPerTarget": 2
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 60) vs g3: Dommages Eau 22 à 25 (g1) → Dommages Eau 30 à 34 (g3)",
+    "g2 (niv 127) vs g3: Dommages Eau 27 à 30 (g2) → Dommages Eau 30 à 34 (g3)"
+   ],
+   "role": [
+    "damage",
+    "pull",
+    "push",
+    "tide"
+   ],
+   "tacticalNote": "Eau 30–34 ; Basse : attire de 6 ; Haute : repousse de 4.",
+   "spellLevelId": 77907
+  },
+  {
+   "id": 13861,
+   "pairIndex": 16,
+   "variantOf": 13822,
+   "isBaseVariant": false,
+   "name": "Harmattan",
+   "unlockLevel": 170,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Repousse la cible et occasionne des dommages Air aux ennemis.\nRebondit sur les entités au contact de la cible.",
+   "elements": [
+    "Air"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42,
+     "zone": "Q1,1",
+     "targetMask": "A,e5309",
+     "duration": 0,
+     "triggers": "I",
+     "via": "29269#2"
+    },
+    {
+     "kind": "damage",
+     "element": "Air",
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42,
+     "zone": "P1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I",
+     "via": "29269#1"
+    }
+   ],
+   "zones": [
+    "toute la carte"
+   ],
+   "effectsSummary": [
+    "le lanceur lance « Harmattan » (29269) niv.1 — cibles: alliés/ennemis",
+    "↳ le lanceur lance « Harmattan » (29269) niv.2 — cibles: alliés/ennemis; déclenché à la mort du porteur (déclencheur actif 1 tour(s))",
+    "↳ ↳ le lanceur lance « Harmattan » (29269) niv.2 — croix sans centre r1 (rayon min 1); cibles: alliés/ennemis [sans état « Harmattan » (5309)]; déclenché à la mort du porteur (déclencheur actif 1 tour(s))",
+    "↳ ↳ Applique l'état « Harmattan » (5309) — croix sans centre r1 (rayon min 1); cibles: alliés/ennemis [sans état « Harmattan » (5309)]; 1 tour",
+    "↳ ↳ Repousse de 2 case(s) — croix sans centre r1 (rayon min 1); cibles: alliés/ennemis [sans état « Harmattan » (5309)]",
+    "↳ ↳ Dommages Air 31 à 35 — croix sans centre r1 (rayon min 1); cibles: ennemis [sans état « Harmattan » (5309)]",
+    "↳ ↳ Désenvoûte les effets du sort « Harmattan » (29269) — croix sans centre r1 (rayon min 1); cibles: alliés/ennemis [sans état « Harmattan » (5309)]",
+    "↳ ↳ Applique l'état « Harmattan » (5309) — croix sans centre r1 (rayon min 1); cibles: alliés/ennemis [sans état « Harmattan » (5309)]; 1 tour; non désenvoûtable",
+    "↳ ↳ le lanceur lance « Harmattan » (29269) niv.2 — croix sans centre r1 (rayon min 1); cibles: alliés/ennemis [sans état « Harmattan » (5309)]",
+    "↳ Applique l'état « Harmattan » (5309) — cibles: alliés/ennemis; 1 tour",
+    "↳ Repousse de 2 case(s) — cibles: alliés/ennemis",
+    "↳ Dommages Air 31 à 35 — cibles: ennemis",
+    "↳ Désenvoûte les effets du sort « Harmattan » (29269) — cibles: alliés/ennemis",
+    "↳ Applique l'état « Harmattan » (5309) — cibles: alliés/ennemis; 1 tour",
+    "↳ le lanceur lance « Harmattan » (29269) niv.2 — cibles: alliés/ennemis",
+    "Retire l'état « Harmattan » (5309) — toute la carte; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Air 37 à 42"
+   ],
+   "tooltipOnlyEffects": [
+    "Repousse de 2 case(s) — cibles: alliés/ennemis",
+    "Dommages Air 31 à 35 — cibles: ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 4,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "aoe",
+    "damage",
+    "push"
+   ],
+   "tacticalNote": "Air 31–35 + repousse 2 et rebondit sur les entités au contact de la cible.",
+   "spellLevelId": 42841
+  },
+  {
+   "id": 13836,
+   "pairIndex": 17,
+   "variantOf": 13871,
+   "isBaseVariant": true,
+   "name": "Secourisme",
+   "unlockLevel": 65,
+   "gradeUsed": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Active les sorts spéciaux des Tourelles défensives du lanceur sur l'allié ciblé.\n\nSoigne la cible dans le meilleur élément du lanceur.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal",
+     "element": "Meilleur élément",
+     "min": 25,
+     "max": 29,
+     "critMin": 30,
+     "critMax": 35,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Activation défensive » (131) — cibles: alliés; 1 tour",
+    "le lanceur lance « Activation Steamer » (23872) niv.2 — cibles: alliés",
+    "↳ la cible lance sur elle-même « Intervention » (23851) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Gardienne (5835)]",
+    "↳ ↳ le lanceur lance « Intervention » (13848) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation défensive » (131); lanceur =monstre Gardienne (5835)]",
+    "↳ ↳ le lanceur lance « Intervention » (13848) niv.2 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 2 » (3496); lanceur avec état « Évolution III » (135); avec état « Activation défensive » (131); lanceur =monstre Gardienne (5835)]",
+    "↳ ↳ le lanceur lance « Intervention » (13848) niv.3 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 3 » (3497); lanceur avec état « Évolution III » (135); avec état « Activation défensive » (131); lanceur =monstre Gardienne (5835)]",
+    "↳ la cible lance sur elle-même « Décompression » (23855) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Bathyscaphe (5831)]",
+    "↳ ↳ le lanceur lance « Décompression » (13891) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation défensive » (131); lanceur =monstre Bathyscaphe (5831)]",
+    "↳ Retire l'état « Activation défensive » (131) — toute la carte; cibles: alliés [avec état « Activation défensive » (131)]",
+    "Soin meilleur élément 25 à 29 — cibles: alliés/ennemis",
+    "Retire l'état « Activation défensive » (131) — cibles: alliés"
+   ],
+   "criticalSummary": [
+    "[CC] la cible lance sur sa cellule « Spécial : Intervention » (24233) niv.6 ; la cible lance sur sa cellule « Spécial : Décompression » (24237) niv.2 ; Soin meilleur élément 30 à 35"
+   ],
+   "tooltipOnlyEffects": [
+    "la cible lance sur sa cellule « Spécial : Intervention » (24233) niv.3 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Gardienne (5835)]",
+    "la cible lance sur sa cellule « Spécial : Décompression » (24237) niv.1 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Bathyscaphe (5831)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 3,
+     "range": [
+      1,
+      4
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 131,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 198,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 65) vs g3: Soin meilleur élément 18 à 21 (g1) → Soin meilleur élément 25 à 29 (g3) ; PO max 4 (g1) → 6 (g3)",
+    "g2 (niv 131) vs g3: Soin meilleur élément 22 à 26 (g2) → Soin meilleur élément 25 à 29 (g3) ; PO max 5 (g2) → 6 (g3)"
+   ],
+   "role": [
+    "heal",
+    "turret_special"
+   ],
+   "tacticalNote": "Soin meilleur élément 25–29 + spéciaux défensifs (Intervention/Décompression) sur l’allié.",
+   "spellLevelId": 42783
+  },
+  {
+   "id": 13871,
+   "pairIndex": 17,
+   "variantOf": 13836,
+   "isBaseVariant": false,
+   "name": "Sauvetage",
+   "unlockLevel": 175,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "description": "Active les sorts spéciaux des Tourelles défensives du lanceur sur l'allié ciblé.\n\nSoigne la cible.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 8,
+     "max": 8,
+     "critMin": 10,
+     "critMax": 10,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Activation défensive » (131) — cibles: alliés; 1 tour",
+    "le lanceur lance « Activation Steamer » (23872) niv.2 — cibles: alliés",
+    "↳ la cible lance sur elle-même « Intervention » (23851) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Gardienne (5835)]",
+    "↳ ↳ le lanceur lance « Intervention » (13848) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation défensive » (131); lanceur =monstre Gardienne (5835)]",
+    "↳ ↳ le lanceur lance « Intervention » (13848) niv.2 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 2 » (3496); lanceur avec état « Évolution III » (135); avec état « Activation défensive » (131); lanceur =monstre Gardienne (5835)]",
+    "↳ ↳ le lanceur lance « Intervention » (13848) niv.3 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 3 » (3497); lanceur avec état « Évolution III » (135); avec état « Activation défensive » (131); lanceur =monstre Gardienne (5835)]",
+    "↳ la cible lance sur elle-même « Décompression » (23855) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Bathyscaphe (5831)]",
+    "↳ ↳ le lanceur lance « Décompression » (13891) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation défensive » (131); lanceur =monstre Bathyscaphe (5831)]",
+    "↳ Retire l'état « Activation défensive » (131) — toute la carte; cibles: alliés [avec état « Activation défensive » (131)]",
+    "Soin = 8% des PV max — cibles: alliés/ennemis",
+    "Retire l'état « Activation défensive » (131) — cibles: alliés"
+   ],
+   "criticalSummary": [
+    "[CC] la cible lance sur sa cellule « Spécial : Intervention » (24233) niv.6 ; la cible lance sur sa cellule « Spécial : Décompression » (24237) niv.2 ; Soin = 10% des PV max"
+   ],
+   "tooltipOnlyEffects": [
+    "la cible lance sur sa cellule « Spécial : Intervention » (24233) niv.3 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Gardienne (5835)]",
+    "la cible lance sur sa cellule « Spécial : Décompression » (24237) niv.1 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Bathyscaphe (5831)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 3,
+     "range": [
+      1,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "heal",
+    "turret_special"
+   ],
+   "tacticalNote": "Soin 8 % PV max (sans LdV) + spéciaux défensifs.",
+   "spellLevelId": 42851
+  },
+  {
+   "id": 13827,
+   "pairIndex": 18,
+   "variantOf": 13872,
+   "isBaseVariant": true,
+   "name": "Ancrage",
+   "unlockLevel": 70,
+   "gradeUsed": 2,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Terre et retire des PM aux ennemis en zone.\nLes dommages de zone ne sont pas dégressifs.\n\nRend 1 PA au lanceur si une Tourelle est dans la zone d'effet.",
+   "elements": [
+    "Terre"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Terre",
+     "min": 35,
+     "max": 38,
+     "critMin": 42,
+     "critMax": 46,
+     "zone": "X1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1"
+   ],
+   "effectsSummary": [
+    "le lanceur lance (limite globale) « Ancrage » (29276) niv.1 — croix r1; cibles: alliés [tourelles]",
+    "↳ Rend 1 PA — cibles: lanceur",
+    "Dommages Terre 35 à 38 — croix r1; cibles: ennemis",
+    "-3 PM (esquivable) — croix r1; cibles: ennemis; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Terre 42 à 46"
+   ],
+   "tooltipOnlyEffects": [
+    "Rend 1 PA — cibles: lanceur"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 4,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 4,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 70) vs g2: Dommages Terre 27 à 30 (g1) → Dommages Terre 35 à 38 (g2)"
+   ],
+   "role": [
+    "aoe",
+    "ap_refund",
+    "damage",
+    "mp_removal"
+   ],
+   "tacticalNote": "Terre 35–38 en croix + -3 PM (zone non dégressive) ; +1 PA si tourelle dans la zone.",
+   "spellLevelId": 42756
+  },
+  {
+   "id": 13872,
+   "pairIndex": 18,
+   "variantOf": 13827,
+   "isBaseVariant": false,
+   "name": "Court-circuit",
+   "unlockLevel": 180,
+   "gradeUsed": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "description": "Occasionne des dommages Feu aux ennemis en zone autour d'une Tourelle.\n\nÉvolue également la Tourelle et augmente ses chances de Critique.",
+   "elements": [
+    "Feu"
+   ],
+   "damageLines": [
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44,
+     "zone": "C3,1",
+     "targetMask": "A,F50000",
+     "duration": 0,
+     "triggers": "I"
+    },
+    {
+     "kind": "damage",
+     "element": "Feu",
+     "min": 33,
+     "max": 37,
+     "critMin": 40,
+     "critMax": 44,
+     "zone": "C3,1",
+     "targetMask": "A",
+     "duration": 0,
+     "triggers": "I",
+     "via": "29594#1"
+    }
+   ],
+   "zones": [
+    "cercle r3 (rayon min 1)"
+   ],
+   "effectsSummary": [
+    "Dommages Feu 33 à 37 — cercle r3 (rayon min 1); cibles: ennemis [=monstre monstre #50000]",
+    "le lanceur lance « Court-circuit » (29594) niv.1 — cibles: alliés [tourelles]",
+    "↳ Dommages Feu 33 à 37 — cercle r3 (rayon min 1); cibles: ennemis",
+    "le lanceur lance « Court-circuit » (29594) niv.3 — cibles: alliés [sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ Applique l'état « Évolution bloquée » (6094) — cibles: alliés [sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]; 1 tour; non désenvoûtable",
+    "↳ le lanceur lance « Évolution II » (13851) niv.3 — cibles: alliés [sans état « Évolution II » (134); sans état « Évolution III » (135); sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ ↳ fait passer la tourelle en Évolution II (état 134, apparence, « Tourelle évoluée »)",
+    "↳ le lanceur lance « Évolution III » (13852) niv.3 — cibles: alliés [avec état « Évolution II » (134); sans état « Évolution bloquée » (6094); tourelles]",
+    "↳ ↳ fait passer la tourelle en Évolution III (état 135, devient CONTRÔLABLE, sort avancé débloqué)",
+    "+100% Critique — cibles: alliés [tourelles]; 1 tour"
+   ],
+   "criticalSummary": [
+    "[CC] Dommages Feu 40 à 44"
+   ],
+   "tooltipOnlyEffects": [
+    "le lanceur lance « +1 Évolution » (23844) niv.1 — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 4,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "ally_crit_buff",
+    "aoe",
+    "damage"
+   ],
+   "tacticalNote": "Feu 33–37 en cercle 3 autour d’une tourelle + évolue la tourelle + 100 % CC (1 tour).",
+   "spellLevelId": 42852
+  },
+  {
+   "id": 13833,
+   "pairIndex": 19,
+   "variantOf": 14306,
+   "isBaseVariant": true,
+   "name": "Plongée",
+   "unlockLevel": 75,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Active les sorts spéciaux des Tourelles tactiques du lanceur sur la cible.\n\nRetire des PM aux ennemis.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Activation tactique » (132) — cibles: alliés/ennemis; 1 tour",
+    "le lanceur lance « Activation Steamer » (23872) niv.3 — cibles: alliés/ennemis",
+    "↳ la cible lance sur elle-même « Écoutille » (23852) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Tactirelle (5837)]",
+    "↳ ↳ le lanceur lance « Écoutille » (13853) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Évolution III » (135); avec état « Activation tactique » (132); lanceur =monstre Tactirelle (5837)]",
+    "↳ la cible lance sur elle-même « Mortier » (23853) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Chalutier (5832)]",
+    "↳ ↳ le lanceur lance « Mortier » (29127) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation tactique » (132); lanceur =monstre Chalutier (5832)]",
+    "↳ ↳ le lanceur lance « Mortier » (29127) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 2 » (3496); lanceur avec état « Évolution III » (135); avec état « Activation tactique » (132); lanceur =monstre Chalutier (5832)]",
+    "↳ Retire l'état « Activation tactique » (132) — toute la carte; cibles: alliés/ennemis [avec état « Activation tactique » (132)]",
+    "-3 PM (esquivable) — cibles: ennemis; 1 tour",
+    "Retire l'état « Activation tactique » (132) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur sa cellule « Spécial : Écoutille » (24234) niv.1 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Tactirelle (5837)]",
+    "la cible lance sur sa cellule « Spécial : Mortier » (24235) niv.1 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Chalutier (5832)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 3,
+     "range": [
+      0,
+      5
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 3,
+     "range": [
+      0,
+      6
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 75) vs g2: PO max 5 (g1) → 6 (g2)"
+   ],
+   "role": [
+    "mp_removal",
+    "turret_special"
+   ],
+   "tacticalNote": "-3 PM + spéciaux tactiques (Écoutille/Mortier).",
+   "spellLevelId": 42793
+  },
+  {
+   "id": 14306,
+   "pairIndex": 19,
+   "variantOf": 13833,
+   "isBaseVariant": false,
+   "name": "Submersion",
+   "unlockLevel": 185,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Active les sorts spéciaux des Tourelles tactiques du lanceur sur la cible.\n\nRetire de la Portée aux ennemis.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Activation tactique » (132) — cibles: alliés/ennemis; 1 tour",
+    "le lanceur lance « Activation Steamer » (23872) niv.3 — cibles: alliés/ennemis",
+    "↳ la cible lance sur elle-même « Écoutille » (23852) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Tactirelle (5837)]",
+    "↳ ↳ le lanceur lance « Écoutille » (13853) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Évolution III » (135); avec état « Activation tactique » (132); lanceur =monstre Tactirelle (5837)]",
+    "↳ la cible lance sur elle-même « Mortier » (23853) niv.1 — toute la carte; cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Chalutier (5832)]",
+    "↳ ↳ le lanceur lance « Mortier » (29127) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 1 » (3495); lanceur avec état « Évolution III » (135); avec état « Activation tactique » (132); lanceur =monstre Chalutier (5832)]",
+    "↳ ↳ le lanceur lance « Mortier » (29127) niv.1 — toute la carte; cibles: alliés/ennemis [lanceur avec état « Tourelle Rang 2 » (3496); lanceur avec état « Évolution III » (135); avec état « Activation tactique » (132); lanceur =monstre Chalutier (5832)]",
+    "↳ Retire l'état « Activation tactique » (132) — toute la carte; cibles: alliés/ennemis [avec état « Activation tactique » (132)]",
+    "-4 PO — cibles: ennemis; 1 tour",
+    "Retire l'état « Activation tactique » (132) — cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "la cible lance sur sa cellule « Spécial : Écoutille » (24234) niv.1 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Tactirelle (5837)]",
+    "la cible lance sur sa cellule « Spécial : Mortier » (24235) niv.1 — cibles: alliés [groupe du lanceur; avec état « Évolution III » (135); =monstre Chalutier (5832)]"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 3,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "range_removal",
+    "turret_special"
+   ],
+   "tacticalNote": "-4 PO + spéciaux tactiques.",
+   "spellLevelId": 43748
+  },
+  {
+   "id": 13877,
+   "pairIndex": 20,
+   "variantOf": 13860,
+   "isBaseVariant": true,
+   "name": "Compas",
+   "unlockLevel": 80,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Échange les positions de la première et de la dernière cible dans la zone d'effet.\n\nSur le lanceur : téléporte les entités à son contact symétriquement par rapport à lui.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "ligne 2"
+   ],
+   "effectsSummary": [
+    "la cible lance sur elle-même « Compas » (13882) niv.6 — cibles: lanceur(si dans zone)",
+    "↳ Applique l'état « Compas ciblé caster » (5289) — cibles: lanceur; 1 tour",
+    "↳ Téléportation symétrique par rapport au point d'impact — croix sans centre r1; cibles: alliés/ennemis",
+    "le lanceur lance « Compas » (13882) niv.1 — ligne 2; cibles: alliés/ennemis",
+    "↳ le lanceur lance « Compas » (13882) niv.2 — cibles: alliés/ennemis [lanceur sans état « Compas ciblé caster » (5289)]",
+    "↳ ↳ Applique l'état « Compas I » (5284) — cibles: alliés/ennemis [lanceur sans état « Compas Caster I » (5290); lanceur sans état « Compas Caster II » (5291); lanceur sans état « Compas Caster III » (5292)]; 1 tour",
+    "↳ ↳ Applique l'état « Compas II » (5285) — cibles: alliés/ennemis [lanceur avec état « Compas Caster I » (5290)]; 1 tour",
+    "↳ ↳ Applique l'état « Compas III » (5286) — cibles: alliés/ennemis [lanceur avec état « Compas Caster II » (5291)]; 1 tour",
+    "↳ ↳ Applique l'état « Compas Caster I » (5290) — cibles: lanceur [lanceur sans état « Compas Caster I » (5290); lanceur sans état « Compas Caster II » (5291); lanceur sans état « Compas Caster III » (5292)]; 1 tour",
+    "↳ ↳ Retire l'état « Compas Caster I » (5290) — cibles: lanceur [lanceur avec état « Compas Caster I » (5290)]",
+    "↳ ↳ Applique l'état « Compas Caster II » (5291) — cibles: lanceur [lanceur avec état « Compas Caster I » (5290)]; 1 tour",
+    "↳ ↳ Retire l'état « Compas Caster II » (5291) — cibles: lanceur [lanceur avec état « Compas Caster II » (5291)]",
+    "↳ ↳ Applique l'état « Compas Caster III » (5292) — cibles: lanceur [lanceur avec état « Compas Caster II » (5291)]; 1 tour",
+    "la cible lance sur elle-même « Compas » (13882) niv.3 — cibles: lanceur",
+    "↳ la cible lance sur elle-même « Compas » (13882) niv.4 — toute la carte; cibles: alliés/ennemis [avec état « Compas I » (5284); lanceur avec état « Compas Caster II » (5291)]",
+    "↳ ↳ Échange de positions avec le lanceur — toute la carte; cibles: alliés sauf lanceur/ennemis [avec état « Compas II » (5285)]",
+    "↳ la cible lance sur elle-même « Compas » (13882) niv.5 — toute la carte; cibles: alliés/ennemis [avec état « Compas I » (5284); lanceur avec état « Compas Caster III » (5292)]",
+    "↳ ↳ Échange de positions avec le lanceur — toute la carte; cibles: alliés sauf lanceur/ennemis [avec état « Compas III » (5286)]",
+    "↳ Retire l'état « Compas I » (5284) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Compas II » (5285) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Compas III » (5286) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Compas Caster I » (5290) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Compas Caster II » (5291) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Compas Caster III » (5292) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Compas ciblé caster » (5289) — toute la carte; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Échange de positions avec le lanceur — ligne 2; cibles: alliés/ennemis",
+    "Téléportation symétrique par rapport au point d'impact — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 2,
+     "range": [
+      0,
+      7
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 2,
+     "range": [
+      0,
+      8
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 80) vs g2: PO max 7 (g1) → 8 (g2)"
+   ],
+   "role": [
+    "swap",
+    "teleport"
+   ],
+   "tacticalNote": "Échange la première et la dernière cible d’une ligne de 2 ; sur soi : téléport symétrique des adjacents.",
+   "spellLevelId": 77685
+  },
+  {
+   "id": 13860,
+   "pairIndex": 20,
+   "variantOf": 13877,
+   "isBaseVariant": false,
+   "name": "Boussole",
+   "unlockLevel": 190,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "description": "Téléporte le lanceur symétriquement par rapport à une Tourelle.\n\nSur une case adjacente à une Tourelle : téléporte le lanceur sur la case ciblée ou échange de position avec la cible.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [
+    "croix sans centre r1"
+   ],
+   "effectsSummary": [
+    "le lanceur lance « Boussole » (29138) niv.1 — cibles: alliés [tourelles]",
+    "↳ Applique l'état « Boussole tourelle » (5299) — cibles: lanceur; 1 tour",
+    "↳ Téléportation symétrique par rapport à la cible — cibles: alliés/ennemis",
+    "le lanceur lance (limite globale) « Boussole » (29138) niv.2 — croix sans centre r1; cibles: alliés [tourelles]",
+    "↳ Applique l'état « Boussole » (5293) — cibles: lanceur [lanceur sans état « Boussole tourelle » (5299)]; 1 tour",
+    "le lanceur lance sur la cellule ciblée « Boussole » (29138) niv.3 — cibles: alliés/ennemis",
+    "↳ Téléporte le lanceur sur la case ciblée — cibles: alliés/ennemis [lanceur avec état « Boussole » (5293); lanceur sans état « Boussole tourelle » (5299)]",
+    "↳ Échange de positions avec le lanceur — cibles: alliés/ennemis [lanceur avec état « Boussole » (5293); lanceur sans état « Boussole tourelle » (5299)]",
+    "↳ Retire l'état « Boussole » (5293) — cibles: lanceur",
+    "↳ Retire l'état « Boussole tourelle » (5299) — cibles: lanceur"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Téléportation symétrique par rapport à la cible — cibles: alliés [tourelles]",
+    "Téléporte le lanceur sur la case ciblée — cibles: alliés/ennemis",
+    "Échange de positions avec le lanceur — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 2,
+     "range": [
+      1,
+      1
+     ],
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "maxPerTarget": 1
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "swap",
+    "teleport"
+   ],
+   "tacticalNote": "Téléport symétrique par rapport à une tourelle (ou échange/téléport près d’elle).",
+   "spellLevelId": 42840
+  },
+  {
+   "id": 13862,
+   "pairIndex": 21,
+   "variantOf": 13834,
+   "isBaseVariant": true,
+   "name": "Assistance",
+   "unlockLevel": 85,
+   "gradeUsed": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Téléporte l'allié ciblé sur la première case disponible entre le lanceur et lui. \nSoigne également la cible si c'est une Tourelle.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 25,
+     "max": 25,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,F5836,F5832,F5835,F5833,F5837,F5831",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [],
+   "effectsSummary": [
+    "Applique l'état « Assistance » (2230) — cibles: lanceur; 1 tour; non désenvoûtable",
+    "la cible lance sur elle-même « Assistance » (13878) niv.1 — cibles: alliés",
+    "↳ le lanceur lance « Assistance » (13878) niv.2 — toute la carte; cibles: alliés/ennemis [avec état « Assistance » (2230)]",
+    "↳ ↳ Téléporte le lanceur sur la case ciblée — ligne depuis le lanceur 0; cibles: alliés/ennemis [lanceur sans état « Pesanteur » (7)]",
+    "Soin = 25% des PV max — cibles: alliés [tourelles]",
+    "Retire l'état « Assistance » (2230) — cibles: lanceur"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Téléporte le lanceur sur la case ciblée — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 2,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 2,
+     "range": [
+      1,
+      8
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 85) vs g2: PO max 7 (g1) → 8 (g2)"
+   ],
+   "role": [
+    "heal",
+    "teleport"
+   ],
+   "tacticalNote": "Ramène un allié contre le Steamer (sauvetage) ; soigne une tourelle.",
+   "spellLevelId": 43766
+  },
+  {
+   "id": 13834,
+   "pairIndex": 21,
+   "variantOf": 13862,
+   "isBaseVariant": false,
+   "name": "Aiguillage",
+   "unlockLevel": 195,
+   "gradeUsed": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Attire la cible vers la Tourelle la plus proche dans une croix de taille 5 autour d'elle.\nSi la cible termine son déplacement au contact d'une Tourelle, cette dernière la téléporte symétriquement et lui réapplique les effets du sort.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Attire de 4 case(s) — cibles: alliés/ennemis",
+    "la cible lance sur elle-même « Aiguillage » (29143) niv.1 — cibles: ennemis",
+    "↳ Applique l'état « Aiguillage cible » (5298) — cibles: lanceur; 1 tour",
+    "↳ la cible lance sur elle-même (limite globale) « Aiguillage » (29143) niv.3 — croix sans centre r5; cibles: ennemis [sans état « Aiguillage » (5297); tourelles]",
+    "↳ ↳ la cible lance sur elle-même « Aiguillage » (29143) niv.8 — cibles: lanceur",
+    "↳ ↳ Attire de 4 case(s) — croix sans centre r5; cibles: alliés/ennemis [avec état « Aiguillage cible » (5298)]",
+    "↳ ↳ la cible lance sur elle-même « Aiguillage » (29143) niv.5 — cibles: lanceur",
+    "↳ ↳ Applique l'état « Aiguillage » (5297) — cibles: lanceur; 1 tour; non désenvoûtable",
+    "↳ ↳ la cible lance sur elle-même « Aiguillage » (29143) niv.1 — toute la carte; cibles: alliés/ennemis [avec état « Aiguillage cible » (5298)]",
+    "la cible lance sur elle-même « Aiguillage » (29143) niv.2 — cibles: alliés",
+    "↳ Applique l'état « Aiguillage cible » (5298) — cibles: lanceur; 1 tour",
+    "↳ la cible lance sur elle-même (limite globale) « Aiguillage » (29143) niv.4 — croix sans centre r5; cibles: alliés [sans état « Aiguillage » (5297); tourelles]",
+    "↳ ↳ la cible lance sur elle-même « Aiguillage » (29143) niv.8 — cibles: lanceur",
+    "↳ ↳ Attire de 4 case(s) — croix sans centre r5; cibles: alliés/ennemis [avec état « Aiguillage cible » (5298)]",
+    "↳ ↳ la cible lance sur elle-même « Aiguillage » (29143) niv.5 — cibles: lanceur",
+    "↳ ↳ Applique l'état « Aiguillage » (5297) — cibles: lanceur; 1 tour; non désenvoûtable",
+    "↳ ↳ la cible lance sur elle-même « Aiguillage » (29143) niv.2 — toute la carte; cibles: alliés/ennemis [avec état « Aiguillage cible » (5298)]",
+    "la cible lance sur elle-même « Aiguillage » (29143) niv.6 — cibles: lanceur",
+    "↳ Retire l'état « Aiguillage » (5297) — toute la carte; cibles: alliés/ennemis",
+    "↳ Retire l'état « Aiguillage cible » (5298) — toute la carte; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Téléportation symétrique par rapport au point d'impact — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 2,
+     "range": [
+      0,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "pull",
+    "teleport"
+   ],
+   "tacticalNote": "Attire la cible vers la tourelle la plus proche (croix 5) ; au contact : téléport symétrique + réapplication.",
+   "spellLevelId": 42739
+  },
+  {
+   "id": 13849,
+   "pairIndex": 22,
+   "variantOf": 13876,
+   "isBaseVariant": true,
+   "name": "Brise l'Âme",
+   "unlockLevel": 90,
+   "gradeUsed": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Applique l'état Automatique sur une Tourelle et la soigne :\n• La Tourelle intercepte les dommages subis en mêlée par les alliés à son contact au lancer du sort.\n• Si un des alliés subit des dommages à distance, la Tourelle s'active en utilisant son sort automatique sur l'allié ou sur son attaquant.\n\nL'activation peut être déclenchée qu'une seule fois par cible par tour et si l'allié ou l'attaquant est à portée de la Tourelle.",
+   "elements": [],
+   "damageLines": [
+    {
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 25,
+     "max": 25,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a,F5836,F5832,F5835,F5833,F5837,F5831",
+     "duration": 0,
+     "triggers": "I"
+    }
+   ],
+   "zones": [
+    "croix r1"
+   ],
+   "effectsSummary": [
+    "la cible lance sur elle-même « Brise l'Âme » (13850) niv.1 — cibles: alliés [tourelles]",
+    "↳ Applique l'état « Automatique » (5294) — cibles: lanceur; 2 tours",
+    "↳ Intercepte les dommages destinés à la cible (sacrifice) — croix sans centre r1; cibles: alliés sauf lanceur; déclenché quand le porteur subit des dommages en mêlée (déclencheur actif 2 tour(s))",
+    "↳ Applique l'état « Sacrifice » (583) — croix sans centre r1; cibles: alliés sauf lanceur; 2 tours",
+    "↳ Désenvoûte les effets du sort « Brise l'Âme » (29141) — croix sans centre r1; cibles: alliés sauf lanceur",
+    "↳ le lanceur lance « Brise l'Âme » (29141) niv.1 — croix sans centre r1; cibles: alliés sauf lanceur",
+    "↳ ↳ le lanceur lance « Brise l'Âme » (29141) niv.2 — cibles: alliés [tourelles]; déclenché quand le porteur subit des dommages à distance (déclencheur actif 2 tour(s))",
+    "↳ ↳ le lanceur lance « Brise l'Âme » (29141) niv.4 — cibles: alliés [tourelles]; déclenché quand le porteur subit des dommages à distance (déclencheur actif 2 tour(s))",
+    "Soin = 25% des PV max — cibles: alliés [tourelles]"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Applique l'état « Automatique » (5294) — cibles: alliés [tourelles]; 2 tours",
+    "Intercepte les dommages destinés à la cible (sacrifice) — croix r1; cibles: alliés/ennemis; déclenché quand le porteur subit des dommages en mêlée (déclencheur actif 2 tour(s))"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 3,
+     "range": [
+      1,
+      6
+     ],
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 3,
+     "range": [
+      1,
+      7
+     ],
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [
+    "g1 (niv 90) vs g2: PO max 6 (g1) → 7 (g2)"
+   ],
+   "role": [
+    "heal",
+    "sacrifice",
+    "turret_support"
+   ],
+   "tacticalNote": "Tourelle « Automatique » : intercepte la mêlée des alliés adjacents et riposte automatiquement.",
+   "spellLevelId": 81606
+  },
+  {
+   "id": 13876,
+   "pairIndex": 22,
+   "variantOf": 13849,
+   "isBaseVariant": false,
+   "name": "Récursivité",
+   "unlockLevel": 200,
+   "gradeUsed": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 2,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "description": "Repousse la cible.\nSi la cible termine son déplacement au contact d'une Tourelle, cette dernière la téléporte symétriquement et lui réapplique les effets du sort.\n\nLa poussée initiale n'affecte pas le lanceur.",
+   "elements": [],
+   "damageLines": [],
+   "zones": [],
+   "effectsSummary": [
+    "Repousse de 4 case(s) — cibles: alliés sauf lanceur/ennemis",
+    "la cible lance sur elle-même « Récursivité » (13881) niv.1 — cibles: ennemis",
+    "↳ la cible lance sur le déclencheur (limite globale) « Récursivité » (13881) niv.3 — croix sans centre r1; cibles: ennemis [sans état « Récursivité » (2460); tourelles]",
+    "↳ ↳ Téléportation symétrique par rapport au lanceur — cibles: alliés/ennemis",
+    "↳ ↳ le lanceur lance « Récursivité » (13881) niv.5 — cibles: alliés/ennemis",
+    "↳ ↳ Applique l'état « Récursivité » (2460) — cibles: lanceur; 1 tour; non désenvoûtable",
+    "↳ ↳ la cible lance sur elle-même « Récursivité » (13881) niv.1 — cibles: alliés/ennemis",
+    "la cible lance sur elle-même « Récursivité » (13881) niv.2 — cibles: alliés",
+    "↳ la cible lance sur le déclencheur (limite globale) « Récursivité » (13881) niv.4 — croix sans centre r1; cibles: alliés [sans état « Récursivité » (2460); tourelles]",
+    "↳ ↳ Téléportation symétrique par rapport au lanceur — cibles: alliés/ennemis",
+    "↳ ↳ le lanceur lance « Récursivité » (13881) niv.5 — cibles: alliés/ennemis",
+    "↳ ↳ Applique l'état « Récursivité » (2460) — cibles: lanceur; 1 tour; non désenvoûtable",
+    "↳ ↳ la cible lance sur elle-même « Récursivité » (13881) niv.2 — cibles: alliés/ennemis",
+    "la cible lance sur elle-même « Récursivité » (13881) niv.6 — cibles: lanceur",
+    "↳ Retire l'état « Récursivité » (2460) — toute la carte; cibles: alliés/ennemis"
+   ],
+   "criticalSummary": [],
+   "tooltipOnlyEffects": [
+    "Téléportation symétrique par rapport au point d'impact — cibles: alliés/ennemis"
+   ],
+   "gradeProgression": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 3,
+     "range": [
+      0,
+      1
+     ],
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "maxPerTarget": 0
+    }
+   ],
+   "gradeDifferences": [],
+   "role": [
+    "push",
+    "teleport"
+   ],
+   "tacticalNote": "Repousse de 4 ; au contact d’une tourelle : téléport symétrique + réapplication (rebond).",
+   "spellLevelId": 42856
+  }
+ ],
+ "recommendedSets": [
+  {
+   "name": "Set « Ingénieur soutien » (soin + placement, recommandé en groupe de 4)",
+   "rationale": "Gardienne + Harponneuse + Bathyscaphe, Secourisme pour le soin direct, Marée/Compas/Boussole pour le placement, Ancrage pour l’entrave.",
+   "choices": [
+    {
+     "pair": 1,
+     "spell": "Longue-vue",
+     "why": "+3 PO allié / -2 PM"
+    },
+    {
+     "pair": 2,
+     "spell": "Amarrage",
+     "why": "1 PA net sur tourelle"
+    },
+    {
+     "pair": 3,
+     "spell": "Gouvernail",
+     "why": "regroupement de zone"
+    },
+    {
+     "pair": 4,
+     "spell": "Sabotage",
+     "why": "-30 dommages en zone"
+    },
+    {
+     "pair": 5,
+     "spell": "Harponneuse",
+     "why": "DPS + aura dommages"
+    },
+    {
+     "pair": 6,
+     "spell": "Évolution",
+     "why": "1 PA/évolution + soin"
+    },
+    {
+     "pair": 7,
+     "spell": "Gardienne",
+     "why": "soins automatiques"
+    },
+    {
+     "pair": 8,
+     "spell": "Aspiration",
+     "why": "mobilité"
+    },
+    {
+     "pair": 9,
+     "spell": "Marée",
+     "why": "échange + bascule gratuite"
+    },
+    {
+     "pair": 10,
+     "spell": "Turbine",
+     "why": "zone + évolution"
+    },
+    {
+     "pair": 11,
+     "spell": "Bathyscaphe",
+     "why": "boucliers + aura +1 PA"
+    },
+    {
+     "pair": 12,
+     "spell": "Blindage",
+     "why": "bouclier + Indéplaçable"
+    },
+    {
+     "pair": 13,
+     "spell": "Cabestan",
+     "why": "attire/téléport"
+    },
+    {
+     "pair": 14,
+     "spell": "Ressac",
+     "why": "repositionner une tourelle"
+    },
+    {
+     "pair": 15,
+     "spell": "Sonar",
+     "why": "Armada à distance"
+    },
+    {
+     "pair": 16,
+     "spell": "Courant",
+     "why": "placement marée"
+    },
+    {
+     "pair": 17,
+     "spell": "Secourisme",
+     "why": "soin + Intervention/Décompression"
+    },
+    {
+     "pair": 18,
+     "spell": "Ancrage",
+     "why": "-3 PM zone"
+    },
+    {
+     "pair": 19,
+     "spell": "Plongée",
+     "why": "-3 PM"
+    },
+    {
+     "pair": 20,
+     "spell": "Boussole",
+     "why": "téléport"
+    },
+    {
+     "pair": 21,
+     "spell": "Assistance",
+     "why": "sauvetage d’allié"
+    },
+    {
+     "pair": 22,
+     "spell": "Brise l’Âme",
+     "why": "tourelle protectrice"
+    }
+   ]
+  },
+  {
+   "name": "Set « Artillerie » (DPS)",
+   "rationale": "Harponneuse + Foreuse + Tactirelle, Surtension pour l’Évolution III immédiate, Sonar/Embuscade, sorts de zone.",
+   "choices": [
+    {
+     "pair": 5,
+     "spell": "Harponneuse",
+     "why": ""
+    },
+    {
+     "pair": 7,
+     "spell": "Foreuse",
+     "why": ""
+    },
+    {
+     "pair": 11,
+     "spell": "Tactirelle",
+     "why": ""
+    },
+    {
+     "pair": 6,
+     "spell": "Surtension",
+     "why": ""
+    },
+    {
+     "pair": 15,
+     "spell": "Embuscade",
+     "why": ""
+    },
+    {
+     "pair": 18,
+     "spell": "Court-circuit",
+     "why": ""
+    }
+   ]
+  }
+ ],
+ "rotations": [
+  {
+   "name": "Tour 1 — pose et évolution (12 PA)",
+   "context": "Début de combat, ennemis à distance.",
+   "steps": [
+    "Harponneuse (2 PA) à portée des ennemis (Évol I).",
+    "Évolution (1 PA) sur la Harponneuse → Évol II (aura +20 Dommages au Steamer au prochain tour de la tourelle).",
+    "Marée sur soi (3 PA rendus, 0 net) si besoin de passer en Marée Haute pour Longue-vue -2 PM.",
+    "Longue-vue (3 PA) ou Ancrage (4 PA, -3 PM) sur un ennemi.",
+    "Amarrage sur la tourelle (2 PA, 1 rendu) pour la rapprocher, ou Gouvernail (4 PA)."
+   ],
+   "expected": "Une tourelle en II, ennemis ralentis."
+  },
+  {
+   "name": "Tour 2 — 2e tourelle + spéciaux (12 PA)",
+   "context": "Harponneuse en II.",
+   "steps": [
+    "Gardienne (2 PA) près du groupe.",
+    "Évolution (1 PA) sur la Harponneuse → III (contrôlable, Armada débloqué).",
+    "Sonar (3 PA) sur un ennemi : Armada de la Harponneuse III (34–39 meilleur élément) + 11–13.",
+    "Secourisme (3 PA) sur un allié blessé.",
+    "3 PA restants : Torpille/Longue-vue.",
+    "Jouer ensuite la Harponneuse III (6 PA : 3 × Espadon 30–34 vol de vie, 1/cible, ou Harponnage)."
+   ],
+   "expected": "≈ 3 actions de dégâts supplémentaires par tour via la tourelle contrôlée."
+  }
+ ],
+ "strengths": [
+  "Placement et contrôle du terrain inégalés (échanges, téléports symétriques, attirances de zone).",
+  "Soins/boucliers continus via Gardienne/Bathyscaphe + Secourisme ; utile dans un groupe sans Eniripsa.",
+  "Actions supplémentaires : une tourelle III contrôlée = un « 5e personnage » (6 PA).",
+  "Économies de PA (Amarrage, Ressac, Marée, Gouvernail, Ancrage)."
+ ],
+ "weaknesses": [
+  "Montée en puissance lente (évolutions, 1 tourelle/tour, relance 3).",
+  "Tourelles immobiles : vulnérables aux dégâts de zone, à repositionner (Ressac, Amarrage).",
+  "Beaucoup d’effets dépendent de la géométrie (lignes, contact des tourelles) : IA complexe.",
+  "Dégâts directs modestes sans tourelles évoluées."
+ ],
+ "synergies": [
+  {
+   "with": "Roublard",
+   "description": "Gouvernail/Turbine/Chalutier regroupent les ennemis sur les bombes ; Tactirelle repousse dans les murs."
+  },
+  {
+   "with": "Iop / Sacrieur / Zobal",
+   "description": "Placement des ennemis au contact des tanks ; Intervention (+2 PM) et Décompression (+2 PA) sur le DPS mêlée."
+  },
+  {
+   "with": "Crâ / Eliotrope",
+   "description": "Longue-vue +3 PO à l’allié ciblé ; Courant/Écume en Marée Haute repoussent les ennemis loin des DPS distance."
+  },
+  {
+   "with": "Enutrof / Sram (entrave)",
+   "description": "Chalutier III (+30 retrait PM) et Ancrage complètent le retrait PM."
+  }
+ ],
+ "uncertain": [
+  "PV des tourelles (`bonusCharacteristics.lifePoints` = 180) et héritage du tacle.",
+  "IA serveur des tourelles non contrôlées (choix de cible).",
+  "Limite « 1/tour (global) » : interprétée comme une seule pose de tourelle par tour toutes tourelles confondues.",
+  "La ligne de vue exigée pour les auras d’Évolution (description) n’apparaît pas dans les masques.",
+  "Écarts avec la table de sorts embarquée dans DoMath (domath.fr, bundle main.js) : Corrosion 26–30 Air / CC 10 % chez DoMath contre 17–19 / CC 5 % dans les fichiers du jeu (DofusDB, 2026) ; Vapor et Turbine CC 15 % chez DoMath contre 10 % ici. Les données DofusDB sont retenues (plus récentes) ; 30 autres sorts du Steamer concordent."
+ ],
+ "sources": [
+  "https://api.dofusdb.fr/breeds/15 ; https://api.dofusdb.fr/spell-variants?breedId=15 ; spells/spell-levels (ids cités) ; monsters 5831–5837",
+  "Descriptions des sorts 23996 et 29182–29187 « Évolutions … » (DofusDB) pour les règles d’Évolution II/III",
+  "https://dofus.jeuxonline.info/actualite/35637/dossier-savons-nous-steamers (contexte historique)"
+ ],
+ "aiHints": [
+  "Traiter chaque tourelle III comme un agent contrôlé supplémentaire dans la recherche de tour du groupe.",
+  "Planifier les évolutions : 1 par tourelle et par tour ; prioriser la tourelle dont l’aura/le spécial apporte le plus (Harponneuse pour le DPS, Gardienne pour la survie).",
+  "Garder Marée (bascule gratuite) pour adapter Courant/Écume/Longue-vue au besoin du tour.",
+  "Utiliser Ressac/Amarrage sur ses propres tourelles quand elles sont hors de portée (gain de PA)."
+ ],
+ "vortexNotes": [
+  "Placement des alliés hors des lignes de l’Auroraire : Marée (échange), Assistance (ramène un allié), Compas, Boussole ; et des monstres DANS ces lignes (Courant, Gouvernail, Tactirelle) — les dommages de l’Auroraire ne visent que les ennemis du Vortex, mais aligner les monstres sur l’heure voulue aide à les tuer au bon moment (INCERTAIN : vérifier qui est touché).",
+  "Soins/boucliers continus (Gardienne, Bathyscaphe, Secourisme) pour encaisser l’érosion (+20 % 2 tours) des lignes.",
+  "Les tourelles sont des cibles statiques : les placer hors des lignes récurrentes (IV/VIII/XII à 4 joueurs).",
+  "Sabotage (-30 dommages) / Soupape (-20 % CC) contre le Vortex en phase 2."
+ ],
+ "engineRules": [
+  "**Sélection des cibles « instantanée »** : pour UN lancer de sort, les cibles de **tous** les effets (zone + masque, y compris les conditions d’état `E<id>`/`e<id>`) sont calculées **avant** d’appliquer le premier effet (port C# du client : `DamageCalculator.ExecuteSpell → GenerateTargets`, recalcul uniquement après un effet de résurrection). Preuves dans les données : la chaîne d’états Combo du Roublard (20497 : « applique Combo II si Combo I », puis « retire Combo I »…) ou l’Évolution du Steamer (pose « Évolution bloquée » puis teste « sans Évolution bloquée ») n’ont de sens qu’avec cette règle (sinon une bombe passerait de Combo I à XV en un lancer). Les **sous-sorts** (effets 1160, 792, 2794…) sont des lancers séparés : leurs cibles sont calculées au moment où l’effet parent est atteint, donc ils voient les effets déjà appliqués. ⚠ La fiche `cra.md` d’un autre agent suggère une évaluation au moment de l’application : à harmoniser (cette règle-ci est celle du code du client porté).",
+  "**Effets `forClientOnly = true`** : purement descriptifs (info-bulle). Ne jamais les exécuter ; le comportement réel est dans un sous-sort (souvent conditionnel). Exemple : « Rend 1 PA » d’Amarrage n’est réellement appliqué que si la cible est une tourelle (sous-sort 29587).",
+  "**Effets « lance un sort »** (diceNum = id du sort, diceSide = niveau) : 1160 `CasterExecuteSpell` / 2160 (limite globale) = le lanceur lance le sous-sort sur chaque cible ; 792 `TargetExecuteSpell` / 2792 = chaque cible le lance sur elle-même ; 2794 `TargetExecuteSpellOnCell` / 2795 = la cible le lance sur sa cellule ; 2960 `CasterExecuteSpellOnCell` = le lanceur le lance sur la cellule d’impact ; 1017/2017 = la cible le lance sur le déclencheur ; 1018 = le déclencheur le lance sur la cible ; 1019 = le déclencheur sur lui-même. Les effets 3792/3793 (`ExecuteSpellScriptUsage`) sont visuels. `value = 999` apparaît sur certains de ces effets (sens INCERTAIN, sans impact connu).",
+  "**Masques de cibles** (`targetMask`, liste séparée par des virgules ; port C# `SpellManager.IsSelectedByMask`) : lettres **inclusives** (au moins une doit correspondre) : `a` alliés (lanceur compris), `g` alliés sauf lanceur, `A` ennemis, `c` lanceur s’il est dans la zone, `C` lanceur partout, `h/H` joueurs alliés/ennemis (non invoqués), `i/I` invocations non statiques, `j/J` invocations, `s/S` invocations statiques, `m/M` monstres non invoqués, `l/L` joueurs ou compagnons, `d/D` compagnons ; lettres **exclusives** (toutes doivent passer) : `E<n>`/`e<n>` a / n’a pas l’état n, `F<n>`/`f<n>` est / n’est pas le monstre n (plusieurs `F` = OU), `B<n>`/`b<n>` est / n’est pas la classe n, `P`/`p` est / n’est pas dans le groupe du lanceur (lui-même, ses invocations, les invocations du même invocateur, son invocateur), `R`/`r` sort lancé via / hors portail, `V<n>`/`v<n>` PV < n % / ≥ n %, `T` téléfraggé ce tour, `W` téléportation ratée, `K` porté/lancé, `Q`/`q` quota d’invocations atteint / non atteint, `O`/`o` = la cible déclenchante, `U/u` en apparition. Préfixe `*` = la condition porte sur le **lanceur** (ex. `*E98` = le lanceur est en Intrépide).",
+  "**Conditions de lancer** (`statesCriterion`) : `HS=<n>` le lanceur doit avoir l’état n, `HS!<n>` ne doit pas l’avoir, `|` = OU, `&` = ET.",
+  "**Déclencheurs** (`triggers`, séparés par `|`) : `I` immédiat ; `TB`/`TE` début/fin du tour du porteur ; `D` dommages subis ; `DM`/`DR` en mêlée/à distance ; `DBA` par un allié ; `X` mort, `XD` mort par dommages, `XPD` par poussée, `XDBA` tué par un allié ; `P` poussé, `MA` attiré, `M` déplacé, `MS` échange de position, `PD` dommages de poussée subis, `H` soigné, `PT` traverse un portail, `PST` projette un sort via un portail, `PDT` dommages subis via portail, `CI` invoque, `CT` tacle (INCERTAIN), `CPT` une entité traverse un portail du porteur (INCERTAIN), `CMPAS` tentative de retrait PM du lanceur (INCERTAIN), `EON<n>`/`EOFF<n>` l’état n est appliqué/retiré. Pour un effet déclenché, `effectTriggerDuration` = nombre de tours pendant lesquels le déclencheur reste posé sur la cible (affiché « déclencheur actif N tour(s) ») et `duration` = durée de l’effet produit à chaque déclenchement (0 = instantané).",
+  "**Zones** (`zoneDescr.shape` + param1 = rayon, param2 = rayon minimal) : P case, C cercle, X croix, + croix diagonale, * étoile (8 directions), Q/# croix sans centre (orthogonale/diagonale), L ligne depuis l’impact, l ligne depuis le lanceur, T/- barre perpendiculaire, O anneau, G/W carré (plein/contour), D damier, U demi-cercle, V cône, F fourche, B boomerang, R rectangle, A/a toute la carte. `damageDecreaseStepPercent` (10 % par défaut) = dégressivité par case pour les dommages de zone (certaines descriptions précisent « non dégressif »).",
+  "**Boucliers** (1020) = X % du niveau du lanceur ; **soins** 1109 = X % des PV max de la cible ; **2822/3002** = dommages / soins dans le **meilleur élément** du lanceur (caractéristique la plus haute)."
+ ],
+ "turrets": {
+  "maxSimultaneous": "1 par type ; 3 en pratique (une par paire de sorts choisie)",
+  "placementLimit": "1 pose de tourelle par tour (maxGlobalCastPerTurn = 1), relance 3 par type",
+  "stats": {
+   "ap": 6,
+   "mp": 0,
+   "resistances": 15,
+   "bonusCharacteristicsPercent": {
+    "lifePoints": 180,
+    "strength": 100,
+    "intelligence": 100,
+    "chance": 100,
+    "agility": 100,
+    "wisdom": 100,
+    "elementalDamages": 100,
+    "tackleBlock": 100
+   },
+   "useSummonSlot": false
+  },
+  "evolutionStates": {
+   "II": 134,
+   "III": 135,
+   "blocked": 6094,
+   "evolved": 6093,
+   "rank": [
+    3495,
+    3496,
+    3497
+   ]
+  },
+  "evolutionSources": {
+   "Évolution (13832)": "+1 niveau, soin 50 %",
+   "Surtension (13868)": "niveau III pendant 1 tour puis -1, soin 100 %",
+   "Vapor (13826)": "+1 aux tourelles de la zone",
+   "Turbine (13874)": "+1 aux tourelles de la zone",
+   "Court-circuit (13872)": "+1 et +100 % CC"
+  },
+  "devolutionSources": {
+   "Soupape (13867)": "-1 niveau, -1 tour de relance du sort de pose",
+   "Sabotage (13858)": "-1 niveau, -1 tour de relance"
+  },
+  "byType": [
+   {
+    "name": "Harponneuse",
+    "monsterId": 5836,
+    "castSpell": 13829,
+    "basicSpell": 29112,
+    "advancedSpell": 29122,
+    "specialSpell": 13893,
+    "auraII": "+20 Dommages",
+    "auraIII": "+25 Dommages, +15 % CC"
+   },
+   {
+    "name": "Chalutier",
+    "monsterId": 5832,
+    "castSpell": 13859,
+    "basicSpell": 13883,
+    "advancedSpell": 13885,
+    "specialSpell": 29127,
+    "auraII": "+30 Tacle",
+    "auraIII": "+40 Tacle, +30 Retrait PM"
+   },
+   {
+    "name": "Gardienne",
+    "monsterId": 5835,
+    "castSpell": 13830,
+    "basicSpell": 13847,
+    "advancedSpell": 29124,
+    "specialSpell": 13848,
+    "auraII": "+10 % Vitalité",
+    "auraIII": "+12 % Vitalité, +1 PM"
+   },
+   {
+    "name": "Foreuse",
+    "monsterId": 5833,
+    "castSpell": 13864,
+    "basicSpell": 29117,
+    "advancedSpell": 29123,
+    "specialSpell": 13888,
+    "auraII": "+150 Puissance",
+    "auraIII": "+200 Puissance, +1 PO"
+   },
+   {
+    "name": "Tactirelle",
+    "monsterId": 5837,
+    "castSpell": 13831,
+    "basicSpell": 13844,
+    "advancedSpell": 29126,
+    "specialSpell": 13853,
+    "auraII": "+40 Dommages poussée",
+    "auraIII": "+50 Dommages poussée, +50 Fuite"
+   },
+   {
+    "name": "Bathyscaphe",
+    "monsterId": 5831,
+    "castSpell": 13869,
+    "basicSpell": 13889,
+    "advancedSpell": 29125,
+    "specialSpell": 13891,
+    "auraII": "bouclier 75 % du niveau",
+    "auraIII": "bouclier 100 % du niveau, +1 PA"
+   }
+  ],
+  "auraRule": "au début du tour de la tourelle, sur son invocateur (seul) s’il est à <= 7 cases (et en ligne de vue selon la description), durée 1 tour",
+  "specialActivation": {
+   "offensive (état 130)": [
+    "Sonar 13873",
+    "Embuscade 13835"
+   ],
+   "defensive (131)": [
+    "Secourisme 13836",
+    "Sauvetage 13871"
+   ],
+   "tactical (132)": [
+    "Plongée 13833",
+    "Submersion 14306"
+   ]
+  }
+ },
+ "tide": {
+  "lowState": 5283,
+  "highState": 5282,
+  "initial": "Marée Basse",
+  "toggleSpell": 13820,
+  "togglesPerTurn": 2
+ }
+}

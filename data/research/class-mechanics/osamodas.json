@@ -1,0 +1,5131 @@
+{
+ "breedId": 2,
+ "slug": "osamodas",
+ "name": "Osamodas",
+ "nameEn": "Osamodas",
+ "dataSource": "api.dofusdb.fr (fichiers du jeu Dofus 3, données mises à jour le 2026-06-23), extraction 2026-10-04",
+ "officialRoles": [
+  {
+   "roleId": 7,
+   "value": 12,
+   "description": "Invoque des créatures pour combattre à ses côtés."
+  },
+  {
+   "roleId": 8,
+   "value": 6,
+   "description": "Augmente les points d'actions, de mouvement et la puissance de ses alliés."
+  },
+  {
+   "roleId": 4,
+   "value": 5,
+   "description": "Soigne ses alliés et augmente les soins reçus."
+  }
+ ],
+ "roles": [
+  {
+   "role": "soutien-soin-boost",
+   "element": "Eau ou Terre (Feu pour le soin de zone)",
+   "priority": 1,
+   "tags": [
+    "heal",
+    "buff_ap_mp",
+    "buff_power",
+    "shield"
+   ],
+   "description": "Piqûre Motivante (+1 PA/+1 PM 3 t.), Cri du Corbac (+1 PM), Pics du Prespic (+10 % CC), Dents du Piranya (soin zone + 20 Dommages), Cri de l'Ours (+150 Puissance), Toison d'Or (bouclier 300), Chant du Phénix."
+  },
+  {
+   "role": "invocateur-armee",
+   "element": "selon la famille de créatures",
+   "priority": 2,
+   "tags": [
+    "summoner",
+    "block",
+    "tank"
+   ],
+   "description": "6 PI de créatures qui bloquent, tanquent, retirent des PM (Fronde Rocheuse) et attaquent ; Martinet/Cortège Sauvage pour le burst."
+  },
+  {
+   "role": "dps-pacte-bestial",
+   "element": "Terre/Feu",
+   "priority": 3,
+   "tags": [
+    "damage_burst",
+    "self_buff"
+   ],
+   "description": "Pacte Bestial (+2 PA, +3/6/9 % dommages et soins finaux par créature sacrifiée) puis sorts offensifs (Crocs du Mulou, Cœur Sauvage…)."
+  },
+  {
+   "role": "placeur",
+   "element": "meilleur élément",
+   "priority": 4,
+   "tags": [
+    "placement"
+   ],
+   "description": "Fouet, Cravache, Discipline (−2 PM), Laisse Spirituelle, Relais Spirituel, Tourbillon, Frappe du Craqueleur."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Points d'invocation (PI)",
+   "description": "La stat Invocations (26) est une jauge : chaque créature coûte summonCost = 1/2/3 PI ; max 6 par l'équipement ; +3 PI avec Cortège Sauvage, +1..3 PI temporaires avec Gobmutation.",
+   "implementationNotes": "canSummon = usedPoints + monster.summonCost <= maxPoints ; usedPoints recalculé à chaque mort/apparition."
+  },
+  {
+   "name": "Héritage des caractéristiques",
+   "description": "bonusCharacteristics = % des stats de l'Osamodas (50/75/100 % selon coût 1/2/3 PI ; 75 % pour les Gobgobs).",
+   "implementationNotes": "Pour chaque clé (lifePoints, strength…, tackleBlock, tackleEvade, bonusXDamage) : floor(statInvocateur * pct/100) ; résistances/PA/PM du grade."
+  },
+  {
+   "name": "Sorts vol/soin + buff",
+   "description": "Paires 1–4 (A) : vol de vie élémentaire sur ennemi, soin équivalent sur allié (pas le lanceur), buff au lanceur et à l'allié.",
+   "implementationNotes": "Masques g (soin) / A (vol) / C,g (buff) ; crit séparé pour vol et soin."
+  },
+  {
+   "name": "Meilleur élément",
+   "description": "Fouet, Cravache, Discipline, Martinet (effet 2822) frappent dans l'élément de la plus haute caractéristique principale.",
+   "implementationNotes": "GetBestElement : max(stat élément), égalité → dommages fixes ; Terre par défaut ; Neutre et Terre partagent la Force."
+  },
+  {
+   "name": "Martinet",
+   "description": "Attire toutes les créatures de 2 vers la cible ; chaque créature en portée/LdV lance son attaque dédiée à −50 % dommages et soins finaux.",
+   "implementationNotes": "Sous-sort 31440 g3 : liste créature → sort (Tofu→Bisou Béco 31156, Bouftou→Saute-bouftou 31159, Crapipou→Croassement 31164, Dragoune→Dracorage 31168, Ventritofu→Ventripoussée 31157, Bouflourd→Charge du Bouflourd 31161, Crapipaud→Crapobatie 31165, Dragonnet→Souffle du Dragon 31169, Scarafoudre→Scarafusée 31179, Craquolosse→Fronde Rocheuse 31174, Crocoléreux→Crocs Coléreux 31180, Sulfénix→Sulfuria 31183)."
+  },
+  {
+   "name": "Cortège Sauvage",
+   "description": "+3 PI et −1 PA sur les invocations 2 tours ; toutes les créatures Osamodas meurent au début des deux tours suivants.",
+   "implementationNotes": "Sous-sort 32555 : g2 immédiat (−1 PA via effet 285 sur chaque sort d'invocation), g1 (kill) avec délai 1 puis g3→g1 avec délai 2."
+  },
+  {
+   "name": "Pacte Bestial",
+   "description": "État Bestial 3 t., +2 PA ; sacrifie les créatures (+3/6/9 % dommages et soins finaux, 30 % de leurs PV transférés) ; prolongé à chaque invocation ; relances d'invocation remises à 0 à la fin.",
+   "implementationNotes": "Déclencheur CI = « le porteur invoque une créature » ; 90 = transfert % PV ; 1171/2971 multiplicateurs finaux cumulables."
+  },
+  {
+   "name": "Laisse Spirituelle",
+   "description": "La cible suit l'Osamodas (effet 2184) à chaque PM dépensé ce tour ; retirée si lanceur ou cible déplacés.",
+   "implementationNotes": "Déclencheur CMPARR = « le lanceur du buff dépense des PM » (déduit de la description) ; follow = chemin vers la case adjacente la plus proche derrière le lanceur (INCERTAIN)."
+  },
+  {
+   "name": "Relais Spirituel",
+   "description": "Échange avec une invocation, état Relais ; échanges en chaîne entre invocation relais et la suivante si ≤ 5 cases.",
+   "implementationNotes": "États 6291–6294 ; +1 PO minimale sur le sort tant que l'état 6292 est actif."
+  },
+  {
+   "name": "Gobgobs",
+   "description": "Invocations contrôlables (Glouton 1 PI, Facétieux 3 PI) ; relance fixée à 2 à leur mort.",
+   "implementationNotes": "Gobgobage : dommages Neutre = 25 % PV actuels (≥ 50 %) ou 25 % PV manquants (< 50 %) ; dévorer une créature = +50 % Vitalité −1 PM permanents."
+  }
+ ],
+ "spells": [
+  {
+   "id": 31110,
+   "spellLevelId": 82581,
+   "pairIndex": 1,
+   "variant": "A",
+   "variantOf": 31113,
+   "name": "Cri du Corbac",
+   "nameEn": "Crobak Call",
+   "descriptionFr": "Vole de la vie aux ennemis ou soigne les alliés dans l'élément Air. Augmente également les PM du lanceur et de l'allié ciblé. Les soins n'affectent pas le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 132,
+   "unlockLevel": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [
+    "Air"
+   ],
+   "baseDamage": {
+    "min": 13,
+    "max": 16,
+    "critMin": 18,
+    "critMax": 21,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "13 à 16 vol Air (CC : 18 à 21 vol Air) — cibles : ennemis",
+    "13 à 16 soins Air (CC : 18 à 21 soins Air) — cibles : alliés (hors lanceur)",
+    "1 PM — cibles : alliés (hors lanceur), lanceur ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 93,
+     "action": "CharacterLifePointsStealFromAir",
+     "text": "13 à 16 vol Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 13,
+     "max": 16,
+     "critMin": 18,
+     "critMax": 21
+    },
+    {
+     "effectId": 2999,
+     "action": "CharacterLifePointsWinFromAir",
+     "text": "13 à 16 soins Air",
+     "targetMask": "g",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 13,
+     "max": 16,
+     "critMin": 18,
+     "critMax": 21
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "text": "1 PM",
+     "targetMask": "g,C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "heal",
+    "steal",
+    "buff_mp",
+    "air"
+   ],
+   "tactical": "2 PA, 0–7 PO : vole 13–16 Air à un ennemi ou soigne d'autant un allié (pas le lanceur), et donne +1 PM 2 tours au lanceur et à l'allié ciblé. 3/tour : jusqu'à +3 PM répartis."
+  },
+  {
+   "id": 31113,
+   "spellLevelId": 82609,
+   "pairIndex": 1,
+   "variant": "B",
+   "variantOf": 31110,
+   "name": "Crocs du Mulou",
+   "nameEn": "Fangs of Boowolf",
+   "descriptionFr": "Occasionne des dommages Terre aux ennemis et augmente les dommages en mêlée du lanceur et des alliés en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 162,
+   "unlockLevel": 95,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 39,
+    "max": 43,
+    "critMin": 45,
+    "critMax": 50,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "39 à 43 dommages Terre (CC : 45 à 50 dommages Terre) — cibles : ennemis ; zone : croix de taille 1",
+    "5% Dommages mêlée — cibles : alliés (hors lanceur), lanceur ; zone : croix de taille 1 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "39 à 43 dommages Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 39,
+     "max": 43,
+     "critMin": 45,
+     "critMax": 50
+    },
+    {
+     "effectId": 2800,
+     "action": "CharacterBoostDealtDamagePercentMultiplierMelee",
+     "text": "5% Dommages mêlée",
+     "targetMask": "g,C",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "buff",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "4 PA : 39–43 Terre en croix aux ennemis, +5 % dommages mêlée (2 tours) au lanceur et alliés de la zone. Sort offensif Terre de l'Osamodas."
+  },
+  {
+   "id": 31111,
+   "spellLevelId": 82591,
+   "pairIndex": 2,
+   "variant": "A",
+   "variantOf": 31137,
+   "name": "Pics du Prespic",
+   "nameEn": "Prespic Peaks",
+   "descriptionFr": "Vole de la vie aux ennemis ou soigne les alliés dans l'élément Feu. Augmente également les Critiques du lanceur et de l'allié ciblé. Les soins n'affectent pas le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 133,
+   "unlockLevel": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [
+    "Feu"
+   ],
+   "baseDamage": {
+    "min": 14,
+    "max": 17,
+    "critMin": 19,
+    "critMax": 22,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "14 à 17 vol Feu (CC : 19 à 22 vol Feu) — cibles : ennemis",
+    "14 à 17 soins Feu (CC : 19 à 22 soins Feu) — cibles : alliés (hors lanceur)",
+    "10% Critique — cibles : alliés (hors lanceur), lanceur ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 94,
+     "action": "CharacterLifePointsStealFromFire",
+     "text": "14 à 17 vol Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 14,
+     "max": 17,
+     "critMin": 19,
+     "critMax": 22
+    },
+    {
+     "effectId": 108,
+     "action": "CharacterLifePointsWinFromFire",
+     "text": "14 à 17 soins Feu",
+     "targetMask": "g",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 14,
+     "max": 17,
+     "critMin": 19,
+     "critMax": 22
+    },
+    {
+     "effectId": 115,
+     "action": "CharacterBoostCriticalHit",
+     "text": "10% Critique",
+     "targetMask": "g,C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "heal",
+    "steal",
+    "buff_crit",
+    "fire"
+   ],
+   "tactical": "2 PA : vol/soin Feu 14–17 et +10 % critiques (2 tours) au lanceur et à l'allié ciblé."
+  },
+  {
+   "id": 31137,
+   "spellLevelId": 82582,
+   "pairIndex": 2,
+   "variant": "B",
+   "variantOf": 31111,
+   "name": "Déplumage",
+   "nameEn": "Plucking",
+   "descriptionFr": "Occasionne des dommages Air et réduit les Résistances Poussée des ennemis en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 167,
+   "unlockLevel": 100,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 37,
+    "max": 40,
+    "critMin": 41,
+    "critMax": 45,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "37 à 40 dommages Air (CC : 41 à 45 dommages Air) — cibles : ennemis ; zone : croix de taille 1",
+    "-60 Résistances Poussée — cibles : ennemis ; zone : croix de taille 1 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "37 à 40 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 37,
+     "max": 40,
+     "critMin": 41,
+     "critMax": 45
+    },
+    {
+     "effectId": 417,
+     "action": "CharacterDeboostPushDamageReduction",
+     "text": "-60 Résistances Poussée",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "debuff",
+    "aoe",
+    "air"
+   ],
+   "tactical": "4 PA, croix : 37–40 Air et −60 résistance poussée (2 tours) : prépare les dommages de poussée des alliés (Fouet, Aéropique, Iop/Pandawa)."
+  },
+  {
+   "id": 31135,
+   "spellLevelId": 82932,
+   "pairIndex": 3,
+   "variant": "A",
+   "variantOf": 31140,
+   "name": "Dents du Piranya",
+   "nameEn": "Piranya Teeth",
+   "descriptionFr": "Soigne les alliés et vole de la vie dans l'élément Eau aux ennemis en zone. Augmente également les Dommages du lanceur et des alliés ciblés. Les soins n'affectent pas le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 134,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [
+    "Eau"
+   ],
+   "baseDamage": {
+    "min": 19,
+    "max": 22,
+    "critMin": 24,
+    "critMax": 28,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "19 à 22 soins Eau (CC : 24 à 28 soins Eau) — cibles : alliés (hors lanceur) ; zone : croix de taille 1",
+    "19 à 22 vol Eau (CC : 24 à 28 vol Eau) — cibles : ennemis ; zone : croix de taille 1",
+    "20 Dommages — cibles : alliés (hors lanceur), lanceur ; zone : croix de taille 1 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 2998,
+     "action": "CharacterLifePointsWinFromWater",
+     "text": "19 à 22 soins Eau",
+     "targetMask": "g",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 19,
+     "max": 22,
+     "critMin": 24,
+     "critMax": 28
+    },
+    {
+     "effectId": 91,
+     "action": "CharacterLifePointsStealFromWater",
+     "text": "19 à 22 vol Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 19,
+     "max": 22,
+     "critMin": 24,
+     "critMax": 28
+    },
+    {
+     "effectId": 112,
+     "action": "CharacterBoostDamages",
+     "text": "20 Dommages",
+     "targetMask": "g,C",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "heal",
+    "steal",
+    "buff_damage",
+    "aoe",
+    "water"
+   ],
+   "tactical": "3 PA, croix 1 : soigne 19–22 Eau les alliés (hors lanceur) et vole 19–22 aux ennemis de la zone, +20 Dommages 2 tours au lanceur et aux alliés touchés. Le meilleur sort de soutien de la classe en groupe serré."
+  },
+  {
+   "id": 31140,
+   "spellLevelId": 82741,
+   "pairIndex": 3,
+   "variant": "B",
+   "variantOf": 31135,
+   "name": "Cœur Sauvage",
+   "nameEn": "Wild Heart",
+   "descriptionFr": "Occasionne des dommages Feu aux ennemis et augmente les soins reçus du lanceur et des alliés en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 172,
+   "unlockLevel": 105,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 39,
+    "max": 43,
+    "critMin": 45,
+    "critMax": 50,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "39 à 43 dommages Feu (CC : 45 à 50 dommages Feu) — cibles : ennemis ; zone : croix diagonale de taille 1",
+    "Soins reçus x115% — cibles : alliés (hors lanceur), lanceur ; zone : croix diagonale de taille 1 ; 2 tour(s) ; déclenchement : quand le porteur est soigné (buff 2 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "39 à 43 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "+",
+      "shapeName": "diagonalCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 39,
+     "max": 43,
+     "critMin": 45,
+     "critMax": 50
+    },
+    {
+     "effectId": 1159,
+     "action": "CharacterMultiplyReceivedHeal",
+     "text": "Soins reçus x115%",
+     "targetMask": "g,C",
+     "zone": {
+      "shape": "+",
+      "shapeName": "diagonalCross",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "triggers": "H",
+     "triggerBuffDuration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "buff_heal",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "4 PA : 39–43 Feu en croix diagonale aux ennemis + soins reçus ×115 % (2 tours) aux alliés et au lanceur de la zone."
+  },
+  {
+   "id": 31132,
+   "spellLevelId": 82936,
+   "pairIndex": 4,
+   "variant": "A",
+   "variantOf": 31139,
+   "name": "Cri de l'Ours",
+   "nameEn": "Bear Cry",
+   "descriptionFr": "Soigne les alliés et vole de la vie dans l'élément Terre aux ennemis en zone. Augmente également la Puissance du lanceur et des alliés ciblés. Les soins n'affectent pas le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 136,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": true,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [
+    "Terre"
+   ],
+   "baseDamage": {
+    "min": 23,
+    "max": 26,
+    "critMin": 28,
+    "critMax": 31,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "23 à 26 soins Terre (CC : 28 à 31 soins Terre) — cibles : alliés (hors lanceur) ; zone : carré de taille 1",
+    "23 à 26 vol Terre (CC : 28 à 31 vol Terre) — cibles : ennemis ; zone : carré de taille 1",
+    "150 Puissance — cibles : alliés (hors lanceur), lanceur ; zone : carré de taille 1 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 3000,
+     "action": "CharacterLifePointsWinFromEarth",
+     "text": "23 à 26 soins Terre",
+     "targetMask": "g",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 31
+    },
+    {
+     "effectId": 92,
+     "action": "CharacterLifePointsStealFromEarth",
+     "text": "23 à 26 vol Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 31
+    },
+    {
+     "effectId": 138,
+     "action": "CharacterBoostDamagesPercent",
+     "text": "150 Puissance",
+     "targetMask": "g,C",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "heal",
+    "steal",
+    "buff_power",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "3 PA, PO 0–1 (au contact, carré 1) : soin/vol Terre 23–26 et +150 Puissance (2 tours) aux alliés touchés et au lanceur. Énorme boost pour un DPS de mêlée."
+  },
+  {
+   "id": 31139,
+   "spellLevelId": 82601,
+   "pairIndex": 4,
+   "variant": "B",
+   "variantOf": 31132,
+   "name": "Bave du Crapaud",
+   "nameEn": "Toad Slobber",
+   "descriptionFr": "Occasionne des dommages Eau et retire des Dommages aux ennemis en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 177,
+   "unlockLevel": 110,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 37,
+    "max": 40,
+    "critMin": 42,
+    "critMax": 46,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "37 à 40 dommages Eau (CC : 42 à 46 dommages Eau) — cibles : ennemis ; zone : carré de taille 1",
+    "-40 Dommages — cibles : ennemis ; zone : carré de taille 1 ; 2 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "37 à 40 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 37,
+     "max": 40,
+     "critMin": 42,
+     "critMax": 46
+    },
+    {
+     "effectId": 145,
+     "action": "CharacterDeboostDamages",
+     "text": "-40 Dommages",
+     "targetMask": "A",
+     "zone": {
+      "shape": "G",
+      "shapeName": "square",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "debuff",
+    "aoe",
+    "water"
+   ],
+   "tactical": "4 PA, carré 1 : 37–40 Eau et −40 Dommages (2 tours) aux ennemis : réduction de dégâts d'un paquet."
+  },
+  {
+   "id": 31114,
+   "spellLevelId": 82620,
+   "pairIndex": 5,
+   "variant": "A",
+   "variantOf": 31136,
+   "name": "Fouet",
+   "nameEn": "Whip",
+   "descriptionFr": "Occasionne des dommages dans le meilleur élément du lanceur aux ennemis et repousse la cible. Augmente également les PM de la cible si c'est une invocation alliée.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 139,
+   "unlockLevel": 5,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "meilleur élément"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 15,
+    "max": 17,
+    "critMin": 18,
+    "critMax": 21,
+    "element": "meilleur élément"
+   },
+   "effectsSummary": [
+    "15 à 17 dommages du meilleur élément (CC : 18 à 21 dommages du meilleur élément) — cibles : ennemis",
+    "Repousse de 2 cases",
+    "1 PM — cibles : invocations alliées non statiques ; 1 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 2822,
+     "action": "CharacterLifePointsLostFromBestElement",
+     "text": "15 à 17 dommages du meilleur élément",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 15,
+     "max": 17,
+     "critMin": 18,
+     "critMax": 21
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "text": "1 PM",
+     "targetMask": "i",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "summon_support"
+   ],
+   "tactical": "2 PA, meilleur élément 15–17, repousse 2 ; sur une créature alliée : +1 PM (1 tour) — sert à repositionner/relancer une créature."
+  },
+  {
+   "id": 31136,
+   "spellLevelId": 82621,
+   "pairIndex": 5,
+   "variant": "B",
+   "variantOf": 31114,
+   "name": "Cravache",
+   "nameEn": "Crop",
+   "descriptionFr": "Attire les cibles vers le centre et occasionne des dommages dans le meilleur élément du lanceur aux ennemis en zone. Téléporte les cibles symétriquement par rapport au centre si la case centrale est occupée. N'affecte pas directement le lanceur.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 182,
+   "unlockLevel": 115,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "meilleur élément"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 11,
+    "max": 13,
+    "critMin": 14,
+    "critMax": 16,
+    "element": "meilleur élément"
+   },
+   "effectsSummary": [
+    "Attire de 1 case — cibles : alliés (hors lanceur), ennemis ; zone : croix sans centre de taille 1 (à partir de 1)",
+    "Téléportation symétrique — cibles : alliés (hors lanceur), ennemis ; zone : croix de taille 1",
+    "11 à 13 dommages du meilleur élément (CC : 14 à 16 dommages du meilleur élément) — cibles : ennemis ; zone : croix de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 1 case",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "hollowCross",
+      "size": 1,
+      "minSize": 1
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Cravache» (31193, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 31193,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 2822,
+     "action": "CharacterLifePointsLostFromBestElement",
+     "text": "11 à 13 dommages du meilleur élément",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 11,
+     "max": 13,
+     "critMin": 14,
+     "critMax": 16
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "placement",
+    "aoe"
+   ],
+   "tactical": "2 PA : attire les 4 voisins de la case ciblée d'1 case vers elle (ou les téléporte symétriquement si la case est occupée) puis 11–13 dans le meilleur élément en croix. Regroupe pour les zones alliées."
+  },
+  {
+   "id": 31115,
+   "spellLevelId": 82675,
+   "pairIndex": 6,
+   "variant": "A",
+   "variantOf": 31134,
+   "name": "Tofu",
+   "nameEn": "Tofu",
+   "descriptionFr": "Invoque un Tofu maîtrisable qui peut occasionner des dommages Air, soigner, retirer du Tacle et repousser.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 144,
+   "unlockLevel": 10,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 1,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Tofu» (8070, grade 3)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Tofu» (8070, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8070,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "air",
+    "mobility"
+   ],
+   "tactical": "Invoque un Tofu (1 PI, 4 PA, 8 PM, intaclable, ne tacle pas) : vole/soigne en Air, retire 40 Tacle, repousse. Éclaireur et soutien mobile."
+  },
+  {
+   "id": 31134,
+   "spellLevelId": 82935,
+   "pairIndex": 6,
+   "variant": "B",
+   "variantOf": 31115,
+   "name": "Griffes du Chtigre",
+   "nameEn": "Chtiger Claws",
+   "descriptionFr": "Occasionne des dommages Feu et réduit les soins reçus par la cible.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 187,
+   "unlockLevel": 120,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 29,
+    "critMin": 31,
+    "critMax": 35,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "26 à 29 dommages Feu (CC : 31 à 35 dommages Feu)",
+    "Soins reçus x75% — déclenchement : quand le porteur est soigné (buff 1 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "26 à 29 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 26,
+     "max": 29,
+     "critMin": 31,
+     "critMax": 35
+    },
+    {
+     "effectId": 1159,
+     "action": "CharacterMultiplyReceivedHeal",
+     "text": "Soins reçus x75%",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "H",
+     "triggerBuffDuration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "anti_heal",
+    "fire"
+   ],
+   "tactical": "3 PA : 26–29 Feu et soins reçus ×75 % (1 tour) sur la cible : anti-soin contre un boss ou des soigneurs ennemis."
+  },
+  {
+   "id": 31116,
+   "spellLevelId": 82677,
+   "pairIndex": 7,
+   "variant": "A",
+   "variantOf": 31133,
+   "name": "Bouftou",
+   "nameEn": "Gobball",
+   "descriptionFr": "Invoque un Bouftou maîtrisable qui peut occasionner des dommages Terre, soigner, retirer de la Fuite et se téléporter.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 149,
+   "unlockLevel": 15,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 1,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Bouftou» (8072, grade 3)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Bouftou» (8072, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8072,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "tank",
+    "earth"
+   ],
+   "tactical": "Invoque un Bouftou (1 PI, tacle, −40 Fuite à l'attaque, vol/soin Terre, téléportation symétrique) : bloqueur bon marché."
+  },
+  {
+   "id": 31133,
+   "spellLevelId": 82583,
+   "pairIndex": 7,
+   "variant": "B",
+   "variantOf": 31116,
+   "name": "Serres du Vautour",
+   "nameEn": "Vulture Talons",
+   "descriptionFr": "Occasionne des dommages Air aux ennemis et soigne leurs attaquants en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 192,
+   "unlockLevel": 125,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 22,
+    "max": 25,
+    "critMin": 26,
+    "critMax": 30,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "22 à 25 dommages Air (CC : 26 à 30 dommages Air) — cibles : ennemis ; zone : fourche de taille 1",
+    "soigne l'attaquant de 15% des dommages subis — cibles : ennemis ; zone : fourche de taille 1 ; déclenchement : quand le porteur subit des dommages (buff 1 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "22 à 25 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "F",
+      "shapeName": "fork",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 22,
+     "max": 25,
+     "critMin": 26,
+     "critMax": 30
+    },
+    {
+     "effectId": 786,
+     "action": "CharacterHealAttackers",
+     "text": "soigne l'attaquant de 15% des dommages subis",
+     "targetMask": "A",
+     "zone": {
+      "shape": "F",
+      "shapeName": "fork",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 1
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "heal_on_attack",
+    "aoe",
+    "air"
+   ],
+   "tactical": "3 PA en ligne (fourche) : 22–25 Air aux ennemis touchés ; pendant 1 tour, quiconque les attaque est soigné de 15 % des dommages infligés."
+  },
+  {
+   "id": 31117,
+   "spellLevelId": 82679,
+   "pairIndex": 8,
+   "variant": "A",
+   "variantOf": 31138,
+   "name": "Crapipou",
+   "nameEn": "Sweetoad",
+   "descriptionFr": "Invoque un Crapipou maîtrisable qui peut occasionner des dommages et appliquer un poison Eau, soigner, augmenter ou retirer de la Portée et s'éloigner.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 154,
+   "unlockLevel": 20,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 1,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Crapipou» (8074, grade 3)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Crapipou» (8074, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8074,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "poison",
+    "water"
+   ],
+   "tactical": "Invoque un Crapipou (1 PI) : poison Eau, −2 PO, vol/soin Eau, +2 PO alliés."
+  },
+  {
+   "id": 31138,
+   "spellLevelId": 82617,
+   "pairIndex": 8,
+   "variant": "B",
+   "variantOf": 31117,
+   "name": "Toison d'Or",
+   "nameEn": "Golden Fleece",
+   "descriptionFr": "Applique un bouclier sur les alliés et occasionne des dommages Terre aux ennemis en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 197,
+   "unlockLevel": 130,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 24,
+    "max": 27,
+    "critMin": 29,
+    "critMax": 32,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "bouclier de 150% du niveau du lanceur — cibles : alliés (lanceur inclus) ; zone : cercle de taille 2 ; 1 tour(s)",
+    "24 à 27 dommages Terre (CC : 29 à 32 dommages Terre) — cibles : ennemis ; zone : cercle de taille 2 (à partir de 1)"
+   ],
+   "effects": [
+    {
+     "effectId": 1020,
+     "action": "CharacterBoostShieldBasedOnCasterLevel",
+     "text": "bouclier de 150% du niveau du lanceur",
+     "targetMask": "a",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "duration": 1
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "24 à 27 dommages Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 1
+     },
+     "min": 24,
+     "max": 27,
+     "critMin": 29,
+     "critMax": 32
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "shield",
+    "damage",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "3 PA, autour du lanceur : bouclier de 150 % du niveau (300 au niv. 200) 1 tour aux alliés en cercle 2 et 24–27 Terre aux ennemis du même cercle (hors case centrale). 2/tour = jusqu'à 600 de bouclier."
+  },
+  {
+   "id": 31118,
+   "spellLevelId": 82681,
+   "pairIndex": 9,
+   "variant": "A",
+   "variantOf": 31112,
+   "name": "Dragoune",
+   "nameEn": "Dragoone",
+   "descriptionFr": "Invoque une Dragoune maîtrisable qui peut occasionner des dommages Feu, soigner, retirer de la Puissance et échanger de positions.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 159,
+   "unlockLevel": 25,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 1,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Dragoune» (8076, grade 3)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Dragoune» (8076, grade 3)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8076,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "fire"
+   ],
+   "tactical": "Invoque une Dragoune (1 PI) : −100 Puissance à l'attaque, échange de place, vol/soin Feu."
+  },
+  {
+   "id": 31112,
+   "spellLevelId": 82228,
+   "pairIndex": 9,
+   "variant": "B",
+   "variantOf": 31118,
+   "name": "Morsure du Serpent",
+   "nameEn": "Snake Bite",
+   "descriptionFr": "Augmente les dommages subis par la cible et lui applique un poison Eau de début de tour.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 135,
+   "unlockLevel": 135,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Dommages subis x104% — déclenchement : quand le porteur subit des dommages (buff 2 t.)",
+    "19 à 21 dommages Eau (CC : 22 à 24 dommages Eau) — déclenchement : début de tour du porteur (buff 2 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "text": "Dommages subis x104%",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "triggers": "D",
+     "triggerBuffDuration": 2
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "19 à 21 dommages Eau",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 19,
+     "max": 21,
+     "critMin": 22,
+     "critMax": 24,
+     "triggers": "TB",
+     "triggerBuffDuration": 2
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "debuff",
+    "poison",
+    "water"
+   ],
+   "tactical": "3 PA : dommages subis ×104 % (2 tours) et poison Eau 19–21 au début des 2 prochains tours de la cible. Focus boss."
+  },
+  {
+   "id": 31119,
+   "spellLevelId": 82842,
+   "pairIndex": 10,
+   "variant": "A",
+   "variantOf": 31141,
+   "name": "Cortège Sauvage",
+   "nameEn": "Wild Procession",
+   "descriptionFr": "Augmente les Invocations du lanceur et réduit le coût en PA des sorts d'invocation Osamodas. Toutes les invocations Osamodas meurent au début du tour du lanceur tant qu'il est sous les effets du sort.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 164,
+   "unlockLevel": 30,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 5,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "3 Invocations — cibles : lanceur ; 2 tour(s) ; désenvoûtement fort uniquement",
+    "Tue la cible — cibles : invocations alliées ; si la cible est le lanceur ou une de ses invocations ; zone : toute la carte"
+   ],
+   "effects": [
+    {
+     "effectId": 335,
+     "action": "CharacterAddAppearance",
+     "text": "Change l'apparence",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "dispellable": 3
+    },
+    {
+     "effectId": 335,
+     "action": "CharacterAddAppearance",
+     "text": "Change l'apparence",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "dispellable": 3
+    },
+    {
+     "effectId": 182,
+     "action": "CharacterBoostMaximumSummonedCreatures",
+     "text": "3 Invocations",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 2,
+     "dispellable": 3
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Cortège Sauvage» (32555, grade 2)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 32555,
+      "grade": 2
+     },
+     "dispellable": 3
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Cortège Sauvage» (32555, grade 1)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "delay": 1,
+     "subSpell": {
+      "id": 32555,
+      "grade": 1
+     },
+     "dispellable": 3
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Cortège Sauvage» (32555, grade 3)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "delay": 2,
+     "subSpell": {
+      "id": 32555,
+      "grade": 3
+     },
+     "dispellable": 3
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "summon_buff",
+    "burst"
+   ],
+   "tactical": "2 PA (relance 5) : +3 PI et −1 PA sur les sorts d'invocation pendant 2 tours ; les créatures Osamodas meurent au début des 2 tours suivants du lanceur. Tour de burst."
+  },
+  {
+   "id": 31141,
+   "spellLevelId": 82257,
+   "pairIndex": 10,
+   "variant": "B",
+   "variantOf": 31119,
+   "name": "Pacte Bestial",
+   "nameEn": "Bestial Pact",
+   "descriptionFr": "Applique l'état Bestial sur le lanceur : • Augmente ses PA. • Sacrifie toutes ses présentes et futures invocations Osamodas pour augmenter ses dommages et soins finaux. • Transfère une partie de la vie des invocations sacrifiées vers le lanceur. • Les effets sont plus importants selon le coût en PI de l'invocation. Les Gobgobs ne sont pas affectés par le sort. La durée de l'état et du bonus PA est prolongée si le lanceur invoque une créature Osamodas. Le temps de relance des sorts d'invocation Osamodas est réinitialisé et les effets du sort sont retirés à la perte de l'état ou si le sort est relancé.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 140,
+   "unlockLevel": 140,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "applique l'état «Bestial» (6295) — cibles : lanceur ; 3 tour(s) ; désenvoûtement fort uniquement",
+    "2 PA — cibles : lanceur ; 3 tour(s) ; désenvoûtement fort uniquement",
+    "3% Dommages finaux — cibles : lanceur ; 3 tour(s) ; désenvoûtement fort uniquement",
+    "3% Soins finaux — cibles : lanceur ; 3 tour(s) ; désenvoûtement fort uniquement",
+    "6% Dommages finaux — cibles : lanceur ; 3 tour(s) ; désenvoûtement fort uniquement",
+    "6% Soins finaux — cibles : lanceur ; 3 tour(s) ; désenvoûtement fort uniquement",
+    "9% Dommages finaux — cibles : lanceur ; 3 tour(s) ; désenvoûtement fort uniquement",
+    "9% Soins finaux — cibles : lanceur ; 3 tour(s) ; désenvoûtement fort uniquement",
+    "Transfère 30% des PV — cibles : lanceur"
+   ],
+   "effects": [
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Pacte Bestial» (32557, grade 1)",
+     "targetMask": "C,e6295",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 32557,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Pacte Bestial» (32557, grade 4)",
+     "targetMask": "j,P,F8070,F8071,F8072,F8073,F8074,F8075,F8076,F8077,F8078,F8079,F8080,F8081",
+     "zone": {
+      "shape": "a",
+      "shapeName": "wholeMap",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 32557,
+      "grade": 4
+     }
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Pacte Bestial» (32557, grade 9)",
+     "targetMask": "C,E6295",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 32557,
+      "grade": 9
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "self_buff",
+    "damage_buff",
+    "heal_buff"
+   ],
+   "tactical": "2 PA (relance 2) : état Bestial 3 tours, +2 PA ; chaque créature Osamodas présente ou future est sacrifiée (+3/6/9 % dommages et soins finaux selon son coût, 30 % de ses PV transférés). Transforme l'Osamodas en DPS."
+  },
+  {
+   "id": 31120,
+   "spellLevelId": 82844,
+   "pairIndex": 11,
+   "variant": "A",
+   "variantOf": 31142,
+   "name": "Piqûre Motivante",
+   "nameEn": "High-Energy Shot",
+   "descriptionFr": "Augmente les PA et les PM de la cible. Les effets sont plus importants sur les invocations.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 169,
+   "unlockLevel": 35,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "1 PA — cibles : joueurs/compagnons alliés, joueurs/compagnons ennemis, monstres alliés, monstres ennemis, lanceur ; 3 tour(s)",
+    "1 PM — cibles : joueurs/compagnons alliés, joueurs/compagnons ennemis, monstres alliés, monstres ennemis, lanceur ; 3 tour(s)",
+    "2 PA — cibles : invocations alliées, invocations ennemies ; 3 tour(s)",
+    "2 PM — cibles : invocations alliées, invocations ennemies ; 3 tour(s)"
+   ],
+   "effects": [
+    {
+     "effectId": 111,
+     "action": "CharacterBoostActionPoints",
+     "text": "1 PA",
+     "targetMask": "l,L,m,M,c",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "text": "1 PM",
+     "targetMask": "l,L,m,M,c",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 111,
+     "action": "CharacterBoostActionPoints",
+     "text": "2 PA",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "text": "2 PM",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 3
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "buff_ap",
+    "buff_mp"
+   ],
+   "tactical": "2 PA (relance 2) : +1 PA et +1 PM pendant 3 tours à un personnage (ou à soi), +2 PA +2 PM à une invocation (aussi ennemie : attention au masque). Indispensable pour un DPS allié."
+  },
+  {
+   "id": 31142,
+   "spellLevelId": 82258,
+   "pairIndex": 11,
+   "variant": "B",
+   "variantOf": 31120,
+   "name": "Communion Animale",
+   "nameEn": "Animal Communion",
+   "descriptionFr": "Partage les dommages entre le lanceur et une invocation alliée. Sur le lanceur : partage les dommages entre toutes ses invocations.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 145,
+   "unlockLevel": 145,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Partage les dommages — cibles : lanceur, invocations alliées ; déclenchement : quand le porteur subit des dommages (buff 1 t.)"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Communion Animale» (32554, grade 1)",
+     "targetMask": "j",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 32554,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Communion Animale» (32554, grade 2)",
+     "targetMask": "c",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 32554,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "protection",
+    "damage_share"
+   ],
+   "tactical": "3 PA : partage les dommages entre l'Osamodas et une créature (1 tour), ou entre toutes ses créatures s'il se cible."
+  },
+  {
+   "id": 31121,
+   "spellLevelId": 82604,
+   "pairIndex": 12,
+   "variant": "A",
+   "variantOf": 31143,
+   "name": "Saute-granouille",
+   "nameEn": "Leap-Froog",
+   "descriptionFr": "Téléporte le lanceur symétriquement par rapport à la cible et occasionne des dommages Eau aux ennemis. Téléporte également la cible symétriquement par rapport au lanceur si c'est une invocation.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 174,
+   "unlockLevel": 40,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "HS!7",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 30,
+    "critMin": 31,
+    "critMax": 35,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "Téléportation symétrique par rapport à la cible",
+    "26 à 30 dommages Eau (CC : 31 à 35 dommages Eau) — cibles : ennemis",
+    "Téléportation symétrique par rapport au lanceur — cibles : invocations alliées, invocations ennemies"
+   ],
+   "effects": [
+    {
+     "effectId": 1104,
+     "action": "FightTeleswapMirror",
+     "text": "Téléportation symétrique par rapport à la cible",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "26 à 30 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 26,
+     "max": 30,
+     "critMin": 31,
+     "critMax": 35
+    },
+    {
+     "effectId": 1105,
+     "action": "FightTeleswapMirrorCaster",
+     "text": "Téléportation symétrique par rapport au lanceur",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mobility",
+    "water"
+   ],
+   "tactical": "3 PA, PO 1–2 : téléporte le lanceur symétriquement par rapport à la cible + 26–30 Eau ; si la cible est une invocation elle est aussi téléportée symétriquement (échange de côté)."
+  },
+  {
+   "id": 31143,
+   "spellLevelId": 82259,
+   "pairIndex": 12,
+   "variant": "B",
+   "variantOf": 31121,
+   "name": "Tornade de Plumes",
+   "nameEn": "Feather Tornado",
+   "descriptionFr": "Téléporte le lanceur sur la case ciblée, occasionne des dommages Air aux ennemis et repousse les cibles depuis le centre en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 150,
+   "unlockLevel": 150,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "HS!7",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 34,
+    "max": 38,
+    "critMin": 41,
+    "critMax": 46,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "Téléporte sur la case ciblée",
+    "34 à 38 dommages Air (CC : 41 à 46 dommages Air) — cibles : ennemis ; zone : cercle de taille 2 (à partir de 1)",
+    "Repousse de 2 cases — cibles : alliés (hors lanceur), ennemis ; zone : cercle de taille 2 (à partir de 1)"
+   ],
+   "effects": [
+    {
+     "effectId": 4,
+     "action": "CharacterTeleportOnSameMap",
+     "text": "Téléporte sur la case ciblée",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "34 à 38 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 1
+     },
+     "min": 34,
+     "max": 38,
+     "critMin": 41,
+     "critMax": 46
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 2 cases",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mobility",
+    "placement",
+    "aoe",
+    "air"
+   ],
+   "tactical": "4 PA : téléportation sur une case libre à 1–3, 34–38 Air en cercle 2 autour et repousse de 2. Sortie de tacle + dégâts de zone."
+  },
+  {
+   "id": 31122,
+   "spellLevelId": 82594,
+   "pairIndex": 13,
+   "variant": "A",
+   "variantOf": 31144,
+   "name": "Souffle Draconique",
+   "nameEn": "Draconic Breath",
+   "descriptionFr": "Éloigne le lanceur des cibles, occasionne des dommages Feu aux ennemis et repousse les cibles en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 179,
+   "unlockLevel": 45,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 23,
+    "max": 26,
+    "critMin": 28,
+    "critMax": 31,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "Recule de 1 case — zone : cône de taille 1",
+    "23 à 26 dommages Feu (CC : 28 à 31 dommages Feu) — cibles : ennemis ; zone : cône de taille 1",
+    "Repousse de 2 cases — zone : cône de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 1041,
+     "action": "CharacterGetPushed",
+     "text": "Recule de 1 case",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "V",
+      "shapeName": "cone",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "23 à 26 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "V",
+      "shapeName": "cone",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 23,
+     "max": 26,
+     "critMin": 28,
+     "critMax": 31
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "V",
+      "shapeName": "cone",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "placement",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "3 PA en ligne : le lanceur recule de 1, 23–26 Feu en cône et repousse 2 : se dégager d'un contact."
+  },
+  {
+   "id": 31144,
+   "spellLevelId": 82260,
+   "pairIndex": 13,
+   "variant": "B",
+   "variantOf": 31122,
+   "name": "Frappe du Craqueleur",
+   "nameEn": "Crackler Punch",
+   "descriptionFr": "Occasionne des dommages Terre et attire les cibles jusqu'au centre en zone. N'affecte pas le lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 155,
+   "unlockLevel": 155,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 31,
+    "max": 35,
+    "critMin": 37,
+    "critMax": 42,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "31 à 35 dommages Terre (CC : 37 à 42 dommages Terre) — cibles : ennemis ; zone : cercle de taille 3",
+    "Attire de 2 cases — cibles : alliés (hors lanceur), ennemis ; zone : cercle de taille 3"
+   ],
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "31 à 35 dommages Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 0
+     },
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 1 case",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 1,
+      "minSize": 1
+     }
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 2 cases",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 2
+     }
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 2 cases",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 3,
+      "minSize": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "placement",
+    "aoe",
+    "earth"
+   ],
+   "tactical": "4 PA, PO 1–3 : 31–35 Terre en cercle 3 puis attire tout vers le centre (anneaux 1/2/3). Regroupe un paquet d'ennemis."
+  },
+  {
+   "id": 31123,
+   "spellLevelId": 82612,
+   "pairIndex": 14,
+   "variant": "A",
+   "variantOf": 31145,
+   "name": "Charge Bestiale",
+   "nameEn": "Bestial Charge",
+   "descriptionFr": "Rapproche le lanceur vers la cible et occasionne des dommages Terre aux ennemis. Attire également les invocations jusqu'au centre en zone autour de la cible.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 184,
+   "unlockLevel": 50,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 29,
+    "critMin": 31,
+    "critMax": 35,
+    "element": "Terre"
+   },
+   "effectsSummary": [
+    "Avance de 4 cases",
+    "26 à 29 dommages Terre (CC : 31 à 35 dommages Terre) — cibles : ennemis",
+    "Attire de 4 cases — cibles : invocations alliées, invocations ennemies ; zone : croix sans centre de taille 4 (à partir de 4)"
+   ],
+   "effects": [
+    {
+     "effectId": 1042,
+     "action": "CharacterGetPulled",
+     "text": "Avance de 4 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "text": "26 à 29 dommages Terre",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 26,
+     "max": 29,
+     "critMin": 31,
+     "critMax": 35
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 1 case",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "hollowCross",
+      "size": 1,
+      "minSize": 1
+     }
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 2 cases",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "hollowCross",
+      "size": 2,
+      "minSize": 2
+     }
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 3 cases",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "hollowCross",
+      "size": 3,
+      "minSize": 3
+     }
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 4 cases",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "hollowCross",
+      "size": 4,
+      "minSize": 4
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "mobility",
+    "summon_support",
+    "earth"
+   ],
+   "tactical": "3 PA en ligne (cible requise) : avance de 4 vers la cible, 26–29 Terre et attire les invocations en croix autour d'elle. Ramène ses créatures au front."
+  },
+  {
+   "id": 31145,
+   "spellLevelId": 82261,
+   "pairIndex": 14,
+   "variant": "B",
+   "variantOf": 31123,
+   "name": "Chant du Phénix",
+   "nameEn": "Song of the Phoenix",
+   "descriptionFr": "Soigne les alliés, occasionne des dommages Feu aux ennemis et repousse les cibles depuis le centre en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 160,
+   "unlockLevel": 160,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [
+    "Feu"
+   ],
+   "baseDamage": {
+    "min": 30,
+    "max": 34,
+    "critMin": 36,
+    "critMax": 41,
+    "element": "Feu"
+   },
+   "effectsSummary": [
+    "30 à 34 soins Feu (CC : 36 à 41 soins Feu) — cibles : alliés (lanceur inclus) ; zone : cercle de taille 2",
+    "30 à 34 dommages Feu (CC : 36 à 41 dommages Feu) — cibles : ennemis ; zone : cercle de taille 2",
+    "Repousse de 2 cases — zone : cercle de taille 2 (à partir de 1)"
+   ],
+   "effects": [
+    {
+     "effectId": 108,
+     "action": "CharacterLifePointsWinFromFire",
+     "text": "30 à 34 soins Feu",
+     "targetMask": "a",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 41
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "text": "30 à 34 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 41
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "heal",
+    "damage",
+    "aoe",
+    "fire"
+   ],
+   "tactical": "4 PA, cercle 2 : soigne 30–34 Feu les alliés (lanceur compris), inflige 30–34 Feu aux ennemis et repousse tout ce qui est autour du centre. Soin de zone principal."
+  },
+  {
+   "id": 31124,
+   "spellLevelId": 82585,
+   "pairIndex": 15,
+   "variant": "A",
+   "variantOf": 31146,
+   "name": "Aéropique",
+   "nameEn": "Air Ace",
+   "descriptionFr": "Rapproche le lanceur vers la cible, occasionne des dommages Air aux ennemis et repousse la cible. Repousse également les entités au contact de la cible si cette dernière est une invocation.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 189,
+   "unlockLevel": 55,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 24,
+    "max": 27,
+    "critMin": 29,
+    "critMax": 32,
+    "element": "Air"
+   },
+   "effectsSummary": [
+    "Avance de 4 cases",
+    "24 à 27 dommages Air (CC : 29 à 32 dommages Air) — cibles : ennemis",
+    "Repousse de 3 cases",
+    "Repousse de 3 cases — zone : croix sans centre de taille 1"
+   ],
+   "effects": [
+    {
+     "effectId": 1042,
+     "action": "CharacterGetPulled",
+     "text": "Avance de 4 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "text": "24 à 27 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 24,
+     "max": 27,
+     "critMin": 29,
+     "critMax": 32
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "text": "Repousse de 3 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Aéropique» (31436, grade 2)",
+     "targetMask": "j,J",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 31436,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "mobility",
+    "placement",
+    "air"
+   ],
+   "tactical": "3 PA en ligne : avance de 4, 24–27 Air, repousse la cible de 3 ; si la cible est une invocation, repousse aussi ses voisins (créature-bélier)."
+  },
+  {
+   "id": 31146,
+   "spellLevelId": 82262,
+   "pairIndex": 15,
+   "variant": "B",
+   "variantOf": 31124,
+   "name": "Tourbillon",
+   "nameEn": "Whirlwind",
+   "descriptionFr": "Téléporte les alliés symétriquement par rapport au centre et occasionne des dommages Eau aux ennemis en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 165,
+   "unlockLevel": 165,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 31,
+    "max": 35,
+    "critMin": 37,
+    "critMax": 42,
+    "element": "Eau"
+   },
+   "effectsSummary": [
+    "Téléportation symétrique — cibles : alliés (lanceur inclus) ; zone : cercle de taille 2",
+    "31 à 35 dommages Eau (CC : 37 à 42 dommages Eau) — cibles : ennemis ; zone : cercle de taille 2"
+   ],
+   "effects": [
+    {
+     "effectId": 1106,
+     "action": "FightTeleswapMirrorImpactPoint",
+     "text": "Téléportation symétrique",
+     "targetMask": "a",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     }
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "text": "31 à 35 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0
+     },
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "placement",
+    "damage",
+    "aoe",
+    "water"
+   ],
+   "tactical": "4 PA, cercle 2 : téléporte symétriquement les alliés de la zone par rapport au centre et 31–35 Eau aux ennemis. Repositionne le groupe."
+  },
+  {
+   "id": 31125,
+   "spellLevelId": 82623,
+   "pairIndex": 16,
+   "variant": "A",
+   "variantOf": 31147,
+   "name": "Discipline",
+   "nameEn": "Discipline",
+   "descriptionFr": "Occasionne des dommages dans le meilleur élément du lanceur et retire des PM aux ennemis, et attire la cible.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 194,
+   "unlockLevel": 60,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "meilleur élément"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 19,
+    "max": 22,
+    "critMin": 23,
+    "critMax": 26,
+    "element": "meilleur élément"
+   },
+   "effectsSummary": [
+    "19 à 22 dommages du meilleur élément (CC : 23 à 26 dommages du meilleur élément) — cibles : ennemis",
+    "-2 PM (esquivable) — cibles : ennemis ; 1 tour(s) ; désenvoûtement fort uniquement",
+    "Attire de 4 cases"
+   ],
+   "effects": [
+    {
+     "effectId": 2822,
+     "action": "CharacterLifePointsLostFromBestElement",
+     "text": "19 à 22 dommages du meilleur élément",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 19,
+     "max": 22,
+     "critMin": 23,
+     "critMax": 26
+    },
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "text": "-2 PM (esquivable)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "dispellable": 3
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 4 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "damage",
+    "mp_removal",
+    "placement"
+   ],
+   "tactical": "2 PA : 19–22 meilleur élément, −2 PM esquivables, attire de 4 (2/tour, 1/cible)."
+  },
+  {
+   "id": 31147,
+   "spellLevelId": 82263,
+   "pairIndex": 16,
+   "variant": "B",
+   "variantOf": 31125,
+   "name": "Martinet",
+   "nameEn": "Swift Whip",
+   "descriptionFr": "Attire toutes les invocations du lanceur vers la cible et occasionne des dommages dans le meilleur élément du lanceur aux ennemis. Les invocations Osamodas attaquent également si elles sont à portée et en ligne de vue de la cible. Les dommages et soins des invocations sont réduits de 50% pendant l'utilisation du sort. • Tofu : Bisou Béco • Bouftou : Saute-bouftou • Crapipou : Croassement • Dragoune : Dracorage • Ventritofu : Ventripoussée • Bouflourd : Charge du Bouflourd • Crapipaud : Crapobatie • Dragonnet : Souffle du Dragon • Scarafoudre : Scarafusée • Craquolosse : Fronde Rocheuse • Crocoléreux : Crocs Coléreux • Sulfénix : Sulfuria",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 170,
+   "unlockLevel": 170,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air",
+    "Eau",
+    "Feu",
+    "Terre",
+    "meilleur élément"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 21,
+    "max": 24,
+    "critMin": 25,
+    "critMax": 29,
+    "element": "meilleur élément"
+   },
+   "effectsSummary": [
+    "Attire de 2 cases — cibles : invocations alliées ; si la cible est le lanceur ou une de ses invocations ; zone : cercle de taille 63 (à partir de 1)",
+    "21 à 24 dommages du meilleur élément (CC : 25 à 29 dommages du meilleur élément) — cibles : ennemis"
+   ],
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "text": "applique l'état «Martinet» (6390)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 6390,
+      "name": "Martinet"
+     },
+     "dispellable": 2
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "text": "Attire de 2 cases",
+     "targetMask": "j,P",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 63,
+      "minSize": 1
+     }
+    },
+    {
+     "effectId": 2822,
+     "action": "CharacterLifePointsLostFromBestElement",
+     "text": "21 à 24 dommages du meilleur élément",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "min": 21,
+     "max": 24,
+     "critMin": 25,
+     "critMax": 29
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "text": "la cible lance le sort «Martinet» (31440, grade 1)",
+     "targetMask": "j,P",
+     "zone": {
+      "shape": "a",
+      "shapeName": "wholeMap",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 31440,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 951,
+     "action": "FightUnsetState",
+     "text": "retire l'état «Martinet» (6390)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "duration": 1,
+     "state": {
+      "id": 6390,
+      "name": "Martinet"
+     },
+     "dispellable": 2
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "damage",
+    "burst",
+    "summon_support"
+   ],
+   "tactical": "3 PA (relance 2, cible requise) : attire toutes les créatures de 2 vers la cible, 21–24 meilleur élément, puis chaque créature à portée et en vue lance son attaque (−50 %)."
+  },
+  {
+   "id": 31152,
+   "spellLevelId": 82687,
+   "pairIndex": 17,
+   "variant": "A",
+   "variantOf": 31130,
+   "name": "Laisse Spirituelle",
+   "nameEn": "Spiritual Leash",
+   "descriptionFr": "Applique l'état En laisse sur la cible pour le tour en cours : • Suit le lanceur immédiatement et lorsqu'il utilise ses PM. Sur le lanceur : applique l'état sur toutes ses invocations. L'état est retiré si le lanceur ou la cible sont déplacés.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 198,
+   "unlockLevel": 65,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "applique l'état «En Laisse» (6290) — cibles : alliés (hors lanceur), ennemis ; 1 tour(s) ; indésenvoûtable",
+    "Suit le lanceur — cibles : alliés (hors lanceur), ennemis ; déclenchement : quand le lanceur de l'effet dépense des PM (CMPARR, sens déduit) (buff 1 t.) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Laisse Spirituelle» (31194, grade 1)",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 31194,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Laisse Spirituelle» (31194, grade 3)",
+     "targetMask": "c",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 31194,
+      "grade": 3
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "placement",
+    "control"
+   ],
+   "tactical": "2 PA en ligne : la cible suit l'Osamodas à chaque PM dépensé ce tour (sur soi : toutes ses invocations). Permet de traîner un ennemi ou d'emmener ses créatures."
+  },
+  {
+   "id": 31130,
+   "spellLevelId": 82246,
+   "pairIndex": 17,
+   "variant": "B",
+   "variantOf": 31152,
+   "name": "Relais Spirituel",
+   "nameEn": "Spirit Relay",
+   "descriptionFr": "Échange de position avec une invocation du lanceur et lui applique l'état Relais : • Les prochains échanges se feront entre l'invocation dans l'état et la prochaine invocation ciblée. Les échanges ne s'appliquent que si les invocations sont à 5 cases ou moins du lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 175,
+   "unlockLevel": 175,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "Échange de positions — cibles : invocations alliées ; si la cible est le lanceur ou une de ses invocations",
+    "applique l'état «Relais» (6291) — cibles : invocations alliées ; si la cible est le lanceur ou une de ses invocations ; 2 tour(s) ; indésenvoûtable"
+   ],
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Relais Spirituel» (31195, grade 1)",
+     "targetMask": "j,P,*E6292",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 31195,
+      "grade": 1
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Relais Spirituel» (31195, grade 3)",
+     "targetMask": "c,j,P,*e6292,e6291",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 31195,
+      "grade": 3
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "text": "le lanceur lance le sort «Relais Spirituel» (31195, grade 1)",
+     "targetMask": "j,P,*e6292,E6291",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "subSpell": {
+      "id": 31195,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "mobility",
+    "summon_support"
+   ],
+   "tactical": "2 PA : échange avec une de ses invocations puis échanges en chaîne via l'état Relais (≤ 5 cases)."
+  },
+  {
+   "id": 31126,
+   "spellLevelId": 82682,
+   "pairIndex": 18,
+   "variant": "A",
+   "variantOf": 31149,
+   "name": "Ventritofu",
+   "nameEn": "Tofurby",
+   "descriptionFr": "Invoque un Ventritofu maîtrisable qui peut occasionner des dommages Air, augmenter la Fuite, se téléporter, téléporter symétriquement des entités, repousser et se rapprocher.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 137,
+   "unlockLevel": 70,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Ventritofu» (8071, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Ventritofu» (8071, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8071,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "mobility",
+    "air"
+   ],
+   "tactical": "Invoque un Ventritofu (2 PI, 4 PA 6 PM) : téléportation + rotation symétrique en carré, +40 Fuite, ruée + repousse."
+  },
+  {
+   "id": 31149,
+   "spellLevelId": 82265,
+   "pairIndex": 18,
+   "variant": "B",
+   "variantOf": 31126,
+   "name": "Craquolosse",
+   "nameEn": "Crackolossus",
+   "descriptionFr": "Invoque un Craquolosse maîtrisable qui peut occasionner des dommages Terre, attirer, retirer des PM et augmenter les résistances.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 180,
+   "unlockLevel": 180,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Craquolosse» (8078, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Craquolosse» (8078, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8078,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "tank",
+    "mp_removal",
+    "earth"
+   ],
+   "tactical": "Invoque un Craquolosse (3 PI, 2 PM, 40 % rés. Terre/Neutre) : −3 PM esquivables à distance, +8 % résistances aux alliés en croix, attire en cercle 2."
+  },
+  {
+   "id": 31127,
+   "spellLevelId": 82683,
+   "pairIndex": 19,
+   "variant": "A",
+   "variantOf": 31150,
+   "name": "Bouflourd",
+   "nameEn": "Gobbulky",
+   "descriptionFr": "Invoque un Bouflourd maîtrisable qui peut occasionner des dommages Terre, réduire les dommages subis, se rapprocher et attirer.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 142,
+   "unlockLevel": 75,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Bouflourd» (8073, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Bouflourd» (8073, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8073,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "tank",
+    "protection",
+    "earth"
+   ],
+   "tactical": "Invoque un Bouflourd (2 PI) : Pacage = dommages subis ×90 % aux alliés autour de lui, vol Terre et attire ; Charge."
+  },
+  {
+   "id": 31150,
+   "spellLevelId": 82266,
+   "pairIndex": 19,
+   "variant": "B",
+   "variantOf": 31127,
+   "name": "Crocoléreux",
+   "nameEn": "Crocurmudgeon",
+   "descriptionFr": "Invoque un Crocoléreux maîtrisable qui peut occasionner des dommages Eau, retirer des Critiques et réduire les soins et les dommages reçus.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 185,
+   "unlockLevel": 185,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Crocoléreux» (8080, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Crocoléreux» (8080, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8080,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "debuff",
+    "protection",
+    "water"
+   ],
+   "tactical": "Invoque un Crocoléreux (3 PI) : −15 % CC, soins reçus ×80 % aux ennemis, armure fixe (valeur 7 ×(niv/20+1)) aux alliés en cercle 2."
+  },
+  {
+   "id": 31128,
+   "spellLevelId": 82684,
+   "pairIndex": 20,
+   "variant": "A",
+   "variantOf": 31151,
+   "name": "Crapipaud",
+   "nameEn": "Sweetoadie",
+   "descriptionFr": "Invoque un Crapipaud maîtrisable qui peut occasionner des dommages et appliquer un poison Eau, augmenter les PM, repousser et se téléporter symétriquement.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 147,
+   "unlockLevel": 80,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Crapipaud» (8075, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Crapipaud» (8075, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8075,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "poison",
+    "water"
+   ],
+   "tactical": "Invoque un Crapipaud (2 PI) : poison Eau de fin de tour en cercle 2 + repousse, téléportation symétrique +1 PM aux alliés."
+  },
+  {
+   "id": 31151,
+   "spellLevelId": 82267,
+   "pairIndex": 20,
+   "variant": "B",
+   "variantOf": 31128,
+   "name": "Sulfénix",
+   "nameEn": "Sulphoenix",
+   "descriptionFr": "Invoque un Sulfénix maîtrisable qui peut occasionner des dommages Feu, soigner et se téléporter.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 190,
+   "unlockLevel": 190,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Sulfénix» (8081, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Sulfénix» (8081, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8081,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "heal",
+    "fire"
+   ],
+   "tactical": "Invoque un Sulfénix (3 PI, 5 PM) : dégâts/soins Feu, Renaissance (soin et téléportation au tour suivant), Danse Flammes."
+  },
+  {
+   "id": 31129,
+   "spellLevelId": 82685,
+   "pairIndex": 21,
+   "variant": "A",
+   "variantOf": 31148,
+   "name": "Dragonnet",
+   "nameEn": "Wyrmling",
+   "descriptionFr": "Invoque un Dragonnet maîtrisable qui peut occasionner des dommages Feu, augmenter la Puissance et repousser.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 152,
+   "unlockLevel": 85,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Dragonnet» (8077, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Dragonnet» (8077, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8077,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "buff_power",
+    "fire"
+   ],
+   "tactical": "Invoque un Dragonnet (2 PI) : +125 Puissance pour lui (Embrasement) ou pour les alliés dans son cône (Souffle du Dragon)."
+  },
+  {
+   "id": 31148,
+   "spellLevelId": 82264,
+   "pairIndex": 21,
+   "variant": "B",
+   "variantOf": 31129,
+   "name": "Scarafoudre",
+   "nameEn": "Scarabolt",
+   "descriptionFr": "Invoque un Scarafoudre maîtrisable qui peut occasionner des dommages Air, se téléporter, retirer des chances de Critique et appliquer du bouclier.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 195,
+   "unlockLevel": 195,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Scarafoudre» (8079, grade 2)"
+   ],
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "text": "invoque «Scarafoudre» (8079, grade 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8079,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": false,
+   "role": [
+    "summon",
+    "shield",
+    "air"
+   ],
+   "tactical": "Invoque un Scarafoudre (3 PI) : boucliers 100 % du niveau en carré 1 (Scarapace), −25 % CC, téléportation vers une cible."
+  },
+  {
+   "id": 31131,
+   "spellLevelId": 82647,
+   "pairIndex": 22,
+   "variant": "A",
+   "variantOf": 31153,
+   "name": "Esprit Glouton",
+   "nameEn": "Gluttonous Spirit",
+   "descriptionFr": "Invoque un Gobgob Glouton contrôlable qui peut occasionner des dommages Neutre selon sa vie, tuer des invocations alliés pour augmenter sa Vitalité et ses PM, intercepter les dommages d'un allié et se téléporter en créant des illusions. Le temps de relance est fixé à la mort du Gobgob.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 157,
+   "unlockLevel": 90,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!6323",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Gobgob Glouton» (8082, grade 2) [effet 1011: invocation statique]",
+    "«Esprit Glouton» : relance fixée à 2 tour(s) — cibles : lanceur"
+   ],
+   "effects": [
+    {
+     "effectId": 1011,
+     "action": "SummonSlave",
+     "text": "invoque «Gobgob Glouton» (8082, grade 2) [effet 1011: invocation statique]",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8082,
+      "grade": 2
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "summon",
+    "interception",
+    "damage",
+    "neutral"
+   ],
+   "tactical": "Invoque le Gobgob Glouton (contrôlable, 1 PI) : intercepte les dégâts d'un allié, frappe en Neutre selon ses PV, peut dévorer une créature pour grossir."
+  },
+  {
+   "id": 31153,
+   "spellLevelId": 82269,
+   "pairIndex": 22,
+   "variant": "B",
+   "variantOf": 31131,
+   "name": "Esprit Facétieux",
+   "nameEn": "Mischievous Spirit",
+   "descriptionFr": "Invoque un Gobgob Facétieux contrôlable qui peut échanger de positions, réduire la durée des effets et se sacrifier pour copier une invocation Osamodas. Le temps de relance est fixé à la mort du Gobgob.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 200,
+   "unlockLevel": 200,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!6322",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "effectsSummary": [
+    "invoque «Gobgob Facétieux» (8083, grade 1) [effet 1011: invocation statique]",
+    "«Esprit Facétieux» : relance fixée à 2 tour(s) — cibles : lanceur"
+   ],
+   "effects": [
+    {
+     "effectId": 1011,
+     "action": "SummonSlave",
+     "text": "invoque «Gobgob Facétieux» (8083, grade 1) [effet 1011: invocation statique]",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0
+     },
+     "summon": {
+      "monsterId": 8083,
+      "grade": 1
+     }
+    }
+   ],
+   "hasHiddenLogic": true,
+   "role": [
+    "summon",
+    "utility",
+    "dispel"
+   ],
+   "tactical": "Invoque le Gobgob Facétieux (contrôlable, 3 PI) : échange, −1 tour aux effets d'une cible, se sacrifie pour dupliquer une créature."
+  }
+ ],
+ "summons": [
+  {
+   "monsterId": 8070,
+   "name": "Tofu",
+   "gradesSummonedByClassSpells": [
+    3
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31154,
+    31156
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 10,
+      "fire": 0,
+      "water": 10,
+      "air": 20,
+      "neutral": 10
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "wisdom": 50,
+      "agility": 50,
+      "tackleEvade": 50,
+      "bonusAirDamage": 50
+     },
+     "startingSpellLevelId": 84115
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 7,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 10,
+      "fire": 0,
+      "water": 10,
+      "air": 20,
+      "neutral": 10
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "wisdom": 50,
+      "agility": 50,
+      "tackleEvade": 50,
+      "bonusAirDamage": 50
+     },
+     "startingSpellLevelId": 84115
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 4,
+     "mp": 8,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 10,
+      "fire": 0,
+      "water": 10,
+      "air": 20,
+      "neutral": 10
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "wisdom": 50,
+      "agility": 50,
+      "tackleEvade": 50,
+      "bonusAirDamage": 50
+     },
+     "startingSpellLevelId": 84115
+    }
+   ]
+  },
+  {
+   "monsterId": 8071,
+   "name": "Ventritofu",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 2,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31155,
+    31157
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 10,
+      "water": 20,
+      "air": 30,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "wisdom": 75,
+      "agility": 75,
+      "tackleEvade": 75,
+      "bonusAirDamage": 75
+     },
+     "startingSpellLevelId": 84116
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 10,
+      "water": 20,
+      "air": 30,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "wisdom": 75,
+      "agility": 75,
+      "tackleEvade": 75,
+      "bonusAirDamage": 75
+     },
+     "startingSpellLevelId": 84116
+    }
+   ]
+  },
+  {
+   "monsterId": 8072,
+   "name": "Bouftou",
+   "gradesSummonedByClassSpells": [
+    3
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31158,
+    31159
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 10,
+      "water": 10,
+      "air": 0,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "strength": 50,
+      "wisdom": 50,
+      "tackleBlock": 50,
+      "bonusEarthDamage": 50
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 10,
+      "water": 10,
+      "air": 0,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "strength": 50,
+      "wisdom": 50,
+      "tackleBlock": 50,
+      "bonusEarthDamage": 50
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 10,
+      "water": 10,
+      "air": 0,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "strength": 50,
+      "wisdom": 50,
+      "tackleBlock": 50,
+      "bonusEarthDamage": 50
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8073,
+   "name": "Bouflourd",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 2,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31160,
+    31161
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 3,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 20,
+      "water": 20,
+      "air": 10,
+      "neutral": 30
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "strength": 75,
+      "wisdom": 75,
+      "tackleBlock": 75,
+      "bonusEarthDamage": 75
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 3,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 20,
+      "water": 20,
+      "air": 10,
+      "neutral": 30
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "strength": 75,
+      "wisdom": 75,
+      "tackleBlock": 75,
+      "bonusEarthDamage": 75
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8074,
+   "name": "Crapipou",
+   "gradesSummonedByClassSpells": [
+    3
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31162,
+    31164
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 3,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 10,
+      "water": 20,
+      "air": 10,
+      "neutral": 10
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "wisdom": 50,
+      "chance": 50,
+      "tackleEvade": 50,
+      "bonusWaterDamage": 50
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 10,
+      "water": 20,
+      "air": 10,
+      "neutral": 10
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "wisdom": 50,
+      "chance": 50,
+      "tackleEvade": 50,
+      "bonusWaterDamage": 50
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 0,
+      "fire": 10,
+      "water": 20,
+      "air": 10,
+      "neutral": 10
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "wisdom": 50,
+      "chance": 50,
+      "tackleEvade": 50,
+      "bonusWaterDamage": 50
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8075,
+   "name": "Crapipaud",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 2,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31163,
+    31165
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 10,
+      "fire": 20,
+      "water": 30,
+      "air": 20,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "wisdom": 75,
+      "chance": 75,
+      "tackleEvade": 75,
+      "bonusWaterDamage": 75
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 10,
+      "fire": 20,
+      "water": 30,
+      "air": 20,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "wisdom": 75,
+      "chance": 75,
+      "tackleEvade": 75,
+      "bonusWaterDamage": 75
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8076,
+   "name": "Dragoune",
+   "gradesSummonedByClassSpells": [
+    3
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31166,
+    31168
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 3,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 10,
+      "fire": 20,
+      "water": 0,
+      "air": 10,
+      "neutral": 10
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "wisdom": 50,
+      "intelligence": 50,
+      "tackleBlock": 50,
+      "bonusFireDamage": 50
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 10,
+      "fire": 20,
+      "water": 0,
+      "air": 10,
+      "neutral": 10
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "wisdom": 50,
+      "intelligence": 50,
+      "tackleBlock": 50,
+      "bonusFireDamage": 50
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 3,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 10,
+      "fire": 20,
+      "water": 0,
+      "air": 10,
+      "neutral": 10
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 50,
+      "wisdom": 50,
+      "intelligence": 50,
+      "tackleBlock": 50,
+      "bonusFireDamage": 50
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8077,
+   "name": "Dragonnet",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 2,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31167,
+    31169
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 30,
+      "water": 10,
+      "air": 20,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "wisdom": 75,
+      "intelligence": 75,
+      "tackleBlock": 75,
+      "bonusFireDamage": 75
+     },
+     "startingSpellLevelId": 0
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 30,
+      "water": 10,
+      "air": 20,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "wisdom": 75,
+      "intelligence": 75,
+      "tackleBlock": 75,
+      "bonusFireDamage": 75
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8078,
+   "name": "Craquolosse",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 3,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31174,
+    31175,
+    32198
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 2,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 40,
+      "fire": 30,
+      "water": 30,
+      "air": 20,
+      "neutral": 40
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 100,
+      "strength": 100,
+      "wisdom": 100,
+      "tackleBlock": 100,
+      "bonusEarthDamage": 100
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8079,
+   "name": "Scarafoudre",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 3,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31178,
+    31179,
+    32222
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 4,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 20,
+      "water": 30,
+      "air": 40,
+      "neutral": 30
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 100,
+      "wisdom": 100,
+      "agility": 100,
+      "tackleBlock": 100,
+      "bonusAirDamage": 100
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8080,
+   "name": "Crocoléreux",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 3,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31180,
+    32225,
+    31182
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 3,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 30,
+      "water": 40,
+      "air": 40,
+      "neutral": 30
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 100,
+      "wisdom": 100,
+      "chance": 100,
+      "tackleBlock": 100,
+      "bonusWaterDamage": 100
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8081,
+   "name": "Sulfénix",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 3,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31183,
+    31184,
+    32211
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 5,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 30,
+      "fire": 40,
+      "water": 20,
+      "air": 30,
+      "neutral": 30
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 100,
+      "wisdom": 100,
+      "intelligence": 100,
+      "tackleEvade": 100,
+      "tackleBlock": 100,
+      "bonusFireDamage": 100
+     },
+     "startingSpellLevelId": 0
+    }
+   ]
+  },
+  {
+   "monsterId": 8082,
+   "name": "Gobgob Glouton",
+   "gradesSummonedByClassSpells": [
+    2
+   ],
+   "useSummonSlot": true,
+   "summonCost": 1,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31172,
+    31173,
+    31442
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 20,
+      "water": 20,
+      "air": 20,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "wisdom": 75,
+      "tackleBlock": 75
+     },
+     "startingSpellLevelId": 82646
+    },
+    {
+     "grade": 2,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 20,
+      "water": 20,
+      "air": 20,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "wisdom": 75,
+      "tackleBlock": 75
+     },
+     "startingSpellLevelId": 82646
+    }
+   ]
+  },
+  {
+   "monsterId": 8083,
+   "name": "Gobgob Facétieux",
+   "gradesSummonedByClassSpells": [
+    1
+   ],
+   "useSummonSlot": true,
+   "summonCost": 3,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "spells": [
+    31170,
+    31171,
+    31441
+   ],
+   "characRatios": [],
+   "grades": [
+    {
+     "grade": 1,
+     "level": 1,
+     "ap": 4,
+     "mp": 6,
+     "lifePoints": 0,
+     "resist": {
+      "earth": 20,
+      "fire": 20,
+      "water": 20,
+      "air": 20,
+      "neutral": 20
+     },
+     "stats": {},
+     "bonusFromSummonerPercent": {
+      "lifePoints": 75,
+      "wisdom": 75,
+      "tackleEvade": 75
+     },
+     "startingSpellLevelId": 82645
+    }
+   ]
+  }
+ ],
+ "importantStates": {
+  "6295": {
+   "name": "Bestial",
+   "note": "Bestial (Pacte Bestial)"
+  },
+  "6290": {
+   "name": "En Laisse",
+   "note": "En Laisse"
+  },
+  "6291": {
+   "name": "Relais",
+   "note": "Relais"
+  },
+  "6292": {
+   "name": "Relais Spirituel (Osamodas)",
+   "note": "Relais Spirituel (Osamodas)"
+  },
+  "6390": {
+   "name": "Martinet",
+   "note": "Martinet"
+  },
+  "6393": {
+   "name": "Martinet (ligne de vue)",
+   "note": "Martinet (ligne de vue)"
+  },
+  "6322": {
+   "name": "Esprit Facétieux",
+   "note": "Esprit Facétieux (Gobgob présent)"
+  },
+  "6323": {
+   "name": "Esprit Glouton",
+   "note": "Esprit Glouton (Gobgob présent)"
+  },
+  "583": {
+   "name": "Sacrifice",
+   "note": "Sacrifice (interception/partage)"
+  },
+  "95": {
+   "name": "Intacleur",
+   "note": "Intacleur (ne tacle pas)"
+  },
+  "96": {
+   "name": "Intaclable",
+   "note": "Intaclable"
+  },
+  "7": {
+   "name": "Pesanteur",
+   "note": "Pesanteur"
+  }
+ },
+ "spellSets": {
+  "soutien_soin": {
+   "A": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    9,
+    10,
+    11,
+    12,
+    16,
+    17,
+    19,
+    21,
+    22
+   ],
+   "B": [
+    8,
+    13,
+    14,
+    15,
+    18,
+    20
+   ]
+  },
+  "armee_invocations": {
+   "A": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    14,
+    15
+   ],
+   "B": [
+    4,
+    13,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+   ]
+  },
+  "pacte_bestial_dps": {
+   "A": [
+    4,
+    6,
+    7,
+    8,
+    11,
+    15,
+    17,
+    22
+   ],
+   "B": [
+    1,
+    2,
+    3,
+    5,
+    9,
+    10,
+    12,
+    13,
+    14,
+    16,
+    18,
+    19,
+    20,
+    21
+   ]
+  }
+ },
+ "rotations": [
+  {
+   "name": "Installation (12 PA)",
+   "sequence": [
+    "Piqûre Motivante (2) sur le DPS",
+    "Craquolosse (5) au contact des ennemis",
+    "Bouftou (3)",
+    "Cri du Corbac (2) sur un allié"
+   ],
+   "goal": "Bloquer le front avec 4 PI de créatures et booster le DPS (+1 PA/+1 PM 3 tours)."
+  },
+  {
+   "name": "Soutien (12 PA)",
+   "sequence": [
+    "Dents du Piranya (3) sur le groupe",
+    "Toison d'Or (3)",
+    "Cri de l'Ours (3) sur l'allié au contact",
+    "Fouet (2) sur une créature"
+   ],
+   "goal": "Soin de zone + bouclier 300 + +150 Puissance + 20 Dommages."
+  },
+  {
+   "name": "Burst Cortège (12 PA)",
+   "sequence": [
+    "Cortège Sauvage (2)",
+    "Tofu (2)",
+    "Bouftou (2)",
+    "Craquolosse (4)",
+    "Martinet... (relance) ou Discipline (2)"
+   ],
+   "goal": "Remplir 9 PI de créatures qui agissent une fois avant de mourir."
+  },
+  {
+   "name": "Pacte Bestial (14 PA)",
+   "sequence": [
+    "Pacte Bestial (2, +2 PA)",
+    "Crocoléreux (5) sacrifié → +9 % DF",
+    "Crocs du Mulou (4)",
+    "Cœur Sauvage (4) ou Pics du Prespic"
+   ],
+   "goal": "Auto-boost dommages finaux et soins finaux."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "DPS de mêlée (Iop, Sacrieur, Ouginak)",
+   "how": "Cri de l'Ours +150 Puissance, Crocs du Mulou +5 % mêlée, Piqûre Motivante +1 PA/+1 PM."
+  },
+  {
+   "with": "DPS distance (Crâ, Huppermage)",
+   "how": "Pics du Prespic +10 % CC, Dents du Piranya +20 Dommages, Piqûre Motivante ; créatures en mur devant eux."
+  },
+  {
+   "with": "Féca",
+   "how": "Murs de créatures + boucliers Féca ; armures Féca possibles sur les créatures avec l'Étoile du Berger."
+  },
+  {
+   "with": "Sram / Féca (pièges, glyphes)",
+   "how": "Laisse Spirituelle, Cravache, Frappe du Craqueleur pour amener les ennemis dans les pièges/glyphes."
+  },
+  {
+   "with": "Enutrof",
+   "how": "Boîte à Outils (+3 PA/+3 PM) sur une créature à 3 PI ; ennemis immobilisés pendant que les créatures frappent."
+  }
+ ],
+ "strengths": [
+  "Multiplie les entités sur le terrain (blocage, tacle, interception)",
+  "Soins + buffs majeurs (PA, PM, Puissance, Dommages, CC)",
+  "Placement très riche (fouets, Laisse Spirituelle, téléportations)",
+  "Burst de créatures (Cortège + Martinet) ou DPS autonome (Pacte Bestial)"
+ ],
+ "weaknesses": [
+  "Complexité de pilotage (IA des créatures)",
+  "Créatures fragiles aux dégâts de zone",
+  "PI limités à 6 par l'équipement",
+  "Ne peut pas se soigner avec ses sorts de soin (sauf vols de vie)",
+  "Dégâts directs modestes hors Pacte Bestial"
+ ],
+ "uncertain": [
+  "Valeur de base de la jauge d'invocation (1 PI ?) et plafond exact (6 PI via équipement selon breakflip).",
+  "Héritage des caractéristiques : bonusCharacteristics interprété comme % des stats de l'invocateur (cohérent avec la source 50/75/100 %).",
+  "Déclencheurs CMPARR / CI : sémantique déduite des descriptions (dépense de PM du lanceur / invocation par le porteur).",
+  "Goberration invoque un « monstre 3 » non résolu dans l'API (illusions).",
+  "Moment exact où une créature invoquée joue son premier tour.",
+  "Boucliers lancés par une créature (Scarapace, 100 % du niveau du lanceur) : niveau pris en compte = celui de la créature (grade niv. 1) ou de l'Osamodas ?",
+  "Piqûre Motivante peut cibler des ennemis (masques L, M, J) : l'IA ne doit jamais la lancer sur un ennemi."
+ ],
+ "sources": [
+  "https://api.dofusdb.fr/breeds/2",
+  "https://api.dofusdb.fr/spell-variants?breedId=2",
+  "https://www.breakflip.com/guides/6574.html",
+  "https://www.gamosaurus.com/?p=240355",
+  "https://dofus.jeuxonline.info/actualite/58754/dofus-258-equilibrage-classes-controle-invocations",
+  "https://github.com/PyDofus/pydofus3 (ActionId.py)",
+  "https://domath.fr"
+ ]
+}

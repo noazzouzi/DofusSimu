@@ -1,0 +1,3296 @@
+{
+ "breedId": 10,
+ "name": "Sadida",
+ "slug": "sadida",
+ "dataSource": "https://api.dofusdb.fr (breeds/10, spell-variants?breedId=10, spells, spell-levels, spell-states, monsters) — données juin 2026",
+ "roles": [
+  {
+   "role": "entrave-pm-de-masse",
+   "element": "Feu/Air/Eau",
+   "priority": 1,
+   "description": "Retraits PM propagés par l'Infection (Buisson Ardent -2, Contagion -2, Ronce Apaisante -2) + zones (Herbes Folles -3 en cercle 2, Feu de Brousse -3, Mangrove -3, Canopée -2)."
+  },
+  {
+   "role": "invocateur-controle",
+   "element": "-",
+   "priority": 1,
+   "description": "Arbres = murs de LdV/chemin ; Poupées (Bloqueuse = tacle, Gonflable = soin/poussée, Folle = infection, Sacrifiée = explosion, Surpuissante = PM)."
+  },
+  {
+   "role": "dps-propagation",
+   "element": "multi (Terre/Air/Eau/Feu)",
+   "priority": 2,
+   "description": "Infecter tous les ennemis puis frapper un seul Infecté : chaque sort touche jusqu'à tous les Infectés (3 propagations max par ennemi et par tour). Finisher Inoculation."
+  },
+  {
+   "role": "soigneur-secondaire",
+   "element": "Eau/meilleur élément",
+   "priority": 2,
+   "description": "Larme (sans LdV), Ronce Apaisante (46–54), Mangrove (zone), Montée de Sève, Arbre de Vie, Gonflable, Groute (12 %), Don Naturel (partage)."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Arbres et limite de 6",
+   "description": "Arbre (5894) statique, bloque LdV et passage, ne consomme pas d'emplacement d'invocation ; 6 par équipe, le 7e tue le plus ancien.",
+   "implementationNotes": "Compteur FIFO par équipe (états 5387–5392 dans les données). PV = bonusCharacteristics.lifePoints (60, ou 30 pour grades 4–6) interprété en % des PV max du Sadida (INCERTAIN) ; résistances 20 %."
+  },
+  {
+   "name": "Feuillu",
+   "description": "État 256 (cantBePushed) : +100 % Vitalité, zone des sorts Sadida en cercle 2 autour de l'arbre ciblé, compte pour Force de la Nature, Miasmes/Tremblement/Mangrove centrés autour.",
+   "implementationNotes": "Un Arbre devient Feuillu au début du tour suivant son invocation (sort Arbre) ; immédiat via Arbre Feuillu/Mangrove/Montée de Sève/Larme. Sous-sort Feuillage 13558."
+  },
+  {
+   "name": "Infection et propagation",
+   "description": "Un sort lancé sur un ennemi Infecté est rejoué sur tous les autres ennemis Infectés ; compteur Infecté I/II/III (1 tour) limite à 3 propagations par ennemi et par tour.",
+   "implementationNotes": "À l'impact : si cible principale Infectée → marquer (5409) puis pour chaque autre ennemi Infecté sans Infecté III : appliquer les effets du sous-sort de propagation (niv.6 du sous-sort du sort) et incrémenter le compteur. Les propagations ne déclenchent pas elles-mêmes de nouvelles propagations."
+  },
+  {
+   "name": "Poupées maîtrisables",
+   "description": "5 poupées (Bloqueuse, Folle, Gonflable, Sacrifiée, Surpuissante) + Fourbe (invoquée par la Surpuissante). Invocation sur un Arbre (2 PA, po illimitée, la poupée hérite du statut Feuillu → grade 6) ou directe (Transmutée, 3 PA, po 1–3, 3 tours).",
+   "implementationNotes": "Effet 405 = tuer la cible (Arbre) et invoquer à sa place ; à la mort, réinvoquer un Arbre (Feuillu si d'origine Feuillue). Contrôle joueur via 'Maîtrise des Invocations' (états 2131/2132/2130) : dans le simulateur, l'IA de groupe peut piloter directement les poupées."
+  },
+  {
+   "name": "Arbres contrôlables (Groute / Tréant)",
+   "description": "2 tours, 4 PA/4 PM, 3 sorts chacun ; redeviennent Arbres Feuillus.",
+   "implementationNotes": "Effet 2796 (tuer + remplacer) sur un Feuillu ; 405 différé (delay 2) pour le retour à l'Arbre."
+  },
+  {
+   "name": "Sacrifices et réactions",
+   "description": "Sacrifice Vaudou/Don Naturel/Altruisme Végétal/Explosion Ouatée tuent une invocation pour un effet ; Malédiction Vaudou se déclenche à la mort d'une Poupée.",
+   "implementationNotes": "Événement onSummonDeath(owner=Sadida, family=Poupée) → déclencher Vaudou ; 1045 met la relance d'un sort à 0."
+  },
+  {
+   "name": "Partage de dommages",
+   "description": "Don Naturel (alliés en cercle 2) et Harmonie (Sadida + ses Arbres).",
+   "implementationNotes": "Effet 1061 avec déclencheur D : répartir les dommages subis entre les porteurs de l'état (Sacrifice 583 / Harmonie 5425) — règle de répartition exacte INCERTAINE (égalitaire avant résistances ?)."
+  },
+  {
+   "name": "Renvoi et poisons conditionnels",
+   "description": "Fétiches Calcinés (30 % des dommages finaux subis par les Arbres renvoyés à l'ennemi), Chardons Ardents (poison par PM utilisé), Mandragore (infecte sur dommages indirects), Forêt Hantée (infecte si attaque un arbre).",
+   "implementationNotes": "Effet 1223 = dommages basés sur un % des dommages finaux subis par une autre entité ; déclencheurs DTB/DTE/DI et CCMPARR."
+  }
+ ],
+ "spells": [
+  {
+   "id": 13516,
+   "pairIndex": 1,
+   "variantOf": 13521,
+   "isBaseSpell": true,
+   "name": "Ronce",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 42086,
+   "description": "Infecte la cible et occasionne des dommages Terre.\n\nSur un Arbre Feuillu : applique les effets sur les ennemis dans un cercle de taille 2.\n\nSur un ennemi : applique également les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "14–16 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "19–21 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "24–27 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 1) → cible ennemie",
+    "Applique l'état « Infecté » (263) → cible ennemie (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie",
+    "le lanceur lance le sous-sort « Ronce » (13552, niv. 9) → cible alliée — si cible a l'état « Feuillu » (256)",
+    "24 à 27 dommages Terre → cible ennemie",
+    "24 à 27 dommages Terre → cible alliée — si cible n'a PAS l'état « Feuillu » (256)",
+    "le lanceur lance sur la case ciblée le sous-sort « Ronce » (13552, niv. 3) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "infection",
+    "single-target"
+   ],
+   "tactic": "Terre 3 PA (po 1–8, 3×/tour, 2×/cible) : 24–27 Terre + Infecte 1 tour. Sur un Arbre Feuillu : touche les ennemis en cercle 2 autour de l'arbre ; sur un ennemi Infecté : rejoue les dégâts sur tous les Infectés. Sort de base pour lancer/entretenir l'Infection en Terre."
+  },
+  {
+   "id": 13521,
+   "pairIndex": 1,
+   "variantOf": 13516,
+   "isBaseSpell": false,
+   "name": "Ronce Insolente",
+   "obtainedAtLevel": 95,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 42098,
+   "description": "Réduit la durée des effets sur la cible et occasionne des dommages Terre aux ennemis.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "25–28 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "31–35 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "Durée des effets : -1 → cible (alliée ou ennemie)",
+    "31 à 35 dommages Terre (CC : 37 à 42) → cible ennemie",
+    "le lanceur lance sur la case ciblée le sous-sort « Ronce Insolente » (13547, niv. 2) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "debuff",
+    "dispel",
+    "single-target"
+   ],
+   "tactic": "Variante Terre 3 PA (po 0–7, CC 20 %) : 31–35 Terre et réduit de 1 tour la durée des effets de la cible (désenvoûtement partiel, alliés compris). Propagation sur Infectés. Contre les boss qui se buffent."
+  },
+  {
+   "id": 13528,
+   "pairIndex": 2,
+   "variantOf": 13563,
+   "isBaseSpell": true,
+   "name": "Larme de Sadida",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 42114,
+   "description": "Soigne les alliés ou occasionne des dommages Eau aux ennemis.\n\nSur un Arbre : applique les effets dans un cercle de taille 2 et transforme l'Arbre en Arbre Feuillu.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "15–17 soin Eau, 15–17 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "20–22 soin Eau, 20–22 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 8,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "25–28 soin Eau, 25–28 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "le lanceur lance le sous-sort « Larme de Sadida » (13545, niv. 9) → cible alliée — si cible est l’un des monstres : « Arbre » (5894) / « Tréant » (5900) / « Groute » (5901)",
+    "25 à 28 soins Eau (CC : 30 à 34) → cible alliée — si cible n'est pas « Arbre » (5894) ET si cible n'est pas « Tréant » (5900) ET si cible n'est pas « Groute » (5901)",
+    "25 à 28 dommages Eau (CC : 30 à 34) → cible ennemie",
+    "la cible lance (sur elle-même) le sous-sort « Feuillage » (13558, niv. 1) → cible alliée — si cible est le monstre « Arbre » (5894) ET si cible n'a PAS l'état « Feuillu » (256)",
+    "Applique l'état « Feuillu » (256) → cible alliée — si cible est le monstre « Arbre » (5894) ET si cible n'a PAS l'état « Feuillu » (256) (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance sur la case ciblée le sous-sort « Larme de Sadida » (13545, niv. 3) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "heal",
+    "damage",
+    "aoe-on-tree"
+   ],
+   "tactic": "3 PA en ligne, **sans ligne de vue** (po 0–8) : soigne 25–28 (Eau) un allié OU 25–28 Eau à un ennemi ; sur un Arbre : effets en cercle 2 et l'arbre devient Feuillu. Propage sur Infectés. Soin d'appoint polyvalent."
+  },
+  {
+   "id": 13563,
+   "pairIndex": 2,
+   "variantOf": 13528,
+   "isBaseSpell": false,
+   "name": "Montée de Sève",
+   "obtainedAtLevel": 100,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 43999,
+   "description": "Vole de la vie dans l'élément Eau aux ennemis et soigne les alliés (hors lanceur) selon les dommages occasionnés en zone.\n\nSur des Arbres : les transforme également en Arbres Feuillus.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "24–27 vol Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "30–34 vol Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Applique l'état « Montée de Sève » (3756) → alliés (hors lanceur) dans la zone (zone carré taille 1, 1 tour(s))",
+    "le lanceur lance le sous-sort « Montée de Sève » (24997, niv. 1) → ennemis dans la zone (zone carré taille 1)",
+    "30 à 34 vol Eau (CC : 36 à 41) → ennemis dans la zone (zone carré taille 1)",
+    "la cible lance (sur elle-même) le sous-sort « Montée de Sève » (24997, niv. 3) → lanceur",
+    "Soin : 50% des dommages occasionnés → alliés (hors lanceur) dans la zone — si cible a l'état « Montée de Sève » (3756) (zone carré taille 1, info-bulle uniquement (comportement réel géré côté serveur))",
+    "la cible lance (sur elle-même) le sous-sort « Feuillage » (13558, niv. 1) → alliés dans la zone — si cible est le monstre « Arbre » (5894) ET si cible n'a PAS l'état « Feuillu » (256) (zone carré taille 1)",
+    "Applique l'état « Feuillu » (256) → invocations statiques alliées, U (INCERTAIN) (zone carré taille 1, durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "damage",
+    "lifesteal",
+    "heal",
+    "aoe"
+   ],
+   "tactic": "Variante 4 PA (po 0–7, 1×/tour, CC 25 %) : vol Eau 30–34 en carré 1, et pendant 1 tour les alliés touchés (hors lanceur) sont soignés de 50 % des dommages subis par les ennemis touchés ; transforme les Arbres de la zone en Feuillus."
+  },
+  {
+   "id": 13574,
+   "pairIndex": 3,
+   "variantOf": 13568,
+   "isBaseSpell": true,
+   "name": "Buisson Ardent",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 78731,
+   "description": "Occasionne des dommages Feu et retire des PM.\n\nSur un Arbre Feuillu : applique les effets sur les ennemis dans un cercle de taille 2.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "15–17 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "20–22 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "25–28 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "le lanceur lance le sous-sort « Buisson Ardent » (29630, niv. 9) → cible alliée — si cible a l'état « Feuillu » (256)",
+    "25 à 28 dommages Feu (CC : 30 à 34) → cible ennemie",
+    "25 à 28 dommages Feu (CC : 30 à 34) → cible alliée — si cible n'a PAS l'état « Feuillu » (256)",
+    "Retire 2 PM (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Buisson Ardent » (29630, niv. 10) → cible ennemie",
+    "le lanceur lance le sous-sort « Buisson Ardent » (29630, niv. 10) → cible alliée — si cible n'a PAS l'état « Feuillu » (256)",
+    "le lanceur lance sur la case ciblée le sous-sort « Buisson Ardent » (29630, niv. 3) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "mp-removal"
+   ],
+   "tactic": "Feu 3 PA (po 1–8, 3×/tour, 2×/cible) : 25–28 Feu + -2 PM ; sur Feuillu : cercle 2 ; sur Infecté : propagation (dégâts ET retrait PM sur tous les Infectés). Le meilleur retrait PM « de masse » du Sadida via l'Infection."
+  },
+  {
+   "id": 13568,
+   "pairIndex": 3,
+   "variantOf": 13574,
+   "isBaseSpell": false,
+   "name": "Feu de Brousse",
+   "obtainedAtLevel": 105,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 78751,
+   "description": "Occasionne des dommages Feu et retire des PM aux ennemis et applique l'état Feu de Brousse sur les Arbres et les ennemis en zone :\n• À la fin du tour de la cible, occasionne des dommages Feu aux ennemis en zone autour d'elle.\n• Peut occasionner des dommages aux Arbres.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "26–28 Feu, 13–15 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "32–35 Feu, 17–19 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "32 à 35 dommages Feu → ennemis dans la zone (zone croix taille 1)",
+    "Retire 3 PM (esquivable) → ennemis dans la zone (zone croix taille 1, 1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feu de Brousse » (5614) → tous (alliés+ennemis) dans la zone (zone croix taille 1, 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Feu de Brousse » (14394, niv. 2) → ennemis dans la zone (zone croix taille 1)",
+    "le lanceur lance le sous-sort « Feu de Brousse » (14394, niv. 2) → alliés dans la zone — si cible est l’un des monstres : « Arbre » (5894) / « Tréant » (5900) / « Groute » (5901) (zone croix taille 1)",
+    "17 à 19 dommages Feu → ennemis dans la zone (zone cercle taille 2 (min 1), actif 1 tour(s), déclencheur : fin de tour du porteur, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "mp-removal",
+    "delayed"
+   ],
+   "tactic": "Variante Feu 4 PA (po 0–7, 2×/tour, CC 20 %) : 32–35 Feu en croix 1 aux ennemis, -3 PM et état Feu de Brousse ; à la fin du tour de chaque cible, 17–19 Feu aux ennemis en cercle 2 autour d'elle (peut aussi toucher les Arbres)."
+  },
+  {
+   "id": 13577,
+   "pairIndex": 4,
+   "variantOf": 13529,
+   "isBaseSpell": true,
+   "name": "Cigüe",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 78742,
+   "description": "Occasionne des dommages Air.\n\nSur un Arbre Feuillu : applique les effets et maintient l'Infection sur les ennemis dans un cercle de taille 2.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés et maintient l'Infection sur la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "15–17 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "21–23 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "26–29 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "le lanceur lance le sous-sort « Cigüe » (29632, niv. 9) → cible alliée — si cible a l'état « Feuillu » (256)",
+    "26 à 29 dommages Air (CC : 31 à 35) → cible ennemie",
+    "26 à 29 dommages Air (CC : 31 à 35) → cible alliée — si cible n'a PAS l'état « Feuillu » (256)",
+    "Applique l'état « Infecté » (263) → cible ennemie — si cible a l'état « Infecté » (263) (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 3) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "le lanceur lance sur la case ciblée le sous-sort « Cigüe » (29632, niv. 3) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "infection"
+   ],
+   "tactic": "Air 3 PA (po 1–8, 3×/tour, 2×/cible) : 26–29 Air ; sur Infecté : propage et **prolonge l'Infection à 3 tours** ; sur Feuillu : cercle 2 + infection. Entretien de l'Infection en Air."
+  },
+  {
+   "id": 13529,
+   "pairIndex": 4,
+   "variantOf": 13577,
+   "isBaseSpell": false,
+   "name": "Vent Empoisonné",
+   "obtainedAtLevel": 110,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42116,
+   "description": "Infecte la cible et lui applique un poison Air de début de tour.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "11–13 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "13–15 Air"
+    }
+   ],
+   "effectsSummary": [
+    "Applique l'état « Infecté » (263) → cible ennemie (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 1) → cible ennemie",
+    "13 à 15 dommages Air → cible (alliée ou ennemie) (actif 2 tour(s), déclencheur : début de tour du porteur)"
+   ],
+   "role": [
+    "poison",
+    "infection"
+   ],
+   "tactic": "Variante Air 2 PA (po 1–8, 1×/tour) : Infecte (1 t.) et poison Air 13–15 au début des 2 prochains tours de la cible. Ouverture bon marché pour infecter."
+  },
+  {
+   "id": 13519,
+   "pairIndex": 5,
+   "variantOf": 13560,
+   "isBaseSpell": true,
+   "name": "Arbre",
+   "obtainedAtLevel": 5,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42095,
+   "description": "Plante un Arbre.\nUn Arbre devient Feuillu après 1 tour.\n\nIl ne peut y avoir que 6 Arbres par équipe. Le septième Arbre planté entraîne la mort du premier.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Arbre » (monstre 5894, grade 1) → cible (alliée ou ennemie)",
+    "Applique l'état « Feuillu » (256) → invocations statiques alliées, U (INCERTAIN) (durée infinie, délai 1 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "obstacle",
+    "los-block"
+   ],
+   "tactic": "2 PA (po 1–8, case libre, 2×/tour) : plante un Arbre (obstacle, bloque la LdV), Feuillu au tour suivant. 6 Arbres max par équipe. Base de toute la mécanique (poupées, zones, Force de la Nature). Ne consomme pas d'emplacement d'invocation."
+  },
+  {
+   "id": 13560,
+   "pairIndex": 5,
+   "variantOf": 13519,
+   "isBaseSpell": false,
+   "name": "Arbre Feuillu",
+   "obtainedAtLevel": 115,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 43957,
+   "description": "Plante un Arbre Feuillu.\nTous les Arbres invoqués par le lanceur se transforment immédiatement en Arbres Feuillus.\n\nIl ne peut y avoir que 6 Arbres par équipe. Le septième Arbre planté entraîne la mort du premier.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Arbre » (monstre 5894, grade 2) → cible (alliée ou ennemie)",
+    "Applique l'état « Feuillu » (256) → invocations statiques alliées, U (INCERTAIN) (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "obstacle",
+    "buff"
+   ],
+   "tactic": "Variante 3 PA (1×/tour) : plante un Arbre directement Feuillu ET rend Feuillus tous les Arbres du Sadida. Accélère la mise en place."
+  },
+  {
+   "id": 13564,
+   "pairIndex": 6,
+   "variantOf": 13515,
+   "isBaseSpell": true,
+   "name": "La Folle",
+   "obtainedAtLevel": 10,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42270,
+   "description": "Remplace un Arbre par une Poupée maîtrisable qui peut Infecter et appliquer un poison Air de début de tour.\n\nÀ sa mort, la Poupée redevient un Arbre.\nSi elle a été invoquée à partir d'un Arbre Feuillu, l'Arbre à sa mort redevient Feuillu.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Tue la cible et la remplace par l'invocation « La Folle » (monstre 5896, grade 3) → cible alliée — si cible est le monstre « Arbre » (5894) ET si cible n'a PAS l'état « Feuillu » (256)",
+    "Tue la cible et la remplace par l'invocation « La Folle » (monstre 5896, grade 6) → cible alliée — si cible a l'état « Feuillu » (256)"
+   ],
+   "role": [
+    "summon",
+    "infection",
+    "poison"
+   ],
+   "tactic": "2 PA (po 1–63 sans LdV, relance 3) : remplace un Arbre par La Folle (poupée 6 PA/5 PM ; sort Agacement : Infecte + poison Air 20 au début des 2 tours de la cible, 1×/cible). Infecteur mobile."
+  },
+  {
+   "id": 13515,
+   "pairIndex": 6,
+   "variantOf": 13564,
+   "isBaseSpell": false,
+   "name": "La Folle Transmutée",
+   "obtainedAtLevel": 120,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 43961,
+   "description": "Invoque une Poupée maîtrisable qui peut Infecter et appliquer un poison Air de début de tour.\n\nLa Poupée est remplacée par un Arbre 3 tours après son invocation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 144,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « La Folle » (monstre 5896, grade 3) → cible (alliée ou ennemie)",
+    "Tue la cible et la remplace par l'invocation « Arbre » (monstre 5894, grade 1) → cible alliée — si cible est le monstre « La Folle » (5896) (délai 3 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "infection",
+    "poison"
+   ],
+   "tactic": "Variante 3 PA (po 1–3, relance 3) : invoque La Folle sans Arbre ; remplacée par un Arbre après 3 tours."
+  },
+  {
+   "id": 13533,
+   "pairIndex": 7,
+   "variantOf": 13562,
+   "isBaseSpell": true,
+   "name": "Sève Paralysante",
+   "obtainedAtLevel": 15,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 57005,
+   "description": "Infecte, retire de l'Esquive PM et applique un poison Feu de fin de tour sur la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "9–11 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "12–14 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "15–18 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "Applique l'état « Infecté » (263) → cible ennemie (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 3) → cible ennemie",
+    "-15 Esquive PM → cible (alliée ou ennemie) (3 tour(s))",
+    "15 à 18 dommages Feu → cible (alliée ou ennemie) (actif 3 tour(s), déclencheur : fin de tour du porteur)"
+   ],
+   "role": [
+    "poison",
+    "infection",
+    "dodge-reduction"
+   ],
+   "tactic": "3 PA (po 1–8, 1×/tour) : Infecte 3 tours, -15 Esquive PM (3 t.) et poison Feu 15–18 à la fin des 3 prochains tours de la cible. Ouverture idéale sur le boss (Infection longue)."
+  },
+  {
+   "id": 13562,
+   "pairIndex": 7,
+   "variantOf": 13533,
+   "isBaseSpell": false,
+   "name": "Miasmes",
+   "obtainedAtLevel": 125,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 44000,
+   "description": "Infecte et applique un poison Air de fin de tour sur les ennemis en zone.\nLa zone s'étend autour des Arbres Feuillus et des Poupées.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "10–12 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": "12–14 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Miasmes » (13580, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « Miasmes » (13580, niv. 2) → alliés dans la zone — si cible a l'état « Feuillu » (256) (zone tout le terrain (vivants))",
+    "le lanceur lance le sous-sort « Miasmes » (13580, niv. 2) → alliés dans la zone — si cible est l’un des monstres : « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Bloqueuse » (5895) / « La Folle » (5896) / « La Surpuissante » (5899) / « La Fourbe » (7934) (zone tout le terrain (vivants))",
+    "Applique l'état « Infecté » (263) → ennemis dans la zone (zone cercle taille 2 (min 1), 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "12 à 14 dommages Air → ennemis dans la zone (zone cercle taille 2 (min 1), actif 2 tour(s), déclencheur : fin de tour du porteur, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "poison",
+    "infection",
+    "aoe"
+   ],
+   "tactic": "Variante 2 PA (sur soi) : Infecte et pose un poison Air 12–14 (fin de tour, 2 tours) aux ennemis en cercle 2 autour du Sadida, de chaque Arbre Feuillu et de chaque Poupée. Infection de masse si les arbres sont au contact des ennemis."
+  },
+  {
+   "id": 13575,
+   "pairIndex": 8,
+   "variantOf": 14396,
+   "isBaseSpell": true,
+   "name": "Contagion",
+   "obtainedAtLevel": 20,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 78746,
+   "description": "Occasionne des dommages Air et retire des PM. \n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés en propageant l'Infection en zone autour de la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "22–25 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "28–31 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "35–39 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "Applique l'état « Infecté » (263) → ennemis dans la zone — si cible a l'état « Infecté » (263) (zone cercle taille 2 (min 1), 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Contagion » (29633, niv. 7) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "35 à 39 dommages Air (CC : 42 à 47) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Contagion » (29633, niv. 8) → cible (alliée ou ennemie)",
+    "Retire 2 PM (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance sur la case ciblée le sous-sort « Contagion » (29633, niv. 3) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "mp-removal",
+    "infection-spread"
+   ],
+   "tactic": "Air 4 PA (po 1–7, 2×/tour, 1×/cible, CC 25 %) : 35–39 Air et -2 PM ; sur Infecté : propage dégâts/PM à tous les Infectés ET infecte (2 t.) les ennemis en cercle 2 autour de la cible. Sort pivot de propagation."
+  },
+  {
+   "id": 14396,
+   "pairIndex": 8,
+   "variantOf": 13575,
+   "isBaseSpell": false,
+   "name": "Mangrove",
+   "obtainedAtLevel": 130,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 2,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 43975,
+   "description": "Soigne les alliés, occasionne des dommages Eau et retire des PM aux ennemis en zone.\nLa zone s'étend autour des Arbres et les effets sont appliqués qu'une seule fois par lancer.\n\nTransforme également tous les Arbres en Arbres Feuillus.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "29–32 soin Eau, 29–32 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "32–36 soin Eau, 32–36 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "Applique l'état « Mangrove (cible) » (5897) → tous (alliés+ennemis) dans la zone (zone croix taille 2, 1 tour(s))",
+    "32 à 36 soins Eau (CC : 38 à 43) → alliés dans la zone (zone croix taille 2)",
+    "32 à 36 dommages Eau (CC : 38 à 43) → ennemis dans la zone (zone croix taille 2)",
+    "le lanceur lance le sous-sort « Mangrove » (29634, niv. 5) → ennemis dans la zone (zone croix taille 2)",
+    "Retire 3 PM (esquivable) → ennemis dans la zone (zone croix taille 2, 1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feuillu » (256) → invocations statiques alliées, U (INCERTAIN) (zone tout le terrain (vivants), durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "la cible lance (sur elle-même) le sous-sort « Feuillage » (13558, niv. 1) → alliés (dont lanceur si dans la zone), invocations du lanceur — si cible est le monstre « Arbre » (5894) ET si cible n'a PAS l'état « Feuillu » (256) (zone tout le terrain (vivants))",
+    "le lanceur lance le sous-sort « Mangrove » (29634, niv. 2) → alliés dans la zone — si cible est l’un des monstres : « Tréant » (5900) / « Groute » (5901) / « Arbre » (5894) (zone cercle illimitée (63) (min 1))",
+    "Retire l'état « Mangrove (cible) » (5897) → tous (alliés+ennemis) dans la zone (zone tout le terrain)"
+   ],
+   "role": [
+    "heal",
+    "damage",
+    "aoe",
+    "mp-removal"
+   ],
+   "tactic": "Variante 4 PA (po 0–6, 1×/tour, 2×/tour global, CC 25 %) : soigne 32–36 les alliés et inflige 32–36 Eau + -3 PM aux ennemis en croix 2 ; la zone s'étend en croix 2 autour de chaque Arbre (une seule application par entité) ; rend tous les Arbres Feuillus."
+  },
+  {
+   "id": 13525,
+   "pairIndex": 9,
+   "variantOf": 13565,
+   "isBaseSpell": true,
+   "name": "Ronce Apaisante",
+   "obtainedAtLevel": 25,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 9,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42107,
+   "description": "Soigne les alliés ou retire des PM aux ennemis.\n\nSur un Arbre Feuillu : applique les effets dans un cercle de taille 2.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": "29–34 soin meilleur élt"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": "37–43 soin meilleur élt"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 9,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": "46–54 soin meilleur élt"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "Applique l'état « Enraciné » (6) → cible (alliée ou ennemie) (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "46 à 54 soins du meilleur élément → cible alliée — si cible n'est pas « Arbre » (5894) ET si cible n'est pas « Tréant » (5900) ET si cible n'est pas « Groute » (5901)",
+    "le lanceur lance le sous-sort « Ronce Apaisante » (13546, niv. 9) → cible alliée — si cible a l'état « Feuillu » (256)",
+    "le lanceur lance le sous-sort « Ronce Apaisante » (13546, niv. 10) → cible alliée — si cible n'a PAS l'état « Feuillu » (256)",
+    "le lanceur lance le sous-sort « Ronce Apaisante » (13546, niv. 10) → cible ennemie",
+    "Retire 2 PM (esquivable) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance sur la case ciblée le sous-sort « Ronce Apaisante » (13546, niv. 3) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "heal",
+    "mp-removal"
+   ],
+   "tactic": "2 PA en ligne (po 0–9, relance 4) : gros soin 46–54 (meilleur élément) à un allié OU -2 PM (2 tours) à un ennemi ; sur Feuillu : soin + retrait en cercle 2 ; propagation du retrait sur Infectés."
+  },
+  {
+   "id": 13565,
+   "pairIndex": 9,
+   "variantOf": 13525,
+   "isBaseSpell": false,
+   "name": "Rempotage",
+   "obtainedAtLevel": 135,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 9,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 2,
+   "initialCooldown": 1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42224,
+   "description": "Soigne une invocation Sadida, la téléporte sur la première case disponible entre le lanceur et elle et plante un Arbre sur la case ciblée.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 9,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Soin : 25% des PV max → cible alliée — si cible est l’un des monstres : « Arbre » (5894) / « La Bloqueuse » (5895) / « La Folle » (5896) / « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Surpuissante » (5899) / « Tréant » (5900) / « Groute » (5901) / « La Fourbe » (7934) / « Ronce » (7933)",
+    "la cible lance sur le lanceur (source) le sous-sort « Rempotage » (13581, niv. 1) → cible alliée — si cible est l’un des monstres : « Arbre » (5894) / « La Bloqueuse » (5895) / « La Folle » (5896) / « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Surpuissante » (5899) / « Tréant » (5900) / « Groute » (5901) / « La Fourbe » (7934)",
+    "Téléporte le lanceur sur la case ciblée → tous (alliés+ennemis) dans la zone (zone ligne depuis le lanceur taille 1 (min 63), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Invoque « Arbre » (monstre 5894, grade 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Invoque « Arbre » (monstre 5894, grade 1) → tous (alliés+ennemis) dans la zone (zone cercle taille 0)"
+   ],
+   "role": [
+    "heal",
+    "mobility",
+    "summon"
+   ],
+   "tactic": "Variante 2 PA en ligne (po 1–9 sans LdV, relance 2, 1er lancer au tour 2) : soigne 25 % PV max une invocation Sadida, la téléporte sur la première case libre entre le Sadida et elle, et plante un Arbre à sa place."
+  },
+  {
+   "id": 13561,
+   "pairIndex": 10,
+   "variantOf": 13526,
+   "isBaseSpell": true,
+   "name": "La Bloqueuse",
+   "obtainedAtLevel": 30,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42272,
+   "description": "Remplace un Arbre par une Poupée maîtrisable qui peut échanger de position si elle est maîtrisée et bloquer les ennemis.\nElle peut également augmenter ses PM et se rendre Intaclable.\n\nÀ sa mort, la Poupée redevient un Arbre.\nSi elle a été invoquée à partir d'un Arbre Feuillu, l'Arbre à sa mort redevient Feuillu.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 140,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Tue la cible et la remplace par l'invocation « La Bloqueuse » (monstre 5895, grade 3) → cible alliée — si cible est le monstre « Arbre » (5894) ET si cible n'a PAS l'état « Feuillu » (256)",
+    "Tue la cible et la remplace par l'invocation « La Bloqueuse » (monstre 5895, grade 6) → cible alliée — si cible a l'état « Feuillu » (256)"
+   ],
+   "role": [
+    "summon",
+    "tank",
+    "tackle"
+   ],
+   "tactic": "2 PA (remplace un Arbre, relance 3) : La Bloqueuse (100 % PV, 30 % rés.) : Substitution (échange avec un allié, +20 Tacle si échange), Célérité (+4 PM, Intaclable). Bloqueur/garde du corps."
+  },
+  {
+   "id": 13526,
+   "pairIndex": 10,
+   "variantOf": 13561,
+   "isBaseSpell": false,
+   "name": "La Bloqueuse Transmutée",
+   "obtainedAtLevel": 140,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42108,
+   "description": "Invoque une Poupée maîtrisable qui peut échanger de position si elle est maîtrisée et bloquer les ennemis.\nElle peut également augmenter ses PM et se rendre Intaclable.\n\nLa Poupée est remplacée par un Arbre 3 tours après son invocation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « La Bloqueuse » (monstre 5895, grade 3) → cible (alliée ou ennemie)",
+    "Tue la cible et la remplace par l'invocation « Arbre » (monstre 5894, grade 1) → cible alliée — si cible est le monstre « La Bloqueuse » (5895) (délai 3 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "tank",
+    "tackle"
+   ],
+   "tactic": "Variante 3 PA (po 1–3, relance 3) : invoque La Bloqueuse directement (remplacée par un Arbre après 3 tours)."
+  },
+  {
+   "id": 13527,
+   "pairIndex": 11,
+   "variantOf": 14393,
+   "isBaseSpell": true,
+   "name": "Ronces Agressives",
+   "obtainedAtLevel": 35,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 3,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 42111,
+   "description": "Vole des PM et occasionne des dommages Terre.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "24–27 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "31–34 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "38–42 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "le lanceur lance le sous-sort « Ronces Agressives » (13554, niv. 8) → lanceur (actif 1 tour(s), déclencheur : quand le porteur réussit un retrait de PM (déduit de Flèche de Rédemption))",
+    "Vole 1 PM (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Ronces Agressives » (13554, niv. 7) → cible (alliée ou ennemie)",
+    "38 à 42 dommages Terre (CC : 46 à 50) → cible (alliée ou ennemie)",
+    "le lanceur lance sur la case ciblée le sous-sort « Ronces Agressives » (13554, niv. 3) → cible (alliée ou ennemie)",
+    "Retire les effets du sort « Ronces Agressives » (13527) → lanceur"
+   ],
+   "role": [
+    "damage",
+    "mp-steal"
+   ],
+   "tactic": "Terre 4 PA (po 1–6, 2×/tour, 1×/cible, CC 25 %) : 38–42 Terre et vole 1 PM (cumul 3) ; propagation sur Infectés (chaque retrait réussi rend 1 PM au Sadida)."
+  },
+  {
+   "id": 14393,
+   "pairIndex": 11,
+   "variantOf": 13527,
+   "isBaseSpell": false,
+   "name": "Fétiches Calcinés",
+   "obtainedAtLevel": 145,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 43962,
+   "description": "Occasionne des dommages Feu et applique l'état Fétiches Calcinés sur l'ennemi ciblé :\n• Une partie des dommages subis par les Arbres du lanceur est renvoyée à la cible.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "28–31 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "28 à 31 dommages Feu (CC : 34 à 37) → cible (alliée ou ennemie)",
+    "Applique l'état « Fétiches Calcinés » (5437) → cible ennemie (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Dommages : 30% des dommages finaux subis → cible ennemie (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Fétiches Calcinés » (28792, niv. 3) → cible (alliée ou ennemie)",
+    "le lanceur lance sur la case ciblée le sous-sort « Fétiches Calcinés » (28792, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "damage-return"
+   ],
+   "tactic": "Variante Feu 3 PA (po 1–6, 2×/tour) : 28–31 Feu et état Fétiches Calcinés 1 tour : 30 % des dommages finaux subis par les Arbres du Sadida sont renvoyés à la cible. Propagation sur Infectés. À combiner avec des arbres au contact des monstres."
+  },
+  {
+   "id": 13571,
+   "pairIndex": 12,
+   "variantOf": 13524,
+   "isBaseSpell": true,
+   "name": "Fléau",
+   "obtainedAtLevel": 40,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 81242,
+   "description": "Vole de la vie dans l'élément Eau.\n\nSur une Poupée : applique les effets sur les ennemis dans un carré de taille 1.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "16–18 vol Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "21–23 vol Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "26–29 vol Eau"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "le lanceur lance le sous-sort « Fléau » (13592, niv. 9) → cible alliée — si cible est l’un des monstres : « La Bloqueuse » (5895) / « La Folle » (5896) / « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Surpuissante » (5899) / « La Fourbe » (7934)",
+    "26 à 29 vol Eau (CC : 31 à 35) → cible ennemie",
+    "26 à 29 vol Eau (CC : 31 à 35) → cible alliée — si cible n'est pas « La Bloqueuse » (5895) ET si cible n'est pas « La Folle » (5896) ET si cible n'est pas « La Gonflable » (5897) ET si cible n'est pas « La Sacrifiée » (5898) ET si cible n'est pas « La Surpuissante » (5899) ET si cible n'est pas « La Fourbe » (7934)",
+    "le lanceur lance sur la case ciblée le sous-sort « Fléau » (13592, niv. 3) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "lifesteal"
+   ],
+   "tactic": "Eau 3 PA (po 1–6, 3×/tour, 2×/cible) : vol Eau 26–29 ; sur une Poupée : vol en carré 1 autour d'elle ; propagation sur Infectés. Principal sort de survie."
+  },
+  {
+   "id": 13524,
+   "pairIndex": 12,
+   "variantOf": 13571,
+   "isBaseSpell": false,
+   "name": "Forêt Hantée",
+   "obtainedAtLevel": 150,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 2,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 42102,
+   "description": "Occasionne des dommages Terre aux ennemis et leur applique l'état Forêt Hantée en zone :\n• Infecte la cible si elle attaque un Arbre du lanceur.\n\nLa zone s'étend dans un carré de taille 1 autour des Arbres Feuillus et les effets ne sont appliqués qu'une seule fois par lancer.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "29–32 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "Applique l'état « Forêt Hantée (cible) » (5896) → ennemis dans la zone (zone cercle taille 4, 1 tour(s))",
+    "29 à 32 dommages Terre (CC : 35 à 38) → ennemis dans la zone (zone cercle taille 4)",
+    "le lanceur lance le sous-sort « Forêt Hantée » (29643, niv. 3) → ennemis dans la zone (zone cercle taille 4)",
+    "Applique l'état « Forêt Hantée » (5407) → ennemis dans la zone (zone cercle taille 4, 1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Infecté » (263) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Forêt Hantée » (29643, niv. 1) → alliés dans la zone — si cible a l'état « Feuillu » (256) (zone cercle illimitée (63) (min 1))",
+    "Retire l'état « Forêt Hantée (cible) » (5896) → ennemis dans la zone (zone tout le terrain)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "infection"
+   ],
+   "tactic": "Variante Terre 3 PA en ligne (po 0–7, 1×/tour, 2×/tour global, CC 20 %) : 29–32 Terre aux ennemis en **cercle 4** + état Forêt Hantée (s'ils attaquent un Arbre ils sont Infectés) ; la zone s'étend en carré 1 autour des Feuillus (une application par ennemi)."
+  },
+  {
+   "id": 13530,
+   "pairIndex": 13,
+   "variantOf": 13566,
+   "isBaseSpell": true,
+   "name": "Puissance Sylvestre",
+   "obtainedAtLevel": 45,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42120,
+   "description": "Remplace un Arbre Feuillu par un Arbre Feuillu contrôlable qui peut :\n• Infecter et pousser une cible.\n• Soigner les alliés et réduire les soins reçus par les ennemis en zone.\n• Réduire la durée des effets sur une cible.\n\nL'Arbre contrôlable est remplacé par un Arbre Feuillu 2 tours après son invocation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 179,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Tue la cible et la remplace par l'invocation « Groute » (monstre 5901, grade 3) → cible alliée — si cible a l'état « Feuillu » (256)",
+    "Tue la cible et la remplace par l'invocation « Arbre » (monstre 5894, grade 1) → cible alliée — si cible est le monstre « Groute » (5901) (délai 2 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feuillu » (256) → cible alliée — si cible est le monstre « Groute » (5901) (durée infinie, délai 2 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "heal",
+    "infection",
+    "push"
+   ],
+   "tactic": "2 PA (po 1–63, relance 3) : transforme un Arbre Feuillu en Groute contrôlable 2 tours (4 PA/4 PM) : Rejet Sylvestre (Infecte + pousse jusqu'à la case), Photosynthèse (soin 12 % PV max en cercle 3, soins ennemis ×50 %), Détoxication (-2 tours d'effets)."
+  },
+  {
+   "id": 13566,
+   "pairIndex": 13,
+   "variantOf": 13530,
+   "isBaseSpell": false,
+   "name": "Influence Végétale",
+   "obtainedAtLevel": 155,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42225,
+   "description": "Remplace un Arbre Feuillu par un Arbre Feuillu contrôlable qui peut :\n• Infecter et attirer une cible.\n• Appliquer un bouclier sur les alliés et retirer des PM aux ennemis en zone.\n• Planter des Ronces Indéplaçables.\n\nL'Arbre contrôlable est remplacé par un Arbre Feuillu 2 tours après son invocation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Tue la cible et la remplace par l'invocation « Tréant » (monstre 5900, grade 1) → cible alliée — si cible a l'état « Feuillu » (256)",
+    "Tue la cible et la remplace par l'invocation « Arbre » (monstre 5894, grade 1) → cible alliée — si cible est le monstre « Tréant » (5900) (délai 2 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Feuillu » (256) → cible alliée — si cible est le monstre « Tréant » (5900) (durée infinie, délai 2 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "shield",
+    "mp-removal",
+    "pull"
+   ],
+   "tactic": "Variante 2 PA : transforme un Feuillu en Tréant 2 tours : Étreinte Sylvestre (Infecte + attire jusqu'à la case), Canopée (bouclier 200 % du niveau aux alliés en cercle 3 + -2 PM ennemis), Mur de Ronces (ronces en rectangle)."
+  },
+  {
+   "id": 13567,
+   "pairIndex": 14,
+   "variantOf": 13522,
+   "isBaseSpell": true,
+   "name": "La Sacrifiée",
+   "obtainedAtLevel": 50,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42274,
+   "description": "Remplace un Arbre par une Poupée maîtrisable qui peut se sacrifier pour Infecter et occasionner des dommages Eau en zone.\nSa Vitalité et ses dommages finaux augmentent au fil des tours.\n\nÀ sa mort, la Poupée redevient un Arbre.\nSi elle a été invoquée à partir d'un Arbre Feuillu, l'Arbre à sa mort redevient Feuillu.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 160,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Tue la cible et la remplace par l'invocation « La Sacrifiée » (monstre 5898, grade 3) → cible alliée — si cible est le monstre « Arbre » (5894) ET si cible n'a PAS l'état « Feuillu » (256)",
+    "Tue la cible et la remplace par l'invocation « La Sacrifiée » (monstre 5898, grade 6) → cible alliée — si cible a l'état « Feuillu » (256)",
+    "le lanceur lance le sous-sort « Préparation Poupesque » (24281, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "damage",
+    "infection",
+    "sacrifice"
+   ],
+   "tactic": "2 PA (remplace un Arbre, relance 2) : La Sacrifiée (60 % PV) dont la Vitalité et les dommages finaux augmentent au fil des tours ; Explosion Ouatée : se sacrifie à la fin de son prochain tour (ou à sa mort) pour Infecter et infliger 30 Eau en cercle 2 (cercle 1 à 3 selon la préparation)."
+  },
+  {
+   "id": 13522,
+   "pairIndex": 14,
+   "variantOf": 13567,
+   "isBaseSpell": false,
+   "name": "La Sacrifiée Transmutée",
+   "obtainedAtLevel": 160,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42100,
+   "description": "Invoque une Poupée maîtrisable qui peut se sacrifier pour Infecter et occasionner des dommages Eau en zone.\nSa Vitalité et ses dommages finaux augmentent au fil des tours.\n\nLa Poupée est remplacée par un Arbre 3 tours après son invocation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « La Sacrifiée » (monstre 5898, grade 3) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Préparation Poupesque » (24281, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "Tue la cible et la remplace par l'invocation « Arbre » (monstre 5894, grade 1) → cible alliée — si cible est le monstre « La Sacrifiée » (5898) (délai 3 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "damage",
+    "infection",
+    "sacrifice"
+   ],
+   "tactic": "Variante 3 PA (po 1–3) : invoque directement La Sacrifiée."
+  },
+  {
+   "id": 13518,
+   "pairIndex": 15,
+   "variantOf": 13576,
+   "isBaseSpell": true,
+   "name": "Herbes Folles",
+   "obtainedAtLevel": 55,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 78743,
+   "description": "Occasionne des dommages Feu et retire des PM aux ennemis en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "20–23 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "27–31 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 7,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "31–35 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "31 à 35 dommages Feu (CC : 37 à 42) → ennemis dans la zone (zone cercle taille 2)",
+    "Retire 3 PM (esquivable) → ennemis dans la zone (zone cercle taille 2, 1 tour(s), non désenvoûtable)"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "mp-removal"
+   ],
+   "tactic": "Feu 3 PA (po 0–7, 1×/tour, CC 25 %) : 31–35 Feu et -3 PM aux ennemis en cercle 2. Excellent retrait PM de zone sans dépendre de l'Infection."
+  },
+  {
+   "id": 13576,
+   "pairIndex": 15,
+   "variantOf": 13518,
+   "isBaseSpell": false,
+   "name": "Malédiction Vaudou",
+   "obtainedAtLevel": 165,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42235,
+   "description": "Occasionne des dommages Eau et applique l'état Vaudou sur l'ennemi ciblé :\n• Occasionne des dommages Eau à la cible à la mort d'une Poupée du lanceur.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": "25–28 Eau, 14–16 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "25 à 28 dommages Eau → cible (alliée ou ennemie)",
+    "Applique l'état « Vaudou » (5398) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "14 à 16 dommages Eau → cible ennemie (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Malédiction Vaudou » (29638, niv. 3) → cible ennemie",
+    "le lanceur lance sur la case ciblée le sous-sort « Malédiction Vaudou » (29638, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "delayed"
+   ],
+   "tactic": "Variante Eau 3 PA (po 1–7, relance 2) : 25–28 Eau + état Vaudou (2 t.) : 14–16 Eau à la cible à chaque mort d'une Poupée du Sadida. Combo Sacrifice Vaudou/Explosion Ouatée."
+  },
+  {
+   "id": 13531,
+   "pairIndex": 16,
+   "variantOf": 13517,
+   "isBaseSpell": true,
+   "name": "Sacrifice Vaudou",
+   "obtainedAtLevel": 60,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 79852,
+   "description": "Occasionne des dommages Eau.\nLes dommages sont plus importants sur les invocations.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.\n\nSur une Poupée :\n• Sacrifie la Poupée pour soigner les alliés, appliquer les effets sur les ennemis et les Infecter en zone.\n• Réinitialise son temps de relance.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "22–25 Eau, 26–30 Eau, 22–25 soin Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "27–30 Eau, 32–36 Eau, 27–30 soin Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "30–34 Eau, 36–41 Eau, 30–34 soin Eau"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "le lanceur lance le sous-sort « Sacrifice Vaudou » (13553, niv. 9) → cible alliée — si cible est l’un des monstres : « La Bloqueuse » (5895) / « La Folle » (5896) / « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Surpuissante » (5899) / « La Fourbe » (7934)",
+    "30 à 34 dommages Eau (CC : 36 à 41) → personnages/compagnons alliés, monstres alliés (non invocations jouantes), personnages/compagnons ennemis, monstres ennemis (non invocations jouantes)",
+    "36 à 41 dommages Eau (CC : 43 à 49) → invocations ennemies",
+    "36 à 41 dommages Eau (CC : 43 à 49) → invocations alliées — si cible n'est pas « La Bloqueuse » (5895) ET si cible n'est pas « La Folle » (5896) ET si cible n'est pas « La Gonflable » (5897) ET si cible n'est pas « La Sacrifiée » (5898) ET si cible n'est pas « La Surpuissante » (5899) ET si cible n'est pas « La Fourbe » (7934)",
+    "Tue la cible → cible alliée — si cible est l’un des monstres : « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Bloqueuse » (5895) / « La Folle » (5896) / « La Surpuissante » (5899) / « La Fourbe » (7934) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "30 à 34 soins Eau (CC : 36 à 41) → alliés dans la zone (zone cercle taille 2 (min 1), info-bulle uniquement (comportement réel géré côté serveur))",
+    "30 à 34 dommages Eau (CC : 36 à 41) → personnages/compagnons ennemis, monstres ennemis (non invocations jouantes) (zone cercle taille 2 (min 1), info-bulle uniquement (comportement réel géré côté serveur))",
+    "36 à 41 dommages Eau (CC : 43 à 49) → invocations ennemies (zone cercle taille 2 (min 1), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Infecté » (263) → ennemis dans la zone (zone cercle taille 2 (min 1), 2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance sur la case ciblée le sous-sort « Sacrifice Vaudou » (13553, niv. 3) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "heal",
+    "sacrifice",
+    "anti-summon"
+   ],
+   "tactic": "Eau 3 PA (po 1–7, 3×/tour, 1×/cible) : 30–34 Eau (36–41 sur les invocations) ; sur une Poupée : la sacrifie pour soigner 30–34 les alliés, frapper et Infecter les ennemis en cercle 2, et réinitialise la relance du sort d'invocation de cette Poupée."
+  },
+  {
+   "id": 13517,
+   "pairIndex": 16,
+   "variantOf": 13531,
+   "isBaseSpell": false,
+   "name": "Chardons Ardents",
+   "obtainedAtLevel": 170,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42087,
+   "description": "Applique l'état Chardons Ardents sur l'ennemi ciblé :\n• Applique un poison Feu de fin de tour sur la cible pour chaque PM qu'elle utilise (cumulable 3 fois).\n\nSur un ennemi : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": "8–8 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "Applique l'état « Chardons Ardents » (5399) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "8 dommages Feu → cible ennemie (actif 1 tour(s), déclencheur : fin de tour du porteur, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Chardons Ardents » (29640, niv. 3) → cible ennemie",
+    "le lanceur lance sur la case ciblée le sous-sort « Chardons Ardents » (29640, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "poison",
+    "anti-mobility"
+   ],
+   "tactic": "Variante 3 PA (po 1–6, relance 3) : état Chardons Ardents 2 tours — poison Feu 8 en fin de tour par PM utilisé (cumul 3) ; propagation sur Infectés. Punit les monstres mobiles."
+  },
+  {
+   "id": 13534,
+   "pairIndex": 17,
+   "variantOf": 13572,
+   "isBaseSpell": true,
+   "name": "Arbre de Vie",
+   "obtainedAtLevel": 65,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 78744,
+   "description": "Plante un Arbre de Vie.\nL'Arbre de Vie redevient Feuillu 2 tours après son invocation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 131,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 198,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « Arbre » (monstre 5894, grade 3) → cible (alliée ou ennemie)",
+    "Applique l'état « Feuillu » (256) → cible (alliée ou ennemie) (durée infinie, non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Arbre de Vie » (5179) → cible (alliée ou ennemie) (2 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "heal"
+   ],
+   "tactic": "4 PA (po 1–8, relance 3, 1er lancer au tour 2) : plante un Arbre de Vie (Feuillu, Vitalité ×3) : à la fin du tour du Sadida, soigne 5 % PV max les alliés autour des Arbres Feuillus et 25 % les invocations Sadida ; les alliés qui le frappent sont soignés de 100 % des dommages occasionnés."
+  },
+  {
+   "id": 13572,
+   "pairIndex": 17,
+   "variantOf": 13534,
+   "isBaseSpell": false,
+   "name": "Altruisme Végétal",
+   "obtainedAtLevel": 175,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 4,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42231,
+   "description": "Sacrifie un Arbre Feuillu ou une Poupée pour augmenter la Vitalité des Poupées et soigner le lanceur.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Altruisme Végétal » (13585, niv. 1) → cible alliée — si cible a l'état « Feuillu » (256)",
+    "le lanceur lance le sous-sort « Altruisme Végétal » (13585, niv. 1) → cible alliée — si cible est l’un des monstres : « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Bloqueuse » (5895) / « La Folle » (5896) / « La Surpuissante » (5899) / « La Fourbe » (7934)",
+    "Tue la cible → cible alliée — si cible est l’un des monstres : « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Bloqueuse » (5895) / « La Folle » (5896) / « La Surpuissante » (5899) / « La Fourbe » (7934) / « Arbre » (5894) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "25% Vitalité → alliés dans la zone — si cible est l’un des monstres : « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Bloqueuse » (5895) / « La Folle » (5896) / « La Surpuissante » (5899) / « La Fourbe » (7934) (zone tout le terrain (vivants), durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Soin : 8% des PV max → lanceur (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "sacrifice",
+    "buff",
+    "heal"
+   ],
+   "tactic": "Variante 2 PA (po 1–63) : sacrifie un Arbre Feuillu ou une Poupée : +25 % Vitalité à toutes les Poupées (cumul 4) et soigne le Sadida de 8 % PV max."
+  },
+  {
+   "id": 13573,
+   "pairIndex": 18,
+   "variantOf": 13523,
+   "isBaseSpell": true,
+   "name": "La Gonflable",
+   "obtainedAtLevel": 70,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42267,
+   "description": "Remplace un Arbre par une Poupée maîtrisable qui peut soigner, occasionner des dommages Feu et repousser.\n\nÀ sa mort, la Poupée redevient un Arbre.\nSi elle a été invoquée à partir d'un Arbre Feuillu, l'Arbre à sa mort redevient Feuillu.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Tue la cible et la remplace par l'invocation « La Gonflable » (monstre 5897, grade 3) → cible alliée — si cible est le monstre « Arbre » (5894) ET si cible n'a PAS l'état « Feuillu » (256)",
+    "Tue la cible et la remplace par l'invocation « La Gonflable » (monstre 5897, grade 6) → cible alliée — si cible a l'état « Feuillu » (256)"
+   ],
+   "role": [
+    "summon",
+    "heal",
+    "push"
+   ],
+   "tactic": "2 PA (remplace un Arbre, relance 4) : La Gonflable (70 %) : Souffle Printanier (soin 50 Feu en cercle 3 + alliés au contact des Feuillus), Brise Automnale (repousse de 4 et 50 Feu en croix 1)."
+  },
+  {
+   "id": 13523,
+   "pairIndex": 18,
+   "variantOf": 13573,
+   "isBaseSpell": false,
+   "name": "La Gonflable Transmutée",
+   "obtainedAtLevel": 180,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42101,
+   "description": "Invoque une Poupée maîtrisable qui peut soigner, occasionner des dommages Feu et repousser.\n\nLa Poupée est remplacée par un Arbre 3 tours après son invocation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « La Gonflable » (monstre 5897, grade 3) → cible (alliée ou ennemie)",
+    "Tue la cible et la remplace par l'invocation « Arbre » (monstre 5894, grade 1) → cible alliée — si cible est le monstre « La Gonflable » (5897) (délai 3 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "heal",
+    "push"
+   ],
+   "tactic": "Variante 3 PA (po 1–3, relance 4) : invoque directement La Gonflable."
+  },
+  {
+   "id": 13514,
+   "pairIndex": 19,
+   "variantOf": 13559,
+   "isBaseSpell": true,
+   "name": "Tremblement",
+   "obtainedAtLevel": 75,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 4,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 42081,
+   "description": "En zone autour du lanceur, d'un Arbre Feuillu ou d'une Poupée :\n• Occasionne des dommages Terre aux ennemis.\n• Attire les entités vers le centre de la zone.\n• Dévoile les invisibles.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 63,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "23–27 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 63,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "29–33 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Tremblement » (13537, niv. 2) → cible alliée — si cible a l'état « Feuillu » (256) (non désenvoûtable)",
+    "le lanceur lance le sous-sort « Tremblement » (13537, niv. 2) → cible alliée — si cible est l’un des monstres : « La Bloqueuse » (5895) / « La Folle » (5896) / « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Surpuissante » (5899) / « La Fourbe » (7934) (non désenvoûtable)",
+    "le lanceur lance le sous-sort « Tremblement » (13537, niv. 2) → lanceur (s’il est dans la zone) (non désenvoûtable)",
+    "29 à 33 dommages Terre (CC : 35 à 40) → ennemis dans la zone — si cible est le monstre « monstre#50000 » (50000) (zone cercle taille 3 (min 1))",
+    "Attire la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone cercle taille 3 (min 1), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Dévoile les entités invisibles → ennemis dans la zone (zone cercle taille 3 (min 1), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "damage",
+    "aoe",
+    "pull",
+    "detection"
+   ],
+   "tactic": "Terre 3 PA (po 0–63 sans LdV sur une entité, 2×/tour, 1×/cible, 4×/tour global) : centré sur le Sadida, un Arbre Feuillu ou une Poupée : 29–33 Terre aux ennemis en cercle 3, attire de 2 vers le centre, dévoile les invisibles. Regroupe autour d'un arbre au contact."
+  },
+  {
+   "id": 13559,
+   "pairIndex": 19,
+   "variantOf": 13514,
+   "isBaseSpell": false,
+   "name": "Mandragore",
+   "obtainedAtLevel": 185,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 42218,
+   "description": "Occasionne des dommages Air et applique l'état Mandragore sur l'ennemi ciblé :\n• Infecte la cible si elle subit des dommages de poison ou d'invocation.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "30–34 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "30 à 34 dommages Air (CC : 36 à 41) → cible (alliée ou ennemie)",
+    "Applique l'état « Mandragore » (5403) → cible ennemie (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Infecté » (263) → cible ennemie (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Mandragore » (29641, niv. 3) → cible (alliée ou ennemie)",
+    "le lanceur lance sur la case ciblée le sous-sort « Mandragore » (29641, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "infection"
+   ],
+   "tactic": "Variante Air 3 PA en ligne (po 1–8, 2×/tour, 1×/cible, CC 20 %) : 30–34 Air + état Mandragore 2 t. (Infecte la cible quand elle subit des dommages de poison/indirects) ; propagation."
+  },
+  {
+   "id": 13569,
+   "pairIndex": 20,
+   "variantOf": 13570,
+   "isBaseSpell": true,
+   "name": "Inoculation",
+   "obtainedAtLevel": 80,
+   "grade": 2,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 5,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 78749,
+   "description": "Augmente les dommages du sort pour chaque ennemi Infecté et occasionne des dommages Air.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.\n\nConsomme toutes les Infections autour de la cible.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 5,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "31–35 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 5,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "39–43 Air"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "le lanceur lance le sous-sort « Inoculation » (29635, niv. 6) → ennemis dans la zone — si cible a l'état « Infecté » (263) (zone tout le terrain (vivants))",
+    "Inoculation : +5 dégâts de base → lanceur (info-bulle uniquement (comportement réel géré côté serveur))",
+    "39 à 43 dommages Air (CC : 47 à 52) → cible (alliée ou ennemie)",
+    "le lanceur lance sur la case ciblée le sous-sort « Inoculation » (29635, niv. 2) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Inoculation » (29635, niv. 7) → lanceur",
+    "Retire l'état « Infecté » (263) → ennemis dans la zone — si cible a l'état « Infecté » (263) (zone tout le terrain (vivants), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "damage",
+    "infection-consume",
+    "finisher"
+   ],
+   "tactic": "Air 5 PA (po 1–6, 2×/tour, 1×/cible, CC 25 %) : 39–43 Air, +5 dégâts de base par ennemi Infecté (cumul 5), propagé à tous les Infectés, puis **consomme** toutes les Infections. Finisher de propagation."
+  },
+  {
+   "id": 13570,
+   "pairIndex": 20,
+   "variantOf": 13569,
+   "isBaseSpell": false,
+   "name": "Force de la Nature",
+   "obtainedAtLevel": 190,
+   "grade": 1,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 42229,
+   "description": "Occasionne des dommages Terre.\nLes dommages du sort sont augmentés pour chaque Arbre Feuillu du lanceur planté.\n\nSur un ennemi Infecté : applique les effets sur tous les ennemis Infectés.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 5,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "40–45 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Infection » (29615, niv. 4) → cible ennemie — si cible a l'état « Infecté » (263)",
+    "40 à 45 dommages Terre (CC : 48 à 54) → cible (alliée ou ennemie)",
+    "Force de la Nature : +10 dégâts de base → lanceur (durée infinie, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance sur la case ciblée le sous-sort « Force de la Nature » (13594, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "damage",
+    "ramp"
+   ],
+   "tactic": "Variante Terre 5 PA (po 1–6, 2×/tour, 1×/cible, CC 25 %) : 40–45 Terre +10 dégâts de base par Arbre Feuillu planté (jusqu'à +60) ; propagation sur Infectés. Gros mono-cible Terre en fin de mise en place."
+  },
+  {
+   "id": 13532,
+   "pairIndex": 21,
+   "variantOf": 13579,
+   "isBaseSpell": true,
+   "name": "Don Naturel",
+   "obtainedAtLevel": 85,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42125,
+   "description": "Sacrifie un Arbre Feuillu ou une Poupée pour partager les dommages entre les alliés et les soigner en zone.\nLe partage de dommages n'affecte pas les invocations statiques.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": "24–28 soin meilleur élt"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": "30–35 soin meilleur élt"
+    }
+   ],
+   "effectsSummary": [
+    "le lanceur lance le sous-sort « Don Naturel » (13544, niv. 2) → cible alliée — si cible a l'état « Feuillu » (256)",
+    "le lanceur lance le sous-sort « Don Naturel » (13544, niv. 2) → cible alliée — si cible est l’un des monstres : « La Gonflable » (5897) / « La Sacrifiée » (5898) / « La Bloqueuse » (5895) / « La Folle » (5896) / « La Surpuissante » (5899) / « La Fourbe » (7934)",
+    "Partage les dommages → lanceur (s'il est dans la zone), personnages joueurs alliés, compagnons alliés, monstres alliés (non invocations jouantes), invocations jouantes alliées (zone cercle taille 2 (min 1), actif 1 tour(s), déclencheur : quand la cible subit des dommages, info-bulle uniquement (comportement réel géré côté serveur))",
+    "30 à 35 soins du meilleur élément → alliés dans la zone (zone cercle taille 2 (min 1), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "sacrifice",
+    "heal",
+    "damage-share"
+   ],
+   "tactic": "2 PA (po 1–63, relance 3) : sacrifie un Arbre Feuillu ou une Poupée : soigne 30–35 (meilleur élément) et lie les alliés en cercle 2 (hors invocations statiques) en partage de dommages pendant 1 tour."
+  },
+  {
+   "id": 13579,
+   "pairIndex": 21,
+   "variantOf": 13532,
+   "isBaseSpell": false,
+   "name": "Harmonie",
+   "obtainedAtLevel": 195,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42238,
+   "description": "Enracine le lanceur et partage les dommages entre tous ses Arbres et lui.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Applique l'état « Enraciné » (6) → lanceur (1 tour(s), non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Partage les dommages → alliés dans la zone (zone tout le terrain (vivants), actif 1 tour(s), déclencheur : quand la cible subit des dommages, info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Harmonie » (5425) → lanceur (1 tour(s))",
+    "Applique l'état « Harmonie » (5425) → alliés (dont lanceur si dans la zone), invocations du lanceur — si cible est l’un des monstres : « Tréant » (5900) / « Groute » (5901) / « Arbre » (5894) (zone tout le terrain (vivants), 1 tour(s))",
+    "la cible lance (sur elle-même) le sous-sort « Harmonie » (29639, niv. 1) → lanceur",
+    "Retire l'état « Harmonie » (5425) → alliés dans la zone (zone tout le terrain (vivants))"
+   ],
+   "role": [
+    "tank",
+    "damage-share"
+   ],
+   "tactic": "Variante 3 PA (relance 4) : le Sadida s'Enracine (indéplaçable 1 tour) et partage les dommages qu'il subit avec tous ses Arbres (et lui). Survie du Sadida focus."
+  },
+  {
+   "id": 13578,
+   "pairIndex": 22,
+   "variantOf": 13520,
+   "isBaseSpell": true,
+   "name": "La Surpuissante",
+   "obtainedAtLevel": 90,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42265,
+   "description": "Remplace un Arbre par une Poupée maîtrisable qui peut occasionner des dommages Terre, retirer ou donner des PM.\nElle peut également invoquer une autre Poupée maîtrisable qui peut voler ou donner de la Portée.\n\nÀ sa mort, la Poupée redevient un Arbre.\nSi elle a été invoquée à partir d'un Arbre Feuillu, l'Arbre à sa mort redevient Feuillu.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Tue la cible et la remplace par l'invocation « La Surpuissante » (monstre 5899, grade 3) → cible alliée — si cible est le monstre « Arbre » (5894) ET si cible n'a PAS l'état « Feuillu » (256)",
+    "Tue la cible et la remplace par l'invocation « La Surpuissante » (monstre 5899, grade 6) → cible alliée — si cible a l'état « Feuillu » (256)"
+   ],
+   "role": [
+    "summon",
+    "damage",
+    "mp-removal",
+    "buff"
+   ],
+   "tactic": "2 PA (remplace un Arbre, relance 4) : La Surpuissante (90 %) : Choc Hivernal (23 Terre, -1 PM, propagation), Ardeur Estivale (+3 PM 2 t. à un allié), La Fourbe (invoque une poupée qui vole 1 PO aux ennemis / donne +2 PO aux alliés)."
+  },
+  {
+   "id": 13520,
+   "pairIndex": 22,
+   "variantOf": 13578,
+   "isBaseSpell": false,
+   "name": "La Surpuissante Transmutée",
+   "obtainedAtLevel": 200,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42096,
+   "description": "Invoque une Poupée maîtrisable qui peut occasionner des dommages Terre, retirer ou donner des PM.\nElle peut également invoquer une autre Poupée maîtrisable qui peut voler ou donner de la Portée.\n\nLa Poupée est remplacée par un Arbre 3 tours après son invocation.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "Invoque « La Surpuissante » (monstre 5899, grade 3) → cible (alliée ou ennemie)",
+    "Tue la cible et la remplace par l'invocation « Arbre » (monstre 5894, grade 1) → cible alliée — si cible est le monstre « La Surpuissante » (5899) (délai 3 t., non désenvoûtable, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "summon",
+    "damage",
+    "mp-removal",
+    "buff"
+   ],
+   "tactic": "Variante niveau 200, 3 PA (po 1–3, relance 4) : invoque directement La Surpuissante."
+  }
+ ],
+ "variantChoices": {
+  "sadida-entrave-infection (groupe PvM)": {
+   "chosen": [
+    13516,
+    13528,
+    13574,
+    13577,
+    13519,
+    13564,
+    13533,
+    13575,
+    13525,
+    13561,
+    13527,
+    13571,
+    13530,
+    13567,
+    13518,
+    13531,
+    13534,
+    13573,
+    13514,
+    13569,
+    13532,
+    13578
+   ],
+   "notes": "Base de l'Infection (Ronce, Cigüe, Sève Paralysante, Contagion), retraits PM propagés (Buisson Ardent, Ronce Apaisante, Herbes Folles), poupées classiques, Arbre de Vie, Inoculation en finisher."
+  },
+  "sadida-soin-zone": {
+   "chosen": [
+    13516,
+    13528,
+    13574,
+    13577,
+    13560,
+    13564,
+    13533,
+    14396,
+    13525,
+    13561,
+    13527,
+    13571,
+    13566,
+    13567,
+    13518,
+    13531,
+    13534,
+    13573,
+    13514,
+    13569,
+    13532,
+    13578
+   ],
+   "notes": "Mangrove (soin+dégâts+PM en zone étendue par les arbres), Arbre Feuillu, Tréant (Canopée : bouclier), Arbre de Vie, Don Naturel."
+  },
+  "sadida-dps-terre": {
+   "chosen": [
+    13521,
+    13528,
+    13574,
+    13577,
+    13560,
+    13564,
+    13533,
+    13575,
+    13525,
+    13561,
+    13527,
+    13571,
+    13530,
+    13567,
+    13518,
+    13531,
+    13534,
+    13573,
+    13514,
+    13570,
+    13532,
+    13578
+   ],
+   "notes": "Force de la Nature (+10 par Feuillu), Ronce Insolente, Ronces Agressives, Tremblement ; Arbre Feuillu pour activer vite les bonus."
+  }
+ },
+ "rotations": [
+  {
+   "name": "Mise en place (tour 1, 12 PA)",
+   "ap": 12,
+   "sequence": [
+    "Arbre (2 PA) au contact du paquet ennemi",
+    "Arbre (2 PA) sur une autre ligne (blocage LdV/chemin)",
+    "Sève Paralysante (3 PA) sur le boss : Infecté 3 tours, -15 esq. PM, poison",
+    "Vent Empoisonné (2 PA) sur un 2e ennemi (Infecté)",
+    "Miasmes (2 PA) au contact : infecte en cercle 2 autour du Sadida/des Feuillus/poupées",
+    "(1 PA restant)"
+   ],
+   "notes": "Objectif : un maximum d'ennemis Infectés avant les gros sorts."
+  },
+  {
+   "name": "Tour d'entrave propagée (12 PA)",
+   "ap": 12,
+   "sequence": [
+    "Contagion (4 PA) sur un Infecté : -2 PM et 35–39 Air sur tous les Infectés + infecte le cercle 2",
+    "Buisson Ardent ×2 (6 PA) sur un Infecté : -2 PM ×2 sur tous les Infectés (limite 3 propagations/ennemi/tour)",
+    "Arbre ou poupée (2 PA)"
+   ],
+   "notes": "Jusqu'à -6 PM tentés sur chaque Infecté ; vérifier la limite Infecté III."
+  },
+  {
+   "name": "Tour burst Air (12 PA)",
+   "ap": 12,
+   "sequence": [
+    "Cigüe (3 PA) sur un Infecté (prolonge l'infection à 3 tours)",
+    "Contagion (4 PA)",
+    "Inoculation (5 PA) : +5 par Infecté, propagée, puis consomme les Infections"
+   ],
+   "notes": "À jouer quand ≥4 ennemis sont Infectés ; prévoir de réinfecter au tour suivant."
+  },
+  {
+   "name": "Tour soin (12 PA)",
+   "ap": 12,
+   "sequence": [
+    "Ronce Apaisante (2 PA) sur un Feuillu au contact des alliés : 46–54 en cercle 2",
+    "Mangrove (4 PA) : soin 32–36 croix 2 étendue autour des Arbres",
+    "Larme de Sadida ×2 (6 PA) sans LdV"
+   ],
+   "notes": "Arbre de Vie (4 PA) dès le tour 2 pour des soins de fin de tour gratuits."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "Crâ / Iop / Ouginak (DPS)",
+   "why": "Les Arbres bloquent la LdV des monstres à distance et le chemin des mêlées ; les retraits PM de masse protègent les DPS fragiles."
+  },
+  {
+   "with": "Enutrof / Sacrieur (retrait PM)",
+   "why": "Sève Paralysante (-15 esquive PM) et les retraits propagés saturent les PM ennemis ; Chardons Ardents punit ceux qui bougent encore."
+  },
+  {
+   "with": "Pandawa",
+   "why": "Le Pandawa peut porter/jeter les Arbres et Poupées pour reconfigurer les murs ; Tremblement attire autour d'un arbre placé."
+  },
+  {
+   "with": "Féca / Eniripsa",
+   "why": "Le Sadida est un soigneur secondaire : avec un Eniripsa il libère des PA pour l'entrave ; la Bloqueuse protège le soigneur."
+  },
+  {
+   "with": "Roublard / Steamer",
+   "why": "Les bombes/tourelles et les Arbres peuvent fermer la carte ; Fétiches Calcinés renvoie les dégâts subis par les Arbres."
+  }
+ ],
+ "strengths": [
+  "Retrait PM de masse via l'Infection",
+  "Contrôle de terrain par les Arbres (LdV/chemin)",
+  "Soins secondaires et partage de dommages",
+  "Polyvalence élémentaire (4 éléments)",
+  "Dégâts multipliés contre des groupes Infectés"
+ ],
+ "weaknesses": [
+  "Mise en place lente (arbres, infection)",
+  "Dégâts unitaires moyens sans propagation",
+  "Invocations fragiles et coûteuses en PA",
+  "Dépend des PV/initiative ; vulnérable si les arbres sont détruits",
+  "Complexité élevée pour l'IA (ordre des sorts critique)"
+ ],
+ "summons": [
+  {
+   "monsterId": 5894,
+   "name": "Arbre",
+   "static": true,
+   "canPlay": false,
+   "lifeBonus": [
+    60,
+    60,
+    60,
+    30,
+    30,
+    30
+   ],
+   "resistances": 20,
+   "usesSummonSlot": false
+  },
+  {
+   "monsterId": 5895,
+   "name": "La Bloqueuse",
+   "canPlay": true,
+   "ap": 6,
+   "mp": 5,
+   "lifeBonus": 100,
+   "resistances": {
+    "neutral": 30,
+    "earth": 30,
+    "fire": 30,
+    "water": 30,
+    "air": 30
+   },
+   "spells": [
+    {
+     "id": 18669,
+     "name": "Substitution",
+     "ap": 4,
+     "effects": "échange avec un allié ; +20 Tacle si échange (relance 2)"
+    },
+    {
+     "id": 29623,
+     "name": "Célérité",
+     "ap": 2,
+     "effects": "+4 PM, Intaclable 1 tour (relance 3)"
+    }
+   ]
+  },
+  {
+   "monsterId": 5896,
+   "name": "La Folle",
+   "canPlay": true,
+   "ap": 6,
+   "mp": 5,
+   "lifeBonus": 80,
+   "spells": [
+    {
+     "id": 14380,
+     "name": "Agacement",
+     "ap": 3,
+     "effects": "Infecte + poison Air 20 en début de tour (2 tours), 1×/cible"
+    }
+   ]
+  },
+  {
+   "monsterId": 5897,
+   "name": "La Gonflable",
+   "canPlay": true,
+   "ap": 6,
+   "mp": 4,
+   "lifeBonus": 70,
+   "spells": [
+    {
+     "id": 14383,
+     "name": "Souffle Printanier",
+     "ap": 2,
+     "effects": "soin 50 (Feu) cercle 3 + alliés au contact des Feuillus"
+    },
+    {
+     "id": 29624,
+     "name": "Brise Automnale",
+     "ap": 2,
+     "effects": "repousse 4 + 50 Feu en croix 1 (relance 2)"
+    }
+   ]
+  },
+  {
+   "monsterId": 5898,
+   "name": "La Sacrifiée",
+   "canPlay": true,
+   "ap": 6,
+   "mp": 4,
+   "lifeBonus": 60,
+   "spells": [
+    {
+     "id": 14385,
+     "name": "Explosion Ouatée",
+     "ap": 2,
+     "effects": "à la fin de son prochain tour ou à sa mort : Infecte + 30 Eau en cercle 1–3 (selon Préparation Poupesque)"
+    }
+   ]
+  },
+  {
+   "monsterId": 5899,
+   "name": "La Surpuissante",
+   "canPlay": true,
+   "ap": 6,
+   "mp": 5,
+   "lifeBonus": 90,
+   "spells": [
+    {
+     "id": 14387,
+     "name": "Choc Hivernal",
+     "ap": 3,
+     "effects": "23 Terre + -1 PM, propagation"
+    },
+    {
+     "id": 14381,
+     "name": "Ardeur Estivale",
+     "ap": 3,
+     "effects": "+3 PM 2 tours (relance 3)"
+    },
+    {
+     "id": 29619,
+     "name": "La Fourbe",
+     "ap": 3,
+     "effects": "invoque La Fourbe (7934, Bouture : vole 1 PO / +2 PO allié)"
+    }
+   ]
+  },
+  {
+   "monsterId": 5901,
+   "name": "Groute",
+   "canPlay": true,
+   "ap": 4,
+   "mp": 4,
+   "lifeBonus": 120,
+   "usesSummonSlot": false,
+   "spells": [
+    {
+     "id": 13536,
+     "name": "Rejet Sylvestre",
+     "ap": 4,
+     "effects": "Infecte + pousse jusqu'à la case (po 2–8 en ligne)"
+    },
+    {
+     "id": 13539,
+     "name": "Photosynthèse",
+     "ap": 4,
+     "effects": "soin 12 % PV max cercle 3, soins ennemis ×50 %"
+    },
+    {
+     "id": 13538,
+     "name": "Détoxication",
+     "ap": 4,
+     "effects": "-2 tours aux effets de la cible"
+    }
+   ]
+  },
+  {
+   "monsterId": 5900,
+   "name": "Tréant",
+   "canPlay": true,
+   "ap": 4,
+   "mp": 4,
+   "lifeBonus": 120,
+   "usesSummonSlot": false,
+   "spells": [
+    {
+     "id": 13591,
+     "name": "Étreinte Sylvestre",
+     "ap": 4,
+     "effects": "Infecte + attire jusqu'à la case"
+    },
+    {
+     "id": 13590,
+     "name": "Canopée",
+     "ap": 4,
+     "effects": "bouclier 200 % du niveau aux alliés cercle 3, -2 PM ennemis"
+    },
+    {
+     "id": 29616,
+     "name": "Mur de Ronces",
+     "ap": 4,
+     "effects": "plante des Ronces (7933) en rectangle"
+    }
+   ]
+  }
+ ],
+ "states": [
+  {
+   "id": 263,
+   "name": "Infecté"
+  },
+  {
+   "id": 711,
+   "name": "Infecté I"
+  },
+  {
+   "id": 712,
+   "name": "Infecté II"
+  },
+  {
+   "id": 713,
+   "name": "Infecté III",
+   "note": "plus de propagation ce tour"
+  },
+  {
+   "id": 256,
+   "name": "Feuillu",
+   "flags": [
+    "cantBePushed"
+   ]
+  },
+  {
+   "id": 5179,
+   "name": "Arbre de Vie"
+  },
+  {
+   "id": 5437,
+   "name": "Fétiches Calcinés"
+  },
+  {
+   "id": 5407,
+   "name": "Forêt Hantée"
+  },
+  {
+   "id": 5398,
+   "name": "Vaudou"
+  },
+  {
+   "id": 5399,
+   "name": "Chardons Ardents"
+  },
+  {
+   "id": 5403,
+   "name": "Mandragore"
+  },
+  {
+   "id": 5614,
+   "name": "Feu de Brousse"
+  },
+  {
+   "id": 6,
+   "name": "Enraciné",
+   "flags": [
+    "cantBePushed",
+    "cantSwitchPosition",
+    "cantTackle",
+    "cantBeTackled"
+   ]
+  },
+  {
+   "id": 583,
+   "name": "Sacrifice"
+  },
+  {
+   "id": 5425,
+   "name": "Harmonie"
+  }
+ ],
+ "openQuestions": [
+  "PV des invocations : `bonusCharacteristics.lifePoints` (Arbre 60/30, Bloqueuse 100, Folle 80, Gonflable 70, Sacrifiée 60, Surpuissante 90, Groute/Tréant 120) interprétés comme % des PV max du Sadida.",
+  "Différences de grade des Poupées (3 vs 6 selon Arbre normal/Feuillu) : stats identiques dans les données ; l'effet réel (niveau des sorts ?) reste à confirmer.",
+  "Règle exacte de répartition du partage de dommages (1061) et ordre de propagation de l'Infection (ordre des cibles, crit partagé ou non).",
+  "Contrôle des Poupées : 'maîtrisables' via l'état 2131 (sort commun Maîtrise des Invocations) — à confirmer pour le PvM.",
+  "Durée des compteurs Infecté I/II/III : 1 tour (de qui ? on suppose jusqu'au début du prochain tour du Sadida)."
+ ]
+}

@@ -1,0 +1,1879 @@
+{
+ "_meta": {
+  "title": "Grammaire des zones (zoneDescr), masques de cible (targetMask), declencheurs (triggers) et criteres d'etat",
+  "generatedAt": "2026-10-04T18:38:16Z",
+  "generator": ".cache/effects/build_grammar.py",
+  "sources": [
+   "OTOMAI = https://github.com/OtomAICLIP/otomai (libs/Bubble.DamageCalculation: SpellZone.cs, SpellManager.cs, TargetManagement.cs, HaxeBuff.cs, DamageCalculator.cs) - copie locale .cache/domath/haxe/",
+   "D2CLIENT = https://github.com/Romain-P/d2gen (DamageUtil.as verifySpellEffectMask/verifyEffectTrigger/getShapeEfficiency, SpellZoneManager.as, zones Cross/Line/Lozenge/Cone/HalfLozenge/Square) - .cache/domath/d2client/, .cache/effects/ref/",
+   "DATA = observations sur le corpus DofusDB (api.dofusdb.fr spell-levels)"
+  ]
+ },
+ "coordinates": {
+  "grid": "Carte de combat Dofus: 14 colonnes x 20 doubles-lignes = 560 cellules (cellId 0..559).",
+  "cellIdToXY": "row = floor(cellId/14); col = cellId - 14*row; x = floor((row+1)/2) + col; y = col - (row - floor((row+1)/2))",
+  "distance": "manhattan |dx|+|dy| (distance de deplacement/portee)",
+  "directions": {
+   "0": "RIGHT (x+1,y+1)",
+   "1": "DOWN_RIGHT (x+1,y)",
+   "2": "DOWN (x+1,y-1)",
+   "3": "DOWN_LEFT (x,y-1)",
+   "4": "LEFT (x-1,y-1)",
+   "5": "UP_LEFT (x-1,y)",
+   "6": "UP (x-1,y+1)",
+   "7": "UP_RIGHT (x,y+1)"
+  },
+  "note": "Directions impaires (1,3,5,7) = axes de la grille (lancer 'en ligne', zone X). Directions paires = diagonales de la grille (zone '+').",
+  "sources": [
+   "OTOMAI Tools/MapTools.cs (GetCellCoordById)",
+   "D2CLIENT jerakine zones Cross.as (directions)"
+  ]
+ },
+ "zone": {
+  "dofus3Structure": {
+   "shape": "code ASCII de la forme (80='P', 67='C', 88='X', 76='L', 108='l', 84='T', 81='Q', 71='G', 86='V', 85='U', 79='O', 43='+', 35='#', 42='*', 45='-', 70='F', 82='R', 65='A', 97='a').",
+   "param1": "taille/rayon principal (cf. forme)",
+   "param2": "rayon minimal pour les formes a taille minimale (C, X, Q, +, #, l...) ; sinon 0",
+   "damageDecreaseStepPercent": "degressivite par 'tick' de distance (defaut 10)",
+   "maxDamageDecreaseApplyCount": "nombre max de ticks (defaut 4) => malus max 40% par defaut",
+   "isStopAtTarget": "lignes 'l': s'arrete a la case ciblee",
+   "forcedDirection": "direction imposee (rare, L)",
+   "includeCarried": "inclut l'entite portee (P, C, Q)",
+   "onlyAffectIfInSightLine": "n'affecte que les cases en ligne de vue du centre (C)",
+   "cellIds": "liste explicite (remplie pour 'a'/'A' = toutes les cases)"
+  },
+  "dofus2RawZoneString": {
+   "syntax": "<forme><p0>[,<p1>[,<p2>[,<p3>[,<p4>]]]] ex: 'C2', 'X1,0', 'L3,10,4', 'l1,63,0,0,1'",
+   "parsing": "p0 = taille. Si la forme a une taille minimale (# + C Q R X l): p1 = taille min, p2 = degressivite %. Sinon: p1 = degressivite %, p2 = nb max de ticks. p3 = nb max de ticks (et direction), p4 = stopAtTarget (1). Pour 'l' p0 et p1 sont inverses (p0 = taille min).",
+   "sources": [
+    "OTOMAI Tools/SpellZone.cs FromRawZone/FillFromParameters"
+   ]
+  },
+  "efficiency": {
+   "formula": "malus% = min( min(max(dist - minRadius', 0), maxDamageDecreaseApplyCount) x damageDecreaseStepPercent, 100 ); efficacite = (100 - malus)/100. minRadius' = 0 pour R. Aucun malus si radius < 1 ou radius > 50 (C63...) ou formes A/a/I/;.",
+   "distancePerShape": {
+    "default (C,X,Q,L,l,T,*,O,P)": "manhattan(impact, case de la cible)",
+    "G,R,W": "chebyshev max(|dx|,|dy|)",
+    "#,+,-,/,U": "manhattan >> 1 (division entiere par 2)",
+    "F,V": "distance directionnelle (profondeur selon la direction lanceur->impact)",
+    "A,a,I,;": "0"
+   },
+   "appliesTo": "Degats, vols de vie et soins dont la valeur est calculee (pas les splash 1223/2020/2973, pas les boucliers), et pas aux cibles ajoutees hors zone (C, O, K).",
+   "referencePoint": "case d'impact du sort (fightContext.TargetedCell) vs position de la cible avant le sort.",
+   "example": "Couperet (Iop) L3 pas 10% x4: cible sur l'impact 100%, 2e case 90%, 3e 80%, 4e 70%.",
+   "sources": [
+    "OTOMAI SpellZone.GetAoeMalus",
+    "OTOMAI DamageCalculator.GetAoeMalus",
+    "OTOMAI ActionIdHelper.AllowAoeMalus",
+    "D2CLIENT DamageUtil.getShapeEfficiency/getSimpleEfficiency"
+   ]
+  },
+  "shapes": {
+   "P": {
+    "charCode": 80,
+    "name_fr": "Point",
+    "cells": "La case d'impact seule (rayon force a 0).",
+    "params": {
+     "param1": "ignore (toujours 1 dans les donnees)"
+    },
+    "efficiencyDistance": "aucune degressivite (rayon 0)",
+    "notes": "",
+    "corpusCount": 11839,
+    "examples": [
+     "Attraction ailée (5015)",
+     "Terre mythe (5017)",
+     "Tirs optiques (5018)",
+     "Superfidie (5019)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 11839
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "C": {
+    "charCode": 67,
+    "name_fr": "Cercle (losange en coordonnees de grille)",
+    "cells": "Cases avec minRadius <= manhattan(centre, case) <= radius.",
+    "params": {
+     "param1": "radius",
+     "param2": "minRadius (0 = centre inclus; C2,1 = anneau 1..2 sans le centre)"
+    },
+    "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille - minRadius",
+    "notes": "C63 = toute la carte (pas de degressivite car radius > 50).",
+    "corpusCount": 1288,
+    "examples": [
+     "Attraction ailée (5015)",
+     "Cercle de feu (5016)",
+     "Envolupté (5024)",
+     "Transfusion (12738)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(2, 0, 10, 4)": 320,
+     "(2, 1, 10, 4)": 246,
+     "(3, 0, 10, 4)": 156,
+     "(63, 0, 0, 0)": 151,
+     "(3, 1, 10, 4)": 101,
+     "(0, 0, 10, 4)": 79,
+     "(2, 1, 0, 0)": 35,
+     "(63, 1, 10, 4)": 27
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "O": {
+    "charCode": 79,
+    "name_fr": "Anneau",
+    "cells": "Cases a distance manhattan EXACTEMENT egale a radius (minRadius = radius).",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "aucune (distance - minRadius = 0)",
+    "notes": "",
+    "corpusCount": 54,
+    "examples": [
+     "Nervosité (12727)",
+     "Mésaventure (12879)",
+     "Fourberie (12905)",
+     "Barrière (13019)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(2, 0, 10, 4)": 35,
+     "(3, 0, 10, 4)": 12,
+     "(3, 0, 0, 4)": 4,
+     "(1, 0, 10, 4)": 2,
+     "(4, 0, 10, 4)": 1
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "X": {
+    "charCode": 88,
+    "name_fr": "Croix (lignes de la grille)",
+    "cells": "Centre (si minRadius = 0) + cases a distance 1..radius dans les 4 directions de la grille (x+-r, y) et (x, y+-r) - les directions de 'lancer en ligne'.",
+    "params": {
+     "param1": "radius",
+     "param2": "minRadius"
+    },
+    "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille - minRadius",
+    "notes": "",
+    "corpusCount": 505,
+    "examples": [
+     "Furie (12723)",
+     "Douleur Cuisante (12730)",
+     "Aversion (12749)",
+     "Dissolution (12757)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 313,
+     "(2, 0, 10, 4)": 41,
+     "(1, 0, 0, 0)": 36,
+     "(3, 0, 10, 4)": 35,
+     "(6, 1, 10, 4)": 18,
+     "(1, 1, 10, 4)": 10,
+     "(3, 3, 10, 4)": 9,
+     "(2, 2, 10, 4)": 9
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "Q": {
+    "charCode": 81,
+    "name_fr": "Croix sans centre",
+    "cells": "Comme X mais minRadius = max(param2, 1) (centre exclu par defaut).",
+    "params": {
+     "param1": "radius (>=1)",
+     "param2": "minRadius (0 => 1)"
+    },
+    "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille - minRadius",
+    "notes": "Q2,2 = uniquement les 4 cases a distance 2.",
+    "corpusCount": 276,
+    "examples": [
+     "Afflux (12729)",
+     "Aversion (12749)",
+     "Châtiment (12760)",
+     "Couronne d'Épines (12761)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 110,
+     "(1, 1, 10, 4)": 45,
+     "(2, 2, 10, 4)": 19,
+     "(1, 0, 0, 4)": 15,
+     "(3, 0, 10, 4)": 13,
+     "(1, 0, 0, 0)": 9,
+     "(3, 3, 10, 4)": 9,
+     "(3, 1, 10, 4)": 7
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "+": {
+    "charCode": 43,
+    "name_fr": "Croix diagonale",
+    "cells": "Centre + cases (x+-r, y+-r) dans les 4 directions diagonales de la grille (r = 1..radius).",
+    "params": {
+     "param1": "radius (0 => 1)",
+     "param2": "minRadius"
+    },
+    "efficiencyDistance": "manhattan/2 (>>1) - minRadius",
+    "notes": "",
+    "corpusCount": 86,
+    "examples": [
+     "Décimation (12731)",
+     "Hécatombe (12750)",
+     "Engourdissement (12807)",
+     "Piège Insidieux (12918)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 59,
+     "(3, 1, 10, 4)": 8,
+     "(1, 1, 10, 4)": 6,
+     "(1, 0, 0, 0)": 5,
+     "(2, 1, 10, 4)": 4,
+     "(4, 1, 10, 4)": 2,
+     "(2, 2, 10, 4)": 1,
+     "(1, 1, 0, 0)": 1
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "#": {
+    "charCode": 35,
+    "name_fr": "Croix diagonale sans centre",
+    "cells": "Comme '+' avec minRadius (centre exclu si minRadius >= 1).",
+    "params": {
+     "param1": "radius",
+     "param2": "minRadius"
+    },
+    "efficiencyDistance": "manhattan/2 - minRadius",
+    "notes": "",
+    "corpusCount": 22,
+    "examples": [
+     "Croisement (13480)",
+     "Gouvernail (13828)",
+     "Cabestan (13875)",
+     "Flèche Éclatante (32449)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 9,
+     "(2, 2, 10, 4)": 6,
+     "(2, 0, 10, 4)": 2,
+     "(3, 0, 10, 4)": 2,
+     "(1, 1, 10, 4)": 1,
+     "(3, 3, 10, 4)": 1,
+     "(4, 0, 10, 4)": 1
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "*": {
+    "charCode": 42,
+    "name_fr": "Etoile (8 directions)",
+    "cells": "Union de X et + : 8 directions jusqu'a radius.",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille",
+    "notes": "",
+    "corpusCount": 55,
+    "examples": [
+     "Prairie (12992)",
+     "Croisement (13480)",
+     "Gouvernail (13828)",
+     "Ydra (23723)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(2, 0, 10, 4)": 34,
+     "(2, 0, 0, 0)": 15,
+     "(3, 0, 10, 4)": 3,
+     "(2, 0, 0, 4)": 3
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "L": {
+    "charCode": 76,
+    "name_fr": "Ligne (depuis l'impact)",
+    "cells": "Case d'impact + 'radius' cases supplementaires dans la direction lanceur -> impact (s'eloignant du lanceur). L3 = 4 cases.",
+    "params": {
+     "param1": "radius (longueur apres la case d'impact)"
+    },
+    "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille",
+    "notes": "forcedDirection (rare) : direction imposee (INCERTAIN).",
+    "corpusCount": 81,
+    "examples": [
+     "Carnage (12752)",
+     "Souffle Alcoolisé (12784)",
+     "Pandatak (12797)",
+     "Feulement (12872)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(2, 0, 10, 4)": 32,
+     "(3, 0, 0, 0)": 18,
+     "(3, 0, 10, 4)": 14,
+     "(63, 0, 10, 4)": 7,
+     "(1, 0, 10, 4)": 7,
+     "(4, 0, 10, 4)": 3
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "l": {
+    "charCode": 108,
+    "name_fr": "Ligne depuis le lanceur",
+    "cells": "Cases a distance minRadius..(minRadius+radius-1) du LANCEUR dans la direction lanceur -> case ciblee; avec isStopAtTarget la ligne s'arrete a la case ciblee. Ex: l1,63 + stopAtTarget = toutes les cases entre le lanceur (exclu) et la cible (incluse).",
+    "params": {
+     "param1": "minRadius (distance du lanceur ou commence la ligne)",
+     "param2": "radius/longueur (63 = illimite)"
+    },
+    "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille depuis la case d'impact - minRadius",
+    "notes": "",
+    "corpusCount": 97,
+    "examples": [
+     "Fulgurance (12724)",
+     "Brancard (12811)",
+     "Cascade (12823)",
+     "Griffe Joueuse (12849)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 63, 0, 0)": 73,
+     "(2, 0, 10, 4)": 7,
+     "(1, 63, 10, 4)": 6,
+     "(0, 63, 0, 0)": 6,
+     "(1, 0, 0, 0)": 3,
+     "(0, 63, 10, 4)": 1,
+     "(1, 7, 10, 4)": 1
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Ordre param1/param2 deduit (donnees l1,63 et swap des parametres dans OTOMAI FromRawZone)."
+   },
+   "T": {
+    "charCode": 84,
+    "name_fr": "Ligne perpendiculaire (T)",
+    "cells": "Centre + cases a distance 1..radius dans les 2 directions PERPENDICULAIRES a la direction lanceur -> impact (Cross onlyPerpendicular).",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille",
+    "notes": "",
+    "corpusCount": 84,
+    "examples": [
+     "Vague à Lame (12794)",
+     "Cascade (12823)",
+     "Bourrasque (13010)",
+     "Pavois (13016)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(2, 0, 10, 4)": 41,
+     "(1, 0, 10, 4)": 39,
+     "(1, 0, 0, 0)": 4
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "-": {
+    "charCode": 45,
+    "name_fr": "Ligne perpendiculaire diagonale",
+    "cells": "Comme T mais sur les diagonales de la grille (Cross onlyPerpendicular + diagonal).",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "manhattan/2",
+    "notes": "",
+    "corpusCount": 6,
+    "examples": [
+     "Espingole (13440)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(2, 0, 10, 4)": 6
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "G": {
+    "charCode": 71,
+    "name_fr": "Carre",
+    "cells": "Cases avec max(|dx|,|dy|) <= radius (distance de Chebyshev en grille).",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "chebyshev = max(|dx|,|dy|)",
+    "notes": "",
+    "corpusCount": 171,
+    "examples": [
+     "Bain de Sang (12732)",
+     "Déchaînement (12755)",
+     "Distillation (12815)",
+     "Calamité (12950)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 76,
+     "(1, 0, 0, 0)": 54,
+     "(2, 0, 10, 4)": 34,
+     "(2, 0, 0, 0)": 7
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "W": {
+    "charCode": 87,
+    "name_fr": "Carre sans diagonales",
+    "cells": "Carre (Chebyshev) dont les cases strictement diagonales sont exclues (Square.diagonalFree).",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "chebyshev",
+    "notes": "",
+    "corpusCount": 0,
+    "examples": [],
+    "observedParams(param1,param2,step,maxTicks)": {},
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Non observe dans le corpus."
+   },
+   "V": {
+    "charCode": 86,
+    "name_fr": "Cone",
+    "cells": "Triangle partant de la case d'impact et s'elargissant a l'oppose du lanceur: a la profondeur k (0..radius), 2k+1 cases perpendiculaires.",
+    "params": {
+     "param1": "radius (profondeur)"
+    },
+    "efficiencyDistance": "distance directionnelle (profondeur dans l'axe lanceur->impact)",
+    "notes": "",
+    "corpusCount": 79,
+    "examples": [
+     "Souffle Enflammé (12805)",
+     "Frisson (12989)",
+     "Tromblon (13449)",
+     "Écume (13825)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 43,
+     "(2, 0, 10, 4)": 36
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "U": {
+    "charCode": 85,
+    "name_fr": "Demi-cercle / arc",
+    "cells": "Case d'impact + pour i=1..radius deux cases diagonales formant un V dont les branches reviennent vers le lanceur (HalfLozenge).",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "manhattan/2",
+    "notes": "",
+    "corpusCount": 49,
+    "examples": [
+     "Désolation (12753)",
+     "Martelo (13389)",
+     "Dagues Boomerang (13438)",
+     "Cerbère (13758)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 40,
+     "(2, 0, 10, 4)": 9
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "F": {
+    "charCode": 70,
+    "name_fr": "Fourche",
+    "cells": "Forme en fourche (Dofus 3) orientee lanceur -> impact.",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "distance directionnelle",
+    "notes": "",
+    "corpusCount": 25,
+    "examples": [
+     "Foène (13824)",
+     "Trident de la Mer (23393)",
+     "Serres du Vautour (31133)",
+     "Carreaux Destructeurs (32459)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 19,
+     "(2, 0, 0, 0)": 6
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Geometrie exacte a valider (OTOMAI FillForkCells)."
+   },
+   "R": {
+    "charCode": 82,
+    "name_fr": "Rectangle",
+    "cells": "Rectangle oriente lanceur -> impact (Dofus 3).",
+    "params": {
+     "param1": "largeur/demi-largeur (INCERTAIN)",
+     "param2": "longueur (INCERTAIN)"
+    },
+    "efficiencyDistance": "chebyshev, minRadius ignore",
+    "notes": "",
+    "corpusCount": 6,
+    "examples": [
+     "Épieu Sismique (23720)",
+     "Mur de Ronces (29616)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 3, 0, 0)": 4,
+     "(2, 1, 10, 4)": 2
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Semantique param1/param2 a valider (Epieu Sismique R1,3)."
+   },
+   "a": {
+    "charCode": 97,
+    "name_fr": "Toute la carte (vivants)",
+    "cells": "Toutes les entites VIVANTES du combat (cellIds = toutes les cases).",
+    "params": {
+     "param1": "ignore"
+    },
+    "efficiencyDistance": "aucune",
+    "notes": "",
+    "corpusCount": 727,
+    "examples": [
+     "Petit poison (5021)",
+     "Décollage (5032)",
+     "Heurage (5066)",
+     "Perfusion (12758)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 727
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "A": {
+    "charCode": 65,
+    "name_fr": "Toute la carte (y compris morts)",
+    "cells": "Toutes les entites, y compris mortes (utile aux resurrections).",
+    "params": {
+     "param1": "ignore"
+    },
+    "efficiencyDistance": "aucune",
+    "notes": "",
+    "corpusCount": 344,
+    "examples": [
+     "Dessèchement (13284)",
+     "Sables du Temps (13292)",
+     "Faille (13295)",
+     "Retraite Anticipée (13349)"
+    ],
+    "observedParams(param1,param2,step,maxTicks)": {
+     "(1, 0, 10, 4)": 344
+    },
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ]
+   },
+   "I": {
+    "charCode": 73,
+    "name_fr": "Cercle inverse",
+    "cells": "Toute la carte SAUF le cercle de rayon param1 (Lozenge(radius,63)).",
+    "params": {
+     "param1": "rayon exclu"
+    },
+    "efficiencyDistance": "aucune",
+    "notes": "",
+    "corpusCount": 0,
+    "examples": [],
+    "observedParams(param1,param2,step,maxTicks)": {},
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Non observe dans le corpus."
+   },
+   "D": {
+    "charCode": 68,
+    "name_fr": "Damier",
+    "cells": "Cases en damier autour du centre.",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "manhattan(impact, cible) = |dx|+|dy| en coordonnees de grille",
+    "notes": "",
+    "corpusCount": 0,
+    "examples": [],
+    "observedParams(param1,param2,step,maxTicks)": {},
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Non observe dans le corpus."
+   },
+   "B": {
+    "charCode": 66,
+    "name_fr": "Boomerang",
+    "cells": "Forme boomerang (Dofus 3).",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "chebyshev",
+    "notes": "",
+    "corpusCount": 0,
+    "examples": [],
+    "observedParams(param1,param2,step,maxTicks)": {},
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Non observe."
+   },
+   "Z": {
+    "charCode": 90,
+    "name_fr": "Cercle vrai inverse",
+    "cells": "Variante de I.",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "aucune",
+    "notes": "",
+    "corpusCount": 0,
+    "examples": [],
+    "observedParams(param1,param2,step,maxTicks)": {},
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Non observe."
+   },
+   "/": {
+    "charCode": 47,
+    "name_fr": "Ligne (slash)",
+    "cells": "Ligne de longueur radius.",
+    "params": {
+     "param1": "radius"
+    },
+    "efficiencyDistance": "manhattan/2",
+    "notes": "",
+    "corpusCount": 0,
+    "examples": [],
+    "observedParams(param1,param2,step,maxTicks)": {},
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Non observe."
+   },
+   ";": {
+    "charCode": 59,
+    "name_fr": "Liste de cellules",
+    "cells": "Liste explicite de cellIds (rawZone ';c1,c2,...').",
+    "params": {},
+    "efficiencyDistance": "aucune",
+    "notes": "",
+    "corpusCount": 0,
+    "examples": [],
+    "observedParams(param1,param2,step,maxTicks)": {},
+    "sources": [
+     "D2CLIENT SpellZoneManager.getZone",
+     "OTOMAI Tools/SpellZone.cs"
+    ],
+    "uncertain": "Non observe."
+   }
+  },
+  "flagsObserved": {
+   "includeCarried@P": 11839,
+   "cellIds@a": 727,
+   "isStopAtTarget@l": 86,
+   "includeCarried@C": 49,
+   "cellIds@A": 344,
+   "onlyAffectIfInSightLine@C": 16,
+   "includeCarried@Q": 3,
+   "forcedDirection@L": 4
+  }
+ },
+ "targetMask": {
+  "syntax": "Liste de jetons separes par ','. Prefixe '*' = la condition porte sur le LANCEUR (et non sur la cible). Chiffres = parametre (id d'etat, de monstre, de classe, % de PV).",
+  "evaluation": [
+   "1. Jetons '*...' en tete: conditions sur le lanceur; si l'une echoue, l'effet est ENTIEREMENT retire du sort (aucune cible).",
+   "2. Inclusion: la cible doit correspondre a AU MOINS UN jeton d'inclusion (a, g, A, c, C, h/H, l/L, d/D, m/M, i/I, j/J, s/S). Cas du lanceur: inclus seulement si 'c', 'C' ou 'a' (jamais 'g').",
+   "3. Exclusions/conditions (lettres *bBeEfFzZKoOPpTWuUvVrRQq + PB/pb/PR/pr): TOUTES doivent etre vraies (ET), sauf les groupes B#, F#, Z# du meme type qui sont des OU (au moins un).",
+   "4. Si aucun masque: toutes les entites de la zone.",
+   "5. Les cibles sont calculees AVANT l'execution des effets du sort (instantane), sauf masques U/u/T/W/V/v recalcules au moment de l'effet."
+  ],
+  "inclusion": {
+   "a": "Allies (meme equipe que le lanceur) - inclut le LANCEUR s'il est dans la zone.",
+   "g": "Allies SAUF le lanceur.",
+   "A": "Ennemis (equipe adverse), toutes natures.",
+   "c": "Le lanceur, seulement s'il se trouve dans la zone de l'effet.",
+   "C": "Le lanceur, meme hors zone (ajoute comme cible additionnelle, sans degressivite).",
+   "h": "Allies joueurs (personnages humains non invoques).",
+   "H": "Ennemis joueurs (humains non invoques).",
+   "l": "Allies joueurs OU compagnons (sidekicks).",
+   "L": "Ennemis joueurs OU compagnons.",
+   "d": "Allies compagnons (sidekicks).",
+   "D": "Ennemis compagnons (sidekicks).",
+   "m": "Allies monstres non invoques et non statiques.",
+   "M": "Ennemis monstres non invoques et non statiques.",
+   "i": "Allies invocations NON statiques (qui jouent).",
+   "I": "Ennemis invocations non statiques.",
+   "j": "Allies invocations (toutes).",
+   "J": "Ennemis invocations (toutes).",
+   "s": "Allies invocations STATIQUES (ne jouent pas: bombes, arbres, balises...).",
+   "S": "Ennemis invocations statiques.",
+   "x": "INCERTAIN: case sans entite / cible quelconque (observe uniquement avec un effet d'invocation 'x,*q')."
+  },
+  "conditions": {
+   "E#": "La cible possede l'etat #.",
+   "e#": "La cible ne possede PAS l'etat #.",
+   "F#": "La cible est le monstre (generique) d'id # (groupe OU: F1,F2 = l'un ou l'autre).",
+   "f#": "La cible n'est PAS le monstre #.",
+   "B#": "La cible est un joueur de classe (breed) # (groupe OU).",
+   "b#": "La cible n'est pas un joueur de classe #.",
+   "Z#": "La cible est un compagnon de type # (groupe OU).",
+   "z#": "La cible n'est pas un compagnon #.",
+   "P": "La cible est le lanceur, une de ses invocations, une invocation du meme invocateur, ou son invocateur ('famille' du lanceur).",
+   "p": "Negation de P.",
+   "K": "La cible est l'entite portee par le lanceur (ou en cours de lancer) - Pandawa.",
+   "O": "La cible est l'entite DECLENCHEUSE (attaquant d'un buff declenche); ajoutee hors zone si besoin.",
+   "o": "Comme O mais doit aussi etre dans la zone (Dofus 2).",
+   "T": "La cible a ete teleportee en Telefrag ce tour-ci (Xelor).",
+   "W": "La cible a ete teleportee sur une case invalide ce tour-ci.",
+   "U": "La cible vient d'apparaitre (invocation creee par ce sort) - cibles recalculees a l'execution.",
+   "u": "INCERTAIN: negation de U (OTOMAI renvoie IsAppearing pour U et u, probablement un bug).",
+   "V#": "PV de la cible < #% de ses PV max (Dofus 2: <=).",
+   "v#": "PV de la cible >= #% (Dofus 2: >).",
+   "R": "Le sort est lance A TRAVERS un portail (Eliotrope).",
+   "r": "Le sort n'est pas lance a travers un portail.",
+   "Q": "La cible (souvent le lanceur via *Q) a atteint son nombre maximal d'invocations.",
+   "q": "La cible n'a pas atteint son maximum d'invocations.",
+   "PB": "INCERTAIN (deduit des descriptions Cra): la cible possede du bouclier.",
+   "pb": "INCERTAIN: la cible n'a pas de bouclier.",
+   "PR": "INCERTAIN: condition 'PR' (Forgelance, Disque de Sigel) - probablement 'porte/porteur' ou 'portee'.",
+   "pr": "INCERTAIN: negation de PR."
+  },
+  "orGroups": [
+   "B",
+   "F",
+   "Z"
+  ],
+  "outOfZoneTargets": {
+   "C": "lanceur ajoute meme hors zone",
+   "O": "entite declencheuse ajoutee",
+   "K": "entite portee ajoutee"
+  },
+  "corpusCounts": {
+   "A": 7634,
+   "a": 6861,
+   "C": 4638,
+   "F#": 3485,
+   "E#": 2195,
+   "*E#": 1884,
+   "e#": 1444,
+   "*e#": 1090,
+   "f#": 1023,
+   "P": 1009,
+   "g": 829,
+   "c": 267,
+   "*F#": 145,
+   "j": 139,
+   "b#": 120,
+   "h": 104,
+   "T": 91,
+   "l": 72,
+   "J": 63,
+   "m": 55,
+   "R": 55,
+   "M": 54,
+   "O": 51,
+   "U": 49,
+   "r": 41,
+   "L": 40,
+   "p": 33,
+   "K": 29,
+   "H": 19,
+   "D": 17,
+   "d": 17,
+   "B#": 16,
+   "v#": 14,
+   "V#": 14,
+   "I": 14,
+   "i": 12,
+   "*v#": 11,
+   "pb": 11,
+   "PB": 11,
+   "*V#": 10,
+   "s": 9,
+   "o": 8,
+   "u": 3,
+   "x": 2,
+   "*q": 2,
+   "pr": 1,
+   "*PR": 1,
+   "PR": 1,
+   "*pr": 1
+  },
+  "examples": {
+   "A": [
+    "Attraction ailée [A]",
+    "Cercle de feu [A]",
+    "Terre mythe [A]"
+   ],
+   "C": [
+    "Attraction ailée [C]",
+    "Bouclier absorbant [C]",
+    "Mise en situation [C]"
+   ],
+   "L": [
+    "Petit poison [L]",
+    "Concentration [L,M,l,m,c]",
+    "Obsolescence [l,m,L,M]"
+   ],
+   "a": [
+    "Envolupté [a]",
+    "En temps et en heure [a,A,F3833]",
+    "Contamination zombie [a,E74]"
+   ],
+   "F#": [
+    "En temps et en heure [a,A,F3833]",
+    "Heurage [g,F3833,*E236]",
+    "Sacrifice [a,P,F434,F5192]"
+   ],
+   "T": [
+    "En temps et en heure [a,A,T]",
+    "Gelure [a,A,T]",
+    "Téléportation [a,A,T]"
+   ],
+   "E#": [
+    "Contamination zombie [a,E74]",
+    "Picole [C,E3531]",
+    "Gueule de Bois [C,E498]"
+   ],
+   "g": [
+    "Heurage [g,F3833,*E236]",
+    "Furie [g,A]",
+    "Nervosité [g,A]"
+   ],
+   "*E#": [
+    "Heurage [g,F3833,*E236]",
+    "Attirance [a,A,*E5380]",
+    "Mutilation [C,*E1302]"
+   ],
+   "*e#": [
+    "Heurage [g,F3833,*e236]",
+    "Assaut [a,A,*e7]",
+    "Attirance [a,A,*e5380]"
+   ],
+   "P": [
+    "Sacrifice [a,P,F434,F5192]",
+    "Fluctuation [a,P,F434,F5192]",
+    "Ivresse [h,P]"
+   ],
+   "e#": [
+    "Berserk [C,e1803]",
+    "Pile ou Face [C,e5452,e5464]",
+    "Topkaj [C,e5464,e5448]"
+   ],
+   "c": [
+    "Pénitence [c]",
+    "Ribote [c]",
+    "Liqueur [c]"
+   ],
+   "h": [
+    "Ivresse [h,P]",
+    "Ébriété [h,P]",
+    "Griffe Invocatrice [h,P]"
+   ],
+   "K": [
+    "Propulsion [g,K]",
+    "Pandikulation [g,K]",
+    "Eau-de-vie [a,K]"
+   ],
+   "U": [
+    "Double [a,U]",
+    "Comploteur [a,U]",
+    "Défiance [a,P,F7841,U]"
+   ],
+   "v#": [
+    "Attaque Mortelle [a,A,v50]",
+    "Piège Mortel [a,A,v50]",
+    "Souffrance [C,v100]"
+   ],
+   "V#": [
+    "Attaque Mortelle [a,A,V50]",
+    "Piège Mortel [a,A,V50]",
+    "Souffrance [C,V100,v90]"
+   ],
+   "H": [
+    "Épidémie [H,I,M,D]",
+    "Remblai [h,m,d,H,M,D]",
+    "Bouclier Élémentaire [H]"
+   ],
+   "I": [
+    "Épidémie [H,I,M,D]"
+   ],
+   "M": [
+    "Épidémie [H,I,M,D]",
+    "Concentration [L,M,l,m,c]",
+    "Remblai [h,m,d,H,M,D]"
+   ],
+   "D": [
+    "Épidémie [H,I,M,D]",
+    "Remblai [h,m,d,H,M,D]"
+   ],
+   "b#": [
+    "Bouclier Féca [g,b1,f7864,f7865,f5903,f5910,f7841]",
+    "Transhumance [g,b1]",
+    "Mise en Garde [g,b1]"
+   ],
+   "f#": [
+    "Bouclier Féca [g,b1,f7864,f7865,f5903,f5910,f7841]",
+    "Mot de Solidarité [a,P,f7372,f7373,f7374,f7375]",
+    "Paradoxe [g,A,f3958,e7]"
+   ],
+   "l": [
+    "Concentration [L,M,l,m,c]",
+    "Boîte à Outils [l]",
+    "Obsolescence [l,m,L,M]"
+   ],
+   "m": [
+    "Concentration [L,M,l,m,c]",
+    "Remblai [h,m,d,H,M,D]",
+    "Obsolescence [l,m,L,M]"
+   ],
+   "J": [
+    "Concentration [J,j]",
+    "Péremption [J,j]",
+    "Remblai [j,J]"
+   ],
+   "j": [
+    "Concentration [J,j]",
+    "Péremption [J,j]",
+    "Remblai [j,J]"
+   ],
+   "p": [
+    "Mot de Solidarité [a,p,E4157]",
+    "Botte [a,A,p,F3112,F3113,F3114,F5161,F5163,F5162]",
+    "Resquille [g,p]"
+   ],
+   "O": [
+    "Espace-temps [A,O]",
+    "Étreinte de Valkyr [A,O]",
+    "Friction [A,O]"
+   ],
+   "d": [
+    "Remblai [h,m,d,H,M,D]",
+    "Don Naturel [c,h,d,m,i]",
+    "Flèches Amoureuses [c,h,m,d,E7010]"
+   ],
+   "*v#": [
+    "Mascarade [g,A,*v50]",
+    "Berserk [C,*v50]",
+    "Gobgobage [A,*v50]"
+   ],
+   "*V#": [
+    "Mascarade [g,A,*V50]",
+    "Gobgobage [A,*V50]"
+   ],
+   "s": [
+    "Arbre [s,U]",
+    "Arbre Feuillu [s,U]",
+    "Montée de Sève [s,U]"
+   ],
+   "i": [
+    "Don Naturel [c,h,d,m,i]",
+    "Fouet [i]",
+    "Laisse Spirituelle [i,P]"
+   ],
+   "r": [
+    "Affront [a,A,r]",
+    "Poing Fulgurant [a,A,r]",
+    "Commotion [g,A,r]"
+   ],
+   "R": [
+    "Poing Fulgurant [a,A,R]",
+    "Commotion [a,A,R]",
+    "Affliction [A,R]"
+   ],
+   "x": [
+    "Mot Alchimique [x,*q]"
+   ],
+   "*q": [
+    "Mot Alchimique [x,*q]"
+   ],
+   "pb": [
+    "Flèche Perforante [A,pb]",
+    "Flèche d'Abolition [a,A,pb,*e7120,*e7121]"
+   ],
+   "PB": [
+    "Flèche Perforante [A,PB]",
+    "Flèche d'Abolition [a,A,PB,*e7120,*e7121]"
+   ],
+   "B#": [
+    "Pâturage [a,B1]",
+    "Refuge [a,B1]",
+    "Verglas [a,B1]"
+   ],
+   "o": [
+    "Bouclier Élémentaire [A,o]"
+   ],
+   "*F#": [
+    "Poinçon [C,*F7139]",
+    "Aiguillage [a,A,*e7,*e6,*e97,*F5836,*F5832,*F5835,*F5833,*F5837,*F5831]",
+    "Court-circuit [a,*F5836]"
+   ],
+   "u": [
+    "Boîte à Outils [j,P,u]",
+    "Faille [a,P,u,F3958]",
+    "Pacte Bestial [j,P,u]"
+   ],
+   "pr": [
+    "Disque de Sigel [a,P,F7139,pr,*PR]"
+   ],
+   "*PR": [
+    "Disque de Sigel [a,P,F7139,pr,*PR]"
+   ],
+   "PR": [
+    "Disque de Sigel [a,P,F7139,PR,*pr]"
+   ],
+   "*pr": [
+    "Disque de Sigel [a,P,F7139,PR,*pr]"
+   ]
+  },
+  "sources": [
+   "OTOMAI SpellManager.IsSelectedByMask/IsIncludedByMask/PassMaskExclusion/TargetPassMaskExclusion",
+   "OTOMAI TargetManagement.GetTargets/GetOutOfAreaTarget",
+   "D2CLIENT DamageUtil.verifySpellEffectMask"
+  ]
+ },
+ "triggers": {
+  "syntax": "Liste separee par '|' (OU). 'I' seul = instantane. Autre valeur => l'effet devient un BUFF declencheur pose sur la cible du masque (le 'porteur'), actif pendant effectTriggerDuration tours (63 = tout le combat), et rejoue l'effet quand l'evenement survient.",
+  "bearerVsSource": "Codes sans prefixe C: evenement SUBI par le porteur. Codes prefixes C (CC, CI, CH, CD*, CAPA...): evenement CAUSE par le porteur (OTOMAI ShouldBeTriggeredOnCaster).",
+  "triggeredEffectTarget": "Quand un buff se declenche, l'effet s'applique au porteur; pour 792/793 (TargetExecuteSpell) et K/KWW/KWS/PO/CH la 'cible' est l'entite affectee par l'evenement. Le masque O designe l'entite declencheuse (ex: attaquant).",
+  "limits": "Pour les effets de lancement de sort (792, 1160, ...), value = nombre max de declenchements du buff (999 = illimite). Un buff ne se declenche pas sur un evenement issu de lui-meme (IsTriggeredByParent) sauf spell.canAlwaysTriggerSpells.",
+  "codes": {
+   "I": {
+    "meaning": "Instantane: l'effet s'applique au lancer (pas de buff declencheur).",
+    "confidence": "certain",
+    "corpusCount": 14936,
+    "examples": [
+     "Attraction ailée [effet 6, triggers=I, masque=A]",
+     "Cercle de feu [effet 269, triggers=I, masque=A]",
+     "Terre mythe [effet 271, triggers=I, masque=A]"
+    ]
+   },
+   "TB": {
+    "meaning": "Debut du tour du PORTEUR (poisons 'de debut de tour', effets periodiques).",
+    "confidence": "certain",
+    "corpusCount": 124,
+    "examples": [
+     "Petit poison [effet 96, triggers=TB, masque=L]",
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
+     "Distillation [effet 3793, triggers=TB, masque=g,A]"
+    ]
+   },
+   "TE": {
+    "meaning": "Fin du tour du PORTEUR.",
+    "confidence": "certain",
+    "corpusCount": 207,
+    "examples": [
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
+     "Libation [effet 792, triggers=TE, masque=C]",
+     "Infortune [effet 1160, triggers=TE, masque=A]"
+    ]
+   },
+   "D": {
+    "meaning": "Le porteur subit des dommages (hors dommages de collision).",
+    "confidence": "certain",
+    "corpusCount": 174,
+    "examples": [
+     "Tirs optiques [effet 1163, triggers=D, masque=A]",
+     "Plumière [effet 1163, triggers=D, masque=A]",
+     "Feinterception [effet 786, triggers=D, masque=A]"
+    ]
+   },
+   "DN": {
+    "meaning": "Dommages Neutre subis.",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "Bouclier Élémentaire [effet 219, triggers=DN, masque=a]"
+    ]
+   },
+   "DE": {
+    "meaning": "Dommages Terre subis.",
+    "confidence": "certain",
+    "corpusCount": 7,
+    "examples": [
+     "Bouclier Élémentaire [effet 215, triggers=DE, masque=a]",
+     "Sublimation [effet 157, triggers=DE, masque=a,A]"
+    ]
+   },
+   "DF": {
+    "meaning": "Dommages Feu subis.",
+    "confidence": "certain",
+    "corpusCount": 7,
+    "examples": [
+     "Bouclier Élémentaire [effet 218, triggers=DF, masque=a]",
+     "Sublimation [effet 155, triggers=DF, masque=a,A]"
+    ]
+   },
+   "DW": {
+    "meaning": "Dommages Eau subis.",
+    "confidence": "certain",
+    "corpusCount": 7,
+    "examples": [
+     "Bouclier Élémentaire [effet 216, triggers=DW, masque=a]",
+     "Sublimation [effet 152, triggers=DW, masque=a,A]"
+    ]
+   },
+   "DA": {
+    "meaning": "Dommages Air subis.",
+    "confidence": "certain",
+    "corpusCount": 7,
+    "examples": [
+     "Bouclier Élémentaire [effet 217, triggers=DA, masque=a]",
+     "Sublimation [effet 154, triggers=DA, masque=a,A]"
+    ]
+   },
+   "DBA": {
+    "meaning": "Dommages subis d'un ALLIE (du porteur).",
+    "confidence": "certain",
+    "corpusCount": 1,
+    "examples": [
+     "Arbre de Vie [effet 786, triggers=DBA, masque=C]"
+    ]
+   },
+   "DBE": {
+    "meaning": "Dommages subis d'un ENNEMI.",
+    "confidence": "certain",
+    "corpusCount": 23,
+    "examples": [
+     "Liens du Sang [effet 1160, triggers=DBE, masque=C]",
+     "Friction [effet 1160, triggers=DBE, masque=A]",
+     "Conservation [effet 111, triggers=DBE, masque=a]"
+    ]
+   },
+   "DCCBA": {
+    "meaning": "Dommages critiques subis d'un allie.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "DCCBE": {
+    "meaning": "Dommages critiques subis d'un ennemi.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "DM": {
+    "meaning": "Dommages subis en MELEE (attaquant au contact, distance <= 1).",
+    "confidence": "certain",
+    "corpusCount": 48,
+    "examples": [
+     "Couronne d'Épines [effet 1223, triggers=DM|XDM, masque=a,A]",
+     "Bastion [effet 138, triggers=DIS|DM, masque=a]",
+     "Rémission [effet 950, triggers=DM, masque=A]"
+    ]
+   },
+   "DR": {
+    "meaning": "Dommages subis a DISTANCE (distance > 1).",
+    "confidence": "certain",
+    "corpusCount": 13,
+    "examples": [
+     "Bouclier absorbant [effet 138, triggers=DR, masque=C]",
+     "Barricade [effet 128, triggers=DIS|DR, masque=a]",
+     "Rémission [effet 265, triggers=DR, masque=a,P,F3112,F3113,F3114,F5161,F5162,F5163]"
+    ]
+   },
+   "DCAC": {
+    "meaning": "Dommages d'arme subis.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "DS": {
+    "meaning": "Dommages de SORT subis (non issus d'un autre declenchement).",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "Dispersion [effet 792, triggers=DS|XDS, masque=C]"
+    ]
+   },
+   "DG": {
+    "meaning": "Dommages de glyphe subis.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "DT": {
+    "meaning": "Dommages de piege subis.",
+    "confidence": "certain",
+    "corpusCount": 8,
+    "examples": [
+     "Concentration de Chakra [effet 1160, triggers=DT, masque=A]",
+     "Toxines [effet 1160, triggers=DT, masque=A]"
+    ]
+   },
+   "DI": {
+    "meaning": "Dommages subis d'une invocation.",
+    "confidence": "certain",
+    "corpusCount": 1,
+    "examples": [
+     "Mandragore [effet 1160, triggers=DTB|DTE|DI, masque=A]"
+    ]
+   },
+   "DTB": {
+    "meaning": "Dommages subis en debut de tour (poisons TB) - observe avec D|DTE pour 'tout type de dommages'.",
+    "confidence": "probable",
+    "corpusCount": 6,
+    "examples": [
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
+     "Ataraxie [effet 1163, triggers=D|DTE|DTB|DV|PD, masque=a,e583]",
+     "Mandragore [effet 1160, triggers=DTB|DTE|DI, masque=A]"
+    ]
+   },
+   "DTE": {
+    "meaning": "Dommages subis en fin de tour (poisons TE).",
+    "confidence": "probable",
+    "corpusCount": 6,
+    "examples": [
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
+     "Ataraxie [effet 1163, triggers=D|DTE|DTB|DV|PD, masque=a,e583]",
+     "Mandragore [effet 1160, triggers=DTB|DTE|DI, masque=A]"
+    ]
+   },
+   "DV": {
+    "meaning": "Dommages 'de vie' (perte de PV en % / sacrifice?) - liste 'tout type de dommages'.",
+    "confidence": "incertain",
+    "corpusCount": 5,
+    "examples": [
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]",
+     "Ataraxie [effet 1163, triggers=D|DTE|DTB|DV|PD, masque=a,e583]"
+    ]
+   },
+   "PD": {
+    "meaning": "Le porteur subit des dommages de POUSSEE (collision).",
+    "confidence": "certain",
+    "corpusCount": 28,
+    "examples": [
+     "Décollage [effet 1160, triggers=PD, masque=A]",
+     "Neutralisation [effet 1080, triggers=PD, masque=A]",
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]"
+    ]
+   },
+   "PMD": {
+    "meaning": "Dommages de poussee en melee (Param2 == 0).",
+    "confidence": "probable",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "PPD": {
+    "meaning": "Dommages de poussee (variante).",
+    "confidence": "probable",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "P": {
+    "meaning": "Le porteur est POUSSE.",
+    "confidence": "certain",
+    "corpusCount": 4,
+    "examples": [
+     "Poussette [effet 2792, triggers=P, masque=a,P,F3112,F3113,F3114,F5161]",
+     "Balise Tactique [effet 792, triggers=DR|P|XDR, masque=C]"
+    ]
+   },
+   "MA": {
+    "meaning": "Le porteur est ATTIRE.",
+    "confidence": "certain",
+    "corpusCount": 8,
+    "examples": [
+     "Aimantation [effet 1160, triggers=MA, masque=g,P,F3112,F3113,F3114,F5161]",
+     "Croisement [effet 1160, triggers=MA, masque=g,P,F3112,F3113,F3114,F5161]",
+     "Aspirateur [effet 2792, triggers=MA, masque=a,P,F3112,F3113,F3114,F5161]"
+    ]
+   },
+   "M": {
+    "meaning": "Le porteur est deplace (pousse/attire/transpose) sur une case marchable.",
+    "confidence": "certain",
+    "corpusCount": 14,
+    "examples": [
+     "Superfidie [effet 406, triggers=M, masque=A]",
+     "Férocité [effet 1160, triggers=MPA|M|TP, masque=a]",
+     "Périscope [effet 77, triggers=M, masque=A]"
+    ]
+   },
+   "MS": {
+    "meaning": "Le porteur echange de position (transposition).",
+    "confidence": "certain",
+    "corpusCount": 11,
+    "examples": [
+     "Imposture [effet 1160, triggers=MS, masque=a,P,F3112,F3113,F3114,F5161,e6,e7,*e6,*e7,e97,*e97]",
+     "Faille [effet 1160, triggers=MS|TP, masque=g,A]",
+     "Prémonition [effet 1160, triggers=MS|TP, masque=g,A]"
+    ]
+   },
+   "TP": {
+    "meaning": "Le porteur est TELEPORTE (teleportation, retour a la position precedente, Pandawa...).",
+    "confidence": "certain",
+    "corpusCount": 14,
+    "examples": [
+     "Stratagème [effet 1160, triggers=TP, masque=a,P,F3112,F3113,F3114,F5161,F5163,F5162,e6,e7,e97]",
+     "Férocité [effet 1160, triggers=MPA|M|TP, masque=a]",
+     "Holmgang [effet 1160, triggers=TP|M, masque=C]"
+    ]
+   },
+   "PT": {
+    "meaning": "Le porteur traverse un portail.",
+    "confidence": "certain",
+    "corpusCount": 6,
+    "examples": [
+     "Coalition [effet 1160, triggers=PT, masque=a]",
+     "Laisse Spirituelle [effet 1160, triggers=M|TP|EON8|EOFF8|PT|TE, masque=C]",
+     "Flèche Tyrannique [effet 1160, triggers=M|TP|PT|EOFF8, masque=a,A]"
+    ]
+   },
+   "APA": {
+    "meaning": "Le porteur perd des PA (retrait/vol).",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "Monnaie Sonnante [effet 1160, triggers=APA, masque=A]"
+    ]
+   },
+   "MPA": {
+    "meaning": "Le porteur perd des PM (retrait/vol); description Ouginak: 'subit une tentative de retrait de PM'.",
+    "confidence": "certain",
+    "corpusCount": 5,
+    "examples": [
+     "Férocité [effet 1160, triggers=MPA|M|TP, masque=a]",
+     "Orpaillage [effet 1160, triggers=MPA, masque=A]"
+    ]
+   },
+   "R": {
+    "meaning": "Le porteur perd de la portee.",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "Éboulement [effet 1160, triggers=R, masque=A]"
+    ]
+   },
+   "H": {
+    "meaning": "Le porteur est SOIGNE (hors vol de vie).",
+    "confidence": "certain",
+    "corpusCount": 53,
+    "examples": [
+     "Berserk [effet 1159, triggers=H, masque=C,e1803]",
+     "Hémorragie [effet 1159, triggers=H, masque=a,A]",
+     "Hécatombe [effet 1159, triggers=H, masque=g,A]"
+    ]
+   },
+   "V": {
+    "meaning": "Les PV du porteur sont affectes (soin > 0 ou modification).",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]"
+    ]
+   },
+   "VA": {
+    "meaning": "PV actuels modifies.",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]"
+    ]
+   },
+   "VM": {
+    "meaning": "PV max modifies.",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]"
+    ]
+   },
+   "VE": {
+    "meaning": "PV erodes modifies.",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]"
+    ]
+   },
+   "LPU": {
+    "meaning": "Mise a jour des PV (gain de Vitalite / PV) du porteur.",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "Berserk [effet 792, triggers=V|VA|VM|VE|TB|TE|D|H|PD|DTB|DTE|DV|LPU, masque=C,e1803]"
+    ]
+   },
+   "S": {
+    "meaning": "Le BOUCLIER du porteur est touche.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "X": {
+    "meaning": "MORT du porteur (effet joue meme si le porteur est mort).",
+    "confidence": "certain",
+    "corpusCount": 33,
+    "examples": [
+     "Boîte à Outils [effet 792, triggers=X, masque=C]",
+     "Poudre [effet 792, triggers=X, masque=a,P,F3112,F3113,F3114,F5161]",
+     "Proie [effet 1160, triggers=X, masque=A]"
+    ]
+   },
+   "K": {
+    "meaning": "Le porteur TUE une entite.",
+    "confidence": "certain",
+    "corpusCount": 4,
+    "examples": [
+     "III. L'Impératrice - Tarot d'Ecaflip [effet 1160, triggers=K, masque=a,A]",
+     "IV. L'Empereur - Tarot d'Ecaflip [effet 1160, triggers=K, masque=a,A]"
+    ]
+   },
+   "KWW": {
+    "meaning": "Le porteur tue avec une arme.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "KWS": {
+    "meaning": "Le porteur tue avec un sort.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "DIS": {
+    "meaning": "Le porteur est DESENVOUTE (dispel).",
+    "confidence": "certain",
+    "corpusCount": 12,
+    "examples": [
+     "Barricade [effet 128, triggers=DIS|DR, masque=a]",
+     "Bastion [effet 138, triggers=DIS|DM, masque=a]",
+     "Cryothérapie [effet 1160, triggers=DIS, masque=a,A]"
+    ]
+   },
+   "EON#": {
+    "meaning": "Le porteur GAGNE l'etat #.",
+    "confidence": "certain",
+    "corpusCount": 37,
+    "examples": [
+     "Ataraxie [effet 3793, triggers=D|DTE|DTB|PD|DV|EON583, masque=a,e583]",
+     "Transfiguration [effet 1172, triggers=EON98, masque=A,*E98]",
+     "Sablier de Xélor [effet 1160, triggers=EON6129, masque=a,A]"
+    ]
+   },
+   "EOFF#": {
+    "meaning": "Le porteur PERD l'etat #.",
+    "confidence": "certain",
+    "corpusCount": 39,
+    "examples": [
+     "Bouclier Élémentaire [effet 406, triggers=EOFF3645, masque=a]",
+     "Rituel de Jashin [effet 792, triggers=EOFF5241, masque=C]",
+     "Étreinte de Valkyr [effet 406, triggers=EOFF3680, masque=a]"
+    ]
+   },
+   "TR#": {
+    "meaning": "Seuil de vie du buff 'Threshold' du sort # atteint.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "ION": {
+    "meaning": "Le porteur devient invisible.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "IOFF": {
+    "meaning": "Le porteur redevient visible.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "PO": {
+    "meaning": "Le porteur DEPLACE une entite (attirance/poussee/echange) - evalue cote lanceur.",
+    "confidence": "probable",
+    "corpusCount": 1,
+    "examples": [
+     "Toupet [effet 1160, triggers=PO|CPD, masque=A]"
+    ]
+   },
+   "PST": {
+    "meaning": "Sort projete a travers un portail.",
+    "confidence": "probable",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "PDT": {
+    "meaning": "Dommages via portail.",
+    "confidence": "probable",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CC": {
+    "meaning": "Le porteur realise un COUP CRITIQUE.",
+    "confidence": "certain",
+    "corpusCount": 7,
+    "examples": [
+     "Destin d'Ecaflip [effet 1160, triggers=CC, masque=A]",
+     "Bonne Étoile [effet 1020, triggers=CC, masque=a,A]",
+     "Infortune [effet 1160, triggers=CC, masque=A]"
+    ]
+   },
+   "CI": {
+    "meaning": "Le porteur INVOQUE.",
+    "confidence": "certain",
+    "corpusCount": 3,
+    "examples": [
+     "Faille [effet 1160, triggers=CI, masque=C]",
+     "Boîte à Outils [effet 792, triggers=CI, masque=C]",
+     "Pacte Bestial [effet 792, triggers=CI, masque=C]"
+    ]
+   },
+   "CH": {
+    "meaning": "Le porteur SOIGNE.",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "XIV. Le Temple - Tarot d'Ecaflip [effet 1160, triggers=CH, masque=a,A]"
+    ]
+   },
+   "CS": {
+    "meaning": "Le porteur donne un BOUCLIER.",
+    "confidence": "certain",
+    "corpusCount": 2,
+    "examples": [
+     "XI. Le Croupier - Tarot d'Ecaflip [effet 1160, triggers=CS, masque=a,A]"
+    ]
+   },
+   "CD": {
+    "meaning": "Le porteur occasionne des dommages.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDN": {
+    "meaning": "Le porteur occasionne des dommages Neutre.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDE": {
+    "meaning": "... Terre.",
+    "confidence": "certain",
+    "corpusCount": 1,
+    "examples": [
+     "Supernova [effet 792, triggers=CDE, masque=C]"
+    ]
+   },
+   "CDF": {
+    "meaning": "... Feu.",
+    "confidence": "certain",
+    "corpusCount": 1,
+    "examples": [
+     "Supernova [effet 792, triggers=CDF, masque=C]"
+    ]
+   },
+   "CDW": {
+    "meaning": "... Eau.",
+    "confidence": "certain",
+    "corpusCount": 1,
+    "examples": [
+     "Supernova [effet 792, triggers=CDW, masque=C]"
+    ]
+   },
+   "CDA": {
+    "meaning": "... Air.",
+    "confidence": "certain",
+    "corpusCount": 1,
+    "examples": [
+     "Supernova [effet 792, triggers=CDA, masque=C]"
+    ]
+   },
+   "CDBA": {
+    "meaning": "Le porteur occasionne des dommages a un allie.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDBE": {
+    "meaning": "Le porteur occasionne des dommages a un ennemi.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDM": {
+    "meaning": "... en melee.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDR": {
+    "meaning": "... a distance.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDCAC": {
+    "meaning": "... avec une arme.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDS": {
+    "meaning": "... avec un sort.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDG": {
+    "meaning": "... via un glyphe.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDT": {
+    "meaning": "... via un piege.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CDIS": {
+    "meaning": "Le porteur desenvoute.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CAPA": {
+    "meaning": "Le porteur TENTE un retrait de PA.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CMPA": {
+    "meaning": "Le porteur TENTE un retrait de PM.",
+    "confidence": "certain",
+    "corpusCount": 0,
+    "examples": []
+   },
+   "CAPAS": {
+    "meaning": "Le porteur REUSSIT un retrait de PA (S = succes).",
+    "confidence": "probable",
+    "corpusCount": 1,
+    "examples": [
+     "Ralentissement [effet 792, triggers=CAPAS, masque=C]"
+    ]
+   },
+   "CMPAS": {
+    "meaning": "Le porteur REUSSIT un retrait/vol de PM.",
+    "confidence": "probable",
+    "corpusCount": 4,
+    "examples": [
+     "Ronces Agressives [effet 1160, triggers=CMPAS, masque=C]",
+     "Périscope [effet 1160, triggers=CMPAS, masque=C]"
+    ]
+   },
+   "CPD": {
+    "meaning": "Le porteur occasionne des dommages de poussee.",
+    "confidence": "probable",
+    "corpusCount": 1,
+    "examples": [
+     "Toupet [effet 1160, triggers=PO|CPD, masque=A]"
+    ]
+   },
+   "CPT": {
+    "meaning": "Une entite traverse un portail (Entraide/Vestige Eliotrope: 'lorsqu'une entite traverse un portail').",
+    "confidence": "probable",
+    "corpusCount": 3,
+    "examples": [
+     "Entraide [effet 1160, triggers=CPT, masque=C]",
+     "Vestige [effet 1109, triggers=CPT, masque=a]"
+    ]
+   },
+   "CCMPARR": {
+    "meaning": "Pour CHAQUE PM utilise (depense en deplacement) par le PORTEUR: effet applique/empile une fois par PM (Agitation, Mot Malicieux, Remanence, Tourbiere, Sentinelle).",
+    "confidence": "probable",
+    "corpusCount": 13,
+    "examples": [
+     "Agitation [effet 138, triggers=CCMPARR, masque=a]",
+     "Rémanence [effet 1160, triggers=CCMPARR, masque=a]",
+     "Tourbière [effet 293, triggers=CCMPARR, masque=C]"
+    ]
+   },
+   "CMPARR": {
+    "meaning": "Pour chaque PM utilise par le LANCEUR du buff (Laisse Spirituelle: la cible suit le lanceur quand il utilise ses PM) ou par le porteur (Tarot 'Le Soleil').",
+    "confidence": "incertain",
+    "corpusCount": 8,
+    "examples": [
+     "Laisse Spirituelle [effet 2184, triggers=CMPARR, masque=g,A]",
+     "Mot Malicieux [effet 3793, triggers=CMPARR, masque=a,A]",
+     "XIX. Le Soleil - Tarot d'Ecaflip [effet 1160, triggers=CMPARR, masque=a,A]"
+    ]
+   },
+   "X<code>": {
+    "meaning": "Prefixe X: meme declencheur que <code> mais aussi valide si l'evenement TUE le porteur (XD, XPD, XDM, XDS, XDR, XDTB); toujours observe en paire 'D|XD'.",
+    "confidence": "probable",
+    "corpusCount": 0,
+    "examples": []
+   }
+  },
+  "corpusCounts": {
+   "I": 14936,
+   "TE": 207,
+   "D": 174,
+   "TB": 124,
+   "H": 53,
+   "DM": 48,
+   "XD": 43,
+   "EOFF#": 39,
+   "EON#": 37,
+   "X": 33,
+   "PD": 28,
+   "DBE": 23,
+   "M": 14,
+   "TP": 14,
+   "DR": 13,
+   "CCMPARR": 13,
+   "DIS": 12,
+   "MS": 11,
+   "DT": 8,
+   "MA": 8,
+   "XPD": 8,
+   "CMPARR": 8,
+   "XDM": 7,
+   "CC": 7,
+   "DE": 7,
+   "DF": 7,
+   "DW": 7,
+   "DA": 7,
+   "DTB": 6,
+   "DTE": 6,
+   "PT": 6,
+   "DV": 5,
+   "MPA": 5,
+   "CMPAS": 4,
+   "P": 4,
+   "K": 4,
+   "CI": 3,
+   "CPT": 3,
+   "V": 2,
+   "VA": 2,
+   "VM": 2,
+   "VE": 2,
+   "LPU": 2,
+   "XDTB": 2,
+   "DN": 2,
+   "R": 2,
+   "APA": 2,
+   "DS": 2,
+   "XDS": 2,
+   "CS": 2,
+   "CH": 2,
+   "PO": 1,
+   "CPD": 1,
+   "CAPAS": 1,
+   "DI": 1,
+   "CDE": 1,
+   "CDF": 1,
+   "CDW": 1,
+   "CDA": 1,
+   "XDR": 1,
+   "DBA": 1
+  },
+  "unmappedCodes": [],
+  "sources": [
+   "OTOMAI FighterManagement/HaxeBuff.cs (ShouldBeTriggeredOnTarget/OnCaster/OnTargetDamage)",
+   "OTOMAI DamageCalculator.TriggerHandler/TriggerBuff",
+   "D2CLIENT DamageUtil.verifyEffectTrigger"
+  ]
+ },
+ "statesCriterion": {
+  "description": "Condition de LANCEMENT d'un sort (spell-level.statesCriterion) sur les etats du LANCEUR.",
+  "grammar": "expr := term (('&'|'|') term)* ; term := 'HS=' stateId | 'HS!' stateId | '(' expr ')'",
+  "semantics": {
+   "HS=x": "le lanceur possede l'etat x",
+   "HS!x": "le lanceur ne possede pas l'etat x",
+   "&": "ET",
+   "|": "OU"
+  },
+  "examples": {
+   "HS!7": 64,
+   "HS!3735": 38,
+   "HS=135": 35,
+   "HS=3360|HS=3589": 32,
+   "HS!238": 16,
+   "HS=98": 15,
+   "HS=3": 13,
+   "HS=100": 13,
+   "HS=99": 13,
+   "HS=498": 12,
+   "HS=98|HS=99": 10,
+   "HS=98|HS=100": 9
+  },
+  "note": "Ex: Vortex 'Heuristique' HS!236 = non lancable en etat Marginal (236); 'Contamination zombie' HS=236."
+ },
+ "dispellable": {
+  "1": "dissipable (desenvoutement, 1075 / 406...)",
+  "2": "dissipable uniquement a la mort",
+  "3": "dissipable uniquement par desenvoutement 'fort'",
+  "4": "jamais",
+  "source": "D2CLIENT FightDispellableEnum + BasicBuff.canBeDispell"
+ },
+ "durations": {
+  "rule": "Les durees (duration) et delais (delay) des buffs sont decrementes au DEBUT du tour de leur source (aliveSource = lanceur, ou entite declencheuse pour un buff issu d'un declenchement 'D...'). Un buff 'duration 1' pose sur un ennemi dure donc jusqu'au debut du prochain tour du lanceur (il couvre le tour de l'ennemi).",
+  "infinite": "duration -1 (stocke -1000) ou >= 63: jamais decremente.",
+  "delay": "delay N: l'effet est stocke et ne s'applique qu'apres N decrements (au debut du N-ieme prochain tour du lanceur).",
+  "turnStartBonus": "OTOMAI: un buff avec trigger TB pose pendant le tour du lanceur gagne +1 tour de TurnDuration pour ne pas expirer avant son premier declenchement.",
+  "sources": [
+   "D2CLIENT BuffManager.decrementDuration/incrementDuration (INCREMENT_MODE_SOURCE)",
+   "D2CLIENT FightBattleFrame (GameFightTurnStartMessage)",
+   "D2CLIENT TriggeredBuff.incrementDuration (delay)",
+   "OTOMAI HaxeBuff (ctor TurnDuration)"
+  ]
+ },
+ "randomEffects": {
+  "rule": "Effets avec random > 0: regroupes par 'group' (group 0 => groupe individuel); UN SEUL groupe est tire, avec probabilite proportionnelle a la somme des poids. Les effets non aleatoires places avant le dernier effet aleatoire sont executes d'abord, puis le groupe tire, puis les effets non aleatoires suivants.",
+  "sources": [
+   "OTOMAI SpellManagement/RandomGroup.cs",
+   "OTOMAI DamageCalculator.ExecuteSpell"
+  ]
+ }
+}

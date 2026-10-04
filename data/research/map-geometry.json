@@ -1,0 +1,1004 @@
+{
+  "_meta": {
+    "title": "Géométrie des cartes de combat Dofus (Dofus 2 / Dofus 3)",
+    "version": "2026-10-04",
+    "language": "Commentaires en français, clés en anglais",
+    "sources": [
+      {
+        "id": "D2_MapPoint",
+        "url": "https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/jerakine/types/positions/MapPoint.as",
+        "note": "client Dofus 2 décompilé : MAP_WIDTH=14, MAP_HEIGHT=20, CELLPOS, isInMap, vecteurs de direction"
+      },
+      {
+        "id": "D2_AtouinConstants",
+        "url": "https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/atouin/AtouinConstants.as",
+        "note": "MAP_CELLS_COUNT=560, CELL_WIDTH=86, CELL_HEIGHT=43, CELL_HALF_HEIGHT=21.5, PSEUDO_INFINITE=63"
+      },
+      {
+        "id": "D2_LosDetector",
+        "url": "https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/jerakine/map/LosDetector.as",
+        "note": "LoS : parcourt les cellules de la ligne, bloque sur cellule los=false ou entité sur une cellule intermédiaire"
+      },
+      {
+        "id": "D2_Dofus2Line",
+        "url": "https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/jerakine/utils/display/Dofus2Line.as",
+        "note": "délègue à MapTools.getLOSCellsVector (code Haxe partagé, non décompilable dans le dépôt)"
+      },
+      {
+        "id": "D2_DataMapProvider",
+        "url": "https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/atouin/utils/DataMapProvider.as",
+        "note": "pointLos / pointMov / hasEntity"
+      },
+      {
+        "id": "D2_CellData",
+        "url": "https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/atouin/data/map/CellData.as",
+        "note": "bits des cellules (mov, los, nonWalkableDuringFight, red, blue, ...)"
+      },
+      {
+        "id": "D2_FightSpellCastFrame",
+        "url": "https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/dofus/logic/game/fight/frames/FightSpellCastFrame.as",
+        "note": "forme de la zone de portée (Lozenge/Cross/diagonale), bonus de PO, ciblage via portails"
+      },
+      {
+        "id": "D2_FightPreparationFrame",
+        "url": "https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/dofus/logic/game/fight/frames/FightPreparationFrame.as",
+        "note": "couleurs de placement : challengers rouge 0xDD2200, défenseurs bleu 0x0022DD"
+      },
+      {
+        "id": "D3_MapTools_port",
+        "url": "local:.cache/domath/haxe/Tools/MapTools.cs",
+        "note": "portage C# (projet BubbleBot, namespace Bubble.DamageCalculation) du code Haxe de calcul de combat de Dofus 3 : GetCellCoordById, GetCellIdByCoord, GetCellsIdBetween (ligne de vue), directions"
+      },
+      {
+        "id": "D3_PushUtils_port",
+        "url": "local:.cache/domath/haxe/DamageManagement/PushUtils.cs",
+        "note": "poussées : diagonale = distance ceil(d/2), passage diagonal exige les 2 cases latérales libres"
+      },
+      {
+        "id": "D2_Cross_Lozenge",
+        "url": "https://raw.githubusercontent.com/Romain-P/d2gen/master/scripts/com/ankamagames/jerakine/types/zones/Cross.as",
+        "note": "zones de portée : Cross (ligne / diagonale / 8 directions, rayon diagonal compté en pas diagonaux) et Lozenge (…/zones/Lozenge.as) ; addCell ne garde que les cases pointMov (marchables)"
+      },
+      {
+        "id": "Kohana_MapTools",
+        "url": "https://raw.githubusercontent.com/SharpMan/kohana-gameserver/master/src/koh/game/entities/maps/pathfinding/MapTools.java",
+        "note": "émulateur Java : décompilation de MapTools._createCellsListForCells (Haxe, appelé par getLOSCellsVector) ; avec les conditions remises à l'endroit (De Morgan), mêmes ensembles de cases que le DDA GetCellsIdBetween sur les 313 040 paires"
+      }
+    ],
+    "verified": "Toutes les formules ci-dessous ont été vérifiées par script (Python) sur les 560 cellules contre la boucle d'initialisation MapPoint.init() du client et contre GetCellIdByCoord du portage Haxe.",
+    "verification": {
+      "date": "2026-10-04",
+      "checked": "Recalcul indépendant : 560 cellules vs MapPoint.init et formules Haxe, offsets par parité, 10 exemples de cellules, 8 distances, 8 lignes de vue (toutes exactes) ; DDA vs décompilation Haxe de Kohana sur les 313 040 paires (identiques) ; drapeaux CellData, couleurs, DirectionsEnum.",
+      "changed": "rangeShapes réécrit (diagonales en pas diagonaux, cases marchables seulement, forme 'l', ordre du test 63, plafond 280) ; pushGeometry : règle des dommages de collision en chaîne ; cellData.dofusdbD3Format ajouté ; lineOfSight.symmetry précisé et lineOfSight.crossCheck ajouté."
+    }
+  },
+  "constants": {
+    "MAP_WIDTH": 14,
+    "MAP_HEIGHT": 20,
+    "HALF_ROWS": 40,
+    "CELL_COUNT": 560,
+    "CELL_WIDTH_PX": 86,
+    "CELL_HALF_WIDTH_PX": 43,
+    "CELL_HEIGHT_PX": 43,
+    "CELL_HALF_HEIGHT_PX": 21.5,
+    "PSEUDO_INFINITE": 63,
+    "INVALID_CELL_ID": -1,
+    "X_RANGE": [
+      0,
+      33
+    ],
+    "Y_RANGE": [
+      -19,
+      13
+    ],
+    "X_PLUS_Y_RANGE": [
+      0,
+      27
+    ],
+    "X_MINUS_Y_RANGE": [
+      0,
+      39
+    ]
+  },
+  "layout": {
+    "description": "La carte est une grille isométrique de 40 demi-lignes (rows) de 14 cellules. cellId = row*14 + col. Les lignes impaires sont décalées d'une demi-cellule vers la droite à l'écran. Le repère logique (x,y) est la rotation de 45° utilisée par le client (MapPoint) : deux cellules adjacentes (côté commun) diffèrent de 1 sur x OU sur y.",
+    "row": "row = floor(cellId / 14)   (0..39, de haut en bas à l'écran)",
+    "col": "col = cellId % 14          (0..13, de gauche à droite)",
+    "screenX_px": "px = col*86 + (row % 2)*43",
+    "screenY_px": "py = row*21.5",
+    "axes": "x augmente vers le bas-droite de l'écran (SE), y augmente vers le haut-droite (NE). x+y = 2*col + (row%2) (position horizontale en demi-cellules), x-y = row (position verticale en demi-lignes)."
+  },
+  "formulas": {
+    "cellToXY": {
+      "x": "x = col + ceil(row/2) = col + floor((row+1)/2)",
+      "y": "y = col - floor(row/2)",
+      "haxeEquivalent": "floorDiv = floor(id/14); half = floor((floorDiv+1)/2); diff = floorDiv - half; xInRow = id - floorDiv*14; x = half + xInRow; y = xInRow - diff",
+      "d2Equivalent": "MapPoint.init(): startX=startY=0; pour a in 0..19 { pour b in 0..13: CELLPOS[cell++]=(startX+b, startY+b); startX++; pour b in 0..13: CELLPOS[cell++]=(startX+b, startY+b); startY-- }"
+    },
+    "xyToCell": {
+      "formula": "si invalide -> -1 ; sinon row = x - y ; col = floor((x + y)/2) ; cellId = row*14 + col",
+      "haxeEquivalent": "floor((x - y)*14 + y + (x - y)/2)"
+    },
+    "isValidXY": "0 <= x + y <= 27  ET  0 <= x - y <= 39   (MapPoint.isInMap : x+y>=0 && x-y>=0 && x-y<40 && x+y<28)",
+    "isValidCellId": "0 <= cellId < 560",
+    "distance": "distance(a,b) = |xa - xb| + |ya - yb|   (Manhattan dans le repère tourné ; c'est la distance de PO et de PM)",
+    "adjacent": "distance == 1 (4 voisins au maximum)",
+    "inLine": "xa == xb || ya == yb   (sorts 'lancer en ligne')",
+    "inDiagonal": "|xa - xb| == |ya - yb|  (sorts 'lancer en diagonale'; à l'écran ce sont les axes horizontal/vertical)",
+    "euclideanForLoS": "la ligne de vue utilise les coordonnées (x,y) et un DDA (voir lineOfSight)"
+  },
+  "directions": {
+    "description": "Numérotation officielle (DirectionsEnum / MapDirection). Les directions IMPAIRES sont les 4 directions de déplacement (voisins par un côté). Les directions PAIRES ('cardinales' dans le code Haxe, IsCardinal) sont les diagonales du repère logique = horizontales/verticales à l'écran.",
+    "list": [
+      {
+        "id": 0,
+        "name": "RIGHT / E (droite écran)",
+        "dxdy": [
+          1,
+          1
+        ],
+        "orthogonal": false,
+        "cellIdOffset": {
+          "evenRow": 1,
+          "oddRow": 1
+        }
+      },
+      {
+        "id": 1,
+        "name": "DOWN_RIGHT / SE",
+        "dxdy": [
+          1,
+          0
+        ],
+        "orthogonal": true,
+        "cellIdOffset": {
+          "evenRow": 14,
+          "oddRow": 15
+        }
+      },
+      {
+        "id": 2,
+        "name": "DOWN / S (bas écran)",
+        "dxdy": [
+          1,
+          -1
+        ],
+        "orthogonal": false,
+        "cellIdOffset": {
+          "evenRow": 28,
+          "oddRow": 28
+        }
+      },
+      {
+        "id": 3,
+        "name": "DOWN_LEFT / SW",
+        "dxdy": [
+          0,
+          -1
+        ],
+        "orthogonal": true,
+        "cellIdOffset": {
+          "evenRow": 13,
+          "oddRow": 14
+        }
+      },
+      {
+        "id": 4,
+        "name": "LEFT / W (gauche écran)",
+        "dxdy": [
+          -1,
+          -1
+        ],
+        "orthogonal": false,
+        "cellIdOffset": {
+          "evenRow": -1,
+          "oddRow": -1
+        }
+      },
+      {
+        "id": 5,
+        "name": "UP_LEFT / NW",
+        "dxdy": [
+          -1,
+          0
+        ],
+        "orthogonal": true,
+        "cellIdOffset": {
+          "evenRow": -15,
+          "oddRow": -14
+        }
+      },
+      {
+        "id": 6,
+        "name": "UP / N (haut écran)",
+        "dxdy": [
+          -1,
+          1
+        ],
+        "orthogonal": false,
+        "cellIdOffset": {
+          "evenRow": -28,
+          "oddRow": -28
+        }
+      },
+      {
+        "id": 7,
+        "name": "UP_RIGHT / NE",
+        "dxdy": [
+          0,
+          1
+        ],
+        "orthogonal": true,
+        "cellIdOffset": {
+          "evenRow": -14,
+          "oddRow": -13
+        }
+      }
+    ],
+    "warning": "Les offsets de cellId ne suffisent pas : toujours valider via (x,y) (isValidXY) car aux bords gauche/droit l'offset pointe sur une cellule de l'autre bord.",
+    "opposite": "opposite(d) = (d + 4) % 8",
+    "lookDirection4": "GetLookDirection4(a,b) : si |dx|>|dy| -> (dx_a-b<0 ? 1 : 5) sinon (dy_a-b<0 ? 7 : 3) avec dx_a-b = xa-xb",
+    "lookDirection8Exact": "en ligne : dy==0 -> (dx<0?5:1), dx==0 -> (dy<0?3:7) ; en diagonale : dx==-dy -> (dx<0?6:2), dx==dy -> (dx<0?4:0) ; sinon -1 (dx=xb-xa, dy=yb-ya)"
+  },
+  "cellData": {
+    "description": "Drapeaux par cellule lus dans les fichiers de carte (.dlm D2, repris tels quels en D3). Le moteur n'a besoin que de mov, nonWalkableDuringFight, los, red, blue (placement).",
+    "mapVersionGte9_bits": {
+      "mov": "(bits & 1) == 0",
+      "nonWalkableDuringFight": "(bits & 2) != 0",
+      "nonWalkableDuringRP": "(bits & 4) != 0",
+      "los": "(bits & 8) == 0",
+      "blue": "(bits & 16) != 0",
+      "red": "(bits & 32) != 0",
+      "visible": "(bits & 64) != 0",
+      "farmCell": "(bits & 128) != 0",
+      "havenbagCell(v>=10)": "(bits & 256) != 0"
+    },
+    "mapVersionLt9_losmov": {
+      "mov": "(losmov & 1)==1",
+      "los": "(losmov & 2)==2",
+      "nonWalkableDuringFight": "(losmov & 4)==4",
+      "red": "(losmov & 8)==8",
+      "blue": "(losmov & 16)==16",
+      "farmCell": "(losmov & 32)==32",
+      "visible": "(losmov & 64)==64",
+      "nonWalkableDuringRP": "(losmov & 128)==128"
+    },
+    "walkableInFight": "mov && !nonWalkableDuringFight",
+    "transparentForLoS": "los",
+    "typicalCases": {
+      "sol": "mov=1, los=1",
+      "obstacle (arbre, mur, rocher)": "mov=0, los=0",
+      "trou / eau / vide": "mov=0, los=1 (on voit à travers mais on ne marche pas)",
+      "case hors carte (floor=-1280)": "inexistante"
+    },
+    "dofusdbD3Format": {
+      "url": "https://api.dofusdb.fr/maps/<mapId>.json -> cellsData[0..559]",
+      "fields": "cellNumber, mov, los, nonWalkableDuringFight, nonWalkableDuringRP, red, blue, visible, farmCell, havenbagCell, floor, moveZone, linkedZone, speed, mapChangeData, arrow",
+      "semantics": "valeurs 0/1 DÉJÀ DÉCODÉES et positives : mov=1 => marchable, los=1 => transparent. NE PAS réappliquer les masques de bits ci-dessus (dans le binaire v>=9, le bit 1 posé signifie NON marchable).",
+      "example_map_143393281": "222 cases mov=1 ; 262 mov=0,los=1 (vide/trou) ; 76 mov=0,los=0 (obstacles) ; red = [424,427,430,438,440,441,443,453,455,457,482,484] ; blue = [268..277]"
+    }
+  },
+  "placement": {
+    "challengers": {
+      "teamId": 0,
+      "color": "rouge 0xDD2200 (14492160)",
+      "pvm": "les joueurs (attaquants)"
+    },
+    "defenders": {
+      "teamId": 1,
+      "color": "bleu 0x0022DD (8925)",
+      "pvm": "les monstres"
+    },
+    "note": "Les cases de départ sont envoyées par le serveur (GameFightPlacementPossiblePositionsMessage.positionsForChallengers / positionsForDefenders). Elles proviennent des données de la carte (drapeaux red/blue ou positions de combat). Voir mechanics.md §Placement."
+  },
+  "lineOfSight": {
+    "lineAlgorithm": {
+      "name": "GetCellsIdBetween / MapTools.getLOSCellsVector (DDA 'supercover' sur les centres de cellules)",
+      "pseudoCode": [
+        "si a == b : []",
+        "(x1,y1)=xy(a) ; (x2,y2)=xy(b) ; dx=x2-x1 ; dy=y2-y1 ; d=sqrt(dx²+dy²)",
+        "stepX=dx/d ; stepY=dy/d ; absStepX=|1/stepX| (Infinity si dx=0) ; absStepY=|1/stepY|",
+        "signX = stepX<0 ? -1 : 1 ; signY = stepY<0 ? -1 : 1",
+        "progressX = 0.5*absStepX ; progressY = 0.5*absStepY ; out=[]",
+        "tant que (x1,y1) != (x2,y2) :",
+        "  si |progressX - progressY| < 0.0001 : progressX+=absStepX ; progressY+=absStepY ; x1+=signX ; y1+=signY   // passage exact par un coin : pas diagonal, les 2 cases latérales NE SONT PAS testées",
+        "  sinon si progressX < progressY : progressX+=absStepX ; x1+=signX",
+        "  sinon : progressY+=absStepY ; y1+=signY",
+        "  out.push(cellId(x1,y1))",
+        "retourne out   // exclut la case du lanceur, inclut la case cible en dernier"
+      ]
+    },
+    "visibilityRule": [
+      "Pour chaque cellule c de la ligne (dans l'ordre lanceur -> cible) :",
+      "  - si c n'est pas la cible : c doit avoir los=true ET ne porter aucune entité bloquante (tout combattant vivant visible, sauf le lanceur lui-même)",
+      "  - la cible : seulement los=true (l'entité sur la case ciblée ne bloque pas)",
+      "Les marques (glyphes, pièges, portails, runes) ne bloquent jamais la LdV.",
+      "Une ligne qui passe exactement par le coin commun de deux obstacles est VISIBLE (pas diagonal du DDA)."
+    ],
+    "symmetry": "Vérifié : le DDA est symétrique en ensembles de cases intermédiaires sur les 313 040 paires ordonnées (A->B et B->A testent les mêmes cases). Le moteur calcule néanmoins depuis le lanceur, comme le client (LosDetector).",
+    "examples": [
+      {
+        "from": 215,
+        "to": 300,
+        "fromXY": [
+          13,
+          -2
+        ],
+        "toXY": [
+          17,
+          -4
+        ],
+        "distance": 6,
+        "inLine": false,
+        "inDiagonal": false,
+        "lineCells": [
+          230,
+          243,
+          258,
+          272,
+          286,
+          300
+        ],
+        "cellsToCheck": "tous sauf le dernier (cible) : flag los=true ET aucune entité bloquante ; la cible : flag los=true seulement"
+      },
+      {
+        "from": 300,
+        "to": 215,
+        "fromXY": [
+          17,
+          -4
+        ],
+        "toXY": [
+          13,
+          -2
+        ],
+        "distance": 6,
+        "inLine": false,
+        "inDiagonal": false,
+        "lineCells": [
+          286,
+          272,
+          258,
+          243,
+          230,
+          215
+        ],
+        "cellsToCheck": "tous sauf le dernier (cible) : flag los=true ET aucune entité bloquante ; la cible : flag los=true seulement"
+      },
+      {
+        "from": 100,
+        "to": 300,
+        "fromXY": [
+          6,
+          -1
+        ],
+        "toXY": [
+          17,
+          -4
+        ],
+        "distance": 14,
+        "inLine": false,
+        "inDiagonal": false,
+        "lineCells": [
+          115,
+          129,
+          143,
+          157,
+          172,
+          186,
+          214,
+          229,
+          243,
+          258,
+          271,
+          286,
+          300
+        ],
+        "cellsToCheck": "tous sauf le dernier (cible) : flag los=true ET aucune entité bloquante ; la cible : flag los=true seulement"
+      },
+      {
+        "from": 215,
+        "to": 219,
+        "fromXY": [
+          13,
+          -2
+        ],
+        "toXY": [
+          17,
+          2
+        ],
+        "distance": 8,
+        "inLine": false,
+        "inDiagonal": true,
+        "lineCells": [
+          216,
+          217,
+          218,
+          219
+        ],
+        "cellsToCheck": "tous sauf le dernier (cible) : flag los=true ET aucune entité bloquante ; la cible : flag los=true seulement"
+      },
+      {
+        "from": 215,
+        "to": 103,
+        "fromXY": [
+          13,
+          -2
+        ],
+        "toXY": [
+          9,
+          2
+        ],
+        "distance": 8,
+        "inLine": false,
+        "inDiagonal": true,
+        "lineCells": [
+          187,
+          159,
+          131,
+          103
+        ],
+        "cellsToCheck": "tous sauf le dernier (cible) : flag los=true ET aucune entité bloquante ; la cible : flag los=true seulement"
+      },
+      {
+        "from": 200,
+        "to": 241,
+        "fromXY": [
+          11,
+          -3
+        ],
+        "toXY": [
+          12,
+          -5
+        ],
+        "distance": 3,
+        "inLine": false,
+        "inDiagonal": false,
+        "lineCells": [
+          213,
+          228,
+          241
+        ],
+        "cellsToCheck": "tous sauf le dernier (cible) : flag los=true ET aucune entité bloquante ; la cible : flag los=true seulement"
+      },
+      {
+        "from": 129,
+        "to": 213,
+        "fromXY": [
+          8,
+          -1
+        ],
+        "toXY": [
+          11,
+          -4
+        ],
+        "distance": 6,
+        "inLine": false,
+        "inDiagonal": true,
+        "lineCells": [
+          157,
+          185,
+          213
+        ],
+        "cellsToCheck": "tous sauf le dernier (cible) : flag los=true ET aucune entité bloquante ; la cible : flag los=true seulement"
+      },
+      {
+        "from": 0,
+        "to": 559,
+        "fromXY": [
+          0,
+          0
+        ],
+        "toXY": [
+          33,
+          -6
+        ],
+        "distance": 39,
+        "inLine": false,
+        "inDiagonal": false,
+        "lineCells": [
+          14,
+          29,
+          43,
+          57,
+          71,
+          86,
+          100,
+          115,
+          129,
+          143,
+          157,
+          172,
+          186,
+          201,
+          215,
+          230,
+          243,
+          258,
+          272,
+          287,
+          301,
+          316,
+          329,
+          344,
+          358,
+          373,
+          387,
+          402,
+          416,
+          430,
+          444,
+          459,
+          473,
+          488,
+          502,
+          516,
+          530,
+          545,
+          559
+        ],
+        "cellsToCheck": "tous sauf le dernier (cible) : flag los=true ET aucune entité bloquante ; la cible : flag los=true seulement"
+      }
+    ],
+    "crossCheck": {
+      "haxeOriginal": "Client D2 : Dofus2Line.getLine = MapTools.getLOSCellsVector(a,b).reverse() -> _createCellsListForCells (Haxe, corps non décompilé dans d2gen)",
+      "kohanaDecompilation": "Parcours colonne par colonne de l'axe principal ; pour chaque colonne, plage de l'axe secondaire [m + 0,5·pas, m + 1,5·pas] arrondie à 1e-4 ; 1 case si la plage reste dans une même case, sinon 2 cases ; diagonale parfaite traitée à part (pas diagonaux).",
+      "result": "Avec les conditions décompilées remises dans le sens logique, ensembles de cases IDENTIQUES au DDA pour les 313 040 paires ordonnées (0 différence). La transcription littérale de Kohana est cassée (différences même entre cases adjacentes).",
+      "cornerRule": "Passage exact par un coin (non diagonal) : 86 640 paires ordonnées (≈ 28 %) en contiennent au moins un. Les deux cases latérales ne sont PAS testées (client et portage). Attention : src/map/los.ts les teste, il est donc plus restrictif que le client."
+    }
+  },
+  "rangeShapes": {
+    "source": "FightSpellCastFrame.as + Cross.as + Lozenge.as (D2) : sélection de la zone de portée",
+    "rules": [
+      "castInLine effectif = castInLine || forme de zone du sort == 'l'",
+      "si !castInLine && !castInDiagonal && !castTestLos && range == 63 -> ciblage illimité (toute la carte) ; test fait AVANT l'ajout du bonus de PO",
+      "maxRange = range ; si rangeCanBeBoosted : maxRange += bonusPO puis max(minRange, ...) ; puis min(280, ...) (280 = MAP_WIDTH*MAP_HEIGHT) ; puis max(0, ...)",
+      "castInLine && castInDiagonal -> Croix 8 directions : pour r in [minRange, maxRange] : (x±r, y), (x, y±r), (x±r, y±r)",
+      "castInLine seul -> Croix 4 directions : (x±r, y), (x, y±r) pour r in [minRange, maxRange]",
+      "castInDiagonal seul -> (x±r, y±r) pour r in [minRange, maxRange]",
+      "IMPORTANT : en diagonale, r compte des PAS DIAGONAUX ; la case (x+r, y+r) est à la distance de Manhattan 2r. Ex. Esprit Félin (12847), Cabriole (13395), Cri de l'Ours (31132) : ligne+diagonale PO 0-1 => les 8 cases autour du lanceur",
+      "sinon -> Losange : minRange <= |dx|+|dy| <= maxRange",
+      "minRange == 0 -> la case du lanceur est incluse",
+      "Seules les cases MARCHABLES en combat (pointMov : mov && !nonWalkableDuringFight) sont ajoutées : un trou ou un obstacle n'est jamais ciblable",
+      "castTestLos -> filtre de ligne de vue (lineOfSight)"
+    ],
+    "examples": [
+      {
+        "caster": 215,
+        "spell": "ligne+diagonale, minRange 1, range 1",
+        "cells": [
+          230,
+          229,
+          201,
+          202,
+          216,
+          243,
+          214,
+          187
+        ],
+        "note": "4 voisins + 4 diagonales (si toutes marchables)"
+      },
+      {
+        "caster": 215,
+        "spell": "diagonale seule, minRange 1, range 2",
+        "cells": [
+          216,
+          243,
+          214,
+          187,
+          217,
+          271,
+          213,
+          159
+        ],
+        "note": "(x±1,y±1) puis (x±2,y±2)"
+      },
+      {
+        "caster": 215,
+        "spell": "losange, minRange 1, range 1",
+        "cells": [
+          230,
+          229,
+          201,
+          202
+        ]
+      }
+    ]
+  },
+  "pathfinding": {
+    "rules": [
+      "En combat le déplacement est 4-connexe (voisins orthogonaux dans (x,y)) : pas de diagonale (Pathfinding.findPath(..., allowDiag=false, bAllowTroughEntity=false, bIsFighting=true)).",
+      "Chaque pas coûte 1 PM ; le coût d'un chemin = son nombre de pas (BFS suffit, pas de poids de cellule en combat).",
+      "Une cellule est franchissable si mov && !nonWalkableDuringFight && aucun combattant vivant dessus (alliés compris).",
+      "Le tacle s'applique en QUITTANT une case adjacente à un ennemi (voir mechanics.md §Tacle)."
+    ]
+  },
+  "pushGeometry": {
+    "source": "PushUtils.cs (portage Haxe D3)",
+    "rules": [
+      "Source de la poussée = case ciblée (centre de zone) ; si la cible est sur la case ciblée : le lanceur ; si déclenchée par une marque : case principale de la marque ; via portail : portail de sortie. Direction = GetLookDirection4DiagExact(source, cible) si alignés en diagonale (direction paire), sinon GetLookDirection4(source, cible) (direction impaire). Attirance = direction opposée.",
+      "Poussée/attirance en direction paire (diagonale logique) : distance effective = ceil(distance/2) cases ; pour les dommages, la force restante est re-multipliée par 2.",
+      "Un pas diagonal n'est possible que si les deux cases latérales (direction±1) sont libres (AdjacentCellsAllowAccess).",
+      "La poussée s'arrête sur obstacle/combattant (collision), sur un piège ou un mur (StopDrag) ; elle traverse les portails.",
+      "Pas de dommages de collision pour une attirance (Pull : applyCollisionDamage=false).",
+      "Dommages de collision (si force restante > 0 et arrêt non dû à un piège/mur) : max(0, floor(force*(floor(niveau/2)+32+Poussée-PousséeFixeCible)/(4*2^k))), k=0 pour la cible, k=1,2,... pour les combattants percutés en chaîne derrière elle ; la MÊME force est utilisée pour tous (seul 2^k change) ; force limite seulement le NOMBRE de combattants percutés (GetCollateralTargets : force--).",
+      "Force restante = distance demandée (déjà ramenée à ceil(n/2) en diagonale) - cases parcourues ; puis x2 si direction diagonale. Ex. niveau 200, Poussée 0 : poussée orthogonale de 4 bloquée après 1 case => force 3 => cible 99, 1er percuté 49, 2e 24."
+    ]
+  },
+  "distanceExamples": [
+    {
+      "a": 0,
+      "b": 559,
+      "distance": 39,
+      "inLine": false,
+      "inDiagonal": false
+    },
+    {
+      "a": 100,
+      "b": 300,
+      "distance": 14,
+      "inLine": false,
+      "inDiagonal": false
+    },
+    {
+      "a": 215,
+      "b": 300,
+      "distance": 6,
+      "inLine": false,
+      "inDiagonal": false
+    },
+    {
+      "a": 215,
+      "b": 219,
+      "distance": 8,
+      "inLine": false,
+      "inDiagonal": true
+    },
+    {
+      "a": 215,
+      "b": 103,
+      "distance": 8,
+      "inLine": false,
+      "inDiagonal": true
+    },
+    {
+      "a": 0,
+      "b": 13,
+      "distance": 26,
+      "inLine": false,
+      "inDiagonal": true
+    },
+    {
+      "a": 0,
+      "b": 546,
+      "distance": 39,
+      "inLine": false,
+      "inDiagonal": false
+    },
+    {
+      "a": 13,
+      "b": 559,
+      "distance": 39,
+      "inLine": false,
+      "inDiagonal": false
+    }
+  ],
+  "cellExamples": [
+    {
+      "cellId": 0,
+      "row": 0,
+      "col": 0,
+      "rowParity": "even",
+      "x": 0,
+      "y": 0,
+      "xPlusY": 0,
+      "xMinusY": 0,
+      "screen": {
+        "px": 0,
+        "py": 0.0,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": 14,
+        "3_SW_(x,y-1)": -1,
+        "5_NW_(x-1,y)": -1,
+        "7_NE_(x,y+1)": -1
+      },
+      "neighbors4List": [
+        14
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": 1,
+        "2_S_(x+1,y-1)": 28,
+        "4_W_(x-1,y-1)": -1,
+        "6_N_(x-1,y+1)": -1
+      }
+    },
+    {
+      "cellId": 13,
+      "row": 0,
+      "col": 13,
+      "rowParity": "even",
+      "x": 13,
+      "y": 13,
+      "xPlusY": 26,
+      "xMinusY": 0,
+      "screen": {
+        "px": 1118,
+        "py": 0.0,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": 27,
+        "3_SW_(x,y-1)": 26,
+        "5_NW_(x-1,y)": -1,
+        "7_NE_(x,y+1)": -1
+      },
+      "neighbors4List": [
+        27,
+        26
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": -1,
+        "2_S_(x+1,y-1)": 41,
+        "4_W_(x-1,y-1)": 12,
+        "6_N_(x-1,y+1)": -1
+      }
+    },
+    {
+      "cellId": 14,
+      "row": 1,
+      "col": 0,
+      "rowParity": "odd",
+      "x": 1,
+      "y": 0,
+      "xPlusY": 1,
+      "xMinusY": 1,
+      "screen": {
+        "px": 43,
+        "py": 21.5,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": 29,
+        "3_SW_(x,y-1)": 28,
+        "5_NW_(x-1,y)": 0,
+        "7_NE_(x,y+1)": 1
+      },
+      "neighbors4List": [
+        29,
+        28,
+        0,
+        1
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": 15,
+        "2_S_(x+1,y-1)": 42,
+        "4_W_(x-1,y-1)": -1,
+        "6_N_(x-1,y+1)": -1
+      }
+    },
+    {
+      "cellId": 27,
+      "row": 1,
+      "col": 13,
+      "rowParity": "odd",
+      "x": 14,
+      "y": 13,
+      "xPlusY": 27,
+      "xMinusY": 1,
+      "screen": {
+        "px": 1161,
+        "py": 21.5,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": -1,
+        "3_SW_(x,y-1)": 41,
+        "5_NW_(x-1,y)": 13,
+        "7_NE_(x,y+1)": -1
+      },
+      "neighbors4List": [
+        41,
+        13
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": -1,
+        "2_S_(x+1,y-1)": 55,
+        "4_W_(x-1,y-1)": 26,
+        "6_N_(x-1,y+1)": -1
+      }
+    },
+    {
+      "cellId": 28,
+      "row": 2,
+      "col": 0,
+      "rowParity": "even",
+      "x": 1,
+      "y": -1,
+      "xPlusY": 0,
+      "xMinusY": 2,
+      "screen": {
+        "px": 0,
+        "py": 43.0,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": 42,
+        "3_SW_(x,y-1)": -1,
+        "5_NW_(x-1,y)": -1,
+        "7_NE_(x,y+1)": 14
+      },
+      "neighbors4List": [
+        42,
+        14
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": 29,
+        "2_S_(x+1,y-1)": 56,
+        "4_W_(x-1,y-1)": -1,
+        "6_N_(x-1,y+1)": 0
+      }
+    },
+    {
+      "cellId": 100,
+      "row": 7,
+      "col": 2,
+      "rowParity": "odd",
+      "x": 6,
+      "y": -1,
+      "xPlusY": 5,
+      "xMinusY": 7,
+      "screen": {
+        "px": 215,
+        "py": 150.5,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": 115,
+        "3_SW_(x,y-1)": 114,
+        "5_NW_(x-1,y)": 86,
+        "7_NE_(x,y+1)": 87
+      },
+      "neighbors4List": [
+        115,
+        114,
+        86,
+        87
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": 101,
+        "2_S_(x+1,y-1)": 128,
+        "4_W_(x-1,y-1)": 99,
+        "6_N_(x-1,y+1)": 72
+      }
+    },
+    {
+      "cellId": 215,
+      "row": 15,
+      "col": 5,
+      "rowParity": "odd",
+      "x": 13,
+      "y": -2,
+      "xPlusY": 11,
+      "xMinusY": 15,
+      "screen": {
+        "px": 473,
+        "py": 322.5,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": 230,
+        "3_SW_(x,y-1)": 229,
+        "5_NW_(x-1,y)": 201,
+        "7_NE_(x,y+1)": 202
+      },
+      "neighbors4List": [
+        230,
+        229,
+        201,
+        202
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": 216,
+        "2_S_(x+1,y-1)": 243,
+        "4_W_(x-1,y-1)": 214,
+        "6_N_(x-1,y+1)": 187
+      }
+    },
+    {
+      "cellId": 300,
+      "row": 21,
+      "col": 6,
+      "rowParity": "odd",
+      "x": 17,
+      "y": -4,
+      "xPlusY": 13,
+      "xMinusY": 21,
+      "screen": {
+        "px": 559,
+        "py": 451.5,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": 315,
+        "3_SW_(x,y-1)": 314,
+        "5_NW_(x-1,y)": 286,
+        "7_NE_(x,y+1)": 287
+      },
+      "neighbors4List": [
+        315,
+        314,
+        286,
+        287
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": 301,
+        "2_S_(x+1,y-1)": 328,
+        "4_W_(x-1,y-1)": 299,
+        "6_N_(x-1,y+1)": 272
+      }
+    },
+    {
+      "cellId": 546,
+      "row": 39,
+      "col": 0,
+      "rowParity": "odd",
+      "x": 20,
+      "y": -19,
+      "xPlusY": 1,
+      "xMinusY": 39,
+      "screen": {
+        "px": 43,
+        "py": 838.5,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": -1,
+        "3_SW_(x,y-1)": -1,
+        "5_NW_(x-1,y)": 532,
+        "7_NE_(x,y+1)": 533
+      },
+      "neighbors4List": [
+        532,
+        533
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": 547,
+        "2_S_(x+1,y-1)": -1,
+        "4_W_(x-1,y-1)": -1,
+        "6_N_(x-1,y+1)": 518
+      }
+    },
+    {
+      "cellId": 559,
+      "row": 39,
+      "col": 13,
+      "rowParity": "odd",
+      "x": 33,
+      "y": -6,
+      "xPlusY": 27,
+      "xMinusY": 39,
+      "screen": {
+        "px": 1161,
+        "py": 838.5,
+        "note": "coin haut-gauche du losange, CELL_WIDTH=86, CELL_HALF_HEIGHT=21.5"
+      },
+      "neighbors4": {
+        "1_SE_(x+1,y)": -1,
+        "3_SW_(x,y-1)": -1,
+        "5_NW_(x-1,y)": 545,
+        "7_NE_(x,y+1)": -1
+      },
+      "neighbors4List": [
+        545
+      ],
+      "diagonals": {
+        "0_E_(x+1,y+1)": -1,
+        "2_S_(x+1,y-1)": -1,
+        "4_W_(x-1,y-1)": 558,
+        "6_N_(x-1,y+1)": 531
+      }
+    }
+  ]
+}
