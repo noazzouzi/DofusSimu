@@ -26,7 +26,16 @@
  * variables de module).
  */
 import { pushDamage } from '../../../damage/push'
-import { CELL_X, CELL_Y, cellInDirection, directionBetween, lookDirection4, oppositeDirection } from '../../../map/geometry'
+import {
+  CELL_X,
+  CELL_Y,
+  cellInDirection,
+  directionBetween,
+  distance,
+  lookDirection4,
+  lookDirection8,
+  oppositeDirection,
+} from '../../../map/geometry'
 import type { Engine } from '../../engine'
 import type { Fighter, FightState, Glyph } from '../../types'
 import { sustainedPercent } from '../damage/pipeline'
@@ -63,6 +72,32 @@ export function pushDirection(source: number, targeted: number, targetPos: numbe
 export function pullDirection(source: number, targeted: number, targetPos: number): number {
   const d = pushDirection(source, targeted, targetPos)
   return d < 0 ? d : oppositeDirection(d)
+}
+
+/**
+ * Ordre d'application des cibles (port `TargetManagement.ComparePositions`, tri de `DamageCalculator.ComputeEffect`) :
+ * distance à la case ciblée `ref` décroissante pour une poussée (`push`), croissante sinon ; à distance égale,
+ * direction approchée depuis `ref` (`GetLookDirection8`, rang `(dir + 1) % 8` décroissant pour une poussée), puis
+ * numéro de case (décroissant pour les directions 0 / 5 / 6 / 7 d'une poussée, croissant sinon ; inversé pour une
+ * attirance). Ordre total : le résultat ne dépend pas de l'algorithme de tri.
+ */
+export function comparePositions(ref: number, push: boolean, p1: number, p2: number): number {
+  const sign = push ? 1 : -1
+  const dA = distance(p1, ref)
+  const dB = distance(p2, ref)
+  if (dA !== dB) return (dB - dA) * sign
+  if (p1 === p2) return 0
+  let dirA = lookDirection8(ref, p1)
+  let dirB = lookDirection8(ref, p2)
+  if (dirA === dirB) {
+    dirB = 0
+    if (dirA === 0 || dirA === 7 || dirA === 6 || dirA === 5) dirA = p1 < p2 ? -1 : 1
+    else dirA = p1 < p2 ? 1 : -1
+  } else {
+    dirA = (dirA + 1) % 8
+    dirB = (dirB + 1) % 8
+  }
+  return (dirB - dirA) * sign
 }
 
 // ───────────────────────────── destination ─────────────────────────────

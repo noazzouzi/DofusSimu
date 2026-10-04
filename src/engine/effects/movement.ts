@@ -35,11 +35,11 @@ import { casterPassesMask, matchesTargetMask } from '../targetMask'
 import type { Fighter, FightState } from '../types'
 import { carryFighter, throwCarried } from './movement/carry'
 import { cantBeMoved, cellOf, enterCell, FAMILY, fireMoveTriggers, initPositions, isFreeCell, relocate } from './movement/common'
-import { dragFighter, pullDirection, pushDirection } from './movement/drag'
+import { comparePositions, dragFighter, pullDirection, pushDirection } from './movement/drag'
 import { teleportFighter, teleportToCell } from './movement/teleport'
 import { registerEffect, type EffectContext } from './registry'
 
-export { canBePushed, collisionDamage, dragFighter, pullDirection, pushDirection } from './movement/drag'
+export { canBePushed, collisionDamage, comparePositions, dragFighter, pullDirection, pushDirection } from './movement/drag'
 export { canSwitchPosition, canTeleport, mirrorCell, teleportDestination, teleportFighter } from './movement/teleport'
 export { carryFighter, releaseCarried, throwCarried } from './movement/carry'
 export { canUsePortal, portalAt, portalExit, travelThrough } from './movement/portals'
@@ -135,10 +135,21 @@ function pullSource(ctx: EffectContext): number {
   return ctx.mark !== undefined ? ctx.mark.cell : ctx.caster.cell
 }
 
-function byDistanceDesc(ctx: EffectContext): Fighter[] {
-  const center = ctx.targetCell
+// Tri des cibles dans l'ordre du port (`comparePositions`) : comparateurs statiques (pas de fermeture par appel).
+let orderRef = -1
+const PUSH_ORDER = (a: Fighter, b: Fighter): number => comparePositions(orderRef, true, a.cell, b.cell)
+const PULL_ORDER = (a: Fighter, b: Fighter): number => comparePositions(orderRef, false, a.cell, b.cell)
+
+/**
+ * Cibles dans l'ordre d'application du port : de la plus éloignée à la plus proche de la case ciblée pour une poussée
+ * (5, 1021, 1103, 1041), l'inverse pour une attirance (6, 1022, 1042) ; égalités départagées par la direction.
+ */
+function orderedTargets(ctx: EffectContext, push: boolean): Fighter[] {
   const t = ctx.targets
-  if (t.length > 1) t.sort((a, b) => distance(center, b.cell) - distance(center, a.cell))
+  if (t.length > 1) {
+    orderRef = ctx.targetCell
+    t.sort(push ? PUSH_ORDER : PULL_ORDER)
+  }
   return t
 }
 
@@ -146,7 +157,7 @@ function push(ctx: EffectContext): void {
   beginMovementEffect(ctx)
   const id = ctx.effect.effectId
   const opts = { forced: id === 1021, collision: id === 5 }
-  for (const t of byDistanceDesc(ctx)) {
+  for (const t of orderedTargets(ctx, true)) {
     if (!t.alive || ctx.fight.ended) continue
     const dir = pushDirection(pushSource(ctx), ctx.targetCell, t.cell)
     dragFighter(ctx.engine, ctx.fight, ctx.caster, t, ctx.effect.diceNum, dir, opts)
@@ -156,7 +167,7 @@ function push(ctx: EffectContext): void {
 function pull(ctx: EffectContext): void {
   beginMovementEffect(ctx)
   const opts = { forced: ctx.effect.effectId === 1022, pull: true }
-  for (const t of ctx.targets) {
+  for (const t of orderedTargets(ctx, false)) {
     if (!t.alive || ctx.fight.ended) continue
     const dir = pullDirection(pullSource(ctx), ctx.targetCell, t.cell)
     dragFighter(ctx.engine, ctx.fight, ctx.caster, t, ctx.effect.diceNum, dir, opts)
@@ -167,7 +178,7 @@ function pull(ctx: EffectContext): void {
 function casterPushedBack(ctx: EffectContext): void {
   beginMovementEffect(ctx)
   const caster = ctx.caster
-  for (const t of ctx.targets) {
+  for (const t of orderedTargets(ctx, true)) {
     if (!caster.alive || ctx.fight.ended) return
     if (t === caster) continue
     const src = ctx.mark !== undefined ? ctx.mark.cell : t.cell
@@ -180,7 +191,7 @@ function casterPushedBack(ctx: EffectContext): void {
 function casterPulledForward(ctx: EffectContext): void {
   beginMovementEffect(ctx)
   const caster = ctx.caster
-  for (const t of ctx.targets) {
+  for (const t of orderedTargets(ctx, false)) {
     if (!caster.alive || ctx.fight.ended) return
     if (t === caster) continue
     const src = ctx.mark !== undefined ? ctx.mark.cell : t.cell

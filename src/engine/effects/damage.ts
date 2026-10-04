@@ -254,7 +254,8 @@ function healAttackersHandler(ctx: EffectContext): void {
   const t = ctx.trigger
   if (!t || t.type !== 'D' || !t.source || !t.source.alive) return
   const top = currentDamage()
-  const dealt = top ? top.life : (t.amount ?? 0)
+  // Cadre du dommage déclencheur (porteur = cible unique du buff exécuté) ; sinon montant de l'événement.
+  const dealt = top && top.target === ctx.targets[0] ? top.life : (t.amount ?? 0)
   const pct = ctx.effect.value || ctx.effect.diceNum
   const h = Math.floor((dealt * pct) / 100)
   if (h > 0) deliverHeal(ctx, t.source, h)

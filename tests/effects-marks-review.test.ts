@@ -121,3 +121,25 @@ describe('402 — ordre de fin de tour', () => {
     expect(order).toEqual(['TE', 'glyphe'])
   })
 })
+
+describe('effets « info-bulle uniquement » (forClientOnly) — Barricade (Féca 12979)', () => {
+  it("seules les auras réelles (sort de départ de l'invocation Barricade 29300 → 29301) sont posées, pas la ligne d'info-bulle 1091", () => {
+    const engine = newEngine()
+    const feca = player({ name: 'Féca', breedId: 1, spellIds: [12979], cell: cellAt(10, 0), stats: { initiative: 9000 } })
+    const ally = player({ name: 'Allié', breedId: 8, spellIds: [], cell: cellAt(10, 6), stats: { initiative: 10 } })
+    const enemy = monster(3834, cellAt(18, 5), { grade: 1 })
+    const fs = fight(engine, [feca, ally, enemy])
+    turnOf(engine, fs, feca)
+    const target = cellAt(12, 0)
+    const lvl = feca.spells[0].level
+    // L'aura 1091 du sort et l'une des deux invocations 181 sont marquées forClientOnly dans les données.
+    expect(lvl.effects.some(e => e.effectId === 1091 && e.clientOnly)).toBe(true)
+    expect(castSpell(engine, fs, feca, 12979, target).ok).toBe(true)
+    const barricade = fs.fighters.filter(f => f.monsterId === 7864)
+    expect(barricade).toHaveLength(1)
+    const auras = fs.glyphs.filter(g => g.trigger === 'aura')
+    // Sort de départ 29300 → 792 29301 g1 : deux auras (P1 et croix 1) posées par l'invocation elle-même.
+    expect(auras).toHaveLength(2)
+    expect(auras.every(g => g.sourceId === barricade[0].id)).toBe(true)
+  })
+})

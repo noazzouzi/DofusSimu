@@ -285,6 +285,27 @@ describe('1021 / 1022 forcés, 1043, 2184', () => {
   })
 })
 
+describe('ordre des cibles (port TargetManagement.ComparePositions)', () => {
+  it('attirance en zone, cibles à égale distance : départage par direction puis case (la 1re traitée prend le centre)', () => {
+    const engine = newEngine()
+    const caster = player({ name: 'Lanceur', breedId: IOP, cell: cellAt(5, 0) })
+    // B est créé avant A (identifiant plus petit) : l'ordre du port ne dépend pas des identifiants.
+    const b = player({ name: 'B', breedId: IOP, team: 1, cell: cellAt(17, 1) })
+    const a = player({ name: 'A', breedId: IOP, team: 1, cell: cellAt(16, 2) })
+    const fs = fight(engine, [caster, b, a])
+    const pull = effect(6, {
+      diceNum: 3,
+      targetMask: 'A',
+      zone: { shape: 'C', size: 4, minSize: 1, decreaseStepPct: 0, maxDecreaseCount: 0, stopAtTarget: false },
+    })
+    // Même direction approchée (0) depuis le centre (14, 0) et même distance 4 : case de A (205) < case de B (233)
+    // ⇒ A d'abord (attirance) : A rejoint le centre en diagonale, B s'arrête à côté.
+    applyEffects(engine, fs, caster, null, 0, [pull], cellAt(14, 0), caster.cell, false, false, 0)
+    expect(a.cell).toBe(cellAt(14, 0))
+    expect(b.cell).toBe(cellAt(14, 1))
+  })
+})
+
 describe('mode de jet « average » (évaluation de l’IA)', () => {
   it('les dommages de collision sont exacts (aucun aléa) : Mot de Frayeur contre un mur', () => {
     const engine = newEngine()

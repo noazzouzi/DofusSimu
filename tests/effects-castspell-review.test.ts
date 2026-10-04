@@ -8,6 +8,8 @@
 import { describe, expect, it } from 'vitest'
 import { castSpell } from '../src/engine/cast'
 import type { FightEvent } from '../src/engine/types'
+import { getEffectHandler } from '../src/engine/effects/registry'
+import { NOOP_EFFECTS } from '../src/engine/effects/misc'
 import { cellAt, fight, has, monster, newEngine, player, turnOf } from './effects-summons-helpers'
 
 const CRA = 9
@@ -39,5 +41,14 @@ describe('2794 différé — Pluie de Flèches (Cra 32431)', () => {
     // La pluie frappe la zone ciblée (la cible n'a pas bougé) et épargne le voisin du Cra.
     expect(damagesOn(evs, target.id).filter(d => d.source === cra.id && d.element === 4).length).toBe(1)
     expect(damagesOn(evs, neighbour.id)).toHaveLength(0)
+  })
+})
+
+describe('effets neutres (src/engine/effects/misc.ts)', () => {
+  it('challenges (2876 / 2877), mise en scène (2192) et vol de kamas (130) sont des no-op enregistrés', () => {
+    for (const id of [2876, 2877, 2192, 130]) {
+      expect(NOOP_EFFECTS).toContain(id)
+      expect(getEffectHandler(id)?.family).toBe('noop')
+    }
   })
 })
