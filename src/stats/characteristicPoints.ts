@@ -71,6 +71,7 @@ export function emptyPrimaryStats(): PrimaryStatRecord {
 
 /** Niveau pris en compte pour les points et les statistiques (1..200 ; Oméga ⇒ 200). */
 export function statLevel(level: number): number {
+  if (Number.isNaN(level)) return 1
   return Math.max(1, Math.min(MAX_STAT_LEVEL, Math.floor(level)))
 }
 
@@ -107,7 +108,7 @@ function tierIndexAt(tiers: CostTiers, value: number): number {
  */
 export function costToRaise(tiers: CostTiers, from: number, to: number): number {
   if (tiers.length === 0) tiers = [[0, 1]]
-  let value = Math.max(0, from)
+  let value = Number.isFinite(from) ? Math.max(0, from) : 0 // même convention que statValueFromPoints
   let cost = 0
   while (value < to) {
     const i = tierIndexAt(tiers, value)
@@ -143,8 +144,12 @@ export interface StatFromPoints {
  */
 export function statValueFromPoints(tiers: CostTiers, points: number, from = 0): StatFromPoints {
   if (tiers.length === 0) tiers = [[0, 1]]
-  let value = Math.max(0, from)
-  let remaining = Math.max(0, Math.floor(points))
+  // Entrées non finies (NaN, ±Infinity venues d'un build mal formé) ⇒ 0 : sans cette garde, la boucle ci-dessous ne
+  // termine jamais (NaN n'est ni ≤ 0 ni < maxBuys).
+  const start = Number.isFinite(from) ? Math.max(0, from) : 0
+  const invested = Number.isFinite(points) ? Math.max(0, Math.floor(points)) : 0
+  let value = start
+  let remaining = invested
   for (;;) {
     const i = tierIndexAt(tiers, value)
     const tier = tiers[i]
@@ -153,13 +158,12 @@ export function statValueFromPoints(tiers: CostTiers, points: number, from = 0):
     const next = i + 1 < tiers.length ? tiers[i + 1][0] : Infinity
     const maxBuys = next === Infinity ? Infinity : Math.ceil((next - value) / gain)
     const buys = Math.min(maxBuys, Math.floor(remaining / unitCost))
-    if (buys <= 0) break
+    if (!(buys > 0)) break // aussi NaN (paliers mal formés)
     value += buys * gain
     remaining -= buys * unitCost
     if (buys < maxBuys) break
   }
-  const invested = Math.max(0, Math.floor(points))
-  return { value: value - Math.max(0, from), spent: invested - remaining, leftover: remaining }
+  return { value: value - start, spent: invested - remaining, leftover: remaining }
 }
 
 /** Coût (en points) pour faire passer une caractéristique de `from` à `value` pour une classe. */
@@ -241,7 +245,7 @@ export function baseStatsFromPoints(
   let spent = 0
   for (const stat of PRIMARY_STATS) {
     const pts = invested[stat] ?? 0
-    if (pts <= 0) continue
+    if (!(pts > 0) || !Number.isFinite(pts)) continue // négatif / NaN / infini : ignoré (signalé par computeBuildStats)
     const r = statValueFromPoints(breedCostTiers(breed, stat), pts)
     values[stat] = r.value
     leftover[stat] = r.leftover

@@ -51,6 +51,9 @@ describe('stats/characteristicPoints — points disponibles', () => {
     expect(availableCharacteristicPoints(0)).toBe(0)
     expect(statLevel(-5)).toBe(1)
     expect(statLevel(150.7)).toBe(150)
+    expect(statLevel(NaN)).toBe(1)
+    expect(statLevel(Infinity)).toBe(200)
+    expect(availableCharacteristicPoints(NaN)).toBe(0)
   })
 })
 
@@ -116,6 +119,18 @@ describe('stats/characteristicPoints — coûts par palier', () => {
     // 50 points ⇒ 100 ; puis 2 points par point.
     expect(statValueFromPoints(mixed, 60)).toEqual({ value: 105, spent: 60, leftover: 0 })
     expect(pointsForStatValue(mixed, 105)).toBe(60)
+  })
+
+  it('entrées non finies (NaN, ±Infinity) : 0, sans boucle infinie', () => {
+    for (const bad of [NaN, Infinity, -Infinity]) {
+      expect(statValueFromPoints(ELEM, bad), String(bad)).toEqual({ value: 0, spent: 0, leftover: 0 })
+      expect(statValueFromPoints(ELEM, 10, bad), `from ${bad}`).toEqual({ value: 10, spent: 10, leftover: 0 })
+      expect(costToRaise(ELEM, bad, 10)).toBe(10)
+    }
+    expect(costToRaise(ELEM, 0, NaN)).toBe(0)
+    const r = baseStatsFromPoints(undefined, { strength: NaN, agility: Infinity, chance: 50 })
+    expect(r.values).toEqual({ vitality: 0, wisdom: 0, strength: 0, intelligence: 0, chance: 50, agility: 0 })
+    expect(r.spent).toBe(50)
   })
 
   it('paliers vides ⇒ 1:1', () => {

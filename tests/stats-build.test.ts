@@ -658,6 +658,12 @@ describe('stats/build — points, parchemins, variantes de sorts, panoplies', ()
     const bad = computeBuildStats({ ...nakedBuild(IOP), characteristicPoints: { agility: -5, chance: 2.5 } }, DATA)
     expect(bad.valid).toBe(false)
     expect(bad.issues.filter(i => i.code === 'points' && i.severity === 'error')).toHaveLength(2)
+    // Points non finis (build JSON mal formé) : erreur, aucune boucle infinie, stats finies.
+    const nan = computeBuildStats({ ...nakedBuild(IOP), characteristicPoints: { agility: NaN, strength: Infinity } }, DATA)
+    expect(nan.issues.filter(i => i.code === 'points' && i.severity === 'error')).toHaveLength(2)
+    expect(nan.stats.agility).toBe(0)
+    expect(nan.stats.strength).toBe(0)
+    expect(nan.points.spent).toBe(0)
   })
 
   it('parchemins plafonnés à 100', () => {

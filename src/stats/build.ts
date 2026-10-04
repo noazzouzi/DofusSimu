@@ -147,7 +147,13 @@ export interface BuildSetCount {
 }
 
 export interface BuildStatsResult {
-  /** Caractéristiques finales : plafonds appliqués et stats dérivées incluses (initiative, tacle, fuite, …). */
+  /**
+   * Caractéristiques finales : plafonds appliqués et stats dérivées incluses (initiative, tacle, fuite, …).
+   * ⚠ `initiative` est le TOTAL (bonus + Fo + Int + Cha + Agi) : un consommateur qui ajoute lui-même les 4
+   * caractéristiques (ex. `initiativeOf` de src/engine/engine.ts) doit partir de `raw.initiative` (bonus seul).
+   * De même `tackleBlock`/`tackleEvade`/esquives/retraits incluent ⌊Agi/10⌋ / ⌊Sa/10⌋ : après un buff de
+   * caractéristique en combat, recalculer avec `finalizeStats(raw + delta)`.
+   */
   stats: Stats
   /** Sommes brutes avant plafonds et sans stats dérivées (initiative = bonus seul). Sert aux conditions. */
   raw: Stats

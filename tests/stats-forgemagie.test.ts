@@ -170,17 +170,21 @@ describe('stats/forgemagie — options réalistes par objet', () => {
   it('chaque option proposée, seule sur un objet au jet parfait, est acceptée par checkItemForgemagie (tous les objets)', () => {
     // Propriété : listExoOptions ne propose que des lignes réalisables (cohérence avec le contrôle, plafond de 101 de
     // poids inclus pour les transcendances qui s'ajoutent à une ligne existante).
+    // (Échecs collectés puis vérifiés en une fois : ~85 000 options, un `expect` par option serait trop lent.)
     let n = 0
+    const failures: string[] = []
     for (const it of items.values()) {
       if (!isForgeable(it)) continue
       const rolls = maxRolls(it)
       for (const o of listExoOptions(it, { anySlot: true })) {
-        expect(checkItemForgemagie(it, rolls, [o.exo]), `${it.name} (${it.id}) ${o.id}`).toEqual([])
-        expect(o.weight).toBe(lineWeight(o.stat, o.value))
-        expect(o.value).toBeGreaterThanOrEqual(o.minValue)
+        const errors = checkItemForgemagie(it, rolls, [o.exo])
+        if (errors.length > 0) failures.push(`${it.name} (${it.id}) ${o.id} : ${errors.join(' ; ')}`)
+        if (o.weight !== lineWeight(o.stat, o.value)) failures.push(`${it.id} ${o.id} : poids ${o.weight}`)
+        if (o.value < o.minValue) failures.push(`${it.id} ${o.id} : valeur ${o.value} < min ${o.minValue}`)
         n++
       }
     }
+    expect(failures.slice(0, 10)).toEqual([])
     expect(n).toBeGreaterThan(50000)
   })
 
