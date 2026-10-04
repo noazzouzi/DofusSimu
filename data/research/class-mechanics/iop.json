@@ -1,0 +1,6546 @@
+{
+ "breedId": 8,
+ "slug": "iop",
+ "name": "Iop",
+ "nameEn": "Iop",
+ "gameplayDescription": "Guerrier téméraire",
+ "complexity": 1,
+ "dataSource": "api.dofusdb.fr (fichiers du jeu Dofus 3, enregistrements mis à jour jusqu'au 2026-06-23), extraction 2026-10-04 ; valeurs = grade le plus élevé utilisable au niveau 200",
+ "officialRoles": [
+  {
+   "roleId": 5,
+   "role": "Dégâts",
+   "value": 12,
+   "description": "Occasionne d'importants dommages sur une cible ou en zone."
+  },
+  {
+   "roleId": 8,
+   "role": "Amélioration",
+   "value": 8,
+   "description": "Augmente les dommages, les points d'action, de mouvement et les points de vie."
+  },
+  {
+   "roleId": 6,
+   "role": "Placement",
+   "value": 6,
+   "description": "Bondit vers une cible, la repousse ou l'attire."
+  },
+  {
+   "roleId": 2,
+   "role": "Tank",
+   "value": 3,
+   "description": null
+  },
+  {
+   "roleId": 3,
+   "role": "Protection",
+   "value": 3,
+   "description": null
+  },
+  {
+   "roleId": 1,
+   "role": "Entrave",
+   "value": 2,
+   "description": null
+  },
+  {
+   "roleId": 7,
+   "role": "Invocation",
+   "value": 1,
+   "description": null
+  },
+  {
+   "roleId": 4,
+   "role": "Soins",
+   "value": 0,
+   "description": null
+  }
+ ],
+ "roles": [
+  {
+   "role": "dps-melee-terre",
+   "element": "Terre (Force)",
+   "priority": 1,
+   "tags": [
+    "damage",
+    "burst",
+    "melee"
+   ],
+   "description": "Fureur (rampe +40) + Colère de Iop (191–210 au retour) + Pression/Concentration/Pugilat ; meilleur burst mono-cible du jeu sur un boss au contact. Épée de Iop (croix 3, 8 PO) pour la zone."
+  },
+  {
+   "role": "dps-zone-feu-air",
+   "element": "Feu/Air (Intelligence/Agilité) ou multi",
+   "priority": 2,
+   "tags": [
+    "damage",
+    "aoe",
+    "mid_range"
+   ],
+   "description": "Épée Céleste (cercle 2), Épée Divine (croix 3), Couperet/Tannée (ligne/barre + −3 PM), Tumulte, Rassemblement (regroupe puis frappe), Tempête de Puissance : nettoyage de vagues (Vortex)."
+  },
+  {
+   "role": "soutien-offensif",
+   "element": "indifférent",
+   "priority": 3,
+   "tags": [
+    "buff_ally",
+    "ap_gain",
+    "mp_gain"
+   ],
+   "description": "Puissance (+300) sur le meilleur DPS, Précipitation (+5 PA), Agitation (+3 PM, Intaclable), Épée Divine (+30 Do), Vitalité, Détermination : l'Iop peut jouer « booster » d'un autre DPS."
+  },
+  {
+   "role": "contrôle/placement",
+   "element": "indifférent",
+   "priority": 4,
+   "tags": [
+    "placement",
+    "control"
+   ],
+   "description": "Emprise (neutralise 1 ennemi 1 tour), Rassemblement (packing), Menace/Anneau/Friction (attirance), Intimidation/Souffle/Violence (poussée), Massacre (amplifie et renvoie)."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Modificateurs de dégâts de base (effet 293) et sorts à rampe",
+   "description": "Une grande partie du kit Iop augmente ses propres dégâts de base : Fureur (+20 puis +40 si relancé chaque tour, décrémente sinon), Colère de Iop (+110 au retour de relance, soit 3 tours plus tard, pendant 1 tour), Épée du Destin (+40 au retour de relance, 2 tours plus tard), Pugilat (+18 par lancer pour le tour), Accumulation (+24 pendant 3 tours, lancée SUR SOI), Tumulte (+20 par ennemi dans la croix, effet consommé au lancer).",
+   "implementationNotes": "Buff `spellBaseDamageBonus[spellId]` porté par le lanceur, ajouté aux jets min ET max avant Puissance/caractéristiques (cf. formulas.md). Respecter `maxStack` du sort, `duration`, `delay` (les bonus « à la récupération » sont des 293 avec delay=relance et duration=1) et `dispellable=3` (non retirés par un désenvoûtement normal). Pugilat/Tumulte : bonus retirés par un 406 (fin de tour / après lancer)."
+  },
+  {
+   "name": "Fureur : machine à états Fureur I / Fureur II",
+   "description": "Chaque lancer de Fureur (1/tour, 3 PA, mêlée) exécute le sous-sort 28604 sur le lanceur : sans état → pose « Fureur I » (#609) + bonus +20 (2 tours) ; avec Fureur I → « Fureur II » (#5192) + bonus +40 ; avec Fureur II → reste en Fureur II (+40). Un déclencheur différé (fin du tour suivant) fait redescendre d'un cran si le sort n'est pas relancé (II→I→rien).",
+   "implementationNotes": "Implémenter via les sous-sorts (g3 = pose I, g4 = pose II, g2 = décrément au TE avec delay 1). Effet net : dégâts de base 28–32 au 1er tour, 48–52 au 2e, 68–72 dès le 3e tour consécutif (CC 34–38 / 54–58 / 74–78). L'IA doit relancer Fureur CHAQUE tour (contact requis : PO 1, case occupée, LdV)."
+  },
+  {
+   "name": "Tempête de Puissance : marquage I/II et dommages sur l'« ennemi initial »",
+   "description": "Tempête de Puissance (3 PA, 3/tour, 2/cible) marque la cible (état « Tempête de Puissance I » #590 puis « II » #591 si relancée sur la même cible). Lancée sur une AUTRE cible, elle inflige aussi ses dégâts à l'ennemi marqué ailleurs sur la carte : 27–30 Feu s'il est en I, 38–42 Feu s'il est en II, puis retire les marques des autres ennemis.",
+   "implementationNotes": "Les cibles de tous les effets sont calculées AVANT exécution (règle commune du moteur) : les dégâts sur `A,E590`/`A,E591` en zone C63 (toute la carte sauf l'impact) touchent l'ancien marqué avant que le 406 ne le nettoie. Rotation optimale/tour : A, A, B (= 3 lancers) → A prend 2×27–30 puis 38–42 au 3e lancer, B 27–30 et devient marqué I. États infinis (dispellable 2)."
+  },
+  {
+   "name": "Bonus « à la récupération » (Colère de Iop, Épée du Destin)",
+   "description": "Colère de Iop (7 PA, mêlée, relance 3) : 81–100 Terre (CC 107–130) puis +110 dégâts de base pendant 1 tour, 3 tours plus tard (= dès qu'elle est relançable) → 191–210 Terre. Épée du Destin (4 PA, relance 2) : 38–42 Feu puis +40 au retour (78–82).",
+   "implementationNotes": "Buff 293 avec delay = relance et duration 1 (dispellable 3). L'IA doit planifier la réutilisation exactement au tour où le bonus est actif (sinon il est perdu) ; garder 7 PA et le contact au tour T+3."
+  },
+  {
+   "name": "Érosion (effet 776)",
+   "description": "Pression +10 %, Fracture +13 %, Épée Destructrice +13 %, Fustigation +10 % (cumul 2 chacun, 2 tours), Vindicte +20 % (cumul 1). Augmente la part des dégâts reçus convertie en PV max perdus (non soignables).",
+   "implementationNotes": "Stat temporaire `erosionPercent` additionnée à l'érosion de base 10 % ; PV max érodés = floor(dégâts × min(érosion, 50 %) ). Utile contre les boss qui se soignent et dans les combats longs."
+  },
+  {
+   "name": "Amplificateurs de dégâts subis (1163) et renvoi (1223)",
+   "description": "Bond : ennemis adjacents (croix 1 sans centre) à la case d'atterrissage → dommages subis ×115 % jusqu'au prochain tour de l'Iop. Massacre : ennemi ciblé ×115 % pendant 2 tours + à chaque dommage subi, 30 % des dommages finaux sont infligés aux ennemis de la cible (ses alliés) dans un anneau 1–2 autour d'elle. Conquête (Stratège Iop) : invocation-paratonnerre (voir invocations).",
+   "implementationNotes": "1163 = buff déclenché sur la cible (trigger D) multipliant chaque dommage reçu pendant `effectTriggerDuration` tours. 1223 = éclaboussure non boostable de X % des dommages finaux, dans l'élément du coup, sans dégressivité, ne déclenchant pas d'autres renvois."
+  },
+  {
+   "name": "Contrôle : Emprise, Duel, Friction, Coup pour Coup, Rassemblement",
+   "description": "Emprise (3 PA, mêlée, relance 4, globalCooldown −1) : l'ennemi devient Invulnérable (#269) et perd 100 PM (non esquivables) pendant 1 tour → neutralise une menace sans la tuer. Duel : l'Iop et l'ennemi au contact deviennent Invulnérables à distance (#375), Pesanteur (#7), −100 PM. Friction/Coup pour Coup : états réactifs qui attirent/repoussent sur attaque. Rassemblement : attire tout ce qui est dans une croix de 3 vers le centre (1, 2 ou 3 cases selon la distance) = regroupement parfait pour les zones alliées.",
+   "implementationNotes": "Invulnérable = dommages annulés (y compris des alliés). `globalCooldown = -1` (Emprise, Massacre, Duel) : selon docs/research/mechanics.md §4.4, −1 ou 0 = aucune relance globale (INCERTAIN : le document Féca l'interprète comme une relance partagée entre lanceurs de l'équipe)."
+  },
+  {
+   "name": "Déplacements du lanceur",
+   "description": "Bond (téléportation 1–5 PO sans LdV, case libre, interdit en Pesanteur), Déferlement (avance de 5 cases vers la cible en ligne), Menace/Anneau/Rassemblement/Friction (attirances), Intimidation/Souffle/Violence/Coup pour Coup (poussées).",
+   "implementationNotes": "1042 « Avance de N cases » = le lanceur glisse vers la cible jusqu'au contact (stoppé par obstacle/entité, sans tacle). Bond déclenche pièges/glyphes de la case d'arrivée."
+  },
+  {
+   "name": "Buffs de groupe",
+   "description": "Puissance (+300 Puissance, +120 Dommages Poussée, 3 tours, relance 4, sur n'importe quelle entité), Épée Divine (+30 Dommages 4 tours aux alliés en croix 3), Précipitation (+5 PA 1 tour puis −3 PA non esquivables le tour suivant, relance 2), Agitation (+3 PM, Intaclable, +20 Puissance par PM utilisé, relance 2), Vitalité (+20 % Vitalité sur soi / +10 % sur un allié, 4 tours), Détermination (Indéplaçable + bouclier 600, 1 tour), Vertu (bouclier 1000 aux alliés en croix 1 autour de l'Iop, mais −50 Puissance par allié au contact).",
+   "implementationNotes": "Précipitation : l'état « Affaibli » (#42, flag preventsFight dans les données, sens exact INCERTAIN) n'est pas posé sur le lanceur ; le malus −3 PA est un 168 (non esquivable) avec delay 1. Le gain net sur 2 tours est +2 PA mais le timing compte (burst immédiat)."
+  }
+ ],
+ "spells": [
+  {
+   "id": 13106,
+   "spellLevelId": 41276,
+   "pairIndex": 1,
+   "variant": "A",
+   "variantOf": 13139,
+   "name": "Pression",
+   "nameEn": "Pressure",
+   "descriptionFr": "Érode la cible et occasionne des dommages Terre.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 132,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 30,
+    "critMin": 31,
+    "critMax": 36,
+    "element": "Terre",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "10 % d'Érosion sur la cible pendant 2 tours (cumulable 2 fois → 20 %).",
+    "26 à 30 dommages Terre (CC 31 à 36) à la cible — touche aussi un allié ciblé (masque a,A)."
+   ],
+   "role": [
+    "damage",
+    "earth",
+    "erosion",
+    "filler"
+   ],
+   "tactical": "Sort Terre de base très rentable (3 PA, 4/tour, 2/cible, 1–4 PO non modifiable) ; l'érosion cumulée prépare les combats longs.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "kind": "stat_debuff",
+     "text": "10% Érosion",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 10,
+     "duration": 2
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "kind": "damage",
+     "text": "26 à 30 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Terre",
+     "min": 26,
+     "max": 30,
+     "critMin": 31,
+     "critMax": 36
+    }
+   ],
+   "tooltipDecoded": [
+    "10% Érosion — cibles : alliés (lanceur compris), ennemis ; 2 tour(s)",
+    "26 à 30 dommages Terre (CC : 31 à 36 dommages Terre) — cibles : alliés (lanceur compris), ennemis"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 4,
+     "damageBrief": "16–18 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 4,
+     "damageBrief": "20–23 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 4,
+     "damageBrief": "26–30 Terre"
+    }
+   ]
+  },
+  {
+   "id": 13139,
+   "spellLevelId": 44896,
+   "pairIndex": 1,
+   "variant": "B",
+   "variantOf": 13106,
+   "name": "Fracture",
+   "nameEn": "Fracture",
+   "descriptionFr": "Érode les cibles et occasionne des dommages Air en zone.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 162,
+   "unlockLevel": 95,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 32,
+    "max": 36,
+    "critMin": 38,
+    "critMax": 43,
+    "element": "Air",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Zone : toutes les cases de la ligne entre le lanceur et la case ciblée (1–4 PO, en ligne, sans LdV), non dégressive.",
+    "13 % d'Érosion (2 tours, cumul 2) et 32 à 36 dommages Air (CC 38 à 43) à TOUTES les entités de la ligne, alliés compris."
+   ],
+   "role": [
+    "damage",
+    "air",
+    "aoe_line",
+    "erosion"
+   ],
+   "tactical": "Transperce une file d'ennemis en couloir ; attention aux alliés dans la ligne.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "kind": "stat_debuff",
+     "text": "13% Érosion",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "l",
+      "shapeName": "lineFromCaster",
+      "size": 63,
+      "minSize": 1,
+      "damageDecreasePercent": 0,
+      "flags": "s"
+     },
+     "value": 13,
+     "duration": 2
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "kind": "damage",
+     "text": "32 à 36 dommages Air",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "l",
+      "shapeName": "lineFromCaster",
+      "size": 63,
+      "minSize": 1,
+      "damageDecreasePercent": 0,
+      "flags": "s"
+     },
+     "element": "Air",
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43
+    }
+   ],
+   "tooltipDecoded": [
+    "13% Érosion — cibles : alliés (lanceur compris), ennemis ; zone : ligne depuis le lanceur jusqu'à la case ciblée (incluse), non dégressive ; 2 tour(s)",
+    "32 à 36 dommages Air (CC : 38 à 43 dommages Air) — cibles : alliés (lanceur compris), ennemis ; zone : ligne depuis le lanceur jusqu'à la case ciblée (incluse), non dégressive"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "26–29 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "32–36 Air"
+    }
+   ]
+  },
+  {
+   "id": 14676,
+   "spellLevelId": 44899,
+   "pairIndex": 2,
+   "variant": "A",
+   "variantOf": 13130,
+   "name": "Ferveur",
+   "nameEn": "Fervour",
+   "descriptionFr": "Applique un bouclier sur le lanceur et ses alliés et occasionne des dommages Eau aux ennemis en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 133,
+   "unlockLevel": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 16,
+    "max": 19,
+    "critMin": 20,
+    "critMax": 23,
+    "element": "Eau",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Bouclier de 50 % du niveau (100 pts au niv. 200) sur le lanceur (même hors zone) et les alliés dans la croix de 1 autour de l'impact, 2 tours.",
+    "16 à 19 dommages Eau (CC 20 à 23) aux ennemis dans la croix de 1."
+   ],
+   "role": [
+    "damage",
+    "water",
+    "shield",
+    "aoe_small"
+   ],
+   "tactical": "2 PA, 0–5 PO, 2/tour : petit sort de zone qui protège l'Iop et les alliés au contact.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 1020,
+     "action": "CharacterBoostShieldBasedOnCasterLevel",
+     "kind": "shield",
+     "text": "Bouclier : 50% du niveau (= 100 pts au niveau 200)",
+     "targetMask": "C,a",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 50,
+     "duration": 2
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "kind": "damage",
+     "text": "16 à 19 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Eau",
+     "min": 16,
+     "max": 19,
+     "critMin": 20,
+     "critMax": 23
+    }
+   ],
+   "tooltipDecoded": [
+    "Bouclier : 50% du niveau (= 100 pts au niveau 200) — cibles : lanceur, alliés (lanceur compris) ; zone : croix de 1 ; 2 tour(s)",
+    "16 à 19 dommages Eau (CC : 20 à 23 dommages Eau) — cibles : ennemis ; zone : croix de 1"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 3,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "9–11 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "13–15 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "16–19 Eau"
+    }
+   ]
+  },
+  {
+   "id": 13130,
+   "spellLevelId": 78995,
+   "pairIndex": 2,
+   "variant": "B",
+   "variantOf": 14676,
+   "name": "Menace",
+   "nameEn": "Threat",
+   "descriptionFr": "Attire la cible et occasionne des dommages Eau aux ennemis.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 167,
+   "unlockLevel": 100,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 26,
+    "max": 28,
+    "critMin": 31,
+    "critMax": 34,
+    "element": "Eau",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Attire la cible de 2 cases (allié ou ennemi).",
+    "26 à 28 dommages Eau (CC 31 à 34) si c'est un ennemi."
+   ],
+   "role": [
+    "damage",
+    "water",
+    "pull",
+    "placement"
+   ],
+   "tactical": "Ramène un ennemi au contact pour Fureur/Colère (1–3 PO).",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "kind": "movement",
+     "text": "Attire de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 2
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "kind": "damage",
+     "text": "26 à 28 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Eau",
+     "min": 26,
+     "max": 28,
+     "critMin": 31,
+     "critMax": 34
+    }
+   ],
+   "tooltipDecoded": [
+    "Attire de 2 cases — cibles : alliés (lanceur compris), ennemis",
+    "26 à 28 dommages Eau (CC : 31 à 34 dommages Eau) — cibles : ennemis"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "21–23 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "26–28 Eau"
+    }
+   ]
+  },
+  {
+   "id": 13115,
+   "spellLevelId": 78999,
+   "pairIndex": 3,
+   "variant": "A",
+   "variantOf": 13138,
+   "name": "Couperet",
+   "nameEn": "Chopper",
+   "descriptionFr": "Occasionne des dommages Feu et retire des PM en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 134,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 28,
+    "max": 32,
+    "critMin": 34,
+    "critMax": 38,
+    "element": "Feu",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Zone : ligne de 4 cases depuis l'impact (s'éloignant du lanceur), dégressive 10 %/case.",
+    "28 à 32 dommages Feu (CC 34 à 38) et −3 PM esquivables (1 tour) à toutes les entités de la ligne, alliés compris."
+   ],
+   "role": [
+    "damage",
+    "fire",
+    "aoe_line",
+    "mp_removal"
+   ],
+   "tactical": "Retrait PM de zone en couloir (1–6 PO modifiable, en ligne) ; excellent sur une file de monstres de vague.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "kind": "damage",
+     "text": "28 à 32 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "L",
+      "shapeName": "line",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Feu",
+     "min": 28,
+     "max": 32,
+     "critMin": 34,
+     "critMax": 38
+    },
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "kind": "ap_mp",
+     "text": "-3 PM",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "L",
+      "shapeName": "line",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 3,
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "tooltipDecoded": [
+    "28 à 32 dommages Feu (CC : 34 à 38 dommages Feu) — cibles : alliés (lanceur compris), ennemis ; zone : ligne de 4 cases (impact + 3 derrière)",
+    "-3 PM — cibles : alliés (lanceur compris), ennemis ; zone : ligne de 4 cases (impact + 3 derrière) ; 1 tour(s) ; désenvoûtable seulement par effet fort"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "17–19 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "22–25 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "28–32 Feu"
+    }
+   ]
+  },
+  {
+   "id": 13138,
+   "spellLevelId": 44897,
+   "pairIndex": 3,
+   "variant": "B",
+   "variantOf": 13115,
+   "name": "Accumulation",
+   "nameEn": "Accumulation",
+   "descriptionFr": "Occasionne des dommages Terre.\n\nSur le lanceur : augmente les dommages du sort.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 172,
+   "unlockLevel": 105,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 22,
+    "max": 26,
+    "critMin": 26,
+    "critMax": 31,
+    "element": "Terre",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "22 à 26 dommages Terre (CC 26 à 31) à la cible (hors lanceur).",
+    "Si le sort est lancé SUR LE LANCEUR (PO 0) : +24 dégâts de base à Accumulation pendant 3 tours (non cumulable, masque c)."
+   ],
+   "role": [
+    "damage",
+    "earth",
+    "self_buff"
+   ],
+   "tactical": "Lancer d'abord sur soi (3 PA) puis 2× sur l'ennemi (46–50 de base) : rentable sur 3 tours de contact.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "kind": "damage",
+     "text": "22 à 26 dommages Terre",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Terre",
+     "min": 22,
+     "max": 26,
+     "critMin": 26,
+     "critMax": 31
+    },
+    {
+     "effectId": 293,
+     "action": "BoostSpellBaseDmg",
+     "kind": "spell_modifier",
+     "text": "Accumulation : +24 dégâts de base",
+     "targetMask": "c",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 3,
+     "dispellable": 3,
+     "spellRef": {
+      "id": 13138,
+      "name": "Accumulation",
+      "value": 24
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "22 à 26 dommages Terre (CC : 26 à 31 dommages Terre) — cibles : alliés (hors lanceur), ennemis",
+    "Accumulation : +24 dégâts de base — cibles : lanceur (s'il est dans la zone) ; 3 tour(s) ; désenvoûtable seulement par effet fort"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "19–22 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "22–26 Terre"
+    }
+   ]
+  },
+  {
+   "id": 13110,
+   "spellLevelId": 41288,
+   "pairIndex": 4,
+   "variant": "A",
+   "variantOf": 13117,
+   "name": "Épée Divine",
+   "nameEn": "Divine Sword",
+   "descriptionFr": "Occasionne des dommages Air aux ennemis et augmente les Dommages du lanceur et des alliés en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 136,
+   "unlockLevel": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 24,
+    "max": 28,
+    "critMin": 29,
+    "critMax": 34,
+    "element": "Air",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "24 à 28 dommages Air (CC 29 à 34) aux ennemis dans une croix de 3 autour de l'impact (0–3 PO), dégressive.",
+    "+30 Dommages pendant 4 tours au lanceur (même hors zone) et aux alliés dans la croix de 3 (non cumulable)."
+   ],
+   "role": [
+    "damage",
+    "air",
+    "aoe",
+    "buff_ally",
+    "buff_damage"
+   ],
+   "tactical": "Excellent ratio : zone + buff de groupe +30 Do (4 tours) — à lancer quand les alliés sont alignés.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "kind": "damage",
+     "text": "24 à 28 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Air",
+     "min": 24,
+     "max": 28,
+     "critMin": 29,
+     "critMax": 34
+    },
+    {
+     "effectId": 112,
+     "action": "CharacterBoostDamages",
+     "kind": "stat_buff",
+     "text": "30 Dommages",
+     "targetMask": "C,a",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 30,
+     "duration": 4
+    }
+   ],
+   "tooltipDecoded": [
+    "24 à 28 dommages Air (CC : 29 à 34 dommages Air) — cibles : ennemis ; zone : croix de 3",
+    "30 Dommages — cibles : lanceur, alliés (lanceur compris) ; zone : croix de 3 ; 4 tour(s)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "14–17 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "19–22 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "24–28 Air"
+    }
+   ]
+  },
+  {
+   "id": 13117,
+   "spellLevelId": 78997,
+   "pairIndex": 4,
+   "variant": "B",
+   "variantOf": 13110,
+   "name": "Épée du Jugement",
+   "nameEn": "Sword of Judgement",
+   "descriptionFr": "Applique un bouclier sur le lanceur, occasionne des dommages Eau et applique l'état Condamné sur la cible :\n• Occasionne des dommages Eau plus importants à retardement sur la cible.\n\nLe bouclier est plus important et le retardement est réinitialisé sur une cible Condamnée.\n\nSur le lanceur : applique un bouclier.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 177,
+   "unlockLevel": 110,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 31,
+    "max": 35,
+    "critMin": 37,
+    "critMax": 42,
+    "element": "Eau",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "31 à 35 dommages Eau (CC 37 à 42) à la cible (hors lanceur) et état « Condamné » 2 tours.",
+    "Bouclier sur le lanceur : 100 % du niveau (200) ou 200 % (400) si la cible était déjà Condamnée, 2 tours (via sous-sort 28590).",
+    "Dégâts différés : 48 à 52 Eau (CC 58 à 62) sur la cible 2 tours plus tard ; relancer sur une cible Condamnée réinitialise le délai."
+   ],
+   "role": [
+    "damage",
+    "water",
+    "shield",
+    "delayed"
+   ],
+   "tactical": "4 PA, 1/tour, sans LdV : DPS Eau + bouclier personnel ; enchaîner sur la même cible pour 400 de bouclier.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Épée du Jugement » (#28590, rang 1)",
+     "targetMask": "a,A,e5184",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 28590,
+      "grade": 1,
+      "name": "Épée du Jugement"
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Épée du Jugement » (#28590, rang 2)",
+     "targetMask": "a,A,E5184",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 28590,
+      "grade": 2,
+      "name": "Épée du Jugement"
+     }
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "kind": "damage",
+     "text": "31 à 35 dommages Eau",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Eau",
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Condamné »",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 2,
+     "dispellable": 2,
+     "state": {
+      "id": 5184,
+      "name": "Condamné"
+     }
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "kind": "damage",
+     "text": "48 à 52 dommages Eau",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Eau",
+     "min": 48,
+     "max": 52,
+     "critMin": 58,
+     "critMax": 62,
+     "delay": 2,
+     "dispellable": 2
+    }
+   ],
+   "tooltipDecoded": [
+    "Bouclier : 100% du niveau (= 200 pts au niveau 200) — cibles : lanceur [si la cible n'a pas l'état « Condamné »] ; 2 tour(s)",
+    "Bouclier : 200% du niveau (= 400 pts au niveau 200) — cibles : lanceur [si la cible a l'état « Condamné »] ; 2 tour(s)",
+    "31 à 35 dommages Eau (CC : 37 à 42 dommages Eau) — cibles : alliés (hors lanceur), ennemis",
+    "État « Condamné » — cibles : alliés (hors lanceur), ennemis ; 2 tour(s) ; non désenvoûtable (sauf mort)",
+    "48 à 52 dommages Eau (CC : 58 à 62 dommages Eau) — cibles : alliés (hors lanceur), ennemis ; DIFFÉRÉ de 2 tour(s) ; non désenvoûtable (sauf mort)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "26–30 Eau / 41–44 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "31–35 Eau / 48–52 Eau"
+    }
+   ]
+  },
+  {
+   "id": 13108,
+   "spellLevelId": 41282,
+   "pairIndex": 5,
+   "variant": "A",
+   "variantOf": 13148,
+   "name": "Intimidation",
+   "nameEn": "Intimidation",
+   "descriptionFr": "Occasionne des dommages dans le meilleur élément du lanceur aux ennemis et repousse la cible.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 139,
+   "unlockLevel": 5,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 0,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "meilleur élément"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 8,
+    "max": 10,
+    "critMin": 11,
+    "critMax": 13,
+    "element": "meilleur élément",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "8 à 10 dommages dans le meilleur élément du lanceur (CC 11 à 13) à l'ennemi.",
+    "Repousse la cible de 3 cases."
+   ],
+   "role": [
+    "damage",
+    "push",
+    "placement"
+   ],
+   "tactical": "2 PA, 1–2 PO en ligne : poussée de dégagement ou poussée dans un mur (dommages de poussée boostés par Puissance +120 Do Poussée).",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 2822,
+     "action": "CharacterLifePointsLostFromBestElement",
+     "kind": "damage",
+     "text": "8 à 10 dommages du meilleur élément",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "meilleur élément",
+     "min": 8,
+     "max": 10,
+     "critMin": 11,
+     "critMax": 13
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "kind": "movement",
+     "text": "Repousse de 3 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 3
+    }
+   ],
+   "tooltipDecoded": [
+    "8 à 10 dommages du meilleur élément (CC : 11 à 13 dommages du meilleur élément) — cibles : ennemis",
+    "Repousse de 3 cases — cibles : alliés (lanceur compris), ennemis"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "4–6 meilleur élément"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "6–8 meilleur élément"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "8–10 meilleur élément"
+    }
+   ]
+  },
+  {
+   "id": 13148,
+   "spellLevelId": 44576,
+   "pairIndex": 5,
+   "variant": "B",
+   "variantOf": 13108,
+   "name": "Conquête",
+   "nameEn": "Conquest",
+   "descriptionFr": "Invoque un Stratège Iop qui peut renvoyer 50% des dommages qu'il subit en zone autour de lui.\nLe renvoi de dommages n'affecte pas le lanceur.\n\nLe Stratège Iop réduit de 50% les dommages immédiats alliés.\n\nIl ne peut y avoir qu'un seul Stratège Iop par équipe. Si le Stratège Iop est encore présent et que celui-ci est ré-invoqué, l'ancien est détruit pour laisser place au nouveau.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 182,
+   "unlockLevel": 115,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Invoque un Stratège Iop (#5130) statique (0 PA, 0 PM, 200 % des PV de l'Iop INCERTAIN) — 1 seul par équipe, relance 3, relance initiale 1.",
+    "Le Stratège ne subit que 50 % des dommages venant d'alliés.",
+    "Chaque fois qu'il subit des dommages : renvoie 100 % (si l'attaquant est un allié) ou 50 % (si ennemi) des dommages finaux subis à toutes les entités dans un anneau 1–2 autour de lui, sauf l'Iop (état « Stratégie Iop »)."
+   ],
+   "role": [
+    "summon",
+    "aoe",
+    "damage_amplifier"
+   ],
+   "tactical": "À poser au milieu d'un paquet d'ennemis puis à frapper soi-même : chaque coup devient une zone. Attention, les autres alliés autour sont touchés.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 181,
+     "action": "SummonCreature",
+     "kind": "summon",
+     "text": "Invoque : Stratège Iop (#5130, grade 1)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "summon": {
+      "monsterId": 5130,
+      "grade": 1,
+      "name": "Stratège Iop"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "Invoque : Stratège Iop (#5130, grade 1) — cibles : alliés (lanceur compris), ennemis"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 5,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13107,
+   "spellLevelId": 41279,
+   "pairIndex": 6,
+   "variant": "A",
+   "variantOf": 13143,
+   "name": "Bond",
+   "nameEn": "Jump",
+   "descriptionFr": "Téléporte le lanceur sur la case ciblée et augmente les dommages subis par les ennemis en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 144,
+   "unlockLevel": 10,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "HS!7",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "le lanceur n'a pas « Pesanteur »",
+   "effectsSummary": [
+    "Téléporte le lanceur sur la case ciblée (1–5 PO, sans LdV, case libre ; impossible en Pesanteur).",
+    "Les ennemis dans la croix de 1 (sans centre) autour de la case d'arrivée subissent ×115 % de dommages jusqu'au prochain tour de l'Iop."
+   ],
+   "role": [
+    "mobility",
+    "damage_amplifier"
+   ],
+   "tactical": "Engage au contact + amplifie les dégâts de tout le groupe sur les ennemis adjacents (1/tour).",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 4,
+     "action": "CharacterTeleportOnSameMap",
+     "kind": "movement",
+     "text": "Téléporte sur la case ciblée",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 5
+    },
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "kind": "damage_modifier",
+     "text": "Dommages subis x115%",
+     "targetMask": "A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "crossNoCenter",
+      "size": 1,
+      "minSize": 1,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 115,
+     "trigger": "D",
+     "triggerListenTurns": 1
+    }
+   ],
+   "tooltipDecoded": [
+    "Téléporte sur la case ciblée — cibles : alliés (lanceur compris), ennemis",
+    "Dommages subis x115% — cibles : ennemis ; zone : croix de 1 sans le centre ; DÉCLENCHÉ quand : Le porteur subit des dommages (écoute 1 t)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 5,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13143,
+   "spellLevelId": 56403,
+   "pairIndex": 6,
+   "variant": "B",
+   "variantOf": 13107,
+   "name": "Agitation",
+   "nameEn": "Agitation",
+   "descriptionFr": "Augmente les PM de l'allié ciblé et le rend Intaclable.\nAugmente également sa Puissance pour chaque PM utilisé.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 187,
+   "unlockLevel": 120,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Sur un allié (ou soi) : retire les effets d'une Agitation précédente, +3 PM et état Intaclable pendant 1 tour.",
+    "+20 Puissance (1 tour) pour CHAQUE PM utilisé par la cible pendant ce tour (déclencheur CCMPARR, cumulable)."
+   ],
+   "role": [
+    "buff_ally",
+    "mp_gain",
+    "mobility"
+   ],
+   "tactical": "2 PA, relance 2 : un DPS mêlée qui fait 6–9 PM gagne +120 à +180 Puissance et ne peut pas être taclé.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "kind": "dispel",
+     "text": "Enlève les effets du sort Agitation",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true
+    },
+    {
+     "effectId": 128,
+     "action": "CharacterBoostMovementPoints",
+     "kind": "stat_buff",
+     "text": "3 PM",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 3,
+     "duration": 1,
+     "dispellable": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Intaclable »",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "dispellable": 2,
+     "state": {
+      "id": 96,
+      "name": "Intaclable"
+     }
+    },
+    {
+     "effectId": 138,
+     "action": "CharacterBoostDamagesPercent",
+     "kind": "stat_buff",
+     "text": "20 Puissance",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 20,
+     "duration": 1,
+     "trigger": "CCMPARR",
+     "triggerListenTurns": 1
+    }
+   ],
+   "tooltipDecoded": [
+    "3 PM — cibles : alliés (lanceur compris) ; 1 tour(s) ; non désenvoûtable (sauf mort)",
+    "État « Intaclable » — cibles : alliés (lanceur compris) ; 1 tour(s) ; non désenvoûtable (sauf mort)",
+    "20 Puissance — cibles : alliés (lanceur compris) ; 1 tour(s) ; DÉCLENCHÉ quand : Pour CHAQUE PM utilise (écoute 1 t)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 187,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13123,
+   "spellLevelId": 41327,
+   "pairIndex": 7,
+   "variant": "A",
+   "variantOf": 13147,
+   "name": "Concentration",
+   "nameEn": "Concentration",
+   "descriptionFr": "Occasionne des dommages Terre.\nLes dommages sont plus importants sur les invocations.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 149,
+   "unlockLevel": 15,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 3,
+   "maxStack": 0,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 20,
+    "max": 24,
+    "critMin": 25,
+    "critMax": 30,
+    "element": "Terre",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "20 à 24 dommages Terre (CC 25 à 30) sur personnages/monstres non invoqués.",
+    "30 à 34 dommages Terre (CC 37 à 42) sur les invocations."
+   ],
+   "role": [
+    "damage",
+    "earth",
+    "melee",
+    "filler",
+    "anti_summon"
+   ],
+   "tactical": "2 PA, mêlée en ligne, 4/tour, 3/cible : filler Terre ; +50 % contre les invocations.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "kind": "damage",
+     "text": "20 à 24 dommages Terre",
+     "targetMask": "L,M,l,m,c",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Terre",
+     "min": 20,
+     "max": 24,
+     "critMin": 25,
+     "critMax": 30
+    },
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "kind": "damage",
+     "text": "30 à 34 dommages Terre",
+     "targetMask": "J,j",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Terre",
+     "min": 30,
+     "max": 34,
+     "critMin": 37,
+     "critMax": 42
+    }
+   ],
+   "tooltipDecoded": [
+    "20 à 24 dommages Terre (CC : 25 à 30 dommages Terre) — cibles : personnages/compagnons ennemis, monstres ennemis, personnages/compagnons alliés, monstres alliés, lanceur (s'il est dans la zone)",
+    "30 à 34 dommages Terre (CC : 37 à 42 dommages Terre) — cibles : invocations ennemies, invocations alliées"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "13–15 Terre / 19–21 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "16–19 Terre / 25–28 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 1,
+     "cooldown": 0,
+     "maxPerTurn": 4,
+     "damageBrief": "20–24 Terre / 30–34 Terre"
+    }
+   ]
+  },
+  {
+   "id": 13147,
+   "spellLevelId": 78993,
+   "pairIndex": 7,
+   "variant": "B",
+   "variantOf": 13123,
+   "name": "Sentence",
+   "nameEn": "Sentence",
+   "descriptionFr": "Occasionne des dommages Feu et applique l'état Sentence sur la cible :\n• À la fin du tour de la cible, occasionne des dommages Feu aux ennemis en zone autour d'elle.\n\nLes dommages n'affectent pas le lanceur.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 192,
+   "unlockLevel": 125,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 13,
+    "max": 16,
+    "critMin": 17,
+    "critMax": 20,
+    "element": "Feu",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "13 à 16 dommages Feu (CC 17 à 20) à la cible (hors lanceur) et état « Sentence » 1 tour (alliés ou ennemis).",
+    "À la fin du tour de la cible : 26 à 30 dommages Feu (CC 32 à 36) aux ENNEMIS dans un anneau 1–2 autour d'elle (sous-sort 13155), puis retrait de l'état."
+   ],
+   "role": [
+    "damage",
+    "fire",
+    "aoe",
+    "delayed"
+   ],
+   "tactical": "Peut se lancer sur un allié tank entouré d'ennemis : la détonation de fin de tour ne frappe que les ennemis. 1/cible, 3/tour.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "kind": "damage",
+     "text": "13 à 16 dommages Feu",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Feu",
+     "min": 13,
+     "max": 16,
+     "critMin": 17,
+     "critMax": 20
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Sentence »",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "state": {
+      "id": 657,
+      "name": "Sentence"
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Sentence » (#13155, rang 2)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "trigger": "TE",
+     "triggerListenTurns": 1,
+     "hidden": true,
+     "subSpell": {
+      "id": 13155,
+      "grade": 2,
+      "name": "Sentence"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "13 à 16 dommages Feu (CC : 17 à 20 dommages Feu) — cibles : alliés (hors lanceur), ennemis",
+    "État « Sentence » — cibles : alliés (lanceur compris), ennemis ; 1 tour(s)",
+    "26 à 30 dommages Feu (CC : 32 à 36 dommages Feu) — cibles : ennemis ; zone : anneau 1–2 autour de l'impact (centre exclu) ; DÉCLENCHÉ quand : Fin du tour du PORTEUR (écoute 1 t)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "11–14 Feu / 23–26 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "13–16 Feu / 26–30 Feu"
+    }
+   ]
+  },
+  {
+   "id": 13126,
+   "spellLevelId": 41336,
+   "pairIndex": 8,
+   "variant": "A",
+   "variantOf": 13135,
+   "name": "Déferlement",
+   "nameEn": "Outpouring",
+   "descriptionFr": "Rapproche le lanceur vers la cible et occasionne des dommages Eau aux ennemis.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 154,
+   "unlockLevel": 20,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 38,
+    "max": 42,
+    "critMin": 46,
+    "critMax": 50,
+    "element": "Eau",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Le lanceur avance de 5 cases vers la cible (en ligne, 1–6 PO).",
+    "38 à 42 dommages Eau (CC 46 à 50) à l'ennemi."
+   ],
+   "role": [
+    "damage",
+    "water",
+    "mobility",
+    "gap_closer"
+   ],
+   "tactical": "Rapprochement + gros coup Eau (4 PA, 3/tour) ; met l'Iop au contact pour Fureur/Colère.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 1042,
+     "action": "CharacterGetPulled",
+     "kind": "movement",
+     "text": "Avance de 5 cases",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 5
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "kind": "damage",
+     "text": "38 à 42 dommages Eau",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Eau",
+     "min": 38,
+     "max": 42,
+     "critMin": 46,
+     "critMax": 50
+    }
+   ],
+   "tooltipDecoded": [
+    "Avance de 5 cases — cibles : alliés (hors lanceur), ennemis",
+    "38 à 42 dommages Eau (CC : 46 à 50 dommages Eau) — cibles : ennemis"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "24–27 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 5,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "31–34 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "38–42 Eau"
+    }
+   ]
+  },
+  {
+   "id": 13135,
+   "spellLevelId": 44579,
+   "pairIndex": 8,
+   "variant": "B",
+   "variantOf": 13126,
+   "name": "Anneau Destructeur",
+   "nameEn": "Destructive Ring",
+   "descriptionFr": "Occasionne des dommages Air aux ennemis et attire les cibles vers le centre en zone.\nN'affecte pas le lanceur.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 197,
+   "unlockLevel": 130,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 24,
+    "max": 28,
+    "critMin": 29,
+    "critMax": 34,
+    "element": "Air",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Zone : anneau de rayon exactement 3 autour de l'impact (0–3 PO), non dégressif.",
+    "24 à 28 dommages Air (CC 29 à 34) aux ennemis de l'anneau puis attire d'1 case vers le centre toutes les entités de l'anneau (hors lanceur)."
+   ],
+   "role": [
+    "damage",
+    "air",
+    "aoe_ring",
+    "pull"
+   ],
+   "tactical": "Lancé sur soi : frappe et rapproche les ennemis à distance 3.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "kind": "damage",
+     "text": "24 à 28 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "O",
+      "shapeName": "ring",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 0,
+      "flags": ""
+     },
+     "element": "Air",
+     "min": 24,
+     "max": 28,
+     "critMin": 29,
+     "critMax": 34
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "kind": "movement",
+     "text": "Attire de 1 case",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "O",
+      "shapeName": "ring",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 0,
+      "flags": ""
+     },
+     "value": 1
+    }
+   ],
+   "tooltipDecoded": [
+    "24 à 28 dommages Air (CC : 29 à 34 dommages Air) — cibles : ennemis ; zone : anneau de rayon exactement 3",
+    "Attire de 1 case — cibles : alliés (hors lanceur), ennemis ; zone : anneau de rayon exactement 3"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "22–25 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "24–28 Air"
+    }
+   ]
+  },
+  {
+   "id": 13120,
+   "spellLevelId": 78988,
+   "pairIndex": 9,
+   "variant": "A",
+   "variantOf": 13137,
+   "name": "Vitalité",
+   "nameEn": "Vitality",
+   "descriptionFr": "Augmente la Vitalité de la cible.\nLa Vitalité est plus importante sur le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 159,
+   "unlockLevel": 25,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Sur le lanceur (PO 0) : +20 % Vitalité (CC 22 %) pendant 4 tours.",
+    "Sur une autre cible (alliée ou ennemie) : +10 % Vitalité (CC 11 %) pendant 4 tours.",
+    "Cumulable 2 fois, relance 2."
+   ],
+   "role": [
+    "buff_ally",
+    "survival",
+    "vitality"
+   ],
+   "tactical": "Augmente PV max et actuels (pourcentage des PV hors buff) : à placer avant un gros coup de boss.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Vitalité » (#25215, rang 5)",
+     "targetMask": "c",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 25215,
+      "grade": 5,
+      "name": "Vitalité"
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Vitalité » (#25215, rang 6)",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 25215,
+      "grade": 6,
+      "name": "Vitalité"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "20% Vitalité (CC : 22% Vitalité) — cibles : lanceur (s'il est dans la zone) ; 4 tour(s)",
+    "10% Vitalité (CC : 11% Vitalité) — cibles : alliés (hors lanceur), ennemis ; 4 tour(s)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 4,
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 5,
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13137,
+   "spellLevelId": 41347,
+   "pairIndex": 9,
+   "variant": "B",
+   "variantOf": 13120,
+   "name": "Violence",
+   "nameEn": "Violence",
+   "descriptionFr": "Repousse les cibles en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 135,
+   "unlockLevel": 135,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Repousse de 4 cases toutes les entités (alliés compris) dans un anneau 1–2 autour du lanceur (lancé sur soi, 1/tour)."
+   ],
+   "role": [
+    "push",
+    "placement",
+    "escape"
+   ],
+   "tactical": "Dégagement d'urgence en mêlée ; dommages de poussée importants avec Puissance (+120 Do Poussée).",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "kind": "movement",
+     "text": "Repousse de 4 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 1,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 4
+    }
+   ],
+   "tooltipDecoded": [
+    "Repousse de 4 cases — cibles : alliés (lanceur compris), ennemis ; zone : anneau 1–2 autour de l'impact (centre exclu)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 0,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13116,
+   "spellLevelId": 41306,
+   "pairIndex": 10,
+   "variant": "A",
+   "variantOf": 13136,
+   "name": "Souffle",
+   "nameEn": "Breath",
+   "descriptionFr": "Repousse les cibles depuis le centre et occasionne des dommages Air aux ennemis en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 164,
+   "unlockLevel": 30,
+   "apCost": 2,
+   "minRange": 2,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 13,
+    "max": 15,
+    "critMin": 16,
+    "critMax": 18,
+    "element": "Air",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Zone : croix de 1 sans centre autour de l'impact (2–8 PO, sans LdV).",
+    "Repousse d'1 case depuis le centre les entités de la zone (alliés compris), puis 13 à 15 dommages Air (CC 16 à 18) aux ennemis."
+   ],
+   "role": [
+    "damage",
+    "air",
+    "push",
+    "placement"
+   ],
+   "tactical": "Écarte un paquet à distance (1/tour) : utile pour décoller des ennemis d'un allié.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "kind": "movement",
+     "text": "Repousse de 1 case",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "crossNoCenter",
+      "size": 1,
+      "minSize": 1,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 1
+    },
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "kind": "damage",
+     "text": "13 à 15 dommages Air",
+     "targetMask": "A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "crossNoCenter",
+      "size": 1,
+      "minSize": 1,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Air",
+     "min": 13,
+     "max": 15,
+     "critMin": 16,
+     "critMax": 18
+    }
+   ],
+   "tooltipDecoded": [
+    "Repousse de 1 case — cibles : alliés (lanceur compris), ennemis ; zone : croix de 1 sans le centre",
+    "13 à 15 dommages Air (CC : 16 à 18 dommages Air) — cibles : ennemis ; zone : croix de 1 sans le centre"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 2,
+     "minRange": 2,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "8–10 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 2,
+     "minRange": 2,
+     "range": 7,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "10–12 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 164,
+     "apCost": 2,
+     "minRange": 2,
+     "range": 8,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "13–15 Air"
+    }
+   ]
+  },
+  {
+   "id": 13136,
+   "spellLevelId": 41346,
+   "pairIndex": 10,
+   "variant": "B",
+   "variantOf": 13116,
+   "name": "Rassemblement",
+   "nameEn": "Gathering",
+   "descriptionFr": "Occasionne des dommages Feu aux ennemis et attire les cibles jusqu'au centre en zone.\nN'affecte pas le lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 140,
+   "unlockLevel": 140,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 22,
+    "max": 25,
+    "critMin": 26,
+    "critMax": 30,
+    "element": "Feu",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "22 à 25 dommages Feu (CC 26 à 30) aux ennemis dans une croix de 3 (0–6 PO), dégressive.",
+    "Puis attire vers le centre (hors lanceur) : de 1 case à distance 1, de 2 cases à distance 2, de 3 cases à distance 3 → tout le monde est regroupé au contact du centre."
+   ],
+   "role": [
+    "damage",
+    "fire",
+    "aoe",
+    "pull",
+    "packing"
+   ],
+   "tactical": "Sort de regroupement : préparer une zone alliée (Épée Céleste, Explosive, etc.). 1/tour.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "kind": "damage",
+     "text": "22 à 25 dommages Feu",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Feu",
+     "min": 22,
+     "max": 25,
+     "critMin": 26,
+     "critMax": 30
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "kind": "movement",
+     "text": "Attire de 1 case",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "crossNoCenter",
+      "size": 1,
+      "minSize": 1,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 1,
+     "hidden": true
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "kind": "movement",
+     "text": "Attire de 2 cases",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "crossNoCenter",
+      "size": 2,
+      "minSize": 2,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 2,
+     "hidden": true
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "kind": "movement",
+     "text": "Attire de 3 cases",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "Q",
+      "shapeName": "crossNoCenter",
+      "size": 3,
+      "minSize": 3,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 3
+    }
+   ],
+   "tooltipDecoded": [
+    "22 à 25 dommages Feu (CC : 26 à 30 dommages Feu) — cibles : ennemis ; zone : croix de 3",
+    "Attire de 3 cases — cibles : alliés (hors lanceur), ennemis ; zone : croix de 3 sans le centre (à distance exactement 3–3)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "22–25 Feu"
+    }
+   ]
+  },
+  {
+   "id": 13119,
+   "spellLevelId": 41315,
+   "pairIndex": 11,
+   "variant": "A",
+   "variantOf": 14818,
+   "name": "Épée Destructrice",
+   "nameEn": "Destructive Sword",
+   "descriptionFr": "Érode les cibles et occasionne des dommages Feu en zone.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 169,
+   "unlockLevel": 35,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 32,
+    "max": 36,
+    "critMin": 38,
+    "critMax": 43,
+    "element": "Feu",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Zone : barre perpendiculaire de 3 cases (1–4 PO, en ligne).",
+    "13 % d'Érosion (2 tours, cumul 2) et 32 à 36 dommages Feu (CC 38 à 43) à toutes les entités de la barre, alliés compris."
+   ],
+   "role": [
+    "damage",
+    "fire",
+    "aoe",
+    "erosion"
+   ],
+   "tactical": "Bonne zone Feu à 4 PA, 2/tour.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "kind": "stat_debuff",
+     "text": "13% Érosion",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "T",
+      "shapeName": "perpendicularLine",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 13,
+     "duration": 2
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "kind": "damage",
+     "text": "32 à 36 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "T",
+      "shapeName": "perpendicularLine",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Feu",
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43
+    }
+   ],
+   "tooltipDecoded": [
+    "13% Érosion — cibles : alliés (lanceur compris), ennemis ; zone : barre perpendiculaire de 3 cases ; 2 tour(s)",
+    "32 à 36 dommages Feu (CC : 38 à 43 dommages Feu) — cibles : alliés (lanceur compris), ennemis ; zone : barre perpendiculaire de 3 cases"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "20–23 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "26–29 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "32–36 Feu"
+    }
+   ]
+  },
+  {
+   "id": 14818,
+   "spellLevelId": 44902,
+   "pairIndex": 11,
+   "variant": "B",
+   "variantOf": 13119,
+   "name": "Fustigation",
+   "nameEn": "Castigation",
+   "descriptionFr": "Érode les cibles et occasionne des dommages Eau en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 145,
+   "unlockLevel": 145,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 28,
+    "max": 31,
+    "critMin": 34,
+    "critMax": 37,
+    "element": "Eau",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Zone : demi-cercle de 1 (impact + 2 cases latérales revenant vers le lanceur), 1–2 PO en ligne.",
+    "10 % d'Érosion (2 tours, cumul 2) et 28 à 31 dommages Eau (CC 34 à 37) à toutes les entités de la zone, alliés compris."
+   ],
+   "role": [
+    "damage",
+    "water",
+    "aoe_small",
+    "erosion"
+   ],
+   "tactical": "Coup de mêlée Eau qui touche 2–3 ennemis autour de la cible.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "kind": "stat_debuff",
+     "text": "10% Érosion",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "U",
+      "shapeName": "halfCircle",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 10,
+     "duration": 2
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "kind": "damage",
+     "text": "28 à 31 dommages Eau",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "U",
+      "shapeName": "halfCircle",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Eau",
+     "min": 28,
+     "max": 31,
+     "critMin": 34,
+     "critMax": 37
+    }
+   ],
+   "tooltipDecoded": [
+    "10% Érosion — cibles : alliés (lanceur compris), ennemis ; zone : demi-cercle de 1 ; 2 tour(s)",
+    "28 à 31 dommages Eau (CC : 34 à 37 dommages Eau) — cibles : alliés (lanceur compris), ennemis ; zone : demi-cercle de 1"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 2,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "28–31 Eau"
+    }
+   ]
+  },
+  {
+   "id": 13118,
+   "spellLevelId": 41312,
+   "pairIndex": 12,
+   "variant": "A",
+   "variantOf": 14677,
+   "name": "Puissance",
+   "nameEn": "Power",
+   "descriptionFr": "Augmente la Puissance et les Dommages Poussée de la cible.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 174,
+   "unlockLevel": 40,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "+300 Puissance (CC 350) et +120 Dommages Poussée (CC 140) à la cible pendant 3 tours (n'importe quelle entité, 0–6 PO).",
+    "Relance 4, non cumulable."
+   ],
+   "role": [
+    "buff_ally",
+    "buff_power",
+    "key_buff"
+   ],
+   "tactical": "Le plus gros buff de Puissance du jeu : sur l'Iop lui-même ou sur le DPS principal du groupe (+300 Puissance s'ajoute à la caractéristique de chaque élément : dégâts × (100 + carac + 300)/(100 + carac), soit ≈ +27 % pour 1000 de caractéristique, +75 % pour 300).",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 138,
+     "action": "CharacterBoostDamagesPercent",
+     "kind": "stat_buff",
+     "text": "300 Puissance",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 300,
+     "critValue": 350,
+     "duration": 3
+    },
+    {
+     "effectId": 414,
+     "action": "CharacterBoostPushDamage",
+     "kind": "stat_buff",
+     "text": "120 Dommages Poussée",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 120,
+     "critValue": 140,
+     "duration": 3
+    }
+   ],
+   "tooltipDecoded": [
+    "300 Puissance (CC : 350 Puissance) — cibles : alliés (lanceur compris), ennemis ; 3 tour(s)",
+    "120 Dommages Poussée (CC : 140 Dommages Poussée) — cibles : alliés (lanceur compris), ennemis ; 3 tour(s)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 4,
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 5,
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 14677,
+   "spellLevelId": 44571,
+   "pairIndex": 12,
+   "variant": "B",
+   "variantOf": 13118,
+   "name": "Vindicte",
+   "nameEn": "Prosecution",
+   "descriptionFr": "Érode la cible.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 150,
+   "unlockLevel": 150,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "+20 % d'Érosion sur la cible pendant 2 tours (non cumulable), 1–5 PO, 2 PA."
+   ],
+   "role": [
+    "erosion",
+    "debuff"
+   ],
+   "tactical": "Érosion pure : sur un boss qui se soigne, ou avant un burst de groupe.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 776,
+     "action": "CharacterBoostPermanentDamagePercent",
+     "kind": "stat_debuff",
+     "text": "20% Érosion",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 20,
+     "duration": 2
+    }
+   ],
+   "tooltipDecoded": [
+    "20% Érosion — cibles : alliés (lanceur compris), ennemis ; 2 tour(s)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13121,
+   "spellLevelId": 44901,
+   "pairIndex": 13,
+   "variant": "A",
+   "variantOf": 13131,
+   "name": "Tempête de Puissance",
+   "nameEn": "Strengthstorm",
+   "descriptionFr": "Occasionne des dommages Feu.\nN'affecte pas le lanceur.\n\nOccasionne également des dommages Feu sur l'ennemi initial si le sort est lancé sur une autre cible.\nCes dommages sont plus importants après 2 lancers consécutifs sur un même ennemi.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 179,
+   "unlockLevel": 45,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": 2,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 27,
+    "max": 30,
+    "critMin": 32,
+    "critMax": 35,
+    "element": "Feu",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "27 à 30 dommages Feu (CC 32 à 35) à la cible (case occupée, hors lanceur).",
+    "Si la cible n'est pas marquée : état « Tempête de Puissance I » ; si elle est en I : passe en « II » (états infinis).",
+    "Les autres ennemis marqués ailleurs sur la carte subissent 27–30 Feu (marqués I) ou 38–42 Feu (CC 46–50, marqués II), puis perdent leur marque."
+   ],
+   "role": [
+    "damage",
+    "fire",
+    "ramp",
+    "multi_target"
+   ],
+   "tactical": "Rotation A, A, B (9 PA) : A prend 3 coups dont un amplifié ; à intégrer dans un Iop Feu.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "kind": "dispel",
+     "text": "Enlève les effets du sort Tempête de Puissance",
+     "targetMask": "A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 63,
+      "minSize": 1,
+      "damageDecreasePercent": 0,
+      "flags": ""
+     },
+     "hidden": true
+    },
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "kind": "dispel",
+     "text": "Enlève les effets du sort Tempête de Puissance",
+     "targetMask": "A,e591",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "kind": "damage",
+     "text": "27 à 30 dommages Feu",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Feu",
+     "min": 27,
+     "max": 30,
+     "critMin": 32,
+     "critMax": 35
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "kind": "damage",
+     "text": "27 à 30 dommages Feu",
+     "targetMask": "A,E590",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 63,
+      "minSize": 1,
+      "damageDecreasePercent": 0,
+      "flags": ""
+     },
+     "element": "Feu",
+     "min": 27,
+     "max": 30,
+     "critMin": 32,
+     "critMax": 35
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Tempête de Puissance I »",
+     "targetMask": "A,e590,e591",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": -1,
+     "dispellable": 2,
+     "hidden": true,
+     "state": {
+      "id": 590,
+      "name": "Tempête de Puissance I"
+     }
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "kind": "damage",
+     "text": "38 à 42 dommages Feu",
+     "targetMask": "A,E591",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 63,
+      "minSize": 1,
+      "damageDecreasePercent": 0,
+      "flags": ""
+     },
+     "element": "Feu",
+     "min": 38,
+     "max": 42,
+     "critMin": 46,
+     "critMax": 50
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Tempête de Puissance II »",
+     "targetMask": "A,E590",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": -1,
+     "dispellable": 2,
+     "hidden": true,
+     "state": {
+      "id": 591,
+      "name": "Tempête de Puissance II"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "27 à 30 dommages Feu (CC : 32 à 35 dommages Feu) — cibles : alliés (hors lanceur), ennemis",
+    "27 à 30 dommages Feu (CC : 32 à 35 dommages Feu) — cibles : ennemis [si la cible a l'état « Tempête de Puissance I »] ; zone : toute la carte sauf l'impact",
+    "38 à 42 dommages Feu (CC : 46 à 50 dommages Feu) — cibles : ennemis [si la cible a l'état « Tempête de Puissance II »] ; zone : toute la carte sauf l'impact"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "17–19 Feu / 17–19 Feu / 24–27 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "22–25 Feu / 22–25 Feu / 32–35 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 179,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "27–30 Feu / 27–30 Feu / 38–42 Feu"
+    }
+   ]
+  },
+  {
+   "id": 13131,
+   "spellLevelId": 41341,
+   "pairIndex": 13,
+   "variant": "B",
+   "variantOf": 13121,
+   "name": "Tannée",
+   "nameEn": "Pounding",
+   "descriptionFr": "Occasionne des dommages Air et retire des PM en zone.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 155,
+   "unlockLevel": 155,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": true,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 27,
+    "max": 30,
+    "critMin": 32,
+    "critMax": 36,
+    "element": "Air",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Zone : barre perpendiculaire de 5 cases (1–6 PO modifiable, en ligne).",
+    "27 à 30 dommages Air (CC 32 à 36) et −3 PM esquivables (1 tour) à toutes les entités de la barre, alliés compris."
+   ],
+   "role": [
+    "damage",
+    "air",
+    "aoe",
+    "mp_removal"
+   ],
+   "tactical": "Meilleur retrait PM de zone de l'Iop (barre de 5).",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "kind": "damage",
+     "text": "27 à 30 dommages Air",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "T",
+      "shapeName": "perpendicularLine",
+      "size": 2,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Air",
+     "min": 27,
+     "max": 30,
+     "critMin": 32,
+     "critMax": 36
+    },
+    {
+     "effectId": 1080,
+     "action": "CharacterDeboostMovementPointsDodgeable",
+     "kind": "ap_mp",
+     "text": "-3 PM",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "T",
+      "shapeName": "perpendicularLine",
+      "size": 2,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "value": 3,
+     "duration": 1,
+     "dispellable": 3
+    }
+   ],
+   "tooltipDecoded": [
+    "27 à 30 dommages Air (CC : 32 à 36 dommages Air) — cibles : alliés (lanceur compris), ennemis ; zone : barre perpendiculaire de 5 cases",
+    "-3 PM — cibles : alliés (lanceur compris), ennemis ; zone : barre perpendiculaire de 5 cases ; 1 tour(s) ; désenvoûtable seulement par effet fort"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "27–30 Air"
+    }
+   ]
+  },
+  {
+   "id": 13133,
+   "spellLevelId": 79008,
+   "pairIndex": 14,
+   "variant": "A",
+   "variantOf": 13146,
+   "name": "Endurance",
+   "nameEn": "Endurance",
+   "descriptionFr": "Applique un bouclier sur le lanceur et occasionne des dommages Eau.\nLes dommages n'affectent pas le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 184,
+   "unlockLevel": 50,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 30,
+    "max": 34,
+    "critMin": 36,
+    "critMax": 41,
+    "element": "Eau",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Bouclier de 75 % du niveau (150 pts) sur le lanceur, 2 tours.",
+    "30 à 34 dommages Eau (CC 36 à 41) à la cible (0–2 PO, case occupée, hors lanceur)."
+   ],
+   "role": [
+    "damage",
+    "water",
+    "shield",
+    "filler"
+   ],
+   "tactical": "3 PA, 3/tour : filler Eau qui empile 450 de bouclier sur 3 lancers.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 1020,
+     "action": "CharacterBoostShieldBasedOnCasterLevel",
+     "kind": "shield",
+     "text": "Bouclier : 75% du niveau (= 150 pts au niveau 200)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 75,
+     "duration": 2
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "kind": "damage",
+     "text": "30 à 34 dommages Eau",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Eau",
+     "min": 30,
+     "max": 34,
+     "critMin": 36,
+     "critMax": 41
+    }
+   ],
+   "tooltipDecoded": [
+    "Bouclier : 75% du niveau (= 150 pts au niveau 200) — cibles : lanceur ; 2 tour(s)",
+    "30 à 34 dommages Eau (CC : 36 à 41 dommages Eau) — cibles : alliés (hors lanceur), ennemis"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 2,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "22–25 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 2,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "27–30 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 184,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 2,
+     "cooldown": 0,
+     "maxPerTurn": 3,
+     "damageBrief": "30–34 Eau"
+    }
+   ]
+  },
+  {
+   "id": 13146,
+   "spellLevelId": 41356,
+   "pairIndex": 14,
+   "variant": "B",
+   "variantOf": 13133,
+   "name": "Pugilat",
+   "nameEn": "Pygmachia",
+   "descriptionFr": "Occasionne des dommages Terre en zone.\nLes dommages du sort sont augmentés après chaque lancer pour le tour en cours.\n\nLes dommages n'affectent pas le lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 160,
+   "unlockLevel": 160,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 1,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 9,
+    "max": 11,
+    "critMin": 12,
+    "critMax": 14,
+    "element": "Terre",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "9 à 11 dommages Terre (CC 12 à 14) aux entités (hors lanceur) dans un cercle de 2 autour de la cible (1–6 PO, case occupée), dégressif.",
+    "+18 dégâts de base au sort après chaque lancer pour le tour en cours (retiré en fin de tour) ; 4/tour, 1/cible."
+   ],
+   "role": [
+    "damage",
+    "earth",
+    "aoe",
+    "ramp_turn"
+   ],
+   "tactical": "4 lancers sur 4 cibles différentes : 9–11, 27–29, 45–47, 63–65 de base (8 PA). Très fort en vague dense.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "kind": "damage",
+     "text": "9 à 11 dommages Terre",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Terre",
+     "min": 9,
+     "max": 11,
+     "critMin": 12,
+     "critMax": 14
+    },
+    {
+     "effectId": 293,
+     "action": "BoostSpellBaseDmg",
+     "kind": "spell_modifier",
+     "text": "Pugilat : +18 dégâts de base",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "dispellable": 3,
+     "spellRef": {
+      "id": 13146,
+      "name": "Pugilat",
+      "value": 18
+     }
+    },
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "kind": "dispel",
+     "text": "Enlève les effets du sort Pugilat",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "trigger": "TE",
+     "triggerListenTurns": 1,
+     "dispellable": 3,
+     "hidden": true
+    }
+   ],
+   "tooltipDecoded": [
+    "9 à 11 dommages Terre (CC : 12 à 14 dommages Terre) — cibles : alliés (hors lanceur), ennemis ; zone : cercle de rayon 2",
+    "Pugilat : +18 dégâts de base — cibles : lanceur ; 1 tour(s) ; désenvoûtable seulement par effet fort"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 4,
+     "damageBrief": "9–11 Terre"
+    }
+   ]
+  },
+  {
+   "id": 13142,
+   "spellLevelId": 78998,
+   "pairIndex": 15,
+   "variant": "A",
+   "variantOf": 13112,
+   "name": "Vertu",
+   "nameEn": "Virtue",
+   "descriptionFr": "Applique un bouclier sur les alliés en zone.\nRetire également de la Puissance au lanceur pour chaque allié à son contact (cumulable 4 fois).",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 189,
+   "unlockLevel": 55,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Bouclier de 500 % du niveau (1000 pts, CC 550 %) aux alliés dans la croix de 1 autour du lanceur (lui compris), 2 tours.",
+    "−50 Puissance au lanceur (2 tours) pour CHAQUE allié à son contact (cumul 4).",
+    "Relance 3."
+   ],
+   "role": [
+    "shield",
+    "group_protection"
+   ],
+   "tactical": "Protection de groupe massive si 2–4 alliés sont collés à l'Iop (avant une attaque de zone de boss).",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 2794,
+     "action": "TargetExecuteSpellOnCell",
+     "kind": "cast_spell",
+     "text": "lance « Vertu » (#29723, rang 3)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 29723,
+      "grade": 3,
+      "name": "Vertu"
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Vertu » (#29723, rang 6)",
+     "targetMask": "g",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 29723,
+      "grade": 6,
+      "name": "Vertu"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "Bouclier : 500% du niveau (= 1000 pts au niveau 200) (CC : Bouclier : 550% du niveau (= 1100 pts au niveau 200)) — cibles : alliés (lanceur compris) ; zone : croix de 1 ; 2 tour(s)",
+    "-50 Puissance — cibles : lanceur ; 2 tour(s)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 0,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 0,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 0,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13112,
+   "spellLevelId": 41292,
+   "pairIndex": 15,
+   "variant": "B",
+   "variantOf": 13142,
+   "name": "Massacre",
+   "nameEn": "Massacre",
+   "descriptionFr": "Augmente et renvoie une partie des dommages subis par l'ennemi ciblé aux ennemis en zone autour de lui.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 165,
+   "unlockLevel": 165,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 7,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Sur l'ennemi ciblé (1–7 PO), pendant 2 tours : dommages subis ×115 %.",
+    "Chaque fois qu'il subit des dommages, 30 % des dommages finaux sont infligés à SES alliés (nos ennemis) dans un anneau 1–2 autour de lui (sous-sort 13127)."
+   ],
+   "role": [
+    "damage_amplifier",
+    "aoe_splash"
+   ],
+   "tactical": "Relance 4 : à poser sur la cible prioritaire au centre d'un paquet avant le burst du groupe.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 1163,
+     "action": "CharacterMultiplyReceivedDamage",
+     "kind": "damage_modifier",
+     "text": "Dommages subis x115%",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 115,
+     "trigger": "D",
+     "triggerListenTurns": 2
+    },
+    {
+     "effectId": 792,
+     "action": "TargetExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Massacre » (#13127, rang 1)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "trigger": "D|XD",
+     "triggerListenTurns": 2,
+     "hidden": true,
+     "subSpell": {
+      "id": 13127,
+      "grade": 1,
+      "name": "Massacre"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "Dommages subis x115% — cibles : ennemis ; DÉCLENCHÉ quand : Le porteur subit des dommages (écoute 2 t)",
+    "Dommages : 30% des dommages finaux subis — cibles : ennemis ; zone : anneau 1–2 autour de l'impact (centre exclu), non dégressive ; DÉCLENCHÉ quand : Le porteur subit des dommages / (ou mort) Le porteur subit des dommages (écoute 2 t)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 7,
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13125,
+   "spellLevelId": 78991,
+   "pairIndex": 16,
+   "variant": "A",
+   "variantOf": 13134,
+   "name": "Épée de Iop",
+   "nameEn": "Sword of Iop",
+   "descriptionFr": "Occasionne des dommages Terre en zone.\nN'affecte pas le lanceur.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 194,
+   "unlockLevel": 60,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 37,
+    "max": 41,
+    "critMin": 44,
+    "critMax": 49,
+    "element": "Terre",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "37 à 41 dommages Terre (CC 44 à 49) aux entités (hors lanceur) dans une croix de 3 autour de l'impact (0–8 PO en ligne), dégressive 10 %/case."
+   ],
+   "role": [
+    "damage",
+    "earth",
+    "aoe"
+   ],
+   "tactical": "Meilleure zone Terre à distance de l'Iop (4 PA, 2/tour) ; touche aussi les alliés dans la croix.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "kind": "damage",
+     "text": "37 à 41 dommages Terre",
+     "targetMask": "A,g",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Terre",
+     "min": 37,
+     "max": 41,
+     "critMin": 44,
+     "critMax": 49
+    }
+   ],
+   "tooltipDecoded": [
+    "37 à 41 dommages Terre (CC : 44 à 49 dommages Terre) — cibles : ennemis, alliés (hors lanceur) ; zone : croix de 3"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "27–30 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 7,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "33–37 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 8,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "37–41 Terre"
+    }
+   ]
+  },
+  {
+   "id": 13134,
+   "spellLevelId": 41344,
+   "pairIndex": 16,
+   "variant": "B",
+   "variantOf": 13125,
+   "name": "Fendoir",
+   "nameEn": "Cleaver",
+   "descriptionFr": "Applique un bouclier sur le lanceur pour chaque ennemi dans la zone d'effet et occasionne des dommages Eau en zone.\nLes dommages n'affectent pas le lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 170,
+   "unlockLevel": 170,
+   "apCost": 5,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Eau"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 47,
+    "max": 53,
+    "critMin": 56,
+    "critMax": 64,
+    "element": "Eau",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Bouclier de 75 % du niveau (150) sur le lanceur pour CHAQUE ennemi dans la croix de 1 (sous-sort 13149), 2 tours.",
+    "47 à 53 dommages Eau (CC 56 à 64) aux entités (hors lanceur) dans la croix de 1."
+   ],
+   "role": [
+    "damage",
+    "water",
+    "aoe_small",
+    "shield"
+   ],
+   "tactical": "5 PA : gros coup Eau + bouclier jusqu'à 750 si 5 ennemis en croix.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Fendoir » (#13149, rang 1)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 13149,
+      "grade": 1,
+      "name": "Fendoir"
+     }
+    },
+    {
+     "effectId": 96,
+     "action": "CharacterLifePointsLostFromWater",
+     "kind": "damage",
+     "text": "47 à 53 dommages Eau",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Eau",
+     "min": 47,
+     "max": 53,
+     "critMin": 56,
+     "critMax": 64
+    }
+   ],
+   "tooltipDecoded": [
+    "Bouclier : 75% du niveau (= 150 pts au niveau 200) — cibles : lanceur ; 2 tour(s)",
+    "47 à 53 dommages Eau (CC : 56 à 64 dommages Eau) — cibles : alliés (hors lanceur), ennemis ; zone : croix de 1"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 5,
+     "minRange": 0,
+     "range": 4,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "47–53 Eau"
+    }
+   ]
+  },
+  {
+   "id": 13113,
+   "spellLevelId": 41297,
+   "pairIndex": 17,
+   "variant": "A",
+   "variantOf": 13140,
+   "name": "Friction",
+   "nameEn": "Friction",
+   "descriptionFr": "Attire la cible et lui applique l'état Friction :\n• Sur un ennemi : attire la cible vers son attaquant ennemi.\n• Sur un allié : attire ses attaquants ennemis vers elle.",
+   "grade": 3,
+   "gradesCount": 3,
+   "minPlayerLevel": 198,
+   "unlockLevel": 65,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Attire la cible de 2 cases (0–6 PO, sans LdV) et lui applique « Friction » 2 tours.",
+    "Sur un ennemi : à chaque fois qu'il subit des dommages d'un de nos alliés, il est attiré de 2 cases vers son attaquant.",
+    "Sur un allié : à chaque fois qu'il subit des dommages d'un ennemi, l'attaquant est attiré de 2 cases vers lui."
+   ],
+   "role": [
+    "placement",
+    "pull",
+    "control"
+   ],
+   "tactical": "Garde un ennemi collé aux attaquants (ou ramène les ennemis vers le tank). Relance 3.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Friction » (#13128, rang 2)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "trigger": "DBE",
+     "triggerListenTurns": 2,
+     "hidden": true,
+     "subSpell": {
+      "id": 13128,
+      "grade": 2,
+      "name": "Friction"
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Friction » (#13128, rang 1)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "trigger": "DBE",
+     "triggerListenTurns": 2,
+     "hidden": true,
+     "subSpell": {
+      "id": 13128,
+      "grade": 1,
+      "name": "Friction"
+     }
+    },
+    {
+     "effectId": 6,
+     "action": "CharacterPull",
+     "kind": "movement",
+     "text": "Attire de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Friction »",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 2,
+     "state": {
+      "id": 3643,
+      "name": "Friction"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "Attire de 2 cases — cibles : alliés (lanceur compris), ennemis",
+    "État « Friction » — cibles : alliés (lanceur compris), ennemis ; 2 tour(s)",
+    "Attire de 2 cases — cibles : alliés (lanceur compris), ennemis ; DÉCLENCHÉ quand : Dommages subis d'un ENNEMI (écoute 2 t)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 4,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 131,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 198,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13140,
+   "spellLevelId": 41350,
+   "pairIndex": 17,
+   "variant": "B",
+   "variantOf": 13113,
+   "name": "Coup pour Coup",
+   "nameEn": "Fight Back",
+   "descriptionFr": "Repousse la cible et lui applique l'état Coup pour Coup :\n• Sur un ennemi : repousse la cible si elle attaque le lanceur.\n• Sur un allié : repousse les attaquants ennemis.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 175,
+   "unlockLevel": 175,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Repousse la cible de 2 cases (1–3 PO, case occupée) et applique « Coup pour Coup » 1 tour.",
+    "Ennemi : s'il attaque l'Iop, il est repoussé de 2 cases.",
+    "Allié : ses attaquants ennemis sont repoussés de 2 cases."
+   ],
+   "role": [
+    "placement",
+    "push",
+    "control"
+   ],
+   "tactical": "Protection anti-mêlée ponctuelle. Relance 3.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Coup pour Coup »",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "hidden": true,
+     "state": {
+      "id": 589,
+      "name": "Coup pour Coup"
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Coup pour Coup » (#13152, rang 1)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "trigger": "D",
+     "triggerListenTurns": 1,
+     "dispellable": 2,
+     "hidden": true,
+     "subSpell": {
+      "id": 13152,
+      "grade": 1,
+      "name": "Coup pour Coup"
+     }
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Coup pour Coup » (#13152, rang 2)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "trigger": "D",
+     "triggerListenTurns": 1,
+     "hidden": true,
+     "subSpell": {
+      "id": 13152,
+      "grade": 2,
+      "name": "Coup pour Coup"
+     }
+    },
+    {
+     "effectId": 5,
+     "action": "CharacterPush",
+     "kind": "movement",
+     "text": "Repousse de 2 cases",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 2
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Coup pour Coup »",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "state": {
+      "id": 3642,
+      "name": "Coup pour Coup"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "Repousse de 2 cases — cibles : alliés (lanceur compris), ennemis",
+    "État « Coup pour Coup » — cibles : alliés (lanceur compris), ennemis ; 1 tour(s)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 3,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13122,
+   "spellLevelId": 41323,
+   "pairIndex": 18,
+   "variant": "A",
+   "variantOf": 13145,
+   "name": "Épée Céleste",
+   "nameEn": "Celestial Sword",
+   "descriptionFr": "Occasionne des dommages Air en zone.\nN'affecte pas le lanceur.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 137,
+   "unlockLevel": 70,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 36,
+    "max": 40,
+    "critMin": 43,
+    "critMax": 48,
+    "element": "Air",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "36 à 40 dommages Air (CC 43 à 48) aux entités (hors lanceur) dans un cercle de 2 autour de l'impact (0–6 PO), dégressif."
+   ],
+   "role": [
+    "damage",
+    "air",
+    "aoe"
+   ],
+   "tactical": "Meilleure zone Air (13 cases) : sort principal en combat de vagues.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "kind": "damage",
+     "text": "36 à 40 dommages Air",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "C",
+      "shapeName": "circle",
+      "size": 2,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Air",
+     "min": 36,
+     "max": 40,
+     "critMin": 43,
+     "critMax": 48
+    }
+   ],
+   "tooltipDecoded": [
+    "36 à 40 dommages Air (CC : 43 à 48 dommages Air) — cibles : alliés (hors lanceur), ennemis ; zone : cercle de rayon 2"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 5,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "28–31 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 2,
+     "damageBrief": "36–40 Air"
+    }
+   ]
+  },
+  {
+   "id": 13145,
+   "spellLevelId": 41355,
+   "pairIndex": 18,
+   "variant": "B",
+   "variantOf": 13122,
+   "name": "Zénith",
+   "nameEn": "Zenith",
+   "descriptionFr": "Occasionne des dommages Air en zone. \nOccasionne des dommages Air supplémentaires en zone selon les PM restants du lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 180,
+   "unlockLevel": 180,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Air"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 27,
+    "max": 29,
+    "critMin": 31,
+    "critMax": 35,
+    "element": "Air",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Zone : ligne de 4 cases (1–3 PO, en ligne), alliés compris.",
+    "27 à 29 dommages Air (CC 31 à 35) + 52 à 58 dommages Air (CC 64 à 70) proportionnels aux PM restants du lanceur (INCERTAIN : × PM restants / PM max)."
+   ],
+   "role": [
+    "damage",
+    "air",
+    "aoe_line",
+    "finisher"
+   ],
+   "tactical": "5 PA, 1/tour : à lancer AVANT de se déplacer pour garder tous ses PM.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 98,
+     "action": "CharacterLifePointsLostFromAir",
+     "kind": "damage",
+     "text": "27 à 29 dommages Air",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "L",
+      "shapeName": "line",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Air",
+     "min": 27,
+     "max": 29,
+     "critMin": 31,
+     "critMax": 35
+    },
+    {
+     "effectId": 1013,
+     "action": "CharacterLifePointsLostBasedOnMovementPointsFromAir",
+     "kind": "damage",
+     "text": "52 à 58 dommages Air (% PM PM restants)",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "L",
+      "shapeName": "line",
+      "size": 3,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Air",
+     "min": 52,
+     "max": 58,
+     "critMin": 64,
+     "critMax": 70
+    }
+   ],
+   "tooltipDecoded": [
+    "27 à 29 dommages Air (CC : 31 à 35 dommages Air) — cibles : alliés (lanceur compris), ennemis ; zone : ligne de 4 cases (impact + 3 derrière)",
+    "52 à 58 dommages Air (% PM PM restants) (CC : 64 à 70 dommages Air (% PM PM restants)) — cibles : alliés (lanceur compris), ennemis ; zone : ligne de 4 cases (impact + 3 derrière)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 5,
+     "minRange": 1,
+     "range": 3,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "27–29 Air / 52–58 Air"
+    }
+   ]
+  },
+  {
+   "id": 13114,
+   "spellLevelId": 41299,
+   "pairIndex": 19,
+   "variant": "A",
+   "variantOf": 13132,
+   "name": "Précipitation",
+   "nameEn": "Precipitation",
+   "descriptionFr": "Augmente les PA de l'allié ciblé et lui applique l'état Affaibli.\nRetire des PA non esquivables à cet allié au tour suivant.\n\nL'état n'est pas appliqué sur le lanceur.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 142,
+   "unlockLevel": 75,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 1,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "+5 PA (1 tour) à l'allié ciblé (ou soi) et état « Affaibli » (pas sur le lanceur).",
+    "Au tour suivant : −3 PA non esquivables (1 tour)."
+   ],
+   "role": [
+    "buff_ally",
+    "ap_gain",
+    "burst"
+   ],
+   "tactical": "2 PA, relance 2, relance initiale 1 : burst immédiat de +5 PA (net +2 sur 2 tours).",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 111,
+     "action": "CharacterBoostActionPoints",
+     "kind": "stat_buff",
+     "text": "5 PA",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 5,
+     "duration": 1
+    },
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Affaibli »",
+     "targetMask": "g",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "state": {
+      "id": 42,
+      "name": "Affaibli"
+     }
+    },
+    {
+     "effectId": 168,
+     "action": "CharacterDeboostActionPoints",
+     "kind": "stat_debuff",
+     "text": "-3 PA",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 3,
+     "duration": 1,
+     "delay": 1
+    }
+   ],
+   "tooltipDecoded": [
+    "5 PA — cibles : alliés (lanceur compris) ; 1 tour(s)",
+    "État « Affaibli » — cibles : alliés (hors lanceur) ; 1 tour(s)",
+    "-3 PA — cibles : alliés (lanceur compris) ; 1 tour(s) ; DIFFÉRÉ de 1 tour(s)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13132,
+   "spellLevelId": 41342,
+   "pairIndex": 19,
+   "variant": "B",
+   "variantOf": 13114,
+   "name": "Détermination",
+   "nameEn": "Determination",
+   "descriptionFr": "Rend l'allié ciblé Indéplaçable et lui applique un bouclier.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 185,
+   "unlockLevel": 185,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Rend l'allié ciblé Indéplaçable (1 tour) et lui applique un bouclier de 300 % du niveau (600 pts), 1 tour."
+   ],
+   "role": [
+    "shield",
+    "anti_push"
+   ],
+   "tactical": "Protège un allié contre poussées/téléportations ennemies (Vortex téléporte !) et absorbe 600 dégâts.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Indéplaçable »",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "dispellable": 2,
+     "state": {
+      "id": 97,
+      "name": "Indéplaçable"
+     }
+    },
+    {
+     "effectId": 1020,
+     "action": "CharacterBoostShieldBasedOnCasterLevel",
+     "kind": "shield",
+     "text": "Bouclier : 300% du niveau (= 600 pts au niveau 200)",
+     "targetMask": "a",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 300,
+     "duration": 1,
+     "dispellable": 2
+    }
+   ],
+   "tooltipDecoded": [
+    "État « Indéplaçable » — cibles : alliés (lanceur compris) ; 1 tour(s) ; non désenvoûtable (sauf mort)",
+    "Bouclier : 300% du niveau (= 600 pts au niveau 200) — cibles : alliés (lanceur compris) ; 1 tour(s) ; non désenvoûtable (sauf mort)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13111,
+   "spellLevelId": 41291,
+   "pairIndex": 20,
+   "variant": "A",
+   "variantOf": 13144,
+   "name": "Épée du Destin",
+   "nameEn": "Sword of Fate",
+   "descriptionFr": "Occasionne des dommages Feu.\nLes dommages du sort sont augmentés à la récupération du sort.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 147,
+   "unlockLevel": 80,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 38,
+    "max": 42,
+    "critMin": 46,
+    "critMax": 50,
+    "element": "Feu",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "38 à 42 dommages Feu (CC 46 à 50) à la cible (1–6 PO en ligne, alliés compris).",
+    "Relance 2 ; +40 dégâts de base au sort pendant 1 tour, 2 tours plus tard (= au retour de relance → 78–82)."
+   ],
+   "role": [
+    "damage",
+    "fire",
+    "ramp"
+   ],
+   "tactical": "À relancer exactement tous les 2 tours.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "kind": "damage",
+     "text": "38 à 42 dommages Feu",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Feu",
+     "min": 38,
+     "max": 42,
+     "critMin": 46,
+     "critMax": 50
+    },
+    {
+     "effectId": 293,
+     "action": "BoostSpellBaseDmg",
+     "kind": "spell_modifier",
+     "text": "Épée du Destin : +40 dégâts de base",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "delay": 2,
+     "dispellable": 3,
+     "spellRef": {
+      "id": 13111,
+      "name": "Épée du Destin",
+      "value": 40
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "38 à 42 dommages Feu (CC : 46 à 50 dommages Feu) — cibles : alliés (lanceur compris), ennemis",
+    "Épée du Destin : +40 dégâts de base — cibles : lanceur ; 1 tour(s) ; DIFFÉRÉ de 2 tour(s) ; désenvoûtable seulement par effet fort"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 5,
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "damageBrief": "31–34 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "cooldown": 2,
+     "maxPerTurn": 0,
+     "damageBrief": "38–42 Feu"
+    }
+   ]
+  },
+  {
+   "id": 13144,
+   "spellLevelId": 41354,
+   "pairIndex": 20,
+   "variant": "B",
+   "variantOf": 13111,
+   "name": "Tumulte",
+   "nameEn": "Tumult",
+   "descriptionFr": "Augmente les dommages du sort pour chaque ennemi dans la zone d'effet et occasionne des dommages Feu en zone.\nN'affecte pas le lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 190,
+   "unlockLevel": 190,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": "",
+   "elements": [
+    "Feu"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 19,
+    "max": 21,
+    "critMin": 23,
+    "critMax": 25,
+    "element": "Feu",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "+20 dégâts de base au sort pour CHAQUE ennemi dans la croix de 1 autour de l'impact (sous-sort 13154), puis 19 à 21 dommages Feu (CC 23 à 25) aux entités (hors lanceur) de la croix ; le bonus est retiré après le lancer."
+   ],
+   "role": [
+    "damage",
+    "fire",
+    "aoe_small"
+   ],
+   "tactical": "4 PA, 1/tour : 39–41 sur 1 ennemi, jusqu'à 119–121 sur chacun si 5 ennemis en croix.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Tumulte » (#13154, rang 1)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 13154,
+      "grade": 1,
+      "name": "Tumulte"
+     }
+    },
+    {
+     "effectId": 99,
+     "action": "CharacterLifePointsLostFromFire",
+     "kind": "damage",
+     "text": "19 à 21 dommages Feu",
+     "targetMask": "g,A",
+     "zone": {
+      "shape": "X",
+      "shapeName": "cross",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": ""
+     },
+     "element": "Feu",
+     "min": 19,
+     "max": 21,
+     "critMin": 23,
+     "critMax": 25
+    },
+    {
+     "effectId": 406,
+     "action": "CharacterDispellSpell",
+     "kind": "dispel",
+     "text": "Enlève les effets du sort Tumulte",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true
+    }
+   ],
+   "tooltipDecoded": [
+    "Tumulte : +20 dégâts de base — cibles : lanceur ; zone : croix de 1 ; désenvoûtable seulement par effet fort",
+    "19 à 21 dommages Feu (CC : 23 à 25 dommages Feu) — cibles : alliés (hors lanceur), ennemis ; zone : croix de 1"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 6,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "19–21 Feu"
+    }
+   ]
+  },
+  {
+   "id": 13141,
+   "spellLevelId": 78994,
+   "pairIndex": 21,
+   "variant": "A",
+   "variantOf": 13109,
+   "name": "Emprise",
+   "nameEn": "Grip",
+   "descriptionFr": "Rend l'ennemi ciblé Invulnérable et l'immobilise.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 152,
+   "unlockLevel": 85,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "Ennemi au contact : Invulnérable (#269) et −100 PM (non esquivables) pendant 1 tour.",
+    "Relance 4 (globalCooldown −1 : pas de relance globale, INCERTAIN)."
+   ],
+   "role": [
+    "control",
+    "neutralize"
+   ],
+   "tactical": "Neutralise la menace la plus dangereuse 1 tour (ex. un monstre de vague qui allait tuer un allié) ; il ne peut plus être frappé non plus.",
+   "hasHiddenLogic": false,
+   "effects": [
+    {
+     "effectId": 950,
+     "action": "FightSetState",
+     "kind": "state",
+     "text": "État « Invulnérable »",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "dispellable": 2,
+     "state": {
+      "id": 269,
+      "name": "Invulnérable"
+     }
+    },
+    {
+     "effectId": 169,
+     "action": "CharacterDeboostMovementPoints",
+     "kind": "stat_debuff",
+     "text": "-100 PM",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "value": 100,
+     "duration": 1,
+     "dispellable": 2
+    }
+   ],
+   "tooltipDecoded": [
+    "État « Invulnérable » — cibles : ennemis ; 1 tour(s) ; non désenvoûtable (sauf mort)",
+    "-100 PM — cibles : ennemis ; 1 tour(s) ; non désenvoûtable (sauf mort)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 1,
+     "cooldown": 5,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 1,
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13109,
+   "spellLevelId": 41283,
+   "pairIndex": 21,
+   "variant": "B",
+   "variantOf": 13141,
+   "name": "Duel",
+   "nameEn": "Duel",
+   "descriptionFr": "Rend le lanceur et l'ennemi ciblé Invulnérables à distance, leur applique l'état Pesanteur et les immobilise.\nLa durée de l'état Pesanteur est plus importante sur le lanceur.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 195,
+   "unlockLevel": 195,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "globalCooldown": -1,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 0,
+   "critChance": 0,
+   "statesCriterion": "",
+   "elements": [],
+   "healElements": [],
+   "baseDamage": null,
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "L'Iop et l'ennemi au contact deviennent Invulnérables à distance (1 tour), Pesanteur (Iop 2 tours, ennemi 1 tour) et −100 PM (1 tour)."
+   ],
+   "role": [
+    "control",
+    "duel"
+   ],
+   "tactical": "Isoler un ennemi de distance (il ne peut plus être touché/toucher à distance). Usage PvM limité.",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Duel » (#13165, rang 1)",
+     "targetMask": "A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 13165,
+      "grade": 1,
+      "name": "Duel"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "État « Invulnérable à Distance » — cibles : lanceur ; 1 tour(s) ; non désenvoûtable (sauf mort)",
+    "État « Pesanteur » — cibles : lanceur ; 2 tour(s) ; non désenvoûtable (sauf mort)",
+    "État « Pesanteur » — cibles : ennemis ; 1 tour(s) ; non désenvoûtable (sauf mort)",
+    "-100 PM — cibles : lanceur ; 1 tour(s) ; non désenvoûtable (sauf mort)"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 1,
+     "cooldown": 4,
+     "maxPerTurn": 0,
+     "damageBrief": ""
+    }
+   ]
+  },
+  {
+   "id": 13156,
+   "spellLevelId": 76815,
+   "pairIndex": 22,
+   "variant": "A",
+   "variantOf": 13124,
+   "name": "Fureur",
+   "nameEn": "Fit of Rage",
+   "descriptionFr": "Occasionne des dommages Terre.\nLes dommages du sort sont augmentés après chaque lancer. \n\nLes bonus se décrémentent si le sort n'est pas relancé.",
+   "grade": 2,
+   "gradesCount": 2,
+   "minPlayerLevel": 157,
+   "unlockLevel": 90,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "needFreeTrapCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 28,
+    "max": 32,
+    "critMin": 34,
+    "critMax": 38,
+    "element": "Terre",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "28 à 32 dommages Terre (CC 34 à 38) à la cible au contact (case occupée, alliés compris).",
+    "Rampe (sous-sort 28604) : +20 dégâts de base au 2e tour consécutif (Fureur I), +40 dès le 3e (Fureur II), 2 tours ; décrémente d'un palier si non relancé."
+   ],
+   "role": [
+    "damage",
+    "earth",
+    "melee",
+    "ramp"
+   ],
+   "tactical": "1/tour, 3 PA : à lancer chaque tour au contact (68–72 de base en rythme de croisière).",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "kind": "damage",
+     "text": "28 à 32 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Terre",
+     "min": 28,
+     "max": 32,
+     "critMin": 34,
+     "critMax": 38
+    },
+    {
+     "effectId": 1160,
+     "action": "CasterExecuteSpell",
+     "kind": "cast_spell",
+     "text": "lance « Fureur » (#28604, rang 1)",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "hidden": true,
+     "subSpell": {
+      "id": 28604,
+      "grade": 1,
+      "name": "Fureur"
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "28 à 32 dommages Terre (CC : 34 à 38 dommages Terre) — cibles : alliés (lanceur compris), ennemis",
+    "Fureur : +20 dégâts de base — cibles : lanceur ; 2 tour(s) ; désenvoûtable seulement par effet fort"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 1,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "23–26 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 1,
+     "cooldown": 0,
+     "maxPerTurn": 1,
+     "damageBrief": "28–32 Terre"
+    }
+   ]
+  },
+  {
+   "id": 13124,
+   "spellLevelId": 41328,
+   "pairIndex": 22,
+   "variant": "B",
+   "variantOf": 13156,
+   "name": "Colère de Iop",
+   "nameEn": "Iop's Wrath",
+   "descriptionFr": "Occasionne des dommages Terre.\nLes dommages du sort sont augmentés à la récupération du sort.",
+   "grade": 1,
+   "gradesCount": 1,
+   "minPlayerLevel": 200,
+   "unlockLevel": 200,
+   "apCost": 7,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "needFreeTrapCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "globalCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": "",
+   "elements": [
+    "Terre"
+   ],
+   "healElements": [],
+   "baseDamage": {
+    "min": 81,
+    "max": 100,
+    "critMin": 107,
+    "critMax": 130,
+    "element": "Terre",
+    "lifeSteal": false
+   },
+   "statesCriterionFr": "",
+   "effectsSummary": [
+    "81 à 100 dommages Terre (CC 107 à 130) à la cible au contact (alliés compris), 7 PA, relance 3.",
+    "+110 dégâts de base au sort pendant 1 tour, 3 tours plus tard (= au retour de relance → 191–210)."
+   ],
+   "role": [
+    "damage",
+    "earth",
+    "melee",
+    "burst",
+    "ramp"
+   ],
+   "tactical": "Le plus gros coup Iop : planifier T (81–100) puis T+3 (191–210).",
+   "hasHiddenLogic": true,
+   "effects": [
+    {
+     "effectId": 97,
+     "action": "CharacterLifePointsLostFromEarth",
+     "kind": "damage",
+     "text": "81 à 100 dommages Terre",
+     "targetMask": "a,A",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "element": "Terre",
+     "min": 81,
+     "max": 100,
+     "critMin": 107,
+     "critMax": 130
+    },
+    {
+     "effectId": 293,
+     "action": "BoostSpellBaseDmg",
+     "kind": "spell_modifier",
+     "text": "Colère de Iop : +110 dégâts de base",
+     "targetMask": "C",
+     "zone": {
+      "shape": "P",
+      "shapeName": "point",
+      "size": 1,
+      "minSize": 0,
+      "damageDecreasePercent": 10,
+      "flags": "c"
+     },
+     "duration": 1,
+     "delay": 3,
+     "dispellable": 3,
+     "spellRef": {
+      "id": 13124,
+      "name": "Colère de Iop",
+      "value": 110
+     }
+    }
+   ],
+   "tooltipDecoded": [
+    "81 à 100 dommages Terre (CC : 107 à 130 dommages Terre) — cibles : alliés (lanceur compris), ennemis",
+    "Colère de Iop : +110 dégâts de base — cibles : lanceur ; 1 tour(s) ; DIFFÉRÉ de 3 tour(s) ; désenvoûtable seulement par effet fort"
+   ],
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 7,
+     "minRange": 1,
+     "range": 1,
+     "cooldown": 3,
+     "maxPerTurn": 0,
+     "damageBrief": "81–100 Terre"
+    }
+   ]
+  }
+ ],
+ "summons": [
+  {
+   "monsterId": 5130,
+   "name": "Stratège Iop",
+   "grade": 1,
+   "useSummonSlot": false,
+   "canPlay": true,
+   "canTackle": true,
+   "canBePushed": true,
+   "canSwitchPos": true,
+   "ap": 0,
+   "mp": 0,
+   "lifePointsBase": 0,
+   "bonusCharacteristics": {
+    "lifePoints": 200
+   },
+   "resistancesPercent": {
+    "neutral": 0,
+    "earth": 0,
+    "fire": 0,
+    "water": 0,
+    "air": 0
+   },
+   "characteristics": {
+    "strength": 0,
+    "intelligence": 0,
+    "chance": 0,
+    "agility": 0
+   },
+   "startingSpellLevelId": 52854,
+   "spells": [],
+   "note": "Stratège Iop (Conquête, P5B)",
+   "summonCost": 0,
+   "characRatios": [
+    [
+     0,
+     700
+    ],
+    [
+     10,
+     0.125
+    ],
+    [
+     11,
+     0
+    ],
+    [
+     12,
+     0.125
+    ],
+    [
+     13,
+     0.125
+    ],
+    [
+     14,
+     0.125
+    ],
+    [
+     15,
+     0.125
+    ],
+    [
+     19,
+     1
+    ],
+    [
+     23,
+     1
+    ],
+    [
+     25,
+     0.125
+    ]
+   ],
+   "lifePointsInterpretation": "PV = 200 % des PV de l'invocateur (convention du projet, INCERTAIN) + PV de base 0"
+  }
+ ],
+ "importantStates": {
+  "609": {
+   "name": "Fureur I",
+   "note": "Fureur I (+20 dégâts de base à Fureur)"
+  },
+  "5192": {
+   "name": "Fureur II",
+   "note": "Fureur II (+40)"
+  },
+  "590": {
+   "name": "Tempête de Puissance I",
+   "note": "Tempête de Puissance I (marque, infini)"
+  },
+  "591": {
+   "name": "Tempête de Puissance II",
+   "note": "Tempête de Puissance II"
+  },
+  "657": {
+   "name": "Sentence",
+   "note": "Sentence (explosion Feu en fin de tour de la cible)"
+  },
+  "5184": {
+   "name": "Condamné",
+   "note": "Condamné (Épée du Jugement)"
+  },
+  "3643": {
+   "name": "Friction",
+   "note": "Friction"
+  },
+  "3642": {
+   "name": "Coup pour Coup",
+   "note": "Coup pour Coup"
+  },
+  "589": {
+   "name": "Coup pour Coup",
+   "note": "Coup pour Coup (ennemi)"
+  },
+  "269": {
+   "name": "Invulnérable",
+   "note": "Invulnérable (Emprise)"
+  },
+  "375": {
+   "name": "Invulnérable à Distance",
+   "note": "Invulnérable à Distance (Duel)"
+  },
+  "7": {
+   "name": "Pesanteur",
+   "note": "Pesanteur (Duel ; bloque Bond : HS!7)"
+  },
+  "97": {
+   "name": "Indéplaçable",
+   "note": "Indéplaçable (Détermination)"
+  },
+  "96": {
+   "name": "Intaclable",
+   "note": "Intaclable (Agitation)"
+  },
+  "42": {
+   "name": "Affaibli",
+   "note": "Affaibli (Précipitation, flag preventsFight — sens INCERTAIN)"
+  },
+  "2794": {
+   "name": "Stratégie Iop",
+   "note": "Stratégie Iop (l'Iop est exclu des renvois du Stratège)"
+  }
+ },
+ "pairNotes": {
+  "1": "Pression (Terre, érosion, 4/tour) pour un Iop Terre ; Fracture (Air, ligne sans LdV) pour l'Air.",
+  "2": "Ferveur (bouclier + Eau en croix, 2 PA) ou Menace (attire 2 + Eau).",
+  "3": "Couperet (Feu, ligne 4, −3 PM) ou Accumulation (Terre, rampe 3 tours).",
+  "4": "Épée Divine (Air, croix 3, +30 Dommages au groupe) quasi systématique ; Épée du Jugement (Eau, bouclier, différé).",
+  "5": "Intimidation (poussée 3, meilleur élément) ; Conquête (Stratège Iop renvoyant les dégâts).",
+  "6": "Bond (téléportation + ×115 % dégâts subis autour) ; Agitation (+3 PM, Intaclable à un allié).",
+  "7": "Concentration (Terre mêlée, +50 % sur invocations) ; Sentence (Feu, explosion de fin de tour).",
+  "8": "Déferlement (rapprochement + Eau) ; Anneau Destructeur (anneau 3 Air + attire 1).",
+  "9": "Vitalité (+20 %/+10 % Vitalité) ; Violence (repousse 4 autour de soi).",
+  "10": "Souffle (Air, repousse en croix) ; Rassemblement (Feu, regroupe une croix de 3).",
+  "11": "Épée Destructrice (Feu, barre 3, érosion) ; Fustigation (Eau, demi-cercle, érosion).",
+  "12": "Puissance (+300 Puissance, +120 Dommages Poussée, 3 tours) indispensable ; Vindicte (+20 % érosion).",
+  "13": "Tempête de Puissance (Feu, marquage I/II) ; Tannée (Air, barre 5, −3 PM).",
+  "14": "Endurance (Eau + bouclier 150) ; Pugilat (Terre, cercle 2, +18 par lancer).",
+  "15": "Vertu (bouclier 1000 aux alliés au contact) ; Massacre (×115 % + renvoi 30 % en anneau).",
+  "16": "Épée de Iop (Terre, croix 3, 8 PO) ; Fendoir (Eau, croix 1, bouclier par ennemi).",
+  "17": "Friction (attraction réactive) ; Coup pour Coup (poussée réactive).",
+  "18": "Épée Céleste (Air, cercle 2) ; Zénith (Air, ligne 4, bonus selon PM restants).",
+  "19": "Précipitation (+5 PA puis −3 PA) ; Détermination (Indéplaçable + bouclier 600).",
+  "20": "Épée du Destin (Feu, +40 au retour de relance) ; Tumulte (Feu, +20 par ennemi en croix).",
+  "21": "Emprise (ennemi invulnérable et immobilisé 1 tour) ; Duel.",
+  "22": "Fureur (Terre, rampe 20/40) ou Colère de Iop (Terre, 81–100 puis 191–210 au retour)."
+ },
+ "spellSets": {
+  "iop_terre_burst_pvm": {
+   "description": "Iop Terre mono-cible/boss (stuff Force) : rampe Fureur + Colère, Pression érosion, Puissance, Précipitation, Bond.",
+   "A": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    11,
+    12,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21
+   ],
+   "B": [
+    2,
+    3,
+    10,
+    13,
+    14,
+    15,
+    22
+   ],
+   "spells": [
+    {
+     "pair": 1,
+     "variant": "A",
+     "id": 13106,
+     "name": "Pression"
+    },
+    {
+     "pair": 2,
+     "variant": "B",
+     "id": 13130,
+     "name": "Menace"
+    },
+    {
+     "pair": 3,
+     "variant": "B",
+     "id": 13138,
+     "name": "Accumulation"
+    },
+    {
+     "pair": 4,
+     "variant": "A",
+     "id": 13110,
+     "name": "Épée Divine"
+    },
+    {
+     "pair": 5,
+     "variant": "A",
+     "id": 13108,
+     "name": "Intimidation"
+    },
+    {
+     "pair": 6,
+     "variant": "A",
+     "id": 13107,
+     "name": "Bond"
+    },
+    {
+     "pair": 7,
+     "variant": "A",
+     "id": 13123,
+     "name": "Concentration"
+    },
+    {
+     "pair": 8,
+     "variant": "A",
+     "id": 13126,
+     "name": "Déferlement"
+    },
+    {
+     "pair": 9,
+     "variant": "A",
+     "id": 13120,
+     "name": "Vitalité"
+    },
+    {
+     "pair": 10,
+     "variant": "B",
+     "id": 13136,
+     "name": "Rassemblement"
+    },
+    {
+     "pair": 11,
+     "variant": "A",
+     "id": 13119,
+     "name": "Épée Destructrice"
+    },
+    {
+     "pair": 12,
+     "variant": "A",
+     "id": 13118,
+     "name": "Puissance"
+    },
+    {
+     "pair": 13,
+     "variant": "B",
+     "id": 13131,
+     "name": "Tannée"
+    },
+    {
+     "pair": 14,
+     "variant": "B",
+     "id": 13146,
+     "name": "Pugilat"
+    },
+    {
+     "pair": 15,
+     "variant": "B",
+     "id": 13112,
+     "name": "Massacre"
+    },
+    {
+     "pair": 16,
+     "variant": "A",
+     "id": 13125,
+     "name": "Épée de Iop"
+    },
+    {
+     "pair": 17,
+     "variant": "A",
+     "id": 13113,
+     "name": "Friction"
+    },
+    {
+     "pair": 18,
+     "variant": "A",
+     "id": 13122,
+     "name": "Épée Céleste"
+    },
+    {
+     "pair": 19,
+     "variant": "A",
+     "id": 13114,
+     "name": "Précipitation"
+    },
+    {
+     "pair": 20,
+     "variant": "A",
+     "id": 13111,
+     "name": "Épée du Destin"
+    },
+    {
+     "pair": 21,
+     "variant": "A",
+     "id": 13141,
+     "name": "Emprise"
+    },
+    {
+     "pair": 22,
+     "variant": "B",
+     "id": 13124,
+     "name": "Colère de Iop"
+    }
+   ]
+  },
+  "iop_multi_zone_vortex": {
+   "description": "Iop zone (Feu/Air, ou multi-élément) pour les combats de vagues : Épée Céleste, Épée Divine, Tannée/Couperet, Tumulte, Rassemblement, Tempête de Puissance, Fureur conservée.",
+   "A": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    9,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    21,
+    22
+   ],
+   "B": [
+    1,
+    7,
+    8,
+    10,
+    20
+   ],
+   "spells": [
+    {
+     "pair": 1,
+     "variant": "B",
+     "id": 13139,
+     "name": "Fracture"
+    },
+    {
+     "pair": 2,
+     "variant": "A",
+     "id": 14676,
+     "name": "Ferveur"
+    },
+    {
+     "pair": 3,
+     "variant": "A",
+     "id": 13115,
+     "name": "Couperet"
+    },
+    {
+     "pair": 4,
+     "variant": "A",
+     "id": 13110,
+     "name": "Épée Divine"
+    },
+    {
+     "pair": 5,
+     "variant": "A",
+     "id": 13108,
+     "name": "Intimidation"
+    },
+    {
+     "pair": 6,
+     "variant": "A",
+     "id": 13107,
+     "name": "Bond"
+    },
+    {
+     "pair": 7,
+     "variant": "B",
+     "id": 13147,
+     "name": "Sentence"
+    },
+    {
+     "pair": 8,
+     "variant": "B",
+     "id": 13135,
+     "name": "Anneau Destructeur"
+    },
+    {
+     "pair": 9,
+     "variant": "A",
+     "id": 13120,
+     "name": "Vitalité"
+    },
+    {
+     "pair": 10,
+     "variant": "B",
+     "id": 13136,
+     "name": "Rassemblement"
+    },
+    {
+     "pair": 11,
+     "variant": "A",
+     "id": 13119,
+     "name": "Épée Destructrice"
+    },
+    {
+     "pair": 12,
+     "variant": "A",
+     "id": 13118,
+     "name": "Puissance"
+    },
+    {
+     "pair": 13,
+     "variant": "A",
+     "id": 13121,
+     "name": "Tempête de Puissance"
+    },
+    {
+     "pair": 14,
+     "variant": "A",
+     "id": 13133,
+     "name": "Endurance"
+    },
+    {
+     "pair": 15,
+     "variant": "A",
+     "id": 13142,
+     "name": "Vertu"
+    },
+    {
+     "pair": 16,
+     "variant": "A",
+     "id": 13125,
+     "name": "Épée de Iop"
+    },
+    {
+     "pair": 17,
+     "variant": "A",
+     "id": 13113,
+     "name": "Friction"
+    },
+    {
+     "pair": 18,
+     "variant": "A",
+     "id": 13122,
+     "name": "Épée Céleste"
+    },
+    {
+     "pair": 19,
+     "variant": "A",
+     "id": 13114,
+     "name": "Précipitation"
+    },
+    {
+     "pair": 20,
+     "variant": "B",
+     "id": 13144,
+     "name": "Tumulte"
+    },
+    {
+     "pair": 21,
+     "variant": "A",
+     "id": 13141,
+     "name": "Emprise"
+    },
+    {
+     "pair": 22,
+     "variant": "A",
+     "id": 13156,
+     "name": "Fureur"
+    }
+   ]
+  },
+  "iop_soutien": {
+   "description": "Iop « booster » : maximise Puissance/Précipitation/Agitation/Détermination/Vertu, garde Emprise pour la sécurité.",
+   "A": [
+    1,
+    2,
+    3,
+    4,
+    7,
+    8,
+    9,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22
+   ],
+   "B": [
+    5,
+    6,
+    10
+   ],
+   "spells": [
+    {
+     "pair": 1,
+     "variant": "A",
+     "id": 13106,
+     "name": "Pression"
+    },
+    {
+     "pair": 2,
+     "variant": "A",
+     "id": 14676,
+     "name": "Ferveur"
+    },
+    {
+     "pair": 3,
+     "variant": "A",
+     "id": 13115,
+     "name": "Couperet"
+    },
+    {
+     "pair": 4,
+     "variant": "A",
+     "id": 13110,
+     "name": "Épée Divine"
+    },
+    {
+     "pair": 5,
+     "variant": "B",
+     "id": 13148,
+     "name": "Conquête"
+    },
+    {
+     "pair": 6,
+     "variant": "B",
+     "id": 13143,
+     "name": "Agitation"
+    },
+    {
+     "pair": 7,
+     "variant": "A",
+     "id": 13123,
+     "name": "Concentration"
+    },
+    {
+     "pair": 8,
+     "variant": "A",
+     "id": 13126,
+     "name": "Déferlement"
+    },
+    {
+     "pair": 9,
+     "variant": "A",
+     "id": 13120,
+     "name": "Vitalité"
+    },
+    {
+     "pair": 10,
+     "variant": "B",
+     "id": 13136,
+     "name": "Rassemblement"
+    },
+    {
+     "pair": 11,
+     "variant": "A",
+     "id": 13119,
+     "name": "Épée Destructrice"
+    },
+    {
+     "pair": 12,
+     "variant": "A",
+     "id": 13118,
+     "name": "Puissance"
+    },
+    {
+     "pair": 13,
+     "variant": "A",
+     "id": 13121,
+     "name": "Tempête de Puissance"
+    },
+    {
+     "pair": 14,
+     "variant": "A",
+     "id": 13133,
+     "name": "Endurance"
+    },
+    {
+     "pair": 15,
+     "variant": "A",
+     "id": 13142,
+     "name": "Vertu"
+    },
+    {
+     "pair": 16,
+     "variant": "A",
+     "id": 13125,
+     "name": "Épée de Iop"
+    },
+    {
+     "pair": 17,
+     "variant": "A",
+     "id": 13113,
+     "name": "Friction"
+    },
+    {
+     "pair": 18,
+     "variant": "A",
+     "id": 13122,
+     "name": "Épée Céleste"
+    },
+    {
+     "pair": 19,
+     "variant": "A",
+     "id": 13114,
+     "name": "Précipitation"
+    },
+    {
+     "pair": 20,
+     "variant": "A",
+     "id": 13111,
+     "name": "Épée du Destin"
+    },
+    {
+     "pair": 21,
+     "variant": "A",
+     "id": 13141,
+     "name": "Emprise"
+    },
+    {
+     "pair": 22,
+     "variant": "A",
+     "id": 13156,
+     "name": "Fureur"
+    }
+   ]
+  }
+ },
+ "rotations": [
+  {
+   "name": "Iop Terre — ouverture boss (12 PA / 6 PM)",
+   "ap": 12,
+   "sequence": [
+    "Puissance (3) sur soi → +300 Puissance 3 tours",
+    "Bond (4) au contact du boss → ennemis adjacents ×115 % dégâts subis",
+    "Fureur (3) → Fureur I (+20 au prochain lancer)",
+    "Concentration (2) ou Pression (3 si 13 PA)"
+   ],
+   "goal": "Installer la rampe Fureur et le buff Puissance ; Colère de Iop gardée pour le tour 2."
+  },
+  {
+   "name": "Iop Terre — tour 2 (12 PA)",
+   "ap": 12,
+   "sequence": [
+    "Fureur (3) → 48–52 de base (Fureur II)",
+    "Colère de Iop (7) → 81–100 (+110 au retour, tour 5)",
+    "Concentration (2)"
+   ],
+   "goal": "Pic de dégâts mono-cible ; au tour 5 Colère vaut 191–210 de base."
+  },
+  {
+   "name": "Iop Terre — burst avec Précipitation (12+5 PA)",
+   "ap": 17,
+   "sequence": [
+    "Précipitation (2) sur soi → +5 PA (−3 PA au tour suivant)",
+    "Fureur (3)",
+    "Colère de Iop (7)",
+    "Pression (3)",
+    "Concentration (2)"
+   ],
+   "goal": "Burst d'exécution (fin de combat / boss bas en PV). Ne pas utiliser si le tour suivant est critique."
+  },
+  {
+   "name": "Iop zone — vague de monstres (12 PA)",
+   "ap": 12,
+   "sequence": [
+    "Rassemblement (3) au centre du paquet → ennemis regroupés en croix",
+    "Épée Céleste (4) au centre (cercle 2)",
+    "Épée Divine (3) au contact (croix 3, +30 Dommages aux alliés)",
+    "Intimidation (2) pour dégager un ennemi"
+   ],
+   "goal": "Regrouper puis frapper 3–5 ennemis par sort ; Tannée/Couperet en ligne pour −3 PM de zone."
+  },
+  {
+   "name": "Iop soutien — tour de buff (12 PA)",
+   "ap": 12,
+   "sequence": [
+    "Puissance (3) sur le DPS principal",
+    "Précipitation (2) sur le DPS principal (+5 PA)",
+    "Agitation (2) sur le tank/DPS mêlée (+3 PM, Intaclable)",
+    "Épée Divine (3) en croix sur le groupe (+30 Dommages)",
+    "Détermination (2) ou Vitalité (3)"
+   ],
+   "goal": "Transformer un allié en canon de verre pour un tour décisif (ex. vague finale)."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "Eniripsa",
+   "how": "Mot Stimulant (+2 PA) / Mot Galvanisant (+150 Puissance, bouclier) cumulés à Puissance → tours Fureur+Colère complets ; soins pour un Iop mêlée exposé."
+  },
+  {
+   "with": "Xélor",
+   "how": "Retrait PA (Ralentissement, Horloge, Pétrification) protège l'Iop au contact ; téléportations (Frappe de Xélor, Engrenage, Rouage) amènent les ennemis au contact / en croix pour Épée de Iop ; Flou Temporel donne +2 PA au tour suivant."
+  },
+  {
+   "with": "Enutrof / Sacrieur / Ouginak",
+   "how": "Retrait PM : l'ennemi reste au contact de l'Iop (Fureur et Colère sont à 1 PO)."
+  },
+  {
+   "with": "Pandawa / Osamodas",
+   "how": "Placement (porter/jeter, Laisse) pour amener la cible dans la croix d'Épée de Iop ou d'Épée Divine ; Rassemblement Iop + zones alliées."
+  },
+  {
+   "with": "Féca",
+   "how": "Boucliers/glyphes pour un Iop sans soin propre ; le Féca profite des +30 Dommages d'Épée Divine et de Puissance."
+  },
+  {
+   "with": "Ecaflip",
+   "how": "Roue de la Fortune : 999 % de critique aux alliés au contact de la zone pendant leur tour (Colère de Iop CC 107–130, Fureur CC 34–38 + rampe) ; Arcane XV (jets maximisés) ; soins Ecaflip (Langue Râpeuse, Topkaj) pour un Iop au contact."
+  }
+ ],
+ "vortexNotes": [
+  "Vagues de N monstres : Épée Céleste, Épée Divine (+30 Dommages au groupe), Tumulte, Pugilat, Rassemblement (regroupe la vague), Tannée/Couperet (−3 PM en zone).",
+  "Phase 2 (Vortex vulnérable 1 tour après « Action ! ») : préparer la rampe (Fureur I/II, Colère de Iop au retour de relance) et Puissance pour le premier tour de vulnérabilité ; Vortex : résistances les plus basses Neutre 6 % et Feu 12 % (docs/research/vortex.md §0).",
+  "Emprise rend un monstre Invulnérable 1 tour : utile pour survivre, mais un monstre invulnérable ne peut pas être tué à sa « Même heure » (corruption) — l'IA doit en tenir compte.",
+  "« En temps et en heure » (500 Terre + 50 % des PV érodés) : Vitalité, Vertu (1000 de bouclier) et Détermination (600) avant le tour du Vortex ; Bond pour sortir de la ligne de l'Auroraire."
+ ],
+ "strengths": [
+  "Meilleur burst mono-cible au contact (Fureur 68–72 de base en rythme, Colère de Iop 191–210 au retour de relance).",
+  "Quatre éléments disponibles, plusieurs sorts de zone (croix 3, cercle 2, ligne 4, barre 5).",
+  "Buffs offensifs majeurs pour l'équipe : +300 Puissance, +5 PA, +3 PM, +30 Dommages, boucliers 600–1000.",
+  "Mobilité (Bond 5 PO sans LdV, Déferlement 5 cases) et contrôle ponctuel (Emprise, Rassemblement).",
+  "Érosion intégrée (jusqu'à +46 % cumulée) : bon contre les boss régénérants."
+ ],
+ "weaknesses": [
+  "Aucun soin, peu de défense intrinsèque (boucliers Endurance/Fendoir/Ferveur ou Vertu uniquement).",
+  "Très dépendant du contact (Fureur, Colère, Concentration à 1 PO) : vulnérable au retrait PM et aux ennemis qui fuient.",
+  "Plusieurs sorts touchent les alliés (Couperet, Tannée, Fracture, Épée Destructrice, Fustigation, Zénith : masque a,A) — placement allié à gérer.",
+  "Rampes à planifier sur 3 tours : un tour sauté coûte beaucoup (Fureur décrémente, bonus Colère perdu)."
+ ],
+ "uncertain": [
+  "Zénith (1013) : formule exacte des dommages proportionnels aux PM restants (supposée base × PM_restants / PM_max).",
+  "`globalCooldown = -1` (Emprise, Massacre, Duel) : −1 = aucune relance globale (mechanics.md §4.4) ; certains documents du projet l'interprètent comme relance partagée entre lanceurs de l'équipe.",
+  "État « Affaibli » (#42) de Précipitation : flag preventsFight dans les données, effet réel non documenté (probablement purement visuel / anti-cumul).",
+  "PV du Stratège Iop : `bonusCharacteristics.lifePoints = 200` interprété comme 200 % des PV de l'Iop (règle d'échelle des invocations Dofus 3 non confirmée).",
+  "Épée du Jugement : « le retardement est réinitialisé sur une cible Condamnée » — mécanisme de réinitialisation non visible dans les effets (pas de 406 explicite) ; supposé : un nouveau dégât différé remplace l'ancien."
+ ],
+ "sources": [
+  "https://api.dofusdb.fr/breeds/8",
+  "https://api.dofusdb.fr/spell-variants?breedId=8",
+  "https://api.dofusdb.fr/spells?id[$in][]=13106 (… 44 sorts)",
+  "https://api.dofusdb.fr/spell-levels?spellId[$in][]=13106 (… 91 niveaux)",
+  "https://api.dofusdb.fr/monsters/5130 (Stratège Iop)",
+  "docs/research/effects.md, data/research/effect-semantics.json, data/research/zone-and-mask-grammar.json (catalogue des effets du projet)",
+  "https://www.millenium.org/guide/337386.html (guide Iop, historique variantes 2.45 / 2.52)"
+ ]
+}

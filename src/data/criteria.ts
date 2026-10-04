@@ -22,7 +22,7 @@ type Token = '(' | ')' | '&' | '|' | { has: boolean; state: number }
 
 function tokenize(src: string): Token[] {
   const out: Token[] = []
-  const re = /\s*(?:(HS[=!]|[Ee])(\d+)|([()&|]))/y
+  const re = /(HS[=!]|[Ee])(\d+)|([()&|])/y
   let pos = 0
   while (pos < src.length) {
     if (/\s/.test(src[pos])) {

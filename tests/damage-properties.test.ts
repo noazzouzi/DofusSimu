@@ -23,7 +23,6 @@ import {
 
 // ───────────────────────────── copie littérale de DoMath (main.e2dd4684.js, fn Rg) ─────────────────────────────
 
-/* eslint-disable */
 function literalRg(e: DomathStats, t: number, n: ElementKey, a: boolean): number {
   const carac = (el: ElementKey): 'strength' | 'intelligence' | 'luck' | 'agility' =>
     el === 'fire' ? 'intelligence' : el === 'water' ? 'luck' : el === 'air' ? 'agility' : 'strength'
@@ -53,7 +52,6 @@ function literalRg(e: DomathStats, t: number, n: ElementKey, a: boolean): number
   r = Math.trunc(r)
   return r
 }
-/* eslint-enable */
 
 /** Même pipeline en rationnels exacts (BigInt) : référence du mode `integer`. */
 function exactRg(e: DomathStats, base: number, n: ElementKey, crit: boolean): number {
@@ -389,13 +387,17 @@ describe('plage, espérance et explication', () => {
     expect(expectedDamage(input, null, { min: 10, max: 14 }, -5)).toBeCloseTo(meanPrepared(prepareDamage(input), 10, 14), 12)
   })
 
-  it('explication : étapes ordonnées, dernière = résultat, identique à damageRoll', () => {
+  it('explication (chemin tracé) identique au chemin rapide, étapes ordonnées, dernière = résultat', () => {
     const rng = new Rng(13)
-    for (let k = 0; k < 500; k++) {
+    for (let k = 0; k < 10000; k++) {
       const input = randomInput(rng)
       input.order = rng.chance(0.3) ? 'dofus3' : 'domath'
       input.mode = rng.chance(0.3) ? 'integer' : 'domath'
-      const r = rng.int(0, 60)
+      if (rng.chance(0.2)) input.weaponSkillPct = rng.int(-10, 30)
+      if (rng.chance(0.2)) input.efficiency = rng.int(0, 10) / 10
+      if (rng.chance(0.2)) input.baseDamageBonus = rng.int(-10, 20)
+      if (rng.chance(0.2)) input.armorReduction = rng.int(0, 150)
+      const r = rng.int(-2, 60)
       const ex = explainDamage(input, r)
       expect(ex.damage).toBe(damageRoll(input, r))
       expect(ex.steps[0].id).toBe('base')

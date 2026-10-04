@@ -77,6 +77,9 @@ describe('zones', () => {
     expect(parseZone('-2,0,10,4')).toMatchObject({ shape: '-', size: 2 })
     expect(parseZone('#2,2,10,4')).toMatchObject({ shape: '#', size: 2, minSize: 2 })
     expect(parseZone('l1,63,10,4', 's')).toMatchObject({ shape: 'l', size: 1, minSize: 63, stopAtTarget: true })
+    // paramètres absents : défauts du client (1, 0, 10, 4)
+    expect(parseZone('P')).toMatchObject({ shape: 'P', size: 1, minSize: 0, decreaseStepPct: 10, maxDecreaseCount: 4 })
+    expect(parseZone('C2,,0')).toMatchObject({ shape: 'C', size: 2, minSize: 0, decreaseStepPct: 0, maxDecreaseCount: 4 })
   })
 
   it('décode les drapeaux c/s/d/v et les cellules explicites', () => {

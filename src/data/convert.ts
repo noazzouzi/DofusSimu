@@ -91,7 +91,8 @@ export const POINT_ZONE: ZoneSpec = parseZone('P1,0,0,0')
  * Zone compacte Dofus 3 écrite par le script : `"<forme><param1>,<param2>,<pas%>,<maxPas>"` + drapeaux
  * (`c` includeCarried, `s` isStopAtTarget, `d` forcedDirection, `v` onlyAffectIfInSightLine) + cellules
  * explicites. `size = param1` et `minSize = param2` sont repris tels quels (pour la forme `l`, param1 est la
- * distance minimale et param2 la longueur — cf. effects.md §4.2). Zone absente => point.
+ * distance minimale et param2 la longueur — cf. effects.md §4.2). Paramètres absents : 1, 0, 10, 4 (défauts du
+ * client, comme src/map/zones.ts parseZoneString). Zone absente => point.
  */
 export function parseZone(zone: string | undefined, flags = '', cells?: readonly number[]): ZoneSpec {
   if (!zone) return POINT_ZONE
@@ -100,10 +101,10 @@ export function parseZone(zone: string | undefined, flags = '', cells?: readonly
     const parts = zone.slice(1).split(',')
     return {
       shape: zone[0],
-      size: num(parts[0]),
-      minSize: num(parts[1]),
-      decreaseStepPct: num(parts[2]),
-      maxDecreaseCount: num(parts[3]),
+      size: num(parts[0], 1),
+      minSize: num(parts[1], 0),
+      decreaseStepPct: num(parts[2], 10),
+      maxDecreaseCount: num(parts[3], 4),
       stopAtTarget: flags.includes('s'),
       includeCarried: flags.includes('c'),
       onlyIfInSight: flags.includes('v'),
@@ -121,12 +122,13 @@ const RAW_ZONE_MIN_SIZE_SHAPES = '#+CQRXl'
  * Formes à taille minimale (# + C Q R X l) : p1 = taille min, p2 = % dégressif, p3 = nb max ;
  * autres : p1 = % dégressif, p2 = nb max. p4 = stopAtTarget. Défauts 10 % / 4 (effects.md §4.1).
  * Ex. Bâton `"T1,10,1"`, Marteau `"X1,0,10,1"`, Pelle `"V1,10,2"`, Lance `"L3,10,3"`, `"P"`.
+ * (L'inversion p0/p1 de la forme `l` en Dofus 2 n'est pas gérée : aucune arme ne l'utilise.)
  */
 export function parseRawZone(raw: string | undefined): ZoneSpec {
   if (!raw) return POINT_ZONE
   return internZone(`raw:${raw}`, () => {
     const shape = raw[0]
-    const p = raw.length > 1 ? raw.slice(1).split(',').map(num) : []
+    const p = raw.length > 1 ? raw.slice(1).split(',').map(v => num(v, 0)) : []
     const withMin = RAW_ZONE_MIN_SIZE_SHAPES.includes(shape)
     const at = (i: number, def: number) => (i < p.length ? p[i] : def)
     return {
@@ -144,9 +146,11 @@ export function parseRawZone(raw: string | undefined): ZoneSpec {
   })
 }
 
-function num(s: string | undefined): number {
+/** Paramètre numérique de zone ; absent ou invalide => `def`. */
+function num(s: string | undefined, def: number): number {
+  if (s === undefined || s.trim() === '') return def
   const n = Number(s)
-  return Number.isFinite(n) ? n : 0
+  return Number.isFinite(n) ? n : def
 }
 
 // ───────────────────────────── sorts ─────────────────────────────

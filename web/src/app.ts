@@ -65,6 +65,7 @@ export class ViewerApp {
     this.bindKeyboard()
     new ResizeObserver(() => this.fit()).observe(this.stage)
     window.addEventListener('resize', () => this.fit())
+    this.watchPixelRatio()
     requestAnimationFrame(t => this.loop(t))
   }
 
@@ -156,9 +157,16 @@ export class ViewerApp {
   }
 
   /** Ajuste le canvas : sur grand écran, carte + ordre de jeu + contrôles tiennent dans la fenêtre. */
+  private markersWidth = 0
+
   private fit(): void {
     const w = this.stage.clientWidth
     if (!w) return
+    const mw = $('scrub-markers').clientWidth
+    if (this.tl && mw && mw !== this.markersWidth) {
+      this.markersWidth = mw
+      renderMarkers($('scrub-markers'), this.tl)
+    }
     const wide = window.innerWidth > 900
     const stageTop = this.stage.getBoundingClientRect().top + window.scrollY
     const below = ($('turn-order').offsetHeight || 70) + ($('controls').offsetHeight || 100) + 2 * 12 + 16
@@ -178,6 +186,20 @@ export class ViewerApp {
     const btn = $('zoom-btn')
     btn.innerHTML = follow ? `${ZOOM_ICONS.overview}<span>Vue d’ensemble</span>` : `${ZOOM_ICONS.follow}<span>Suivre l’action</span>`
     btn.title = follow ? 'Afficher toute la carte' : 'Zoomer et suivre le combattant actif'
+  }
+
+  /** Fenêtre déplacée vers un écran de densité différente (ou zoom du navigateur) : re-rendu net. */
+  private watchPixelRatio(): void {
+    if (!window.matchMedia) return
+    const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio || 1}dppx)`)
+    mq.addEventListener?.(
+      'change',
+      () => {
+        this.fit()
+        this.watchPixelRatio()
+      },
+      { once: true },
+    )
   }
 
   refreshTheme(): void {

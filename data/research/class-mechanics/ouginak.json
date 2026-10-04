@@ -1,0 +1,4045 @@
+{
+ "breedId": 18,
+ "name": "Ouginak",
+ "slug": "ouginak",
+ "dataSource": "https://api.dofusdb.fr (breeds/18, spell-variants?breedId=18, spells, spell-levels, spell-states, monsters, effects) — fichiers du jeu Dofus 3 v3.6.12.16, enregistrements mis à jour le 23/06/2026 et 07/07/2026 ; extraction 04/10/2026",
+ "gameVersion": "3.6.12.16",
+ "officialRoleRatings": {
+  "source": "https://api.dofusdb.fr/breeds/18 (breedRoles, valeurs /10)",
+  "complexity": 2,
+  "ratings": {
+   "Dégâts": 9,
+   "Tank": 7,
+   "Entrave": 5,
+   "Amélioration": 4,
+   "Soins": 4,
+   "Protection": 3,
+   "Placement": 3,
+   "Invocation": 2
+  },
+  "descriptions": {
+   "Dégâts": "Occasionne d'importants dommages à courte portée.",
+   "Tank": "Exploite sa Rage pour mieux encaisser les attaques.",
+   "Entrave": "Retire des points de mouvement et de la fuite et augmente son tacle pour maintenir ses ennemis à proximité."
+  }
+ },
+ "roles": [
+  {
+   "role": "dps-melee",
+   "element": "Terre / Feu / Eau / Air (mono ou bi)",
+   "priority": 1,
+   "description": "Dommages élevés à 1–4 PO : Muselière, Dépouille, Tétanisation, Humérus, Chasse, Dépeçage, Tibia ; rampes Os à Moelle/Carcasse sur la Proie ; Forme Bestiale (+20 % dommages finaux) et Roquet."
+  },
+  {
+   "role": "tank-bruiser",
+   "element": "-",
+   "priority": 1,
+   "description": "Rage (×0,9 → ×0,81 dommages subis), Molosse (×0,9), Cerbère/Pelage/Férocité (boucliers), Amarok (+10 % rés. mêlée), auto-soin via Proie (25 %), vols de vie (Rabattage, Cubitus, Dogue, Aboi), Caninos/Apaisement."
+  },
+  {
+   "role": "entrave-pm-tacle",
+   "element": "-",
+   "priority": 2,
+   "description": "Tétanisation −3 PM, Rabattage vol 2 PM (Proie), Panique −2 PM/−40 Fuite (Proie), Dogue −30 Fuite, Calcanéus/Convergence/Limier (attirances) ; garde les ennemis au contact."
+  },
+  {
+   "role": "soutien-groupe",
+   "element": "-",
+   "priority": 3,
+   "description": "Proie (soin de 25 % des dommages infligés pour tous les attaquants), Gibier/Acharnement (×107 % / ×115 %), Battue (+150 Puissance), Rogne, Aboiement/Poursuite (+2 PM), Apaisement (15 %), Appel de la Meute (regroupement)."
+  }
+ ],
+ "mechanics": [
+  {
+   "name": "Rage (513/514/515) et Forme Bestiale (517)",
+   "description": "+1 palier par sort de Rage : Rage (×0,9 dommages subis), Raage (×0,81), puis Forme Bestiale pour la fin du tour et le tour suivant (+2 PM, +20 % dommages finaux, Intaclable, pas d'arme, portée max 2, sorts défensifs interdits), retour à 0.",
+   "implementationNotes": "Machine à états évaluée sur l'instantané du lancer (une seule transition par sort). Rage/Raage = deux buffs 1163 ×90 % indépendants (multiplicatifs). Forme Bestiale : appliquer 2905 (portée max fixée) aux sorts listés pendant 2 tours ; fin via 13747 (délai 1) → déclencheur TE → 13782. Sorts −1 Rage : 13745 niv. 2. Nouvelle Lune : 13745 niv. 3."
+  },
+  {
+   "name": "Proie (516) / Gibier",
+   "description": "Une seule Proie ; attaquants soignés de 25 % des dommages (Proie) ou dommages subis ×107 % venant de ses ennemis (Gibier) ; nombreux bonus conditionnels ; relance remise à 0 à la mort de la Proie.",
+   "implementationNotes": "Masques E516 dans les effets ; 786 = soigner l'attaquant d'un % des dommages finaux ; 1045 via déclencheur X (mort de la Proie)."
+  },
+  {
+   "name": "Roquet (5865) et Accrocs",
+   "description": "Invocation (6 PA/4 PM) qui, à chaque sort offensif de l'Ouginak, avance d'1 case vers la Proie et lui vole 12–13 PV Neutre s'il est au contact (moitié de son attaque normale 24–26).",
+   "implementationNotes": "Sous-sort 23981 lancé sur la cible par l'Ouginak → chaque Roquet allié (F5865, zone a) lance 23981 niv. 2 : avance (1042) puis 24004 selon l'état de rang (3510–3512) sur la Proie en carré 1. Les sorts de zone utilisent 2160 (une seule fois par lancer)."
+  },
+  {
+   "name": "Bonus de dégâts de base sur la Proie (effet 293)",
+   "description": "Os à Moelle et Carcasse : +6 base par lancer sur la Proie (cumul 4, 3 tours) ; Muselière : +22 par ennemi adjacent au lanceur ; Dépouille : +20 par allié adjacent à la cible.",
+   "implementationNotes": "Muselière/Dépouille : buff temporaire posé avant les dommages puis retiré (406) après — le calcul de dégâts doit lire les 293 actifs au moment de la ligne de dommages."
+  },
+  {
+   "name": "Gains de Rage réactifs (Pelage Protecteur, Aboiement)",
+   "description": "Pelage Protecteur : si l'allié subit des dommages de poussée, il perd son 2e bouclier et l'Ouginak gagne 1 Rage. Aboiement : si la cible subit des dommages de mêlée, elle perd +2 PM/Inébranlable et l'Ouginak gagne 1 Rage.",
+   "implementationNotes": "Buffs déclenchés PD (dommages de poussée) / DM (mêlée) sur l'allié, qui lancent 13745 niv. 1 sur l'Ouginak (lanceur d'origine) et 406 (retrait des effets du sort)."
+  },
+  {
+   "name": "Forme Bestiale : restrictions de lancer",
+   "description": "Portée max fixée à 2 pour 16 sorts offensifs, Apaisement/Affection en portée 0, sorts HS!517 interdits, arme interdite (Affaibli).",
+   "implementationNotes": "2905/2906 = surcharge des portées par sort pendant 2 tours ; vérifier avant la prise en compte du bonus de PO (portée fixée = valeur finale, INCERTAIN si le bonus PO s'ajoute)."
+  },
+  {
+   "name": "Poison Vertèbre / glyphe Poursuite",
+   "description": "Vertèbre : 32–36 Eau au début des 2 prochains tours de la cible (non désenvoûtable et Accrocs à chaque tick si Proie). Poursuite : glyphe +2 PM aux alliés, reposé sous la Proie au début de son tour.",
+   "implementationNotes": "Déclencheur TB (effectTriggerDuration 2) ; glyphe-aura 1091 + glyphe immédiat 1165 d'1 tour."
+  }
+ ],
+ "spells": [
+  {
+   "id": 13756,
+   "pairIndex": 1,
+   "variantOf": 13787,
+   "isBaseSpell": true,
+   "name": "Molosse",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 42602,
+   "description": "Occasionne des dommages Terre aux ennemis et réduit les dommages subis par le lanceur.\n\nAugmente la Rage (nécessite une cible).",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "18–20 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 66,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "24–27 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 132,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "31–34 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–2 PO, LdV, 3/tour, 2/cible, CC 20 %",
+    "Dommages Terre 31–34 (CC 37–41) aux ennemis",
+    "Lanceur : dommages subis ×90 % pendant 1 tour (non cumulable)",
+    "+1 Rage (nécessite une cible) ; déclenche Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 31,
+     "max": 34,
+     "critMin": 37,
+     "critMax": 41,
+     "zone": "P1",
+     "targetMask": "A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (24128, niv. 1) → cible (alliée ou ennemie)",
+    "31 à 34 dommages Terre (CC : 37 à 41) → cible ennemie",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible ennemie",
+    "Dommages subis x90% → lanceur (actif 1 tour(s), déclencheur : quand la cible subit des dommages)",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (24128, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "tank",
+    "rage"
+   ],
+   "tactic": "Sort de base Terre au contact : dégâts + réduction de 10 % jusqu'au prochain tour. Premier palier de Rage idéal en ouverture.",
+   "engineNotes": "1163 ×90 % (déclencheur D, 1 tour, maxStack 1) sur le lanceur, en plus des ×90 % de Rage."
+  },
+  {
+   "id": 13787,
+   "pairIndex": 1,
+   "variantOf": 13756,
+   "isBaseSpell": false,
+   "name": "Mâchoire",
+   "obtainedAtLevel": 95,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 43870,
+   "description": "Augmente l'Esquive PM du lanceur et des alliés, retire de l'Esquive PM et occasionne des dommages Feu aux ennemis en zone.\n\nAugmente la Rage.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 95,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "23–25 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 162,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "28–31 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 0–6 PO, LdV, 2/tour, CC 20 %",
+    "Cercle 2 : dommages Feu 28–31 (CC 34–37) et −30 Esquive PM (2 tours) aux ennemis",
+    "Lanceur et alliés du cercle : +30 Esquive PM (2 tours)",
+    "+1 Rage (toujours) ; Accrocs une fois"
+   ],
+   "damageLines": [
+    {
+     "effectId": 99,
+     "kind": "damage",
+     "element": "fire",
+     "min": 28,
+     "max": 31,
+     "critMin": 34,
+     "critMax": 37,
+     "zone": "C2",
+     "targetMask": "A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (24128, niv. 1) → lanceur",
+    "30 Esquive PM → lanceur, alliés (dont lanceur si dans la zone) (zone cercle taille 2, 2 tour(s))",
+    "-30 Esquive PM → ennemis dans la zone (zone cercle taille 2, 2 tour(s))",
+    "28 à 31 dommages Feu (CC : 34 à 37) → ennemis dans la zone (zone cercle taille 2)",
+    "le lanceur lance (limitation globale) le sous-sort « Accrocs » (23981, niv. 1) → ennemis dans la zone (zone cercle taille 2)",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (24128, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-zone",
+    "buff",
+    "rage"
+   ],
+   "tactic": "Zone Feu à distance moyenne qui protège aussi le groupe contre les retraits de PM.",
+   "engineNotes": "24128 niv. 1 visé sur le lanceur (pas de condition de cible)."
+  },
+  {
+   "id": 13755,
+   "pairIndex": 2,
+   "variantOf": 13804,
+   "isBaseSpell": true,
+   "name": "Traque",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42599,
+   "description": "Occasionne des dommages Feu.\nRapproche le lanceur vers la cible avant d'appliquer les effets si c'est la Proie.\n\nLe sort n'est pas soumis aux contraintes de lancer sous Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "19–21 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 69,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "25–28 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 136,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "31–35 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–6 PO en ligne, LdV, 2/tour",
+    "Si la cible est la Proie : le lanceur avance de 5 cases vers elle avant les dommages",
+    "Dommages Feu 31–35 (CC 37–42)",
+    "Accrocs ; non soumis aux contraintes de Forme Bestiale (portée normale)"
+   ],
+   "damageLines": [
+    {
+     "effectId": 99,
+     "kind": "damage",
+     "element": "fire",
+     "min": 31,
+     "max": 35,
+     "critMin": 37,
+     "critMax": 42,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "Le lanceur avance de 5 case(s) vers la cible → cible ennemie — si cible a l'état « Proie » (516)",
+    "31 à 35 dommages Feu (CC : 37 à 42) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "dégâts-mono",
+    "mobilité"
+   ],
+   "tactic": "Engagement sur la Proie (avance 5) — utilisable en Forme Bestiale à 6 PO.",
+   "engineNotes": "Pas de Rage."
+  },
+  {
+   "id": 13804,
+   "pairIndex": 2,
+   "variantOf": 13755,
+   "isBaseSpell": false,
+   "name": "Dépeçage",
+   "obtainedAtLevel": 110,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 65482,
+   "description": "Réduit les soins reçus par la cible et occasionne des dommages Air.\n\nAugmente la Rage (nécessite une cible).",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 110,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "34–38 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 177,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "40–45 Air"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, 1–4 PO en ligne, LdV, 2/tour, CC 25 %",
+    "Dommages Air 40–45 (CC 48–54)",
+    "Soins reçus ×50 % pour la cible (déclencheur, 1 tour)",
+    "+1 Rage (nécessite une cible) ; Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 98,
+     "kind": "damage",
+     "element": "air",
+     "min": 40,
+     "max": 45,
+     "critMin": 48,
+     "critMax": 54,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (24128, niv. 1) → cible (alliée ou ennemie)",
+    "Soins reçus x50% → cible (alliée ou ennemie) (actif 1 tour(s), déclencheur : quand la cible est soignée)",
+    "40 à 45 dommages Air (CC : 48 à 54) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (24128, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "anti-soin",
+    "rage"
+   ],
+   "tactic": "Gros sort Air mono + anti-soin (×50 %) : à prendre contre des boss qui se soignent.",
+   "engineNotes": "1159 ×50 % (déclencheur H)."
+  },
+  {
+   "id": 13766,
+   "pairIndex": 3,
+   "variantOf": 13799,
+   "isBaseSpell": true,
+   "name": "Charogne",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 42630,
+   "description": "Érode la cible et occasionne des dommages Air.\n\nAugmente la Rage (nécessite une cible).",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "18–20 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 68,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "25–27 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 134,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "29–32 Air"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–4 PO, LdV, 3/tour, 2/cible, CC 20 %",
+    "Dommages Air 29–32 (CC 35–38)",
+    "10 % d'érosion (2 tours, cumul 2)",
+    "+1 Rage (nécessite une cible) ; Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 98,
+     "kind": "damage",
+     "element": "air",
+     "min": 29,
+     "max": 32,
+     "critMin": 35,
+     "critMax": 38,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (24128, niv. 1) → cible (alliée ou ennemie)",
+    "10% Érosion → cible (alliée ou ennemie) (2 tour(s))",
+    "29 à 32 dommages Air (CC : 35 à 38) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (24128, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "érosion",
+    "rage"
+   ],
+   "tactic": "Sort Air de base à 4 PO avec érosion.",
+   "engineNotes": "776 érosion 10 %, maxStack 2."
+  },
+  {
+   "id": 13799,
+   "pairIndex": 3,
+   "variantOf": 13766,
+   "isBaseSpell": false,
+   "name": "Radius",
+   "obtainedAtLevel": 105,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 20,
+   "statesCriterion": null,
+   "spellLevelId": 65479,
+   "description": "Échange de position avec la cible et occasionne des dommages Eau aux ennemis.\n\nAugmente la Rage (nécessite une cible).",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 105,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "26–29 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 172,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 20,
+     "cooldown": 0,
+     "damageBrief": "32–36 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–2 PO, LdV, 2/tour, CC 20 %",
+    "Échange de position avec la cible (alliée ou ennemie)",
+    "Dommages Eau 32–36 (CC 38–43) aux ennemis",
+    "+1 Rage (nécessite une cible) ; Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 96,
+     "kind": "damage",
+     "element": "water",
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43,
+     "zone": "P1",
+     "targetMask": "A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (24128, niv. 1) → cible (alliée ou ennemie)",
+    "Échange de positions (lanceur ↔ cible) → cible (alliée ou ennemie)",
+    "32 à 36 dommages Eau (CC : 38 à 43) → cible ennemie",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible ennemie",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (24128, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "placement",
+    "rage"
+   ],
+   "tactic": "Transposition au contact : sauver un allié taclé ou repositionner un ennemi.",
+   "engineNotes": "Effet 8 avant les dommages."
+  },
+  {
+   "id": 13762,
+   "pairIndex": 4,
+   "variantOf": 13793,
+   "isBaseSpell": true,
+   "name": "Os à Moelle",
+   "obtainedAtLevel": 1,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 4,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42618,
+   "description": "Occasionne des dommages Eau.\nLes dommages du sort sont augmentés après chaque lancer si la cible est la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 1,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "12–14 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 67,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "16–19 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 133,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "21–24 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–8 PO, LdV, 3/tour, 2/cible, CC 10 %",
+    "Dommages Eau 21–24 (CC 25–29)",
+    "Si la cible est la Proie : +6 dégâts de base au sort pour 3 tours (cumul 4 ⇒ +24)",
+    "Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 96,
+     "kind": "damage",
+     "element": "water",
+     "min": 21,
+     "max": 24,
+     "critMin": 25,
+     "critMax": 29,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Os à Moelle » (13761, niv. 1) → cible ennemie — si cible a l'état « Proie » (516)",
+    "21 à 24 dommages Eau (CC : 25 à 29) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "la cible lance (sur elle-même) le sous-sort « Os à Moelle » (13761, niv. 4) → lanceur",
+    "Os à Moelle : +6 dégâts de base → lanceur (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "rampe"
+   ],
+   "tactic": "Seul sort à longue portée (1–8) : sort à rampe sur la Proie, 3 lancers/tour (2 par cible).",
+   "engineNotes": "État 3513 posé si Proie ; le sous-sort 13761 niv. 4 ajoute le 293 après les dommages."
+  },
+  {
+   "id": 13793,
+   "pairIndex": 4,
+   "variantOf": 13762,
+   "isBaseSpell": false,
+   "name": "Muselière",
+   "obtainedAtLevel": 100,
+   "grade": 2,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 43891,
+   "description": "Occasionne des dommages Terre.\nAugmente les dommages du sort pour chaque ennemi au contact du lanceur avant d'appliquer les effets si la cible est la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 100,
+     "apCost": 5,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "30–33 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 167,
+     "apCost": 5,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "37–41 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "5 PA, 1–2 PO, LdV, 1/tour, CC 25 %",
+    "Si la cible est la Proie : +22 dégâts de base par ennemi au contact du lanceur (croix 1) avant les dommages",
+    "Dommages Terre 37–41 (CC 44–49)",
+    "Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 37,
+     "max": 41,
+     "critMin": 44,
+     "critMax": 49,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "18544 → cible ennemie — si cible a l'état « Proie » (516)",
+    "Muselière : +22 dégâts de base → lanceur (info-bulle uniquement (comportement réel géré côté serveur))",
+    "37 à 41 dommages Terre (CC : 44 à 49) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "Retire les effets du sort « Muselière » (18544) → lanceur"
+   ],
+   "role": [
+    "dégâts-mono",
+    "burst"
+   ],
+   "tactic": "Burst Terre au cœur de la mêlée : entouré de 3 ennemis, 37–41 + 66 de base sur la Proie.",
+   "engineNotes": "Sous-sort 18544 (1019 : le lanceur sur lui-même, zone Q1) : 293 +22 par ennemi, 1 tour, puis dispel après les dommages."
+  },
+  {
+   "id": 13748,
+   "pairIndex": 5,
+   "variantOf": 13786,
+   "isBaseSpell": true,
+   "name": "Proie",
+   "obtainedAtLevel": 5,
+   "grade": 3,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 1,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42582,
+   "description": "Applique l'état Proie sur l'ennemi ciblé.\nLes entités qui attaquent la cible sont soignées d'une partie des dommages occasionnés.\n\nFixe le temps de relance du sort à 0 si la Proie est achevée.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 5,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 1,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 72,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 1,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 139,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 1,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, 1–6 PO, sans LdV, relance 1",
+    "Pose l'état Proie (516, infini) sur l'ennemi ; retire l'ancienne Proie",
+    "Toute entité qui attaque la Proie est soignée de 25 % des dommages infligés",
+    "Relance remise à 0 si la Proie meurt"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Proie » (23979, niv. 1) → cible ennemie",
+    "Applique l'état « Proie » (516) → cible ennemie (durée infinie)",
+    "Soigne l'attaquant de 25% des dommages qu'il inflige à la cible → cible ennemie (actif 63 tour(s), déclencheur : quand la cible subit des dommages)",
+    "le lanceur lance le sous-sort « Proie » (13785, niv. 1) → cible ennemie (actif 63 tour(s), déclencheur : à la mort (INCERTAIN))"
+   ],
+   "role": [
+    "soin",
+    "marquage"
+   ],
+   "tactic": "Marqueur central : active les bonus « Proie » de la moitié des sorts et soigne tout le groupe qui frappe la cible (énorme en PvM).",
+   "engineNotes": "786 (25 %) déclencheur D, 63 tours ; 13785 sur déclencheur X (mort)."
+  },
+  {
+   "id": 13786,
+   "pairIndex": 5,
+   "variantOf": 13748,
+   "isBaseSpell": false,
+   "name": "Gibier",
+   "obtainedAtLevel": 115,
+   "grade": 2,
+   "apCost": 1,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 1,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 43869,
+   "description": "Applique l'état Proie sur l'ennemi ciblé et augmente les dommages qu'il subit.\n\nFixe le temps de relance du sort à 0 si la Proie est achevée.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 115,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 1,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 182,
+     "apCost": 1,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 1,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, 1–6 PO, sans LdV, relance 1",
+    "Pose l'état Proie",
+    "La Proie subit ×107 % des dommages de ses ennemis",
+    "Relance remise à 0 si la Proie meurt"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Proie » (23979, niv. 1) → cible ennemie",
+    "Applique l'état « Proie » (516) → cible ennemie (durée infinie)",
+    "Dommages subis x107% → cible ennemie (actif 63 tour(s), déclencheur : dommages subis d'un ennemi)",
+    "le lanceur lance le sous-sort « Gibier » (30763, niv. 1) → cible ennemie (actif 63 tour(s), déclencheur : à la mort (INCERTAIN))"
+   ],
+   "role": [
+    "debuff",
+    "marquage"
+   ],
+   "tactic": "Variante offensive : +7 % de dommages pour tout le groupe sur la cible, mais perd le soin de 25 %.",
+   "engineNotes": "1163 ×107 % déclencheur DBE."
+  },
+  {
+   "id": 13770,
+   "pairIndex": 6,
+   "variantOf": 13806,
+   "isBaseSpell": true,
+   "name": "Convergence",
+   "obtainedAtLevel": 10,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42642,
+   "description": "Rapproche le lanceur vers l'allié ciblé ou attire l'ennemi ciblé.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 10,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 77,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 144,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–6 PO en ligne, LdV, 2/tour",
+    "Allié ciblé : le lanceur avance de 5 cases vers lui",
+    "Ennemi ciblé : l'attire de 5 cases"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "Le lanceur avance de 5 case(s) vers la cible → cible alliée",
+    "Attire la cible de 5 case(s) → cible ennemie"
+   ],
+   "role": [
+    "placement",
+    "mobilité"
+   ],
+   "tactic": "Attirance longue (5) pour ramener une cible au corps à corps, ou déplacement vers un allié.",
+   "engineNotes": ""
+  },
+  {
+   "id": 13806,
+   "pairIndex": 6,
+   "variantOf": 13770,
+   "isBaseSpell": false,
+   "name": "Pistage",
+   "obtainedAtLevel": 120,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 43882,
+   "description": "Repousse la cible et rapproche le lanceur vers elle.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 120,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 187,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–2 PO en ligne, LdV, 2/tour",
+    "Repousse la cible de 2 cases puis le lanceur avance de 3 cases vers elle"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "Repousse la cible de 2 case(s) → cible (alliée ou ennemie)",
+    "Le lanceur avance de 3 case(s) vers la cible → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "placement",
+    "mobilité"
+   ],
+   "tactic": "Poussée qui reste au contact (dommages de poussée + maintien du tacle).",
+   "engineNotes": ""
+  },
+  {
+   "id": 13774,
+   "pairIndex": 7,
+   "variantOf": 13792,
+   "isBaseSpell": true,
+   "name": "Lance-roquet",
+   "obtainedAtLevel": 15,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": true,
+   "needTakenCell": false,
+   "cooldown": 4,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42654,
+   "description": "Invoque un Roquet maîtrisable qui peut voler de la vie dans l'élément Neutre.\n\nLorsque le lanceur occasionne des dommages avec ses sorts Ouginak, le Roquet se rapproche vers la Proie et l'attaque s'il est à portée.\nLes dommages sont réduits de moitié en-dehors de son tour de jeu.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 15,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 82,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 149,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 4,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–3 PO, LdV, case libre, relance 4",
+    "Invoque un Roquet (grade 3) : 6 PA, 4 PM, sort Accrocs (vol Neutre 24–26 au contact)",
+    "Le Roquet se rapproche de la Proie et l'attaque à chaque fois que l'Ouginak inflige des dommages avec ses sorts (12–13, moitié hors de son tour)"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "Invoque « Roquet » (monstre 5865, grade 3) → cible (alliée ou ennemie)",
+    "Applique l'état « Roquet Rang 3 » (3512) → alliés (dont lanceur si dans la zone), U (INCERTAIN) — si cible est le monstre « Roquet » (5865) (durée infinie, non désenvoûtable)"
+   ],
+   "role": [
+    "invocation",
+    "dégâts-mono"
+   ],
+   "tactic": "Dégâts additionnels réguliers sur la Proie + bloqueur de mêlée. Invoquer au tour 1.",
+   "engineNotes": "Voir §2.3. État 3512 « Roquet Rang 3 » posé sur le Roquet."
+  },
+  {
+   "id": 13792,
+   "pairIndex": 7,
+   "variantOf": 13774,
+   "isBaseSpell": false,
+   "name": "Gangrène",
+   "obtainedAtLevel": 125,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 43889,
+   "description": "Érode l'ennemi ciblé.\n\nAugmente la Rage (nécessite une cible).",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 125,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 192,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–3 PO, LdV, 1/tour",
+    "30 % d'érosion à l'ennemi (2 tours)",
+    "+1 Rage (nécessite une cible)"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (24128, niv. 1) → cible ennemie",
+    "30% Érosion → cible ennemie (2 tour(s))",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (24128, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "érosion",
+    "rage"
+   ],
+   "tactic": "Érosion forte (30 %) : utile en PvP et contre des boss très soignés ; en PvM, moins rentable que Lance-roquet.",
+   "engineNotes": ""
+  },
+  {
+   "id": 13802,
+   "pairIndex": 8,
+   "variantOf": 13758,
+   "isBaseSpell": true,
+   "name": "Amarok",
+   "obtainedAtLevel": 20,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 65478,
+   "description": "Augmente les résistances en mêlée du lanceur et des alliés et occasionne des dommages Terre aux ennemis en zone.\nLes dommages de zone ne sont pas dégressifs.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 20,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "18–20 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 87,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–25 Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 154,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "28–31 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 0–3 PO, LdV, 2/tour",
+    "Croix 1 : dommages Terre 28–31 (CC 34–37) non dégressifs aux ennemis",
+    "Lanceur et alliés de la croix : +10 % résistance mêlée (1 tour)",
+    "Accrocs une fois"
+   ],
+   "damageLines": [
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 28,
+     "max": 31,
+     "critMin": 34,
+     "critMax": 37,
+     "zone": "X1",
+     "targetMask": "A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "10% Résistance mêlée → lanceur, alliés (dont lanceur si dans la zone) (zone croix taille 1, 1 tour(s))",
+    "28 à 31 dommages Terre (CC : 34 à 37) → ennemis dans la zone (zone croix taille 1)",
+    "le lanceur lance (limitation globale) le sous-sort « Accrocs » (23981, niv. 1) → ennemis dans la zone (zone croix taille 1)"
+   ],
+   "role": [
+    "dégâts-zone",
+    "protection"
+   ],
+   "tactic": "Petite zone Terre qui protège les alliés au contact (mêlée).",
+   "engineNotes": "2803 % rés. mêlée."
+  },
+  {
+   "id": 13758,
+   "pairIndex": 8,
+   "variantOf": 13802,
+   "isBaseSpell": false,
+   "name": "Cerbère",
+   "obtainedAtLevel": 130,
+   "grade": 2,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 80593,
+   "description": "Applique un bouclier sur le lanceur et occasionne des dommages Terre aux ennemis en zone.\nLes dommages du sort sont plus importants selon la Rage du lanceur et le bouclier n'est pas appliqué sous Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 130,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "13–16 Terre, 19–22 Terre, 11–12 Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 197,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "15–18 Terre, 21–25 Terre, 13–14 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, 1–2 PO en ligne, LdV, 1/tour, CC 5 %",
+    "Bouclier 150 % du niveau au lanceur (1 tour), sauf en Forme Bestiale",
+    "Demi-cercle 1 : sans Rage 15–18 Terre ; Rage 21–25 ; Raage 2 × 15–18 ; Forme Bestiale 3 × 13–14 (CC 19–23 / 26–30 / 2×19–22 / 3×15–16)",
+    "Accrocs une fois"
+   ],
+   "damageLines": [
+    {
+     "effectId": 1020,
+     "kind": "shield_percent_caster_level",
+     "element": null,
+     "min": 150,
+     "max": 150,
+     "critMin": 150,
+     "critMax": 150,
+     "zone": "P1",
+     "targetMask": "C,*e517",
+     "triggers": "I",
+     "duration": 1,
+     "via": []
+    },
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 15,
+     "max": 18,
+     "critMin": 19,
+     "critMax": 23,
+     "zone": "U1",
+     "targetMask": "A,*e513,*e514,*e517",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    },
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 21,
+     "max": 25,
+     "critMin": 26,
+     "critMax": 30,
+     "zone": "U1",
+     "targetMask": "A,*E513",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    },
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 15,
+     "max": 18,
+     "critMin": 19,
+     "critMax": 22,
+     "zone": "U1",
+     "targetMask": "A,*E514",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    },
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 15,
+     "max": 18,
+     "critMin": 19,
+     "critMax": 22,
+     "zone": "U1",
+     "targetMask": "A,*E514",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    },
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 13,
+     "max": 14,
+     "critMin": 15,
+     "critMax": 16,
+     "zone": "U1",
+     "targetMask": "A,*E517",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    },
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 13,
+     "max": 14,
+     "critMin": 15,
+     "critMax": 16,
+     "zone": "U1",
+     "targetMask": "A,*E517",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    },
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 13,
+     "max": 14,
+     "critMin": 15,
+     "critMax": 16,
+     "zone": "U1",
+     "targetMask": "A,*E517",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "Bouclier : 150% du niveau → lanceur — si lanceur n'a PAS l'état « Forme Bestiale » (517) (1 tour(s))",
+    "le lanceur lance le sous-sort « Aucune Rage : » (25720, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "15 à 18 dommages Terre (CC : 19 à 23) → ennemis dans la zone — si lanceur n'a PAS l'état « Rage » (513) ET si lanceur n'a PAS l'état « Raage » (514) ET si lanceur n'a PAS l'état « Forme Bestiale » (517) (zone demi-cercle taille 1)",
+    "le lanceur lance le sous-sort « Rage : » (25721, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "21 à 25 dommages Terre (CC : 26 à 30) → ennemis dans la zone — si lanceur a l'état « Rage » (513) (zone demi-cercle taille 1)",
+    "le lanceur lance le sous-sort « Raage : » (25722, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "15 à 18 dommages Terre (CC : 19 à 22) → ennemis dans la zone — si lanceur a l'état « Raage » (514) (zone demi-cercle taille 1)",
+    "le lanceur lance le sous-sort « Forme Bestiale : » (25723, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "13 à 14 dommages Terre (CC : 15 à 16) → ennemis dans la zone — si lanceur a l'état « Forme Bestiale » (517) (zone demi-cercle taille 1)",
+    "le lanceur lance (limitation globale) le sous-sort « Accrocs » (23981, niv. 1) → ennemis dans la zone (zone demi-cercle taille 1)"
+   ],
+   "role": [
+    "dégâts-zone",
+    "tank"
+   ],
+   "tactic": "Dégâts qui croissent avec la Rage (≈ ×2,5 en Forme Bestiale) + bouclier de 300 PV au niveau 200 hors Forme Bestiale.",
+   "engineNotes": "Lignes conditionnées par *E513/*E514/*E517/*e… sur le lanceur."
+  },
+  {
+   "id": 13760,
+   "pairIndex": 9,
+   "variantOf": 13788,
+   "isBaseSpell": true,
+   "name": "Cubitus",
+   "obtainedAtLevel": 25,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 10,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 42612,
+   "description": "Vole de la vie dans l'élément Eau.\nDonne 1 PM au lanceur si la cible est la Proie.\n\nLe sort n'est pas soumis aux contraintes de lancer sous Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 25,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "10–12 vol Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 92,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 9,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "14–16 vol Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 159,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 10,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "16–18 vol Eau"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–10 PO, LdV, 4/tour, 2/cible, CC 5 %",
+    "Vol de vie Eau 16–18 (CC 19–22)",
+    "Si la cible est la Proie : +1 PM au lanceur (1 tour)",
+    "Accrocs ; non soumis aux contraintes de Forme Bestiale"
+   ],
+   "damageLines": [
+    {
+     "effectId": 91,
+     "kind": "steal",
+     "element": "water",
+     "min": 16,
+     "max": 18,
+     "critMin": 19,
+     "critMax": 22,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Cubitus » (13759, niv. 1) → cible ennemie — si cible a l'état « Proie » (516)",
+    "16 à 18 vol Eau (CC : 19 à 22) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Cubitus » (13759, niv. 2) (CC : 13759) → lanceur",
+    "1 PM → lanceur (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "vol-de-vie",
+    "mobilité"
+   ],
+   "tactic": "Filler à 2 PA longue portée (même en Forme Bestiale) ; +1 PM par lancer sur la Proie (jusqu'à +2 PM, 2/cible).",
+   "engineNotes": "État 3515 puis 128 +1 PM."
+  },
+  {
+   "id": 13788,
+   "pairIndex": 9,
+   "variantOf": 13760,
+   "isBaseSpell": false,
+   "name": "Calcanéus",
+   "obtainedAtLevel": 135,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 12,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 42690,
+   "description": "Vole de la vie dans l'élément Eau aux ennemis et attire la cible.\nL'attirance est plus importante sur la Proie.\n\nLe sort n'est pas soumis aux contraintes de lancer sous Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 135,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 12,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "19–21 vol Eau"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–12 PO en ligne, LdV, 4/tour, 2/cible, CC 5 %",
+    "Vol de vie Eau 19–21 (CC 23–25) aux ennemis",
+    "Attire la cible de 1 case (3 si c'est la Proie) ; attire aussi un allié ciblé de 1",
+    "Accrocs ; non soumis aux contraintes de Forme Bestiale"
+   ],
+   "damageLines": [
+    {
+     "effectId": 91,
+     "kind": "steal",
+     "element": "water",
+     "min": 19,
+     "max": 21,
+     "critMin": 23,
+     "critMax": 25,
+     "zone": "P1",
+     "targetMask": "A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "19 à 21 vol Eau (CC : 23 à 25) → cible ennemie",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible ennemie",
+    "Attire la cible de 1 case(s) → cible alliée",
+    "Attire la cible de 1 case(s) → cible ennemie — si cible n'a PAS l'état « Proie » (516)",
+    "Attire la cible de 3 case(s) → cible ennemie — si cible a l'état « Proie » (516)"
+   ],
+   "role": [
+    "vol-de-vie",
+    "placement"
+   ],
+   "tactic": "Attirance à très longue portée (12) pour ramener la Proie au contact.",
+   "engineNotes": ""
+  },
+  {
+   "id": 13771,
+   "pairIndex": 10,
+   "variantOf": 13797,
+   "isBaseSpell": true,
+   "name": "Arcanin",
+   "obtainedAtLevel": 30,
+   "grade": 3,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 0,
+   "statesCriterion": "HS=515",
+   "spellLevelId": 42645,
+   "description": "Augmente la Puissance du lanceur.\n\nNécessite et diminue la Rage.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 30,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 97,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 164,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, sur soi, 1/tour ; nécessite la Rage (HS=515)",
+    "+100 Puissance (3 tours, cumul 2)",
+    "−1 palier de Rage"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "+100 Puissance → lanceur (3 tour(s))",
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (13745, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « - 1 Rage » (23978, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "buff",
+    "rage-contrôle"
+   ],
+   "tactic": "Convertit un palier de Rage en +100 Puissance (permet de retarder la Forme Bestiale ou de garder Rage I).",
+   "engineNotes": "13745 niv. 2."
+  },
+  {
+   "id": 13797,
+   "pairIndex": 10,
+   "variantOf": 13771,
+   "isBaseSpell": false,
+   "name": "Caninos",
+   "obtainedAtLevel": 140,
+   "grade": 1,
+   "apCost": 1,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS=515",
+   "spellLevelId": 42699,
+   "description": "Soigne le lanceur.\n\nNécessite et diminue la Rage.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 140,
+     "apCost": 1,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "1 PA, sur soi, 1/tour ; nécessite la Rage",
+    "Soin 7 % PV max du lanceur",
+    "−1 palier de Rage"
+   ],
+   "damageLines": [
+    {
+     "effectId": 1109,
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 7,
+     "max": 7,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "C",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "Soin : 7% des PV max → lanceur",
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (13745, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « - 1 Rage » (23978, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "soin",
+    "rage-contrôle"
+   ],
+   "tactic": "Auto-soin bon marché, contrepartie : perte d'un palier (donc de 10 % de réduction).",
+   "engineNotes": ""
+  },
+  {
+   "id": 13754,
+   "pairIndex": 11,
+   "variantOf": 13790,
+   "isBaseSpell": true,
+   "name": "Rabattage",
+   "obtainedAtLevel": 35,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42596,
+   "description": "Vole de la vie dans l'élément Feu.\nVole des PM avant d'appliquer les effets si la cible est la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 35,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "18–20 vol Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 102,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–25 vol Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 169,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "29–31 vol Feu"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–4 PO, LdV, 3/tour, 2/cible, CC 10 %",
+    "Si la cible est la Proie : vole 2 PM (esquivable) avant les dommages",
+    "Vol de vie Feu 29–31 (CC 35–37)",
+    "Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 94,
+     "kind": "steal",
+     "element": "fire",
+     "min": 29,
+     "max": 31,
+     "critMin": 35,
+     "critMax": 37,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "Vole 2 PM (esquivable) → cible ennemie — si cible a l'état « Proie » (516) (1 tour(s), non désenvoûtable)",
+    "29 à 31 vol Feu (CC : 35 à 37) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "vol-de-vie",
+    "retrait-PM"
+   ],
+   "tactic": "Entrave PM sur la Proie + vol de vie ; 2 lancers sur la Proie = −4 PM / +4 PM.",
+   "engineNotes": "77 vol de PM (esquivable)."
+  },
+  {
+   "id": 13790,
+   "pairIndex": 11,
+   "variantOf": 13754,
+   "isBaseSpell": false,
+   "name": "Aboi",
+   "obtainedAtLevel": 145,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 42692,
+   "description": "Vole de la vie dans l'élément Feu.\nRéduit les Résistances Poussée si la cible est la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 145,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "20–22 vol Feu"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–2 PO, LdV, 4/tour, 2/cible, CC 5 %",
+    "Vol de vie Feu 20–22 (CC 24–26)",
+    "Si la cible est la Proie : −60 Résistances Poussée (2 tours, cumul 2)",
+    "Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 94,
+     "kind": "steal",
+     "element": "fire",
+     "min": 20,
+     "max": 22,
+     "critMin": 24,
+     "critMax": 26,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "20 à 22 vol Feu (CC : 24 à 26) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "-60 Résistances Poussée → cible ennemie — si cible a l'état « Proie » (516) (2 tour(s))"
+   ],
+   "role": [
+    "vol-de-vie",
+    "debuff"
+   ],
+   "tactic": "Prépare les dommages de poussée (Chasse pousse de 4, Tibia de 2, Pistage).",
+   "engineNotes": ""
+  },
+  {
+   "id": 13768,
+   "pairIndex": 12,
+   "variantOf": 13796,
+   "isBaseSpell": true,
+   "name": "Carcasse",
+   "obtainedAtLevel": 40,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 8,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 4,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 42636,
+   "description": "Occasionne des dommages Air.\nLes dommages du sort sont augmentés après chaque lancer si la cible est la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 40,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "5–7 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 107,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 7,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "7–9 Air"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 174,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 8,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "9–11 Air"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–8 PO, LdV, 4/tour, 2/cible, CC 5 %",
+    "Dommages Air 9–11 (CC 12–14)",
+    "Si la cible est la Proie : +6 dégâts de base au sort (3 tours, cumul 4)",
+    "Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 98,
+     "kind": "damage",
+     "element": "air",
+     "min": 9,
+     "max": 11,
+     "critMin": 12,
+     "critMax": 14,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Carcasse » (13767, niv. 1) → cible ennemie — si cible a l'état « Proie » (516)",
+    "9 à 11 dommages Air (CC : 12 à 14) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "la cible lance (sur elle-même) le sous-sort « Carcasse » (13767, niv. 4) → lanceur",
+    "Carcasse : +6 dégâts de base → lanceur (3 tour(s), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "rampe"
+   ],
+   "tactic": "Rampe Air à 2 PA : 4 lancers/tour (2 par cible) ; montée rapide (+24) sur la Proie.",
+   "engineNotes": "État 3514."
+  },
+  {
+   "id": 13796,
+   "pairIndex": 12,
+   "variantOf": 13768,
+   "isBaseSpell": false,
+   "name": "Battue",
+   "obtainedAtLevel": 150,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42698,
+   "description": "Occasionne des dommages Air aux ennemis et augmente la Puissance du lanceur et des alliés en zone.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 150,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "27–30 Air"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 0–6 PO, LdV, 2/tour, CC 10 %",
+    "Cercle 2 : dommages Air 27–30 (CC 32–36) aux ennemis",
+    "Lanceur et alliés du cercle : +150 Puissance (2 tours, non cumulable)",
+    "Accrocs une fois"
+   ],
+   "damageLines": [
+    {
+     "effectId": 98,
+     "kind": "damage",
+     "element": "air",
+     "min": 27,
+     "max": 30,
+     "critMin": 32,
+     "critMax": 36,
+     "zone": "C2",
+     "targetMask": "A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "27 à 30 dommages Air (CC : 32 à 36) → ennemis dans la zone (zone cercle taille 2)",
+    "le lanceur lance (limitation globale) le sous-sort « Accrocs » (23981, niv. 1) → ennemis dans la zone (zone cercle taille 2)",
+    "+150 Puissance → lanceur, alliés (dont lanceur si dans la zone) (zone cercle taille 2, 2 tour(s))"
+   ],
+   "role": [
+    "dégâts-zone",
+    "buff"
+   ],
+   "tactic": "Buff de groupe (+150 Puissance) au milieu de la mêlée + zone Air.",
+   "engineNotes": ""
+  },
+  {
+   "id": 13772,
+   "pairIndex": 13,
+   "variantOf": 13798,
+   "isBaseSpell": true,
+   "name": "Pelage Protecteur",
+   "obtainedAtLevel": 45,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!517",
+   "spellLevelId": 42648,
+   "description": "Applique 2 boucliers et l'état Pelage Protecteur sur l'allié ciblé :\n• Retire le second bouclier et l'état et augmente la Rage si la cible subit des dommages de poussée.\n\nNe peut pas être utilisé sous Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 45,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 112,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 179,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 0–3 PO, LdV, relance 3 ; interdit en Forme Bestiale",
+    "Allié (ou soi) : 2 boucliers de 240 % du niveau (2 × 480 au niveau 200, 2 tours) et état Pelage Protecteur",
+    "Si l'allié subit des dommages de poussée : le second bouclier et l'état sont retirés, et l'Ouginak gagne 1 Rage"
+   ],
+   "damageLines": [
+    {
+     "effectId": 1020,
+     "kind": "shield_percent_caster_level",
+     "element": null,
+     "min": 240,
+     "max": 240,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a",
+     "triggers": "I",
+     "duration": 2,
+     "via": []
+    },
+    {
+     "effectId": 1020,
+     "kind": "shield_percent_caster_level",
+     "element": null,
+     "min": 240,
+     "max": 240,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a",
+     "triggers": "I",
+     "duration": 2,
+     "via": [
+      "23986:3[a]"
+     ]
+    }
+   ],
+   "effectsSummaryRaw": [
+    "Bouclier : 240% du niveau → cible alliée (2 tour(s))",
+    "Bouclier : 240% du niveau → cible alliée (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Pelage Protecteur » (23986, niv. 3) → cible alliée",
+    "Applique l'état « Pelage Protecteur » (4144) → cible alliée (2 tour(s))",
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (13745, niv. 1) → cible alliée (actif 2 tour(s), déclencheur : dommages de poussée subis)",
+    "Retire les effets du sort « Pelage Protecteur » (13772) → cible alliée (actif 2 tour(s), déclencheur : dommages de poussée subis)",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (actif 2 tour(s), déclencheur : dommages de poussée subis, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "bouclier",
+    "protection"
+   ],
+   "tactic": "Bouclier massif (≈ 960 points) sur le tank ou un allié fragile.",
+   "engineNotes": "Second bouclier via 23986 ; déclencheur PD (dommages de poussée)."
+  },
+  {
+   "id": 13798,
+   "pairIndex": 13,
+   "variantOf": 13772,
+   "isBaseSpell": false,
+   "name": "Férocité",
+   "obtainedAtLevel": 155,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": "HS!517",
+   "spellLevelId": 42700,
+   "description": "Applique l'état Férocité sur l'allié ciblé :\n• Applique un bouclier sur le lanceur et la cible si cette dernière est attirée, poussée, transposée, téléportée ou subit une tentative de retrait de PM.\n• Applique un bouclier supplémentaire si la cible est le lanceur.\n\nNe peut pas être utilisé sous Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 155,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–3 PO en ligne, LdV, relance 3 ; interdit en Forme Bestiale",
+    "État Férocité (2 tours) sur l'allié : s'il est attiré, poussé, transposé, téléporté ou subit une tentative de retrait de PM, il reçoit un bouclier de 240 % du niveau, et le lanceur aussi (+120 % supplémentaire si la cible est le lanceur) — 1 fois par tour"
+   ],
+   "damageLines": [
+    {
+     "effectId": 1020,
+     "kind": "shield_percent_caster_level",
+     "element": null,
+     "min": 240,
+     "max": 240,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "C,a",
+     "triggers": "I",
+     "duration": 1,
+     "via": [
+      "13815:1[a]",
+      "13815:2[a,e3570]"
+     ]
+    },
+    {
+     "effectId": 1020,
+     "kind": "shield_percent_caster_level",
+     "element": null,
+     "min": 120,
+     "max": 120,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "c",
+     "triggers": "I",
+     "duration": 1,
+     "via": [
+      "13815:1[a]",
+      "13815:2[a,e3570]"
+     ]
+    }
+   ],
+   "effectsSummaryRaw": [
+    "Applique l'état « Férocité » (4153) → cible alliée (2 tour(s))",
+    "le lanceur lance le sous-sort « Férocité » (13815, niv. 1) → cible alliée (actif 2 tour(s), déclencheur : MPA OU quand la cible est déplacée OU téléportation (INCERTAIN))",
+    "le lanceur lance le sous-sort « Férocité » (24202, niv. 2) → cible alliée (délai 1 t., non désenvoûtable)",
+    "Bouclier : 240% du niveau → cible alliée (1 tour(s), actif 2 tour(s), déclencheur : MPA OU quand la cible est déplacée OU téléportation (INCERTAIN), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Bouclier : 120% du niveau → lanceur (s’il est dans la zone) (1 tour(s), actif 2 tour(s), déclencheur : MPA OU quand la cible est déplacée OU téléportation (INCERTAIN), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "bouclier",
+    "protection"
+   ],
+   "tactic": "Protection réactive contre les boss qui déplacent/retirent des PM.",
+   "engineNotes": "Déclencheurs MPA|M|TP ; état 3570 « Férocité I » limite à 1 déclenchement par tour."
+  },
+  {
+   "id": 13795,
+   "pairIndex": 14,
+   "variantOf": 13800,
+   "isBaseSpell": true,
+   "name": "Chasse",
+   "obtainedAtLevel": 50,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 81256,
+   "description": "Occasionne des dommages Feu aux ennemis et repousse la cible.\nRapproche le lanceur vers la cible avant d'appliquer les effets si c'est la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 50,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "25–28 Feu"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 117,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "33–37 Feu"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 184,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "39–44 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, 1–4 PO, LdV, 3/tour, 2/cible, CC 15 %",
+    "Si Proie : le lanceur avance de 3 cases avant les dommages",
+    "Dommages Feu 39–44 (CC 47–53) aux ennemis",
+    "Repousse la cible de 4 cases ; Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 99,
+     "kind": "damage",
+     "element": "fire",
+     "min": 39,
+     "max": 44,
+     "critMin": 47,
+     "critMax": 53,
+     "zone": "P1",
+     "targetMask": "A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "Le lanceur avance de 3 case(s) vers la cible → cible ennemie — si cible a l'état « Proie » (516)",
+    "39 à 44 dommages Feu (CC : 47 à 53) → cible ennemie",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible ennemie",
+    "Repousse la cible de 4 case(s) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "dégâts-mono",
+    "placement"
+   ],
+   "tactic": "Gros sort Feu avec poussée 4 (dommages de poussée importants contre un obstacle, surtout après Aboi −60 rés. poussée).",
+   "engineNotes": "1042 (si Proie) → dommages → poussée."
+  },
+  {
+   "id": 13800,
+   "pairIndex": 14,
+   "variantOf": 13795,
+   "isBaseSpell": false,
+   "name": "Vertèbre",
+   "obtainedAtLevel": 160,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 1,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 15,
+   "statesCriterion": null,
+   "spellLevelId": 42702,
+   "description": "Applique un poison Eau de début de tour sur l'ennemi ciblé.\nLe poison ne peut pas être désenvoûté s'il est appliqué sur la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 160,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 6,
+     "critChance": 15,
+     "cooldown": 0,
+     "damageBrief": "32–36 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, 1–6 PO, LdV, 2/tour, 1/cible, cumul 2, CC 15 %",
+    "Poison Eau : 32–36 (CC 38–43) au début de chacun des 2 prochains tours de la cible",
+    "Sur la Proie : poison non désenvoûtable et Accrocs à chaque tick"
+   ],
+   "damageLines": [
+    {
+     "effectId": 96,
+     "kind": "damage",
+     "element": "water",
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "TB",
+     "duration": 0,
+     "via": [
+      "14730:1[A,e516]"
+     ]
+    },
+    {
+     "effectId": 96,
+     "kind": "damage",
+     "element": "water",
+     "min": 32,
+     "max": 36,
+     "critMin": 38,
+     "critMax": 43,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "TB",
+     "duration": 0,
+     "via": [
+      "14730:2[A,E516]"
+     ]
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Vertèbre » (14730, niv. 1) → cible ennemie — si cible n'a PAS l'état « Proie » (516)",
+    "le lanceur lance le sous-sort « Vertèbre » (14730, niv. 2) → cible ennemie — si cible a l'état « Proie » (516)",
+    "32 à 36 dommages Eau (CC : 38 à 43) → cible ennemie — si cible n'a PAS l'état « Proie » (516) (actif 2 tour(s), déclencheur : début de tour du porteur, info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "poison"
+   ],
+   "tactic": "Dégâts différés (≈ 68 de base sur 2 tours) qui ignorent la portée/le tacle au moment du tick.",
+   "engineNotes": "Sous-sort 14730 niv. 1 (non-Proie) / niv. 2 (Proie, non désenvoûtable) ; déclencheur TB 2 tours."
+  },
+  {
+   "id": 13763,
+   "pairIndex": 15,
+   "variantOf": 13794,
+   "isBaseSpell": true,
+   "name": "Tibia",
+   "obtainedAtLevel": 55,
+   "grade": 3,
+   "apCost": 4,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 42621,
+   "description": "Occasionne des dommages Eau aux ennemis et repousse les cibles en zone.\nLes dommages de zone ne sont pas dégressifs.\n\nAugmente la Rage.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 55,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "25–28 Eau"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 122,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "32–36 Eau"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 189,
+     "apCost": 4,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "40–45 Eau"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, sur soi, cercle 2 (hors lanceur), 2/tour, CC 25 %",
+    "Dommages Eau 40–45 (CC 48–54) non dégressifs aux ennemis",
+    "Repousse de 2 cases les entités du cercle",
+    "+1 Rage (toujours) ; Accrocs une fois si un ennemi est touché"
+   ],
+   "damageLines": [
+    {
+     "effectId": 96,
+     "kind": "damage",
+     "element": "water",
+     "min": 40,
+     "max": 45,
+     "critMin": 48,
+     "critMax": 54,
+     "zone": "C2,1",
+     "targetMask": "A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance (limitation globale) le sous-sort « Tibia » (13778, niv. 1) → ennemis dans la zone (zone cercle taille 2 (min 1))",
+    "40 à 45 dommages Eau (CC : 48 à 54) → ennemis dans la zone (zone cercle taille 2 (min 1))",
+    "le lanceur lance le sous-sort « Tibia » (13778, niv. 2) → lanceur",
+    "Repousse la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone cercle taille 2 (min 1), non désenvoûtable)",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (13745, niv. 1) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-zone",
+    "placement",
+    "rage"
+   ],
+   "tactic": "Meilleure zone de l'Ouginak au contact : frappe tous les ennemis autour puis les éjecte.",
+   "engineNotes": "Accrocs conditionné à l'état 535 « Tibia » (posé si un ennemi est touché)."
+  },
+  {
+   "id": 13794,
+   "pairIndex": 15,
+   "variantOf": 13763,
+   "isBaseSpell": false,
+   "name": "Humérus",
+   "obtainedAtLevel": 165,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 1,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 42696,
+   "description": "Téléporte le lanceur symétriquement par rapport à la cible et occasionne des dommages Terre aux ennemis.\n\nAugmente la Rage (nécessite une cible).",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 165,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 1,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "41–46 Terre"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, 1 PO, LdV, case occupée, 2/tour, CC 25 %",
+    "Téléporte le lanceur symétriquement par rapport à la cible",
+    "Dommages Terre 41–46 (CC 49–55) aux ennemis",
+    "+1 Rage ; Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 97,
+     "kind": "damage",
+     "element": "earth",
+     "min": 41,
+     "max": 46,
+     "critMin": 49,
+     "critMax": 55,
+     "zone": "P1",
+     "targetMask": "A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "Téléportation symétrique par rapport à la cible → cible (alliée ou ennemie)",
+    "41 à 46 dommages Terre (CC : 49 à 55) → cible ennemie",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible ennemie",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (13745, niv. 1) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "mobilité",
+    "rage"
+   ],
+   "tactic": "Gros sort Terre + passage de l'autre côté de la cible (désengagement du tacle).",
+   "engineNotes": "1104."
+  },
+  {
+   "id": 13769,
+   "pairIndex": 16,
+   "variantOf": 13791,
+   "isBaseSpell": true,
+   "name": "Apaisement",
+   "obtainedAtLevel": 60,
+   "grade": 3,
+   "apCost": 3,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS=515|HS=517",
+   "spellLevelId": 42639,
+   "description": "Soigne l'allié ciblé.\nNécessite et diminue la Rage.\n\nRetire également les effets de la Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 60,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 127,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 194,
+     "apCost": 3,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 0–4 PO, LdV, relance 2 ; nécessite Rage ou Forme Bestiale",
+    "Soin 15 % PV max de l'allié ciblé",
+    "−1 palier de Rage, ou fin de la Forme Bestiale (portée 0 sous Forme Bestiale)"
+   ],
+   "damageLines": [
+    {
+     "effectId": 1109,
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 15,
+     "max": 15,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "Soin : 15% des PV max → cible alliée",
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (13745, niv. 2) → lanceur — si lanceur n'a PAS l'état « Forme Bestiale » (517)",
+    "le lanceur lance le sous-sort « Bestialité Ouginak » (13782, niv. 1) → lanceur — si lanceur a l'état « Forme Bestiale » (517)",
+    "le lanceur lance le sous-sort « - 1 Rage » (23978, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Retire la Forme Bestiale » (25711, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "soin",
+    "rage-contrôle"
+   ],
+   "tactic": "Soin conséquent d'un allié ; sert aussi à sortir de la Forme Bestiale en se soignant.",
+   "engineNotes": "13745 niv. 2 si pas en Forme Bestiale, sinon 13782."
+  },
+  {
+   "id": 13791,
+   "pairIndex": 16,
+   "variantOf": 13769,
+   "isBaseSpell": false,
+   "name": "Affection",
+   "obtainedAtLevel": 170,
+   "grade": 1,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "(HS=515&HS!7)|HS=517",
+   "spellLevelId": 42693,
+   "description": "Soigne le lanceur et l'allié ciblé et échange de position avec ce dernier.\nNécessite et diminue la Rage.\n\nRetire également les effets de la Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 170,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–4 PO, sans LdV, case occupée, relance 2 ; nécessite (Rage et pas Pesanteur) ou Forme Bestiale",
+    "Allié : soigne le lanceur et l'allié de 7 % PV max et échange leurs positions, −1 Rage",
+    "Sous Forme Bestiale : soin 7 % du lanceur seulement et fin de la Forme Bestiale"
+   ],
+   "damageLines": [
+    {
+     "effectId": 1109,
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 7,
+     "max": 7,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "C",
+     "triggers": "I",
+     "duration": 0,
+     "via": [
+      "13816:1[g,*e517]"
+     ]
+    },
+    {
+     "effectId": 1109,
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 7,
+     "max": 7,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "a",
+     "triggers": "I",
+     "duration": 0,
+     "via": [
+      "13816:1[g,*e517]"
+     ]
+    },
+    {
+     "effectId": 1109,
+     "kind": "heal_percent_max_hp",
+     "element": null,
+     "min": 7,
+     "max": 7,
+     "critMin": null,
+     "critMax": null,
+     "zone": "P1",
+     "targetMask": "C,*E517",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Affection » (13816, niv. 1) → allié ciblé (hors lanceur) — si lanceur n'a PAS l'état « Forme Bestiale » (517)",
+    "Soin : 7% des PV max → lanceur — si lanceur a l'état « Forme Bestiale » (517)",
+    "Échange de positions (lanceur ↔ cible) → cible alliée (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « - 1 Rage » (23978, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Bestialité Ouginak » (13782, niv. 1) → lanceur — si lanceur a l'état « Forme Bestiale » (517)",
+    "le lanceur lance le sous-sort « Retire la Forme Bestiale » (25711, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "soin",
+    "placement"
+   ],
+   "tactic": "Sauvetage d'un allié en danger (échange de place) avec soin.",
+   "engineNotes": ""
+  },
+  {
+   "id": 13757,
+   "pairIndex": 17,
+   "variantOf": 13789,
+   "isBaseSpell": true,
+   "name": "Dogue",
+   "obtainedAtLevel": 65,
+   "grade": 3,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 4,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 2,
+   "critChance": 5,
+   "statesCriterion": null,
+   "spellLevelId": 42605,
+   "description": "Vole de la vie dans l'élément Terre.\nRetire de la Fuite si la cible est la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 65,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "10–12 vol Terre"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 131,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "13–15 vol Terre"
+    },
+    {
+     "grade": 3,
+     "minPlayerLevel": 198,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 5,
+     "cooldown": 0,
+     "damageBrief": "17–19 vol Terre"
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–2 PO, LdV, 4/tour, 2/cible, CC 5 %",
+    "Vol de vie Terre 17–19 (CC 20–23)",
+    "Si Proie : −30 Fuite (2 tours, cumul 2)",
+    "Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 92,
+     "kind": "steal",
+     "element": "earth",
+     "min": 17,
+     "max": 19,
+     "critMin": 20,
+     "critMax": 23,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "17 à 19 vol Terre (CC : 20 à 23) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "-30 Fuite → cible ennemie — si cible a l'état « Proie » (516) (2 tour(s))"
+   ],
+   "role": [
+    "vol-de-vie",
+    "entrave"
+   ],
+   "tactic": "Filler à 2 PA au contact ; −60 Fuite sur la Proie en 2 lancers (empêche la fuite du tacle).",
+   "engineNotes": ""
+  },
+  {
+   "id": 13789,
+   "pairIndex": 17,
+   "variantOf": 13757,
+   "isBaseSpell": false,
+   "name": "Dépouille",
+   "obtainedAtLevel": 175,
+   "grade": 1,
+   "apCost": 5,
+   "minRange": 1,
+   "range": 2,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 2,
+   "maxStack": -1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 42691,
+   "description": "Occasionne des dommages Air.\nAugmente les dommages du sort pour chaque allié au contact de la cible avant d'appliquer les effets si c'est la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 175,
+     "apCost": 5,
+     "minRange": 1,
+     "range": 2,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "35–39 Air"
+    }
+   ],
+   "effectsSummary": [
+    "5 PA, 1–2 PO, LdV, 1/tour (2 globaux), CC 25 %",
+    "Si Proie : +20 dégâts de base par allié au contact de la cible",
+    "Dommages Air 35–39 (CC 42–47)",
+    "Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 98,
+     "kind": "damage",
+     "element": "air",
+     "min": 35,
+     "max": 39,
+     "critMin": 42,
+     "critMax": 47,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Dépouille » (13808, niv. 3) → cible ennemie — si cible a l'état « Proie » (516)",
+    "Dépouille : +20 dégâts de base → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "35 à 39 dommages Air (CC : 42 à 47) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "Retire les effets du sort « Dépouille » (13808) → lanceur"
+   ],
+   "role": [
+    "dégâts-mono",
+    "burst"
+   ],
+   "tactic": "Burst Air quand plusieurs alliés (et le Roquet) entourent la Proie.",
+   "engineNotes": "Sous-sort 13808 niv. 3→4 (zone Q1 autour de la cible, alliés)."
+  },
+  {
+   "id": 13781,
+   "pairIndex": 18,
+   "variantOf": 13801,
+   "isBaseSpell": true,
+   "name": "Panique",
+   "obtainedAtLevel": 70,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 1,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42666,
+   "description": "Repousse les cibles depuis le centre en zone autour de la cible.\nRetire également des PM et de la Fuite à la Proie si elle est touchée.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 70,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 137,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 0,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–6 PO, sans LdV, case occupée, 1/tour",
+    "Repousse de 2 cases les entités du cercle 3 autour de la cible (depuis le centre)",
+    "Proie dans la zone : −2 PM (esquivable) et −40 Fuite (1 tour)"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "Repousse la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone cercle taille 3 (min 1))",
+    "Retire 2 PM (esquivable) → ennemis dans la zone — si cible a l'état « Proie » (516) (zone cercle taille 3, 1 tour(s), non désenvoûtable)",
+    "-40 Fuite → ennemis dans la zone — si cible a l'état « Proie » (516) (zone cercle taille 3, 1 tour(s))"
+   ],
+   "role": [
+    "placement",
+    "retrait-PM"
+   ],
+   "tactic": "Dégage un allié encerclé, ou repousse les monstres d'un paquet ; entrave de la Proie.",
+   "engineNotes": "Zone C3 min 1."
+  },
+  {
+   "id": 13801,
+   "pairIndex": 18,
+   "variantOf": 13781,
+   "isBaseSpell": false,
+   "name": "Poursuite",
+   "obtainedAtLevel": 180,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42703,
+   "description": "Pose un glyphe qui augmente les PM des alliés.\n\nApplique également l'état Poursuite sur la Proie si elle est sur la case ciblée :\n• Pose de nouveau le glyphe sous la cible au début de son tour.\nCet effet est appliqué uniquement si la cible est toujours la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 180,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–6 PO en ligne, LdV, relance 2",
+    "Glyphe (1 tour) qui donne +2 PM aux alliés qui s'y trouvent",
+    "Si la Proie est sur la case ciblée : état Poursuite, le glyphe est reposé sous elle au début de son tour (si elle est toujours la Proie)"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "Pose un glyphe-aura « Poursuite » (13812, niv. 1) → cible (alliée ou ennemie) (1 tour(s))",
+    "Pose un glyphe (immédiat) « Poursuite » (13812, niv. 4) → cible (alliée ou ennemie) (1 tour(s))",
+    "Pose un glyphe (immédiat) « Poursuite » (13812, niv. 1) → cible (alliée ou ennemie) (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Poursuite » (4155) → cible ennemie — si cible a l'état « Proie » (516) (1 tour(s))",
+    "le lanceur lance le sous-sort « Poursuite » (13812, niv. 3) → cible ennemie — si cible a l'état « Proie » (516) (actif 1 tour(s), déclencheur : début de tour du porteur)"
+   ],
+   "role": [
+    "buff",
+    "mobilité"
+   ],
+   "tactic": "Donne +2 PM aux alliés qui collent la Proie (le glyphe la suit).",
+   "engineNotes": "Glyphe-aura 1091 + glyphe immédiat 1165 ; sous-sort 13812 niv. 3 au début du tour de la Proie."
+  },
+  {
+   "id": 13773,
+   "pairIndex": 19,
+   "variantOf": 13803,
+   "isBaseSpell": true,
+   "name": "Aboiement",
+   "obtainedAtLevel": 75,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42650,
+   "description": "Augmente les PM de la cible, la rend Inébranlable et lui applique l'état Aboiement :\n• Retire les états et augmente la Rage si la cible subit des dommages en mêlée.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 75,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 142,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 4,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–4 PO, LdV, relance 2",
+    "Cible : +2 PM (1 tour), Inébranlable (1 tour) et état Aboiement",
+    "Si la cible subit des dommages en mêlée : retire ces états et l'Ouginak gagne 1 Rage"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "2 PM → cible (alliée ou ennemie) (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Aboiement » (23987, niv. 1) → cible (alliée ou ennemie)",
+    "Applique l'état « Inébranlable » (157) → cible (alliée ou ennemie) (1 tour(s))",
+    "Applique l'état « Aboiement » (4145) → cible (alliée ou ennemie) (1 tour(s))",
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (13745, niv. 1) → cible (alliée ou ennemie) (actif 1 tour(s), déclencheur : dommages de mêlée subis (≤1 case))",
+    "Retire les effets du sort « Aboiement » (13773) → cible (alliée ou ennemie) (actif 1 tour(s), déclencheur : dommages de mêlée subis (≤1 case))",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (actif 1 tour(s), déclencheur : dommages de mêlée subis (≤1 case), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "buff",
+    "mobilité",
+    "protection"
+   ],
+   "tactic": "+2 PM et immunité à la poussée/attirance pour un allié (ou soi) ; la Rage gagnée compense.",
+   "engineNotes": "Déclencheur DM ; 406 retire les effets à la 1re attaque de mêlée."
+  },
+  {
+   "id": 13803,
+   "pairIndex": 19,
+   "variantOf": 13773,
+   "isBaseSpell": false,
+   "name": "Rogne",
+   "obtainedAtLevel": 185,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42705,
+   "description": "Augmente la Puissance, les Dommages Poussée et le Tacle de l'allié ciblé et lui applique l'état Rogne :\n• Augmente ces mêmes caractéristiques sur le lanceur si la cible subit des dommages (cumulable 5 fois).\n\nAugmente la Rage.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 185,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 3,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–3 PO, sans LdV, relance 3",
+    "Allié : +80 Puissance, +40 Dommages Poussée, +20 Tacle (2 tours), état Rogne",
+    "Chaque fois que l'allié subit des dommages : le lanceur gagne +30 Puissance, +20 Dommages Poussée, +10 Tacle (2 tours, cumul 5)",
+    "+1 Rage"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "+80 Puissance → cible alliée (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "40 Dommages Poussée → cible alliée (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "20 Tacle → cible alliée (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Applique l'état « Rogne » (4146) → cible alliée (2 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "+30 Puissance → cible alliée (2 tour(s), actif 2 tour(s), déclencheur : quand la cible subit des dommages, info-bulle uniquement (comportement réel géré côté serveur))",
+    "20 Dommages Poussée → cible alliée (2 tour(s), actif 2 tour(s), déclencheur : quand la cible subit des dommages, info-bulle uniquement (comportement réel géré côté serveur))",
+    "10 Tacle → cible alliée (2 tour(s), actif 2 tour(s), déclencheur : quand la cible subit des dommages, info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « Rogne » (30794, niv. 1) → cible alliée",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (13745, niv. 1) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "buff",
+    "rage"
+   ],
+   "tactic": "Buff offensif sur le tank allié (ou soi) qui renvoie des bonus à l'Ouginak quand la cible encaisse.",
+   "engineNotes": "30794 niv. 2 (déclencheur D) ; maxStack 5 (INCERTAIN : pas de limite visible dans le sous-sort)."
+  },
+  {
+   "id": 13765,
+   "pairIndex": 20,
+   "variantOf": 13753,
+   "isBaseSpell": true,
+   "name": "Limier",
+   "obtainedAtLevel": 80,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 3,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 3,
+   "maxPerTarget": 2,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 10,
+   "statesCriterion": null,
+   "spellLevelId": 42626,
+   "description": "Occasionne des dommages Air.\nAttire les entités vers la cible en zone avant d'appliquer les effets si c'est la Proie.\n\nLe sort n'est pas soumis aux contraintes de lancer sous Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 80,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "23–25 Air"
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 147,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 3,
+     "critChance": 10,
+     "cooldown": 0,
+     "damageBrief": "28–31 Air"
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–3 PO, LdV, 3/tour, 2/cible, CC 10 %",
+    "Si Proie : attire de 2 cases vers elle les entités en croix 3 (sans centre) avant les dommages",
+    "Dommages Air 28–31 (CC 34–37)",
+    "Accrocs ; non soumis aux contraintes de Forme Bestiale"
+   ],
+   "damageLines": [
+    {
+     "effectId": 98,
+     "kind": "damage",
+     "element": "air",
+     "min": 28,
+     "max": 31,
+     "critMin": 34,
+     "critMax": 37,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Limier » (13764, niv. 1) → cible ennemie — si cible a l'état « Proie » (516)",
+    "Attire la cible de 2 case(s) → tous (alliés+ennemis) dans la zone (zone croix sans centre taille 3, info-bulle uniquement (comportement réel géré côté serveur))",
+    "28 à 31 dommages Air (CC : 34 à 37) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)"
+   ],
+   "role": [
+    "dégâts-mono",
+    "placement"
+   ],
+   "tactic": "Regroupe les alliés/ennemis autour de la Proie (pour Dépouille, Tibia, Muselière).",
+   "engineNotes": ""
+  },
+  {
+   "id": 13753,
+   "pairIndex": 20,
+   "variantOf": 13765,
+   "isBaseSpell": false,
+   "name": "Tétanisation",
+   "obtainedAtLevel": 190,
+   "grade": 1,
+   "apCost": 4,
+   "minRange": 1,
+   "range": 4,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 0,
+   "initialCooldown": 0,
+   "maxPerTurn": 2,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 25,
+   "statesCriterion": null,
+   "spellLevelId": 42591,
+   "description": "Occasionne des dommages Feu et retire des PM.\n\nAugmente la Rage (nécessite une cible).",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 190,
+     "apCost": 4,
+     "minRange": 1,
+     "range": 4,
+     "critChance": 25,
+     "cooldown": 0,
+     "damageBrief": "41–46 Feu"
+    }
+   ],
+   "effectsSummary": [
+    "4 PA, 1–4 PO, LdV, 2/tour, CC 25 %",
+    "Dommages Feu 41–46 (CC 49–55)",
+    "Retire 3 PM (esquivable, 1 tour, non désenvoûtable)",
+    "+1 Rage (nécessite une cible) ; Accrocs"
+   ],
+   "damageLines": [
+    {
+     "effectId": 99,
+     "kind": "damage",
+     "element": "fire",
+     "min": 41,
+     "max": 46,
+     "critMin": 49,
+     "critMax": 55,
+     "zone": "P1",
+     "targetMask": "a,A",
+     "triggers": "I",
+     "duration": 0,
+     "via": []
+    }
+   ],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (24128, niv. 1) → cible (alliée ou ennemie)",
+    "41 à 46 dommages Feu (CC : 49 à 55) → cible (alliée ou ennemie)",
+    "le lanceur lance le sous-sort « Accrocs » (23981, niv. 1) → cible (alliée ou ennemie)",
+    "Retire 3 PM (esquivable) → cible (alliée ou ennemie) (1 tour(s), non désenvoûtable)",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (24128, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "dégâts-mono",
+    "retrait-PM",
+    "rage"
+   ],
+   "tactic": "Meilleur sort d'entrave PM de la classe (−3 PM) avec de gros dommages.",
+   "engineNotes": ""
+  },
+  {
+   "id": 13749,
+   "pairIndex": 21,
+   "variantOf": 13805,
+   "isBaseSpell": true,
+   "name": "Flair",
+   "obtainedAtLevel": 85,
+   "grade": 2,
+   "apCost": 3,
+   "minRange": 1,
+   "range": 63,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS=515&HS!7",
+   "spellLevelId": 42584,
+   "description": "Téléporte le lanceur sur la première case disponible au contact de la Proie.\n\nSi la Proie est dans la zone d'effet : téléporte le lanceur sur la case ciblée.\n\nNécessite et diminue la Rage.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 85,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 152,
+     "apCost": 3,
+     "minRange": 1,
+     "range": 63,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "3 PA, 1–63 PO, sans LdV, relance 2 ; nécessite la Rage et pas Pesanteur",
+    "Téléporte le lanceur sur la première case libre au contact de la Proie ; si la Proie est dans la croix 1 de la case ciblée, téléporte sur la case ciblée",
+    "−1 palier de Rage"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "le lanceur lance le sous-sort « Flair » (13779, niv. 1) → ennemis dans la zone — si cible a l'état « Proie » (516) (zone croix sans centre taille 1)",
+    "la cible lance sur la case ciblée le sous-sort « Flair » (13779, niv. 2) → lanceur",
+    "le lanceur lance le sous-sort « Flair » (13779, niv. 3) → ennemis dans la zone — si cible a l'état « Proie » (516) (zone tout le terrain (vivants))",
+    "Retire l'état « Flair » (496) → lanceur",
+    "Téléporte le lanceur sur la case ciblée → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « - 1 Rage » (23978, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "mobilité"
+   ],
+   "tactic": "Engagement à portée illimitée sur la Proie.",
+   "engineNotes": "État 496 « Flair » ; sous-sorts 13779 niv. 1–3."
+  },
+  {
+   "id": 13805,
+   "pairIndex": 21,
+   "variantOf": 13749,
+   "isBaseSpell": false,
+   "name": "Acharnement",
+   "obtainedAtLevel": 195,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 1,
+   "range": 5,
+   "boostableRange": false,
+   "inLine": true,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": true,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 42707,
+   "description": "Applique l'état Pesanteur sur l'ennemi ciblé.\nSi l'ennemi est la Proie :\n• Augmente également les dommages subis par la cible.\n• Téléporte les Roquets du lanceur à son contact.\n\nAugmente la Rage (nécessite une cible).",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 195,
+     "apCost": 2,
+     "minRange": 1,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 1–5 PO en ligne, LdV, case occupée, relance 2",
+    "Ennemi : Pesanteur (1 tour)",
+    "Si Proie : dommages subis ×115 % (1 tour) et Roquets téléportés à son contact",
+    "+1 Rage"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "Applique l'état « Pesanteur » (7) → cible ennemie (1 tour(s))",
+    "Dommages subis x115% → cible ennemie — si cible a l'état « Proie » (516) (actif 1 tour(s), déclencheur : quand la cible subit des dommages)",
+    "le lanceur lance le sous-sort « Acharnement » (25712, niv. 1) → cible ennemie — si cible a l'état « Proie » (516)",
+    "la cible lance (sur elle-même) le sous-sort « La Rage d'Ouginak » (13745, niv. 1) → lanceur",
+    "Téléporte le lanceur sur la case ciblée → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))",
+    "le lanceur lance le sous-sort « +1 Rage » (23977, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "debuff",
+    "rage"
+   ],
+   "tactic": "Amplification de groupe (+15 %) sur la Proie + empêche ses téléportations/échanges.",
+   "engineNotes": "1163 ×115 % déclencheur D, 1 tour ; 25712."
+  },
+  {
+   "id": 14357,
+   "pairIndex": 22,
+   "variantOf": 14321,
+   "isBaseSpell": true,
+   "name": "Appel de la Meute",
+   "obtainedAtLevel": 90,
+   "grade": 2,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 6,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": true,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 2,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": 1,
+   "critChance": 0,
+   "statesCriterion": null,
+   "spellLevelId": 65493,
+   "description": "Réduit le temps de relance du sort Lance-roquet du lanceur.\n• Si la cible est le lanceur : attire tous les alliés vers la cible.\n• Si la cible est la Proie : érode la cible et attire tous les alliés vers elle.\nL'attirance est plus importante si la cible est la Proie.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 90,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 5,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    },
+    {
+     "grade": 2,
+     "minPlayerLevel": 157,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 6,
+     "critChance": 0,
+     "cooldown": 2,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, 0–6 PO, LdV, relance 2",
+    "Lance-roquet : −1 tour de relance",
+    "Sur soi : attire tous les alliés de 2 cases vers le lanceur",
+    "Sur la Proie : 10 % d'érosion (1 tour) et attire tous les alliés de 4 cases vers elle"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "Lance-roquet : -1  de relance → lanceur",
+    "le lanceur lance le sous-sort « Appel de la Meute » (14358, niv. 1) → lanceur (s’il est dans la zone)",
+    "le lanceur lance le sous-sort « Appel de la Meute » (14358, niv. 2) → cible ennemie — si cible a l'état « Proie » (516)",
+    "Attire la cible de 2 case(s) → alliés dans la zone (zone cercle illimitée (63), info-bulle uniquement (comportement réel géré côté serveur))",
+    "10% Érosion → cible ennemie (1 tour(s), info-bulle uniquement (comportement réel géré côté serveur))",
+    "Attire la cible de 4 case(s) → alliés dans la zone (zone cercle illimitée (63), info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "placement",
+    "utilitaire"
+   ],
+   "tactic": "Rassemble le groupe (autour de soi ou au contact de la Proie) — peut aussi désorganiser les alliés : l'IA doit évaluer chaque allié.",
+   "engineNotes": "Attirances en cercle 63 (min 1) sur les alliés."
+  },
+  {
+   "id": 14321,
+   "pairIndex": 22,
+   "variantOf": 14357,
+   "isBaseSpell": false,
+   "name": "Nouvelle Lune",
+   "obtainedAtLevel": 200,
+   "grade": 1,
+   "apCost": 2,
+   "minRange": 0,
+   "range": 0,
+   "boostableRange": false,
+   "inLine": false,
+   "inDiagonal": false,
+   "los": false,
+   "needFreeCell": false,
+   "needTakenCell": false,
+   "cooldown": 3,
+   "initialCooldown": 0,
+   "maxPerTurn": 0,
+   "maxPerTarget": 0,
+   "maxGlobalPerTurn": 0,
+   "maxStack": -1,
+   "critChance": 0,
+   "statesCriterion": "HS!517",
+   "spellLevelId": 43816,
+   "description": "Réduit la durée des effets sur le lanceur et le transforme en Bête.\n\nNe peut pas être utilisé sous Forme Bestiale.",
+   "grades": [
+    {
+     "grade": 1,
+     "minPlayerLevel": 200,
+     "apCost": 2,
+     "minRange": 0,
+     "range": 0,
+     "critChance": 0,
+     "cooldown": 3,
+     "damageBrief": ""
+    }
+   ],
+   "effectsSummary": [
+    "2 PA, sur soi, relance 3 ; interdit en Forme Bestiale",
+    "Durée des effets −2 sur le lanceur (désenvoûtement partiel)",
+    "Passe immédiatement en Forme Bestiale (2 tours) et remet la Rage à 0"
+   ],
+   "damageLines": [],
+   "effectsSummaryRaw": [
+    "Durée des effets : -2 → lanceur",
+    "le lanceur lance le sous-sort « La Rage d'Ouginak » (13745, niv. 3) → lanceur",
+    "le lanceur lance le sous-sort « Applique la Forme Bestiale » (25713, niv. 1) → cible (alliée ou ennemie) (info-bulle uniquement (comportement réel géré côté serveur))"
+   ],
+   "role": [
+    "burst",
+    "désenvoûtement"
+   ],
+   "tactic": "Forme Bestiale à la demande (+2 PM, +20 % dommages finaux) et purge des malus (érosion, retraits).",
+   "engineNotes": "13745 niv. 3."
+  }
+ ],
+ "variantChoices": {
+  "pvm-dps-tank-terre-feu": {
+   "label": "PvM — DPS/bruiser Terre-Feu (rôle recommandé en groupe 4)",
+   "chosen": [
+    13756,
+    13755,
+    13766,
+    13793,
+    13748,
+    13770,
+    13774,
+    13758,
+    13760,
+    13771,
+    13754,
+    13796,
+    13772,
+    13795,
+    13794,
+    13769,
+    13789,
+    13781,
+    13773,
+    13753,
+    13805,
+    14357
+   ],
+   "rationale": "Molosse (réduction), Traque (engagement), Muselière (burst Terre), Proie (soin de groupe), Lance-roquet, Cerbère (bouclier + dégâts croissants), Cubitus, Arcanin, Rabattage (vol PM), Battue (+150 Puissance groupe), Pelage Protecteur, Chasse, Humérus, Apaisement, Dépouille, Panique, Aboiement, Tétanisation (−3 PM), Acharnement (×115 %), Appel de la Meute."
+  },
+  "pvm-dps-eau-air": {
+   "label": "PvM — DPS Eau-Air (rampes et vols de vie)",
+   "chosen": [
+    13756,
+    13804,
+    13766,
+    13762,
+    13748,
+    13770,
+    13774,
+    13802,
+    13760,
+    13771,
+    13790,
+    13768,
+    13772,
+    13800,
+    13763,
+    13769,
+    13757,
+    13781,
+    13773,
+    13765,
+    13805,
+    14321
+   ],
+   "rationale": "Dépeçage (Air 40–45, anti-soin), Charogne, Os à Moelle/Carcasse (rampes Proie), Cubitus, Vertèbre (poison), Tibia (zone), Limier, Nouvelle Lune (Forme Bestiale à la demande), Aboi (−60 rés. poussée) pour Tibia/Chasse."
+  }
+ },
+ "rotations": [
+  {
+   "name": "Tour 1 (installation, 12 PA)",
+   "ap": 12,
+   "mp": 6,
+   "sequence": [
+    "Proie (1 PA) sur le boss",
+    "Lance-roquet (3 PA) au contact du boss",
+    "Molosse (3 PA) : Rage I + ×0,9 (1 t.)",
+    "Charogne (3 PA) : 10 % d'érosion, Raage",
+    "Cubitus (2 PA) : +1 PM sur la Proie"
+   ],
+   "notes": "Termine en Raage (×0,81 dommages subis, ×0,729 avec Molosse) pendant le tour ennemi. Seuls certains sorts montent la Rage (Molosse, Charogne, Dépeçage, Radius, Mâchoire, Gangrène, Tétanisation, Tibia, Humérus, Rogne, Acharnement) ; Rabattage, Cubitus, Muselière, Dépouille, Chasse, Os à Moelle n'y touchent pas : l'IA les utilise pour frapper sans déclencher la Forme Bestiale trop tôt."
+  },
+  {
+   "name": "Tour 2 (Forme Bestiale, 12 PA, 8 PM)",
+   "ap": 12,
+   "mp": 6,
+   "sequence": [
+    "Tétanisation (4 PA) : −3 PM, 3e palier ⇒ Forme Bestiale (+2 PM, +20 % dommages finaux)",
+    "Muselière (5 PA) : +22 par ennemi adjacent",
+    "Os à Moelle / Cubitus (2–3 PA) selon les PA restants"
+   ],
+   "notes": "La Forme Bestiale dure aussi tout le tour 3 : y placer les plus gros sorts (Dépouille, Humérus, Chasse). En Forme Bestiale : Pelage Protecteur, Férocité, Arcanin, Caninos, Flair, Nouvelle Lune indisponibles."
+  },
+  {
+   "name": "Tour défensif (12 PA)",
+   "ap": 12,
+   "mp": 6,
+   "sequence": [
+    "Pelage Protecteur (3 PA) sur un allié ciblé",
+    "Cerbère (4 PA) : bouclier 300 + dégâts",
+    "Molosse (3 PA)",
+    "Arcanin (1 PA) pour rester en Rage I (+100 Puissance) + Proie (1 PA)"
+   ],
+   "notes": "Arcanin redescend d'un palier : à utiliser pour éviter d'entrer en Forme Bestiale (et perdre les ×0,9) au mauvais moment."
+  }
+ ],
+ "synergies": [
+  {
+   "with": "Tout DPS du groupe",
+   "why": "Proie : chaque allié qui frappe la cible se soigne de 25 % de ses dommages (soin de groupe gratuit) ; Gibier/Acharnement amplifient (×107 %, ×115 %)."
+  },
+  {
+   "with": "Eniripsa / Féca / Forgelance",
+   "why": "L'Ouginak encaisse à la place des fragiles ; un soigneur/protecteur prolonge sa ligne de front (il n'a pas de soin de groupe fort)."
+  },
+  {
+   "with": "Pandawa / Forgelance / Huppermage (placement)",
+   "why": "Regrouper les ennemis au contact de l'Ouginak démultiplie Muselière (+22 par ennemi adjacent), Tibia et Amarok ; Aboi (−60 rés. poussée) prépare les dommages de poussée alliés."
+  },
+  {
+   "with": "Sram / Iop (mêlée)",
+   "why": "Dépouille (+20 base par allié au contact de la Proie) et Battue/Rogne (+150/+80 Puissance) récompensent une mêlée groupée."
+  },
+  {
+   "with": "Enutrof / Xélor / Huppermage (entrave)",
+   "why": "Retraits PM/PA complémentaires ; l'Ouginak empêche la fuite (tacle, −Fuite)."
+  }
+ ],
+ "strengths": [
+  "Très gros dégâts mono-cible à courte portée, dans les 4 éléments.",
+  "Excellente survie : ×0,81 dommages subis en Raage, boucliers, vols de vie, soin de 25 % via Proie.",
+  "Soutien de groupe simple et puissant (Proie, Gibier, Battue, Aboiement, Poursuite).",
+  "Entrave PM et anti-fuite (Tétanisation, Rabattage, Panique, Dogue) ; Roquet comme bloqueur.",
+  "Complexité officielle faible (2/5) : IA plus simple que l'Huppermage."
+ ],
+ "weaknesses": [
+  "Portée courte (1–4) et encore réduite en Forme Bestiale (2) ; vulnérable au kite/au retrait de PM.",
+  "La Forme Bestiale supprime les réductions de Rage : fenêtre de vulnérabilité de 2 tours.",
+  "Dépend de la Proie (une seule cible) : moins efficace contre des vagues nombreuses.",
+  "Peu de dégâts de zone à distance (Mâchoire, Battue)."
+ ],
+ "summons": [
+  {
+   "monsterId": 5865,
+   "name": "Roquet",
+   "spell": 13774,
+   "stats": "grade 3 : 6 PA, 4 PM, 15 % rés. partout, 300 Force, 150 Agilité, 250 Sagesse ; bonusCharacteristics.lifePoints 90 (% des PV de l'Ouginak, INCERTAIN) ; characRatios bruts [[0,5.44],[10,4.23],[11,0],[12,6.04],[13,0.06],[14,3.02],[15,0.06],[19,1],[23,1],[25,0.06]]",
+   "spells": "Accrocs 13752 (3 PA, 1 PO : vol Neutre 24–26, 71–73 contre invocations) ; attaque réactive 24004 (12–13 / 30–31) via 23981",
+   "ai": "Invocation maîtrisable : aller au contact de la Proie et utiliser Accrocs (2 fois avec 6 PA)."
+  }
+ ],
+ "states": [
+  {
+   "id": 513,
+   "name": "Rage"
+  },
+  {
+   "id": 514,
+   "name": "Raage"
+  },
+  {
+   "id": 515,
+   "name": "Rage Ouginak (palier ≥ 1)"
+  },
+  {
+   "id": 517,
+   "name": "Forme Bestiale"
+  },
+  {
+   "id": 3549,
+   "name": "Cible Ouginak (interne)"
+  },
+  {
+   "id": 516,
+   "name": "Proie"
+  },
+  {
+   "id": 42,
+   "name": "Affaibli (pas d'arme)"
+  },
+  {
+   "id": 96,
+   "name": "Intaclable"
+  },
+  {
+   "id": 3510,
+   "name": "Roquet Rang 1"
+  },
+  {
+   "id": 3511,
+   "name": "Roquet Rang 2"
+  },
+  {
+   "id": 3512,
+   "name": "Roquet Rang 3"
+  },
+  {
+   "id": 3513,
+   "name": "Os à Moelle (interne)"
+  },
+  {
+   "id": 3514,
+   "name": "Carcasse (interne)"
+  },
+  {
+   "id": 3515,
+   "name": "Cubitus (interne)"
+  },
+  {
+   "id": 535,
+   "name": "Tibia (interne)"
+  },
+  {
+   "id": 496,
+   "name": "Flair (interne)"
+  },
+  {
+   "id": 4144,
+   "name": "Pelage Protecteur"
+  },
+  {
+   "id": 4153,
+   "name": "Férocité"
+  },
+  {
+   "id": 3570,
+   "name": "Férocité I"
+  },
+  {
+   "id": 4145,
+   "name": "Aboiement"
+  },
+  {
+   "id": 4146,
+   "name": "Rogne"
+  },
+  {
+   "id": 4155,
+   "name": "Poursuite"
+  },
+  {
+   "id": 157,
+   "name": "Inébranlable"
+  },
+  {
+   "id": 7,
+   "name": "Pesanteur"
+  }
+ ],
+ "openQuestions": [
+  "Proie : les alliés de la Proie (monstres) qui la frapperaient seraient-ils aussi soignés ? (masque de l'effet 786 = A sur la Proie, l'attaquant quelconque — probablement oui).",
+  "Rogne : cumul réel du bonus réactif (description « cumulable 5 fois », aucune limite visible dans 30794).",
+  "PV exacts du Roquet (bonusCharacteristics 90 % ?) et mise à l'échelle des caractéristiques (characRatios).",
+  "Ordre exact entre la fin de la Forme Bestiale (déclencheur fin de tour) et les autres effets de fin de tour."
+ ]
+}

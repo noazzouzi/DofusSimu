@@ -1757,8 +1757,19 @@ body.dragging .drop-hint {
     width: 32px;
     height: 34px;
   }
+}
+@media (max-width: 440px) {
   .result-card {
-    padding: 14px 12px 10px;
+    padding: 14px 10px 10px;
+  }
+  .result-card h2 {
+    font-size: 26px;
+  }
+  .result-table td:first-child {
+    max-width: 86px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .result-table {
     font-size: 11.5px;
@@ -1766,5 +1777,14 @@ body.dragging .drop-hint {
   .result-table th,
   .result-table td {
     padding: 3px 4px;
+  }
+}
+@media (max-width: 360px) {
+  .result-table {
+    font-size: 11px;
+  }
+  .result-table th,
+  .result-table td {
+    padding: 3px 2px;
   }
 }

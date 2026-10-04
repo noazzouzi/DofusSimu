@@ -7,11 +7,13 @@ import {
   IGNORED_STAT_EFFECT_IDS,
   itemEffectSign,
   itemEffectStat,
+  itemEffectStatIndex,
   NEGATIVE_EFFECT_BY_STAT,
   POSITIVE_EFFECT_BY_STAT,
   signedEffectValue,
   STAT_BY_CHARACTERISTIC_ID,
 } from '../src/stats/effects'
+import { copyStats, STAT_COUNT, STAT_INDEX, STAT_ORDER, statsFromArray, zeroStats } from '../src/stats/fastStats'
 
 interface MapEntry {
   stat: string | null
@@ -192,5 +194,44 @@ describe('stats/effects — applyItemEffect', () => {
     expect(itemEffectStat(752)).toBe('tackleEvade')
     expect(itemEffectStat(753)).toBe('tackleBlock')
     expect(itemEffectStat(220)).toBe('reflect')
+  })
+})
+
+describe('stats/fastStats — objets Stats rapides et accumulateurs', () => {
+  it('STAT_ORDER est une permutation de STAT_KEYS', () => {
+    expect(STAT_COUNT).toBe(STAT_KEYS.length)
+    expect([...STAT_ORDER].sort()).toEqual([...STAT_KEYS].sort())
+    STAT_ORDER.forEach((k, i) => expect(STAT_INDEX[k]).toBe(i))
+  })
+
+  it('zeroStats, copyStats et statsFromArray sont cohérents', () => {
+    expect(zeroStats()).toEqual(emptyStats())
+    const a = new Float64Array(STAT_COUNT)
+    for (let i = 0; i < STAT_COUNT; i++) a[i] = i * 3 + 1
+    const s = statsFromArray(a)
+    for (const k of STAT_KEYS) expect(s[k], k).toBe(STAT_INDEX[k] * 3 + 1)
+    const c = copyStats(s)
+    expect(c).toEqual(s)
+    expect(c).not.toBe(s)
+    expect(Object.keys(c).sort()).toEqual([...STAT_KEYS].sort())
+    // Copie d'un objet construit dynamiquement (mode dictionnaire).
+    const dyn = emptyStats()
+    dyn.agility = 42
+    expect(copyStats(dyn)).toEqual(dyn)
+  })
+
+  it('index d\'accumulateur des effets', () => {
+    expect(itemEffectStatIndex(118)).toBe(STAT_INDEX.strength)
+    expect(itemEffectStatIndex(157)).toBe(STAT_INDEX.strength)
+    expect(itemEffectStatIndex(125)).toBe(STAT_INDEX.vitality)
+    expect(itemEffectStatIndex(610)).toBe(STAT_INDEX.vitality)
+    expect(itemEffectStatIndex(100)).toBe(-1)
+    expect(itemEffectStatIndex(-1)).toBe(-1)
+    expect(itemEffectStatIndex(5000)).toBe(-1)
+    expect(itemEffectStatIndex(118.5)).toBe(-1)
+    for (const [id, entry] of Object.entries(charMap)) {
+      const stat = itemEffectStat(Number(id))
+      expect(itemEffectStatIndex(Number(id)), `${id} (${entry.stat})`).toBe(stat ? STAT_INDEX[stat] : -1)
+    }
   })
 })

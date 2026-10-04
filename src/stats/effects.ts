@@ -10,6 +10,7 @@
  * des tableaux denses indexés par effectId (aucune allocation, aucun hachage dans les boucles chaudes).
  */
 import type { Stats, StatKey } from '../core/types'
+import { STAT_INDEX } from './fastStats'
 
 export type StatSign = 1 | -1
 
@@ -102,6 +103,8 @@ const MAX_EFFECT_ID = 4096
 
 const EFFECT_STAT: (StatKey | null)[] = new Array<StatKey | null>(MAX_EFFECT_ID).fill(null)
 const EFFECT_SIGN = new Int8Array(MAX_EFFECT_ID)
+/** effectId → index d'accumulateur (`STAT_INDEX`), −1 si l'effet n'est pas une caractéristique. */
+const EFFECT_STAT_INDEX = new Int16Array(MAX_EFFECT_ID).fill(-1)
 
 const positiveByStat: Partial<Record<StatKey, number>> = {}
 const negativeByStat: Partial<Record<StatKey, number>> = {}
@@ -122,6 +125,10 @@ for (const [effectId, stat] of SCROLL_LINES) {
   EFFECT_STAT[effectId] = stat
   EFFECT_SIGN[effectId] = 1
 }
+for (let id = 0; id < MAX_EFFECT_ID; id++) {
+  const stat = EFFECT_STAT[id]
+  if (stat) EFFECT_STAT_INDEX[id] = STAT_INDEX[stat]
+}
 
 /** Effet « bonus » d'une caractéristique (ex. `strength` → 118). */
 export const POSITIVE_EFFECT_BY_STAT: Readonly<Partial<Record<StatKey, number>>> = positiveByStat
@@ -133,6 +140,12 @@ export const STAT_BY_CHARACTERISTIC_ID: Readonly<Record<number, StatKey>> = stat
 /** Caractéristique modifiée par un effet d'objet, ou `undefined` si l'effet n'est pas une caractéristique. */
 export function itemEffectStat(effectId: number): StatKey | undefined {
   return (effectId >= 0 && effectId < MAX_EFFECT_ID && EFFECT_STAT[effectId]) || undefined
+}
+
+/** Index d'accumulateur (`STAT_ORDER`) de la caractéristique d'un effet, −1 si ce n'est pas une caractéristique. */
+export function itemEffectStatIndex(effectId: number): number {
+  if (!(effectId >= 0 && effectId < MAX_EFFECT_ID)) return -1
+  return EFFECT_STAT_INDEX[effectId] ?? -1 // undefined pour un id non entier
 }
 
 /** Signe d'un effet de caractéristique (+1 bonus, −1 malus, 0 si ce n'est pas une caractéristique). */

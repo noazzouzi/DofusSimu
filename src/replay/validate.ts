@@ -190,7 +190,9 @@ export function parseReplay(input: unknown): Replay {
     try {
       data = JSON.parse(data)
     } catch (e) {
-      throw new ReplayError(`JSON invalide : ${(e as Error).message}`)
+      // Message du moteur JS (en anglais) réduit à la position de l'erreur.
+      const pos = /position (\d+)/.exec((e as Error).message)?.[1]
+      throw new ReplayError(`JSON invalide : le fichier n’est pas un JSON valide${pos ? ` (erreur au caractère ${Number(pos) + 1})` : ''}.`)
     }
   }
   if (Array.isArray(data)) data = { events: data }

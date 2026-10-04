@@ -12,8 +12,12 @@
  *
  * Les % de résistance ne sont PAS plafonnés par défaut (le plafond joueur de 50 % s'applique dans le calcul de
  * dégâts, après les buffs/débuffs de combat) : option `capResistances` pour un affichage façon DofusDB.
+ *
+ * Performance (optimiseur de stuff) : sommes dans un `Float64Array` réutilisé, contributions des objets et des paliers
+ * de panoplie pré-calculées par politique de jet (caches `WeakMap`), conditions analysées une seule fois :
+ * ~5 µs pour un stuff complet de 16 objets.
  */
-import { emptyStats, type Stats, type StatKey } from '../core/types'
+import type { Stats, StatKey } from '../core/types'
 import type { BreedData, EquipmentSlot, ItemData, ItemEffectRange, ItemSetData } from '../data/model'
 import {
   availableCharacteristicPoints,
@@ -26,7 +30,8 @@ import {
   type PrimaryStatRecord,
 } from './characteristicPoints'
 import { evaluateCriterion, explainCriterion, parseCriterion, type ConditionProfile, type CriterionContext } from './conditions'
-import { applyItemEffect, EFFECT_PASSIVE_SPELL, EFFECT_STAT_CAP, itemEffectSign, itemEffectStat, STAT_BY_CHARACTERISTIC_ID } from './effects'
+import { EFFECT_PASSIVE_SPELL, EFFECT_STAT_CAP, itemEffectSign, itemEffectStatIndex, STAT_BY_CHARACTERISTIC_ID } from './effects'
+import { copyStats, STAT_COUNT, STAT_INDEX, statsFromArray } from './fastStats'
 import { checkItemForgemagie, forgeKind, ONCE_PER_CHARACTER_EXO_STATS, type ExoLine } from './forgemagie'
 
 // ───────────────────────────── types ─────────────────────────────
@@ -43,7 +48,7 @@ export interface EquippedItem {
   rolls?: Record<number, number>
   /** Lignes de forgemagie : exos (ligne absente), overs (ligne existante), transcendances. */
   exos?: ExoLine[]
-  /** Niveau du familier (1-100, type 18) : bonus au prorata (arrondi inférieur, INCERTAIN). Défaut 100. */
+  /** Niveau du familier (0-100, type 18) : bonus au prorata, `round(max × niveau / 100)` (INCERTAIN). Défaut 100. */
   petLevel?: number
 }
 
@@ -96,6 +101,11 @@ export interface BuildStatsOptions {
   capResistances?: boolean
   /** Vérifier les conditions d'objets. Défaut : vrai. */
   checkConditions?: boolean
+  /**
+   * Interdire le bouclier avec une arme `twoHanded`. Défaut : faux — la notion d'arme à deux mains a disparu en 2.41
+   * (equipment.md §2.3 ; seul le Balai rudimentaire garde le drapeau). Conservé en option (règle Dofus 2 historique).
+   */
+  twoHandedBlocksShield?: boolean
   conditionProfile?: ConditionProfile
 }
 
@@ -138,7 +148,7 @@ export interface BuildStatsResult {
   /** Sommes brutes avant plafonds et sans stats dérivées (initiative = bonus seul). Sert aux conditions. */
   raw: Stats
   maxHp: number
-  /** Messages lisibles (erreurs puis avertissements, dans l'ordre de détection). */
+  /** Messages lisibles de tous les problèmes (erreurs et avertissements, dans l'ordre de détection). */
   warnings: string[]
   issues: BuildIssue[]
   /** Aucun problème de sévérité `error`. */
@@ -163,7 +173,7 @@ export interface BuildStatsResult {
 export const BREED_ENUTROF = 3
 /** Type d'objet « Familier » (bonus au prorata du niveau). */
 export const ITEM_TYPE_PET = 18
-/** Type d'objet « Prysmaradite » (une seule par personnage depuis la MàJ 3.3). */
+/** Type d'objet « Prysmaradite » (une seule par personnage, règle rappelée par la MàJ 3.3). */
 export const ITEM_TYPE_PRYSMARADITE = 217
 
 /** Nombre maximal d'objets par emplacement. */
@@ -194,6 +204,8 @@ const SLOT_NAMES_FR: Readonly<Record<EquipmentSlot, string>> = {
   pet: 'familier/monture',
   other: 'non équipable',
 }
+
+const EQUIPMENT_SLOTS = Object.keys(SLOT_CAPACITY) as EquipmentSlot[]
 
 const SPELL_PAIR_COUNT = 22
 
@@ -260,7 +272,7 @@ export function finalizeStats(
   opts: FinalizeOptions,
 ): { stats: Stats; maxHp: number; wasted: BuildStatsResult['wasted'] } {
   const caps = opts.caps ? { ...DEFAULT_STAT_CAPS, ...opts.caps } : DEFAULT_STAT_CAPS
-  const stats: Stats = { ...raw }
+  const stats = copyStats(raw)
   const wasted: BuildStatsResult['wasted'] = {}
   const capOne = (key: 'ap' | 'mp' | 'range' | 'summons', cap: number): void => {
     const specific = opts.statCaps?.[key]
@@ -308,6 +320,78 @@ interface ResolvedItem {
 /** Jets retenus (montants positifs) de chaque ligne d'un objet ; réutilisé entre objets (pas d'allocation par ligne). */
 let lineBuffer: number[] = []
 
+/** Accumulateur des sommes brutes (indexé selon `STAT_ORDER`), réutilisé d'un appel à l'autre. */
+const acc = new Float64Array(STAT_COUNT)
+const I_AP = STAT_INDEX.ap
+const I_MP = STAT_INDEX.mp
+const I_SUMMONS = STAT_INDEX.summons
+const PRIMARY_INDEX: readonly number[] = PRIMARY_STATS.map(s => STAT_INDEX[s])
+
+/** Contributions d'un objet pré-calculées pour chaque politique de jet (lignes de caractéristiques seulement). */
+interface CompiledItem {
+  /** Index d'accumulateur de chaque ligne de caractéristique. */
+  indices: number[]
+  /** Valeurs signées alignées sur `indices`, par politique de jet. */
+  values: Record<RollPolicy, number[]>
+  passiveSpells: number[]
+  caps: ItemEffectRange[]
+}
+
+const ROLL_POLICIES: readonly RollPolicy[] = ['max', 'min', 'mean', 'best']
+/** Cache par objet (les données d'objets sont statiques : un `ItemData` ne doit pas être muté après usage). */
+const compiledItems = new WeakMap<ItemData, CompiledItem>()
+
+/** Panoplie pré-compilée : paliers triés et bonus de chaque palier (indices d'accumulateur + valeurs signées). */
+interface CompiledSet {
+  tiers: number[]
+  bonuses: Map<number, { indices: number[]; values: number[]; caps: ItemEffectRange[] }>
+}
+const compiledSets = new WeakMap<ItemSetData, CompiledSet>()
+
+function compileSet(set: ItemSetData): CompiledSet {
+  let c = compiledSets.get(set)
+  if (c) return c
+  c = { tiers: [], bonuses: new Map() }
+  for (const k in set.bonuses) {
+    const n = Number(k)
+    const tier = { indices: [] as number[], values: [] as number[], caps: [] as ItemEffectRange[] }
+    for (const line of set.bonuses[n]) {
+      if (line.effectId === EFFECT_STAT_CAP) {
+        tier.caps.push(line)
+        continue
+      }
+      const index = itemEffectStatIndex(line.effectId)
+      if (index < 0) continue
+      tier.indices.push(index)
+      tier.values.push(itemEffectSign(line.effectId) * Math.max(line.min, line.max))
+    }
+    c.tiers.push(n)
+    c.bonuses.set(n, tier)
+  }
+  c.tiers.sort((a, b) => a - b)
+  compiledSets.set(set, c)
+  return c
+}
+
+function compileItem(item: ItemData): CompiledItem {
+  let c = compiledItems.get(item)
+  if (c) return c
+  c = { indices: [], values: { max: [], min: [], mean: [], best: [] }, passiveSpells: [], caps: [] }
+  for (const line of item.effects) {
+    if (line.effectId === EFFECT_PASSIVE_SPELL) c.passiveSpells.push(line.min)
+    else if (line.effectId === EFFECT_STAT_CAP) c.caps.push(line)
+    else {
+      const index = itemEffectStatIndex(line.effectId)
+      if (index < 0) continue
+      const sign = itemEffectSign(line.effectId)
+      c.indices.push(index)
+      for (const p of ROLL_POLICIES) c.values[p].push(sign * rollEffect(line, p))
+    }
+  }
+  compiledItems.set(item, c)
+  return c
+}
+
 /**
  * Calcule les caractéristiques d'un build. Tous les problèmes (objets introuvables, emplacements, conditions,
  * forgemagie, points…) sont signalés dans `issues`/`warnings` sans interrompre le calcul : les stats de TOUS les objets
@@ -333,7 +417,7 @@ export function computeBuildStats(
   const breed = data.breed(build.breedId)
   if (!breed) warn('breed', `Classe inconnue : ${build.breedId} (paliers de coût par défaut)`)
 
-  const raw = emptyStats()
+  acc.fill(0)
 
   // ── points de caractéristiques
   const invested = build.characteristicPoints
@@ -347,15 +431,17 @@ export function computeBuildStats(
   if (fromPoints.spent > available) {
     error('points', `${fromPoints.spent} points investis pour ${available} disponibles au niveau ${level}`)
   }
-  for (const s of PRIMARY_STATS) {
-    raw[s] += base[s]
+  for (let k = 0; k < PRIMARY_STATS.length; k++) {
+    const s = PRIMARY_STATS[k]
+    acc[PRIMARY_INDEX[k]] += base[s]
     const lost = fromPoints.leftover[s]
     if (lost > 0) warn('points', `${lost} point(s) investi(s) en ${PRIMARY_STAT_NAMES_FR[s]} sans effet (palier de coût)`)
   }
 
   // ── parchemins
   const additional = emptyPrimaryStats()
-  for (const s of PRIMARY_STATS) {
+  for (let k = 0; k < PRIMARY_STATS.length; k++) {
+    const s = PRIMARY_STATS[k]
     const v = build.scrolls[s] ?? 0
     if (!(v >= 0)) {
       error('scroll', `Parchemin invalide en ${PRIMARY_STAT_NAMES_FR[s]} : ${v}`)
@@ -365,13 +451,13 @@ export function computeBuildStats(
       warn('scroll', `Parchemins de ${PRIMARY_STAT_NAMES_FR[s]} plafonnés à ${MAX_SCROLL_PER_STAT} (${v} demandés)`)
     }
     additional[s] = Math.min(v, MAX_SCROLL_PER_STAT)
-    raw[s] += additional[s]
+    acc[PRIMARY_INDEX[k]] += additional[s]
   }
 
   // ── bases de classe
-  raw.ap += baseActionPoints(level)
-  raw.mp += 3
-  raw.summons += 1
+  acc[I_AP] += baseActionPoints(level)
+  acc[I_MP] += 3
+  acc[I_SUMMONS] += 1
 
   // ── objets : résolution et règles d'emplacement
   const resolved: ResolvedItem[] = []
@@ -391,8 +477,7 @@ export function computeBuildStats(
     if (item.level > build.level) error('itemLevel', `${item.name} : niveau ${item.level} requis`, item.id)
     resolved.push({ eq, item })
   }
-  for (const slot in slotCount) {
-    const s = slot as EquipmentSlot
+  for (const s of EQUIPMENT_SLOTS) {
     if (slotCount[s] > SLOT_CAPACITY[s]) {
       error('slot', `${slotCount[s]} objet(s) « ${SLOT_NAMES_FR[s]} » pour ${SLOT_CAPACITY[s]} emplacement(s)`)
     }
@@ -414,7 +499,9 @@ export function computeBuildStats(
     }
   }
   if (prysmaradites > 1) error('slot', `${prysmaradites} prysmaradites équipées (une seule autorisée)`)
-  if (twoHanded && shield) error('twoHanded', `${twoHanded.name} est une arme à deux mains : bouclier ${shield.name} interdit`, shield.id)
+  if (options.twoHandedBlocksShield && twoHanded && shield) {
+    error('twoHanded', `${twoHanded.name} est une arme à deux mains : bouclier ${shield.name} interdit`, shield.id)
+  }
 
   // ── objets : lignes, sorts passifs, plafonds 2897, exos
   const passiveSpells: number[] = []
@@ -429,40 +516,50 @@ export function computeBuildStats(
   const setItems = new Map<number, number[]>()
 
   for (const { eq, item } of resolved) {
-    const effects = item.effects
-    if (lineBuffer.length < effects.length) lineBuffer = new Array<number>(effects.length * 2).fill(0)
     const rolls = eq.rolls
-    const petFactor = item.typeId === ITEM_TYPE_PET && eq.petLevel !== undefined ? Math.max(0, Math.min(100, eq.petLevel)) : 100
-    let usedRolls = 0
-    for (let i = 0; i < effects.length; i++) {
-      const line = effects[i]
-      const id = line.effectId
-      if (id === EFFECT_PASSIVE_SPELL) {
-        if (!passiveSpells.includes(line.min)) passiveSpells.push(line.min)
-        continue
-      }
-      if (id === EFFECT_STAT_CAP) {
-        addCap(line)
-        continue
-      }
-      const override = rolls?.[id]
-      if (override !== undefined) usedRolls++
-      let v = override ?? rollEffect(line, policy)
-      lineBuffer[i] = v
-      if (petFactor !== 100) v = Math.floor((v * petFactor) / 100)
-      applyItemEffect(raw, id, v)
-    }
-    if (rolls) {
-      const known = Object.keys(rolls).length
-      if (usedRolls < known) {
-        warn('rolls', `${item.name} : ${known - usedRolls} jet(s) sur des effets absents de l'objet`, item.id)
-      }
-    }
-
-    // Forgemagie (overs via `rolls`, exos, transcendances).
     const exos = eq.exos
-    if (rolls || exos?.length) {
-      for (const msg of checkItemForgemagie(item, lineBuffer, exos)) error('forgemagie', msg, item.id)
+    const petFactor = item.typeId === ITEM_TYPE_PET && eq.petLevel !== undefined ? Math.max(0, Math.min(100, eq.petLevel)) : 100
+    if (!rolls && !exos?.length && petFactor === 100) {
+      // Chemin rapide : contributions pré-calculées (cas courant de l'optimiseur).
+      const c = compileItem(item)
+      const values = c.values[policy]
+      const indices = c.indices
+      for (let i = 0; i < indices.length; i++) acc[indices[i]] += values[i]
+      for (const spellId of c.passiveSpells) if (!passiveSpells.includes(spellId)) passiveSpells.push(spellId)
+      for (const cap of c.caps) addCap(cap)
+    } else {
+      const effects = item.effects
+      if (lineBuffer.length < effects.length) lineBuffer = new Array<number>(effects.length * 2).fill(0)
+      let usedRolls = 0
+      for (let i = 0; i < effects.length; i++) {
+        const line = effects[i]
+        const id = line.effectId
+        if (id === EFFECT_PASSIVE_SPELL) {
+          if (!passiveSpells.includes(line.min)) passiveSpells.push(line.min)
+          continue
+        }
+        if (id === EFFECT_STAT_CAP) {
+          addCap(line)
+          continue
+        }
+        const override = rolls?.[id]
+        if (override !== undefined) usedRolls++
+        let v = override ?? rollEffect(line, policy)
+        lineBuffer[i] = v
+        if (petFactor !== 100) v = Math.round((v * petFactor) / 100)
+        const index = itemEffectStatIndex(id)
+        if (index >= 0) acc[index] += itemEffectSign(id) * v
+      }
+      if (rolls) {
+        const known = Object.keys(rolls).length
+        if (usedRolls < known) {
+          warn('rolls', `${item.name} : ${known - usedRolls} jet(s) sur des effets absents de l'objet`, item.id)
+        }
+      }
+      // Forgemagie (overs via `rolls`, exos, transcendances).
+      if (rolls || exos?.length) {
+        for (const msg of checkItemForgemagie(item, lineBuffer, exos)) error('forgemagie', msg, item.id)
+      }
     }
     if (exos) {
       for (const line of exos) {
@@ -474,7 +571,7 @@ export function computeBuildStats(
           }
           onceExoCounted.add(line.stat)
         }
-        raw[line.stat] += line.value
+        acc[STAT_INDEX[line.stat]] += line.value
       }
     }
 
@@ -496,20 +593,19 @@ export function computeBuildStats(
     if (!set) {
       if (count > 1) warn('item', `Panoplie introuvable : ${setId}`)
     } else {
-      for (const k in set.bonuses) {
-        const n = Number(k)
-        if (n <= count && n > tier) tier = n
-      }
-      const bonus = tier > 0 ? set.bonuses[tier] : undefined
+      const cs = compileSet(set)
+      for (const n of cs.tiers) if (n <= count) tier = n
+      const bonus = tier > 0 ? cs.bonuses.get(tier) : undefined
       if (bonus) {
-        for (const line of bonus) {
-          if (line.effectId === EFFECT_STAT_CAP) addCap(line)
-          else if (itemEffectStat(line.effectId)) applyItemEffect(raw, line.effectId, Math.max(line.min, line.max))
-        }
+        const { indices, values } = bonus
+        for (let i = 0; i < indices.length; i++) acc[indices[i]] += values[i]
+        for (const cap of bonus.caps) addCap(cap)
       }
     }
     sets.push({ setId, count, tier })
   }
+
+  const raw = statsFromArray(acc)
 
   // ── conditions (état final, valeurs brutes avant plafonds, objet évalué inclus)
   if (options.checkConditions ?? true) {

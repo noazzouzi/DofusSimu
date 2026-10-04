@@ -303,6 +303,63 @@ function mulD3(r: number, m: number, domath: boolean): number {
   return domath ? Math.floor(r * (m / 100)) : Math.trunc((r * m) / 100)
 }
 
+/**
+ * Un jet de dégâts déjà préparé — chemin chaud du moteur : aucune allocation ni branche de traçage.
+ * `computeTraced` (explication) suit EXACTEMENT les mêmes étapes ; les tests vérifient l'égalité des deux
+ * sur des milliers d'entrées aléatoires.
+ */
+export function rollPrepared(p: PreparedDamage, roll: number): number {
+  const domath = p.domath
+  const base = roll + p.baseBonus
+  if (base <= 0) return 0
+  // (1) caractéristique + puissance — DoMath : `t + t * X / 100`
+  let r = domath ? Math.trunc(base + (base * p.power) / 100) : Math.trunc((base * (100 + p.power)) / 100)
+  // (2) dommages fixes
+  r += p.fixedDamage
+  if (r < 0) return 0
+  // (2b) maîtrise d'arme
+  if (p.weaponSkillPct !== 0) r = Math.trunc((r * (100 + p.weaponSkillPct)) / 100)
+  // (3) zone × portails : deux multiplications flottantes puis UNE troncature
+  if (domath) {
+    r *= p.areaFactor
+    r *= p.portalFactor
+    r = Math.trunc(r)
+  } else {
+    r = Math.trunc((r * p.areaPct * p.portalPct) / 10000)
+  }
+  // (4) résistances fixes (+ critiques, + armure)
+  r -= p.fixedRes
+  if (r < 0) return 0
+  // (5) % résistance élémentaire
+  r = domath ? Math.trunc(r * (1 - p.resPct / 100)) : Math.trunc((r * (100 - p.resPct)) / 100)
+  if (!p.dofus3Order) {
+    // (6)-(9) : r × k entier ⇒ exact dans les deux modes
+    r = Math.trunc((r * p.sustainedPct) / 100)
+    r = Math.trunc((r * (100 + p.finalPct)) / 100)
+    r = Math.trunc((r * (100 + p.categoryPct)) / 100)
+    r = Math.trunc((r * (100 + p.distancePct)) / 100)
+    // (10) % résistances sorts|armes × distance|mêlée : une seule troncature
+    if (domath) {
+      r *= 1 - p.receivedCategoryPct / 100
+      r *= 1 - p.receivedDistancePct / 100
+      r = Math.trunc(r)
+    } else {
+      r = Math.trunc((r * (100 - p.receivedCategoryPct) * (100 - p.receivedDistancePct)) / 10000)
+    }
+  } else {
+    // Ordre du module Haxe de Dofus 3 : un arrondi par facteur, « dommages subis » en dernier.
+    if (r < 0) r = 0
+    r = mulD3(r, 100 + p.categoryPct, domath)
+    r = mulD3(r, 100 + p.distancePct, domath)
+    r = mulD3(r, 100 - p.receivedCategoryPct, domath)
+    r = mulD3(r, 100 - p.receivedDistancePct, domath)
+    r = mulD3(r, 100 + p.finalPct, domath)
+    r = mulD3(r, p.sustainedPct, domath)
+  }
+  // Borne finale (normalise aussi -0).
+  return r > 0 ? r : 0
+}
+
 function categoryLabel(p: PreparedDamage): string {
   return p.isWeapon ? "% Dommages d'armes" : '% Dommages aux sorts'
 }
@@ -316,135 +373,95 @@ function receivedDistanceLabel(p: PreparedDamage): string {
   return p.isMelee ? '% Résistances mêlée' : '% Résistances distance'
 }
 
-/**
- * Cœur du calcul. `trace` (facultatif) reçoit les étapes ; `null` dans le chemin chaud (aucune allocation).
- */
-function computeDamage(p: PreparedDamage, roll: number, trace: DamageStep[] | null): number {
+/** Résultat final borné à 0, ajouté à la trace. */
+function finish(r: number, trace: DamageStep[], reason: string): number {
+  const v = r > 0 ? r : 0
+  trace.push({ id: 'result', label: 'Dégâts', value: v, detail: reason ? `${v} (${reason})` : `${v}` })
+  return v
+}
+
+/** Même calcul que `rollPrepared`, en enregistrant chaque étape (page « calculateur »). */
+function computeTraced(p: PreparedDamage, roll: number, trace: DamageStep[]): number {
   const domath = p.domath
   const base = roll + p.baseBonus
-  if (trace !== null) {
-    trace.push({
-      id: 'base',
-      label: 'Jet de base',
-      value: base,
-      detail: p.baseBonus !== 0 ? `${roll} + ${p.baseBonus} (bonus de jet) = ${base}` : `${base}`,
-    })
-  }
+  trace.push({
+    id: 'base',
+    label: 'Jet de base',
+    value: base,
+    detail: p.baseBonus !== 0 ? `${roll} + ${p.baseBonus} (bonus de jet) = ${base}` : `${base}`,
+  })
   if (base <= 0) return finish(0, trace, 'jet nul')
 
-  // (1) caractéristique + puissance
   let r = domath ? Math.trunc(base + (base * p.power) / 100) : Math.trunc((base * (100 + p.power)) / 100)
-  if (trace !== null) {
-    trace.push({
-      id: 'stats',
-      label: `Caractéristique + Puissance (${ELEMENT_NAMES_FR[p.element]})`,
-      value: r,
-      detail: `trunc(${base} × (100 + ${p.power}) / 100) = ${r}`,
-    })
-  }
+  trace.push({
+    id: 'stats',
+    label: `Caractéristique + Puissance (${ELEMENT_NAMES_FR[p.element]})`,
+    value: r,
+    detail: `trunc(${base} × (100 + ${p.power}) / 100) = ${r}`,
+  })
 
-  // (2) dommages fixes
-  const beforeFixed = r
+  let prev = r
   r += p.fixedDamage
-  if (trace !== null) {
-    trace.push({
-      id: 'fixed',
-      label: p.crit ? 'Dommages fixes (+ critiques)' : 'Dommages fixes',
-      value: r < 0 ? 0 : r,
-      detail: `${beforeFixed} + ${p.fixedDamage} = ${r}${r < 0 ? ' → 0' : ''}`,
-    })
-  }
+  trace.push({
+    id: 'fixed',
+    label: p.crit ? 'Dommages fixes (+ critiques)' : 'Dommages fixes',
+    value: r < 0 ? 0 : r,
+    detail: `${prev} + ${p.fixedDamage} = ${r}${r < 0 ? ' → 0' : ''}`,
+  })
   if (r < 0) return finish(0, trace, 'dommages fixes négatifs')
 
-  // (2b) maîtrise d'arme (Dofus 3, armes uniquement)
   if (p.weaponSkillPct !== 0) {
-    const prev = r
+    prev = r
     r = Math.trunc((r * (100 + p.weaponSkillPct)) / 100)
-    if (trace !== null) {
-      trace.push({
-        id: 'weaponSkill',
-        label: "Maîtrise d'arme",
-        value: r,
-        detail: `trunc(${prev} × (100 + ${p.weaponSkillPct}) / 100) = ${r}`,
-      })
-    }
+    trace.push({ id: 'weaponSkill', label: "Maîtrise d'arme", value: r, detail: `trunc(${prev} × (100 + ${p.weaponSkillPct}) / 100) = ${r}` })
   }
 
-  // (3) dégressivité de zone × portails (deux multiplications flottantes puis UNE troncature)
-  {
-    const prev = r
-    if (domath) {
-      r *= p.areaFactor
-      r *= p.portalFactor
-      r = Math.trunc(r)
-    } else {
-      r = Math.trunc((r * p.areaPct * p.portalPct) / 10000)
-    }
-    if (trace !== null) {
-      trace.push({
-        id: 'area',
-        label: 'Efficacité de zone × portails',
-        value: r,
-        detail: domath
-          ? `trunc(${prev} × ${p.areaFactor} × ${p.portalFactor}) = ${r}`
-          : `trunc(${prev} × ${p.areaPct} × ${p.portalPct} / 10000) = ${r}`,
-      })
-    }
+  prev = r
+  if (domath) {
+    r *= p.areaFactor
+    r *= p.portalFactor
+    r = Math.trunc(r)
+  } else {
+    r = Math.trunc((r * p.areaPct * p.portalPct) / 10000)
   }
+  trace.push({
+    id: 'area',
+    label: 'Efficacité de zone × portails',
+    value: r,
+    detail: domath
+      ? `trunc(${prev} × ${p.areaFactor} × ${p.portalFactor}) = ${r}`
+      : `trunc(${prev} × ${p.areaPct} × ${p.portalPct} / 10000) = ${r}`,
+  })
 
-  // (4) résistances fixes (+ critiques, + armure)
-  {
-    const prev = r
-    r -= p.fixedRes
-    if (trace !== null) {
-      trace.push({
-        id: 'fixedRes',
-        label: p.crit ? 'Résistances fixes (+ critiques)' : 'Résistances fixes',
-        value: r < 0 ? 0 : r,
-        detail: `${prev} − ${p.fixedRes} = ${r}${r < 0 ? ' → 0' : ''}`,
-      })
-    }
-    if (r < 0) return finish(0, trace, 'absorbé par les résistances fixes')
+  prev = r
+  r -= p.fixedRes
+  trace.push({
+    id: 'fixedRes',
+    label: p.crit ? 'Résistances fixes (+ critiques)' : 'Résistances fixes',
+    value: r < 0 ? 0 : r,
+    detail: `${prev} − ${p.fixedRes} = ${r}${r < 0 ? ' → 0' : ''}`,
+  })
+  if (r < 0) return finish(0, trace, 'absorbé par les résistances fixes')
+
+  prev = r
+  r = domath ? Math.trunc(r * (1 - p.resPct / 100)) : Math.trunc((r * (100 - p.resPct)) / 100)
+  trace.push({
+    id: 'percentRes',
+    label: `% Résistance ${ELEMENT_NAMES_FR[p.element]}${p.resPct !== p.rawResPct ? ` (plafonné, brut ${p.rawResPct} %)` : ''}`,
+    value: r,
+    detail: domath ? `trunc(${prev} × (1 − ${p.resPct} / 100)) = ${r}` : `trunc(${prev} × (100 − ${p.resPct}) / 100) = ${r}`,
+  })
+
+  const mul = (id: DamageStepId, label: string, m: number, shown: string) => {
+    const before = r
+    r = Math.trunc((r * m) / 100)
+    trace.push({ id, label, value: r, detail: `trunc(${before} × ${shown} / 100) = ${r}` })
   }
-
-  // (5) % résistance élémentaire
-  {
-    const prev = r
-    r = domath ? Math.trunc(r * (1 - p.resPct / 100)) : Math.trunc((r * (100 - p.resPct)) / 100)
-    if (trace !== null) {
-      const capped = p.resPct !== p.rawResPct ? ` (plafonné, brut ${p.rawResPct} %)` : ''
-      trace.push({
-        id: 'percentRes',
-        label: `% Résistance ${ELEMENT_NAMES_FR[p.element]}${capped}`,
-        value: r,
-        detail: domath ? `trunc(${prev} × (1 − ${p.resPct} / 100)) = ${r}` : `trunc(${prev} × (100 − ${p.resPct}) / 100) = ${r}`,
-      })
-    }
-  }
-
   if (!p.dofus3Order) {
-    // (6)-(9) : r × k entier ⇒ exact dans les deux modes
-    let prev = r
-    r = Math.trunc((r * p.sustainedPct) / 100)
-    if (trace !== null) {
-      trace.push({ id: 'sustained', label: 'Dommages subis', value: r, detail: `trunc(${prev} × ${p.sustainedPct} / 100) = ${r}` })
-    }
-    prev = r
-    r = Math.trunc((r * (100 + p.finalPct)) / 100)
-    if (trace !== null) {
-      trace.push({ id: 'final', label: '% Dommages finaux', value: r, detail: `trunc(${prev} × (100 + ${p.finalPct}) / 100) = ${r}` })
-    }
-    prev = r
-    r = Math.trunc((r * (100 + p.categoryPct)) / 100)
-    if (trace !== null) {
-      trace.push({ id: 'category', label: categoryLabel(p), value: r, detail: `trunc(${prev} × (100 + ${p.categoryPct}) / 100) = ${r}` })
-    }
-    prev = r
-    r = Math.trunc((r * (100 + p.distancePct)) / 100)
-    if (trace !== null) {
-      trace.push({ id: 'distance', label: distanceLabel(p), value: r, detail: `trunc(${prev} × (100 + ${p.distancePct}) / 100) = ${r}` })
-    }
-    // (10) % résistances sorts|armes × distance|mêlée : une seule troncature
+    mul('sustained', 'Dommages subis', p.sustainedPct, `${p.sustainedPct}`)
+    mul('final', '% Dommages finaux', 100 + p.finalPct, `(100 + ${p.finalPct})`)
+    mul('category', categoryLabel(p), 100 + p.categoryPct, `(100 + ${p.categoryPct})`)
+    mul('distance', distanceLabel(p), 100 + p.distancePct, `(100 + ${p.distancePct})`)
     prev = r
     if (domath) {
       r *= 1 - p.receivedCategoryPct / 100
@@ -453,40 +470,29 @@ function computeDamage(p: PreparedDamage, roll: number, trace: DamageStep[] | nu
     } else {
       r = Math.trunc((r * (100 - p.receivedCategoryPct) * (100 - p.receivedDistancePct)) / 10000)
     }
-    if (trace !== null) {
-      trace.push({
-        id: 'received',
-        label: `${receivedCategoryLabel(p)} × ${receivedDistanceLabel(p)}`,
-        value: r,
-        detail: domath
-          ? `trunc(${prev} × (1 − ${p.receivedCategoryPct} / 100) × (1 − ${p.receivedDistancePct} / 100)) = ${r}`
-          : `trunc(${prev} × (100 − ${p.receivedCategoryPct}) × (100 − ${p.receivedDistancePct}) / 10000) = ${r}`,
-      })
-    }
+    trace.push({
+      id: 'received',
+      label: `${receivedCategoryLabel(p)} × ${receivedDistanceLabel(p)}`,
+      value: r,
+      detail: domath
+        ? `trunc(${prev} × (1 − ${p.receivedCategoryPct} / 100) × (1 − ${p.receivedDistancePct} / 100)) = ${r}`
+        : `trunc(${prev} × (100 − ${p.receivedCategoryPct}) × (100 − ${p.receivedDistancePct}) / 10000) = ${r}`,
+    })
   } else {
-    // Ordre du module Haxe de Dofus 3 : un arrondi par facteur, « dommages subis » en dernier.
     if (r < 0) r = 0
-    r = d3Step(r, 100 + p.categoryPct, domath, trace, 'category', categoryLabel(p))
-    r = d3Step(r, 100 + p.distancePct, domath, trace, 'distance', distanceLabel(p))
-    r = d3Step(r, 100 - p.receivedCategoryPct, domath, trace, 'receivedCategory', receivedCategoryLabel(p))
-    r = d3Step(r, 100 - p.receivedDistancePct, domath, trace, 'receivedDistance', receivedDistanceLabel(p))
-    r = d3Step(r, 100 + p.finalPct, domath, trace, 'final', '% Dommages finaux')
-    r = d3Step(r, p.sustainedPct, domath, trace, 'sustained', 'Dommages subis')
+    const d3 = (id: DamageStepId, label: string, m: number) => {
+      const before = r
+      r = mulD3(r, m, domath)
+      trace.push({ id, label, value: r, detail: `${domath ? 'floor' : 'trunc'}(${before} × ${m} / 100) = ${r}` })
+    }
+    d3('category', categoryLabel(p), 100 + p.categoryPct)
+    d3('distance', distanceLabel(p), 100 + p.distancePct)
+    d3('receivedCategory', receivedCategoryLabel(p), 100 - p.receivedCategoryPct)
+    d3('receivedDistance', receivedDistanceLabel(p), 100 - p.receivedDistancePct)
+    d3('final', '% Dommages finaux', 100 + p.finalPct)
+    d3('sustained', 'Dommages subis', p.sustainedPct)
   }
   return finish(r, trace, '')
-}
-
-function d3Step(r: number, m: number, domath: boolean, trace: DamageStep[] | null, id: DamageStepId, label: string): number {
-  const v = mulD3(r, m, domath)
-  if (trace !== null) trace.push({ id, label, value: v, detail: `floor(${r} × ${m} / 100) = ${v}` })
-  return v
-}
-
-/** Borne finale à 0 (normalise aussi -0). */
-function finish(r: number, trace: DamageStep[] | null, reason: string): number {
-  const v = r > 0 ? r : 0
-  if (trace !== null) trace.push({ id: 'result', label: 'Dégâts', value: v, detail: reason ? `${v} (${reason})` : `${v}` })
-  return v
 }
 
 // ───────────────────────────── API publique ─────────────────────────────
@@ -494,27 +500,22 @@ function finish(r: number, trace: DamageStep[] | null, reason: string): number {
 const SCRATCH_A = createPreparedDamage()
 const SCRATCH_B = createPreparedDamage()
 
-/** Un jet de dégâts déjà préparé (chemin chaud du moteur : aucune allocation). */
-export function rollPrepared(p: PreparedDamage, baseRoll: number): number {
-  return computeDamage(p, baseRoll, null)
-}
-
 /** Dégâts d'un jet `baseRoll` (entier, ou réel pour le mode « dégâts moyens » de DoMath). */
 export function damageRoll(input: DamageInput, baseRoll: number): number {
-  return computeDamage(prepareDamage(input, SCRATCH_A), baseRoll, null)
+  return rollPrepared(prepareDamage(input, SCRATCH_A), baseRoll)
 }
 
 /** Dégâts du jet minimum et du jet maximum (DoMath `Mg`). */
 export function damageRange(input: DamageInput, min: number, max: number): { min: number; max: number } {
   const p = prepareDamage(input, SCRATCH_A)
-  return { min: computeDamage(p, min, null), max: computeDamage(p, max, null) }
+  return { min: rollPrepared(p, min), max: rollPrepared(p, max) }
 }
 
 /** Moyenne exacte des dégâts sur les jets entiers uniformes de [min, max] (et non `dégâts(jet moyen)`). */
 export function meanPrepared(p: PreparedDamage, min: number, max: number): number {
   const hi = max >= min ? max : min
   let sum = 0
-  for (let r = min; r <= hi; r++) sum += computeDamage(p, r, null)
+  for (let r = min; r <= hi; r++) sum += rollPrepared(p, r)
   return sum / (hi - min + 1)
 }
 
@@ -550,7 +551,7 @@ export function expectedDamage(
 export function explainDamage(input: DamageInput, baseRoll: number): DamageExplanation {
   const params = prepareDamage(input)
   const steps: DamageStep[] = []
-  const damage = computeDamage(params, baseRoll, steps)
+  const damage = computeTraced(params, baseRoll, steps)
   return { roll: baseRoll, mode: input.mode ?? 'domath', order: input.order ?? 'domath', params, steps, damage }
 }
 

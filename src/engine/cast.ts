@@ -6,6 +6,7 @@ import type { SpellLevelData } from '../data/model'
 import { distance, inDiagonal, inLine } from '../map/geometry'
 import { hasLineOfSight } from '../map/los'
 import { zoneCells } from '../map/zones'
+import { checkStatesCriterion } from './criteria'
 import type { Engine } from './engine'
 import { applyEffects } from './effects/core'
 import { nextRandom } from './random'
@@ -32,20 +33,8 @@ export function spellRange(caster: Fighter, lvl: SpellLevelData): { min: number;
   return { min: lvl.minRange, max: Math.max(lvl.minRange, lvl.range + bonus) }
 }
 
-/** Vérifie la condition d'états du lanceur, ex. "E12&e34|E56" (E = doit avoir, e = ne doit pas avoir). */
-export function checkStatesCriterion(criterion: string, f: Fighter): boolean {
-  if (!criterion) return true
-  return criterion.split('|').some(group =>
-    group.split('&').every(term => {
-      const t = term.trim()
-      if (!t) return true
-      const m = /^([Ee])(\d+)$/.exec(t)
-      if (!m) return true
-      const has = f.states.includes(Number(m[2]))
-      return m[1] === 'E' ? has : !has
-    }),
-  )
-}
+// Condition d'états du lanceur (statesCriterion « HS=x / HS!x », & | ( )) : voir criteria.ts.
+export { checkStatesCriterion }
 
 export function canCast(
   engine: Engine,

@@ -206,12 +206,12 @@ function segHtml(s: LogSeg): string {
 }
 
 /**
- * Journal fenêtré : seules les dernières lignes visibles (≈ 300, extensible avec « lignes
+ * Journal fenêtré : seules les dernières lignes visibles (≈ 160, extensible avec « lignes
  * précédentes ») sont dans le DOM, créées à la demande et réutilisées. Un replay de 20 000
  * événements (≈ 10 000 lignes) reste ainsi fluide pendant le défilement et la lecture rapide.
  */
 export class LogPanel {
-  static readonly WINDOW = 300
+  static readonly WINDOW = 160
   private entries: LogEntry[] = []
   private nodes: (HTMLLIElement | undefined)[] = []
   /** Lignes affichées : [start, end). */
@@ -278,19 +278,29 @@ export class LogPanel {
   }
 
   private showEarlier(): void {
-    const el = this.el
-    const before = el.scrollHeight - el.scrollTop
+    // La ligne visible reste à sa place (ancrage dans render) : le contenu est ajouté au-dessus.
+    this.stick = false
     this.extra += LogPanel.WINDOW
     this.render(this.end)
-    // Garde la ligne visible à la même place (le contenu est ajouté au-dessus).
-    el.scrollTop = el.scrollHeight - before
-    this.stick = false
   }
 
   private render(count: number): void {
     const start = Math.max(0, count - LogPanel.WINDOW - this.extra)
     if (start === this.start && count === this.end) return
     const el = this.el
+    // Lecteur remonté dans le journal : garder la ligne lue à la même place quand la fenêtre glisse.
+    let anchor: HTMLElement | null = null
+    let anchorTop = 0
+    if (!this.stick && this.end > 0) {
+      for (const child of el.children) {
+        const c = child as HTMLElement
+        if (c !== this.more && c.offsetTop + c.offsetHeight > el.scrollTop) {
+          anchor = c
+          anchorTop = c.offsetTop
+          break
+        }
+      }
+    }
     if (this.more.parentNode) this.more.remove()
     if (start >= this.end || count <= this.start || this.end === 0) {
       el.replaceChildren(...this.range(start, count))
@@ -306,6 +316,7 @@ export class LogPanel {
       this.more.textContent = `▲ ${formatInt(Math.min(LogPanel.WINDOW, start))} lignes précédentes (${formatInt(start)} masquées)`
       el.prepend(this.more)
     }
+    if (anchor?.isConnected) el.scrollTop += anchor.offsetTop - anchorTop
   }
 
   update(count: number, eventIndex: number): void {
@@ -334,7 +345,9 @@ export class LogPanel {
 export function renderMarkers(el: HTMLElement, tl: ReplayTimeline): void {
   const n = Math.max(1, tl.length - 1)
   const rounds = tl.markers.filter(m => m.kind === 'round').length
-  const every = rounds > 24 ? Math.ceil(rounds / 12) : rounds > 12 ? 2 : 1
+  // Étiquettes « T12 » : au plus une tous les ~44 px pour qu'elles ne se chevauchent pas.
+  const maxLabels = Math.max(2, Math.floor((el.clientWidth || 600) / 44))
+  const every = Math.max(1, Math.ceil(rounds / maxLabels))
   let r = 0
   el.innerHTML = tl.markers
     .map(m => {

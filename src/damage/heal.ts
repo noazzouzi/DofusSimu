@@ -7,7 +7,7 @@
  * Le plafonnement aux PV manquants de la cible est séparé (`capHeal`).
  */
 import { Element, ELEMENT_MAIN_STAT, type Stats } from '../core/types'
-import type { DamageMode } from './math'
+import { roundHalfAwayFromZero, type DamageMode } from './math'
 
 export interface HealOptions {
   /** Élément du soin (D3 : soins Eau/Terre/Air boostés par leur carac). Défaut Feu = Intelligence (effets 81/108). */
@@ -67,6 +67,5 @@ export function shieldFromMaxHp(maxHp: number, percent: number): number {
 
 /** Bouclier en % du niveau du lanceur (1020) : arrondi loin de zéro de `niveau × X / 100` (port D3 `GetTotalShield`). */
 export function shieldFromLevel(level: number, percent: number): number {
-  const v = (level * percent) / 100
-  return Math.max(0, v < 0 ? -Math.round(-v) : Math.round(v))
+  return Math.max(0, roundHalfAwayFromZero((level * percent) / 100))
 }

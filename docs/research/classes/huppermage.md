@@ -10,6 +10,8 @@
 > subis par ses ennemis »), **Placement 6**, **Amélioration 6**, Soins 4, Protection 4, Tank 4, Entrave 4, Invocation 2.
 > Complexité officielle 4/5.
 
+Fichier compagnon pour le moteur : `data/research/class-mechanics/huppermage.json` — `spells[]` (propriétés de lancer au grade max du niveau 200, `grades[]`, `effectsSummary` lisible, `damageLines[]` = lignes de dommages/vols/soins/boucliers réellement exécutées avec min/max normaux et critiques, zone, masque et chemin de sous-sorts `via`), `mechanics[]`, `variantChoices`, `rotations[]`, `synergies[]`, `summons[]`, `states[]`, `openQuestions[]`.
+
 ## 0. Règles moteur communes
 
 Les règles génériques (sélection des cibles « instantanée » au début de chaque lancer, effets `forClientOnly` purement
@@ -418,7 +420,7 @@ Légende : valeurs au **grade maximal accessible au niveau 200** (données Dofus
 
 > Déclenche une rune du lanceur pour voler de la vie à l'ennemi ou soigner l'allié qui l'occupe, et augmenter les caractéristiques du lanceur et de l'allié sur la rune selon l'élément de la rune.  Sur le lanceur : déclenche toutes ses runes occupées par une entité.  Peut générer des Combinaisons Élémentaires.
 
-- Caractéristiques (g3) : **2 PA** · portée 0–8 (modifiable) · sans ligne de vue · CC 0% · 2×/tour · 4×/tour global (tous lanceurs) · cumul max 6
+- Caractéristiques (g3) : **2 PA** · portée 0–8 (modifiable) · sans ligne de vue · CC 0% · 2×/tour · 4×/tour « global » (maxGlobalCastPerTurn, sens INCERTAIN) · cumul max 6
 - Grades : g1 (niv. 5) : 2 PA, po 0–6, 9–9 vol Terre, 9–9 vol Feu, 9–9 vol Eau, 9–9 vol Air ; g2 (niv. 72) : 2 PA, po 0–7, 12–12 vol Terre, 12–12 vol Feu, 12–12 vol Eau, 12–12 vol Air ; g3 (niv. 139) : 2 PA, po 0–8, 15–15 vol Terre, 15–15 vol Feu, 15–15 vol Eau, 15–15 vol Air
 - **Résumé des effets (lecture humaine)** :
   - 2 PA, 0–8 PO modifiable, sans ligne de vue, 2/tour
@@ -1482,7 +1484,7 @@ Légende : valeurs au **grade maximal accessible au niveau 200** (données Dofus
 
 > Occasionne des dommages Air, Terre, Feu et Eau aux ennemis en zone. Les dommages du sort sont augmentés pour chaque combinaison élémentaire générée par le lanceur.  Les effets sont réinitialisés après utilisation du sort.
 
-- Caractéristiques (g1) : **3 PA** · portée 1–8 (non modifiable) · en ligne uniquement · ligne de vue requise · CC 10% · relance 2 t. · 1×/tour global (tous lanceurs) · cumul max 6
+- Caractéristiques (g1) : **3 PA** · portée 1–8 (non modifiable) · en ligne uniquement · ligne de vue requise · CC 10% · relance 2 t. · 1×/tour « global » (maxGlobalCastPerTurn, sens INCERTAIN) · cumul max 6
 - **Résumé des effets (lecture humaine)** :
   - 3 PA, 1–8 PO en ligne, LdV, relance 2, 1 lancer global/tour
   - Cercle 2 : dommages Air 2, Terre 2, Feu 2 et Eau 2 (CC 4) aux ennemis
@@ -1562,18 +1564,84 @@ Heuristique IA : pour chaque ennemi, connaître son état ; choisir le prochain 
 (Éruption si des alliés frappent ensuite ; Enlisement/Carbonisation si la cible doit être entravée ; Cristallisation si elle
 va frapper ; Assèchement contre un tireur), puis terminer le tour par un sort qui laisse un état utile pour le tour suivant.
 
+### Rotations détaillées
+
+**Ouverture mono-cible (quadra, 12 PA)**
+
+1. Lance-flamme (3 PA) sur le boss : Feu, −2 PA, rune Feu, état Feu
+2. Éther (3 PA) : Air → Carbonisation (+50 Puissance, −2 PA) ; rune Air (remplace la rune Feu sur la case — hypothèse)
+3. Stalagmite (3 PA) : Eau, −4 % dommages finaux → état Eau (pas de combinaison : états consommés)
+4. Onde Sismique (3 PA) : Terre → Enlisement (−3 PM, +50 Puissance) puis −2 PM
+5. (PA restants éventuels) Cycle Élémentaire (1 PA remboursé)
+
+> ≈ 4 sorts de base + 2 combinaisons (+100 Puissance, −4 PA, −5 PM tentés). Remplacer un sort par Runification sur soi (2 PA) si au moins 2 ennemis sont restés sur leurs runes.
+
+
+**Tour « runes » en zone (12 PA)**
+
+1. Trait Ardent (4 PA) sur un paquet : runes Feu + états Feu sur 2–5 ennemis
+2. Orage (4 PA) sur le même paquet (après la poussée) : Terre → Éruption (×115 %) sur chaque ennemi touché, runes Terre
+3. Runification sur soi (2 PA) : vol 15 Terre/Feu par ennemi resté sur sa rune, +50 Force/+50 Intelligence (cumulables), ré-applique des états
+4. Propagation (1 PA) + Cycle Élémentaire (1 PA remboursé) pour générer une combinaison de plus
+
+> Les combinaisons Éruption préparent le tour des alliés (×1,15 pendant 1 tour). L'IA doit vérifier que les ennemis n'ont pas été déplacés hors de leurs runes par la poussée d'Orage (poussée 1 autour du centre).
+
+
+**Finisher (variante Torrent Arcanique)** (12 PA / 6 PM)
+
+1. Générer 2–3 combinaisons (sorts de base alternés, Supernova non disponible si Torrent est choisi) au tour N
+2. Tour N+1 : Torrent Arcanique (3 PA) avec 4–6 paliers (+8 à +12 base par élément) + sorts de base
+
+> Torrent : 1 lancer global par tour, relance 2.
+
+
+**Soutien (12 PA)**
+
+1. Sublimation (2 PA) sur le boss
+2. Lance-flamme (3) + Stalactite (2) : entrave
+3. Contribution (2 PA) sur le DPS allié (avec 3–4 états présents sur les ennemis) : +1 PA, +1 PM, +150 Puissance, bouclier
+4. Bouclier Élémentaire (2 PA) sur le tank, Cycle (1, remboursé)
+
+> Contribution consomme tous les états : la lancer en fin de tour après avoir profité des combinaisons.
+
+
 ## 7. Forces et faiblesses
 
-Voir `strengths` / `weaknesses` du JSON.
+**Forces**
 
-## 8. Synergies
+- Dommages multi-éléments (contourne les résistances : choix de l'élément le plus faible de la cible).
+- Entrave PA/PM/PO polyvalente et peu coûteuse (sorts à 2–3 PA, retraits additionnels via combinaisons).
+- Amplification de dégâts de groupe (Éruption ×115 %, Volcan ×104 %, Sublimation, Contribution).
+- Mobilité et placement riches (Lame Astrale, Comète, Traversée, Manifestation Feu, Lance Solaire).
+- Auto-soin via vols de vie et runes ; boosts cumulables (+50 par rune, +50 Puissance par combinaison).
 
-Voir `synergies` du JSON. Points principaux : Éruption/Volcan juste avant le DPS allié, Contribution sur le DPS, entrave
-PA/PM cumulée avec Enutrof/Sram/Xélor, regroupeurs (Pandawa, Forgelance) pour les zones et Propagation.
+**Faiblesses**
 
-## 9. Questions ouvertes
+- Complexité : la valeur réelle dépend de l'ordre des éléments et des positions des runes (IA exigeante).
+- Peu de protection personnelle (pas de bouclier fort sur soi en dehors de Tribut/Contribution) ; portée moyenne (souvent 1–6).
+- Les monstres déplacés quittent leurs runes (les poussées alliées réduisent Runification).
+- Beaucoup de sorts limités à 2 lancers/tour et 1–2 par cible : en mono-cible prolongé, il faut tourner entre de nombreux sorts.
+- Les stuffs multi-éléments sont moins optimisés que les stuffs mono-élément (dommages de base plus faibles par élément).
 
-Voir `openQuestions` du JSON.
+## 8. Synergies avec les autres classes
+
+| Avec | Pourquoi |
+|---|---|
+| Iop / Crâ / Sram / Roublard (gros DPS) | Éruption (×115 % dommages subis 1 tour) et Volcan (×104 %) juste avant leur tour ; Contribution (+1 PA, +1 PM, +150 Puissance) sur le DPS ; Sublimation leur donne +50 carac. par frappe. |
+| Enutrof / Sram / Xélor (entrave) | Les retraits PA/PM de l'Huppermage (Carbonisation −2 PA, Enlisement −3 PM, Lance-flamme, Stalactite) s'additionnent pour verrouiller un boss ; Propagation −20 Fuite/Tacle aide les retraits et le tacle. |
+| Pandawa / Ouginak / Forgelance (placement/regroupement) | Monstres regroupés = zones Trait Ardent/Orage/Glacier sur plusieurs cibles, puis Propagation d'un état à tout le paquet et Runification sur soi (vols multiples). |
+| Féca / Eniripsa (protection/soin) | L'Huppermage est un mage à moyenne portée sans gros sort de protection personnelle ; les runes occupées par des alliés soignent (6 %), mais un vrai soigneur reste nécessaire. |
+| Autre Huppermage | Les états élémentaires sont communs (ids 290–293) : un Huppermage peut générer des combinaisons sur les états posés par un autre (INCERTAIN : les états ne portent pas de propriétaire dans les données). |
+
+## 9. Questions ouvertes (INCERTAIN)
+
+- Rune déclenchée : consommée ou non ? (hypothèse : consommée).
+- Deux runes sur la même case : remplacement (hypothèse) ou coexistence ?
+- Runification ciblée sur une rune inoccupée : le lanceur reçoit-il le boost de caractéristique ? (données : oui, masque C).
+- Cumul du boost « Rune (boost) » : illimité dans la durée de 3 tours ? (aucune limite visible).
+- Les états élémentaires posés par un autre Huppermage (même ids) déclenchent-ils les combinaisons du second ? (probable).
+- PV et caractéristiques exacts du Gardien Élémentaire au niveau 200 (bonusCharacteristics/characRatios).
+- Signification exacte des déclencheurs CDE/CDF/CDW/CDA (déduits : « inflige des dommages de l'élément »).
 
 ## 10. Sources
 

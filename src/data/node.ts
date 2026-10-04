@@ -8,7 +8,8 @@
  * convertis à la première demande puis mis en cache (les objets renvoyés sont partagés : ne pas les modifier).
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { isAbsolute, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { BaseDataStore, type DataKind } from './base'
 import {
   convertBreed,
@@ -30,9 +31,12 @@ export interface LoadDataStoreOptions {
   eager?: boolean
 }
 
+/** Racine du dépôt (src/data/node.ts -> ../..), pour trouver `data/` hors du répertoire du dépôt. */
+const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))
+
 /**
- * Ouvre les données du jeu situées dans `dataDir` (par défaut `data`, relatif au répertoire courant).
- * Lève une erreur si `<dataDir>/dofusdb` n'existe pas.
+ * Ouvre les données du jeu situées dans `dataDir` (par défaut `data`). Un chemin relatif est cherché depuis le
+ * répertoire courant, puis depuis la racine du dépôt. Lève une erreur si `<dataDir>/dofusdb` n'existe pas.
  */
 export function loadDataStore(dataDir = 'data', options: LoadDataStoreOptions = {}): NodeDataStore {
   const store = new NodeDataStore(dataDir)
@@ -73,10 +77,12 @@ export class NodeDataStore extends BaseDataStore {
 
   constructor(dataDir = 'data') {
     super()
-    this.dataDir = resolve(dataDir)
-    this.dofusdbDir = join(this.dataDir, 'dofusdb')
-    this.mapsDir = join(this.dataDir, 'maps')
-    if (!existsSync(this.dofusdbDir)) throw new Error(`Données DofusDB introuvables : ${this.dofusdbDir}`)
+    const candidates = isAbsolute(dataDir) ? [dataDir] : [resolve(dataDir), resolve(REPO_ROOT, dataDir)]
+    const found = candidates.find(dir => existsSync(join(dir, 'dofusdb')))
+    if (!found) throw new Error(`Données DofusDB introuvables : ${candidates.map(d => join(d, 'dofusdb')).join(' ou ')}`)
+    this.dataDir = found
+    this.dofusdbDir = join(found, 'dofusdb')
+    this.mapsDir = join(found, 'maps')
   }
 
   /** Contenu brut (analysé une seule fois) d'un fichier de data/dofusdb. */

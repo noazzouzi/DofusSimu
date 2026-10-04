@@ -17,7 +17,6 @@ import { distance, isValidCell } from '@/map/geometry'
 import { getFighter } from '@/replay/reducer'
 import { formatInt } from '@/replay/log'
 import type { FighterView, ViewState } from '@/replay/types'
-import { mix } from '../theme'
 import {
   bubbleAnim,
   castPulseAnim,
@@ -241,7 +240,8 @@ export class Director {
         const indirect = KIND_LABEL[ev.kind]
         if (ev.amount > 0 || !ev.shieldAbsorbed) {
           const style: FloatStyle = {
-            color: el === undefined ? '#ff5a48' : mix('#ff5a48', elColor, 0.2),
+            // Rouge franc (comme dans le jeu) ; l'élément est donné par la pastille colorée.
+            color: '#ff5240',
             size: ev.crit ? 22 : indirect ? 14 : 17,
             dot: el !== undefined ? elColor : undefined,
             sub: ev.crit ? { text: 'critique !', color: pal.gold } : indirect ? { text: indirect, color: '#fff' } : undefined,

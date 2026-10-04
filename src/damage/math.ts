@@ -21,13 +21,3 @@ export function roundHalfAwayFromZero(x: number): number {
   const r = x < 0 ? -Math.round(-x) : Math.round(x)
   return r === 0 ? 0 : r
 }
-
-export function clamp(x: number, min: number, max: number): number {
-  return x < min ? min : x > max ? max : x
-}
-
-/** `trunc` qui ne renvoie jamais -0 (les vecteurs comparent avec Object.is). */
-export function trunc0(x: number): number {
-  const r = Math.trunc(x)
-  return r === 0 ? 0 : r
-}

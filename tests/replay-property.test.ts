@@ -380,3 +380,23 @@ describe('metteur en scène : animations et séquencement', () => {
     })
   }
 })
+
+describe('replay embarqué dans la page autonome', () => {
+  it('échappe le JSON (pas de fermeture de balise possible) et se relit à l’identique', async () => {
+    const { embedReplayInHtml, replayToEmbeddedJson } = await import('../src/replay/embed')
+    const replay = createDemoReplay()
+    replay.events.splice(1, 0, { t: 'log', text: 'piège </script><script>alert(1)</script> <!-- \u2028 fin', level: 'info' })
+    const json = replayToEmbeddedJson(replay)
+    expect(json).not.toMatch(/<\/script/i)
+    expect(json).not.toContain('<!--')
+    const html = embedReplayInHtml('<html><head></head><body><main></main></body></html>', replay)
+    const m = html.match(/<script type="application\/json" id="replay-data">([\s\S]*?)<\/script>/)
+    expect(m).not.toBeNull()
+    const back = parseReplay(m![1])
+    expect(back.events.length).toBe(replay.events.length)
+    expect(back.events[1]).toEqual(replay.events[1])
+    // Remplacement d'un replay déjà embarqué (une seule balise).
+    const twice = embedReplayInHtml(html, createDemoReplay())
+    expect(twice.match(/id="replay-data"/g)?.length).toBe(1)
+  })
+})

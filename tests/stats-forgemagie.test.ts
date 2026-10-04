@@ -230,8 +230,10 @@ describe('stats/forgemagie — contrôle d\'un objet forgemagé', () => {
   it('transcendances', () => {
     const so = { stat: 'spellDamagePct' as const, value: 1, kind: 'transcendence' as const }
     expect(checkItemForgemagie(hat, maxRolls(hat), [so])).toEqual([])
-    // Rata Vi +100 au-delà des 505 de la ligne : autorisé (transcendance hors plafond, INCERTAIN).
-    expect(checkItemForgemagie(hat, maxRolls(hat), [{ stat: 'vitality', value: 100, kind: 'transcendence' }])).toEqual([])
+    // Transcendance qui crée un over sur une ligne existante : plafond de 101 de poids (Vitalité 505).
+    const rataVi = { stat: 'vitality' as const, value: 100, kind: 'transcendence' as const }
+    expect(checkItemForgemagie(hat, maxRolls(hat), [rataVi])).toHaveLength(1) // 500 + 100 > 505
+    expect(checkItemForgemagie(ring, maxRolls(ring), [rataVi])).toEqual([]) // 350 + 100 ≤ 505
     expect(checkItemForgemagie(hat, maxRolls(hat), [so, { stat: 'ap', value: 1 }]).length).toBeGreaterThan(0)
     expect(checkItemForgemagie(hat, maxRolls(hat), [so, { stat: 'power', value: 12, kind: 'transcendence' }])).toHaveLength(1)
     expect(checkItemForgemagie(hat, maxRolls(hat), [{ stat: 'spellDamagePct', value: 2, kind: 'transcendence' }])).toHaveLength(1)

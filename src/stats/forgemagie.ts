@@ -7,8 +7,9 @@
  *    (over ou exo), sauf si le jet max naturel de l'objet dépasse déjà 101 : dans ce cas, pas d'over au-delà du jet max ;
  *  - exo = ligne absente de l'objet de base ; over = ligne existante poussée au-delà de son jet max ;
  *  - un seul exo PA, un seul exo PM et un seul exo PO comptés par personnage (devblog 2.3.4) ; exo Invocation non limité ;
- *  - transcendance (Ta/Pata/Rata, 100 % de réussite) : objet sans over ni exo, une seule par objet (elle verrouille
- *    l'objet), niveau de l'objet ≥ niveau de la rune (INCERTAIN), non soumise au plafond de poids (INCERTAIN) ;
+ *  - transcendance (Ta/Pata/Rata, 100 % de réussite) : objet sans over ni exo (au mieux au jet parfait), une seule par
+ *    objet (elle verrouille l'objet), niveau de l'objet ≥ niveau de la rune (INCERTAIN) ; si elle crée un over sur une
+ *    ligne existante, le plafond de 101 de poids s'applique (next-stage 03/2026) ;
  *  - Dofus, trophées, prysmaradites, familiers, montiliers et montures ne se forgemagent pas.
  * Paliers de coût (`costTier`, 0-5) : exo PA/PM 5, PO 4, transcendance Do Per So 4, autres transcendances 3,
  * Invo/Do/Do Per So 3, Pui/Do Crit/Ré % (et autres exos) 2, over 1. Les prix réels varient selon les serveurs (INCERTAIN).
@@ -452,8 +453,9 @@ export function checkItemForgemagie(
   if (transcendences > 1) errors.push(`${name} : une seule rune de transcendance par objet`)
   if (transcendences > 0 && forged) errors.push(`${name} : transcendance incompatible avec un over ou un exo`)
 
-  // Plafond de poids par caractéristique : ligne naturelle (jet retenu) + exos/overs du même type.
-  if (forged) {
+  // Plafond de poids par caractéristique : ligne naturelle (jet retenu) + exos/overs/transcendances du même type
+  // (une transcendance qui crée un over sur une ligne existante reste soumise au plafond, cf. equipment.md §11.2).
+  if (forged || transcendences > 0) {
     const checked = new Set<StatKey>()
     const check = (stat: StatKey): void => {
       if (checked.has(stat)) return
@@ -467,7 +469,7 @@ export function checkItemForgemagie(
         total += sign * lineValues[i]
         if (sign > 0) naturalMax = Math.max(naturalMax, e.min, e.max)
       }
-      if (exos) for (const l of exos) if (l.stat === stat && forgeKind(item, l) !== 'transcendence') total += l.value
+      if (exos) for (const l of exos) if (l.stat === stat) total += l.value
       if (total <= naturalMax) return
       const cap = maxLineValue(stat, naturalMax)
       if (total > cap) {
@@ -480,7 +482,7 @@ export function checkItemForgemagie(
       const stat = itemEffectStat(e.effectId)
       if (stat) check(stat)
     }
-    if (exos) for (const l of exos) if (forgeKind(item, l) !== 'transcendence') check(l.stat)
+    if (exos) for (const l of exos) check(l.stat)
   }
   return errors
 }
