@@ -142,7 +142,8 @@ const PULL_ORDER = (a: Fighter, b: Fighter): number => comparePositions(orderRef
 
 /**
  * Cibles dans l'ordre d'application du port : de la plus éloignée à la plus proche de la case ciblée pour une poussée
- * (5, 1021, 1103, 1041), l'inverse pour une attirance (6, 1022, 1042) ; égalités départagées par la direction.
+ * (5, 1021, 1103, 1041), l'inverse pour les autres effets (attirances 6 / 1022 / 1042, téléportations) ; égalités
+ * départagées par la direction (le noyau trie par distance puis par identifiant de combattant).
  */
 function orderedTargets(ctx: EffectContext, push: boolean): Fighter[] {
   const t = ctx.targets
@@ -281,10 +282,11 @@ function teleportSelf(ctx: EffectContext): void {
   teleportToCell(engine, fight, caster, caster, ctx.targetCell, effect.zone)
 }
 
+/** Téléportations / échanges / symétries par cible, dans l'ordre du port (de la plus proche de la case ciblée). */
 function teleportEach(ctx: EffectContext): void {
   beginMovementEffect(ctx)
   const id = ctx.effect.effectId
-  for (const t of ctx.targets) {
+  for (const t of orderedTargets(ctx, false)) {
     if (ctx.fight.ended) return
     if (!t.alive) continue
     teleportFighter(ctx.engine, ctx.fight, ctx.caster, t, id, ctx.targetCell, ctx.effect.zone)

@@ -28,9 +28,11 @@
  * Pour l'échange forcé 1023 de Décalage horaire, c'est au contraire l'échec de `CanTeleport` (Indéplaçable) qui
  * envoie l'Auroraire vers l'occupant de la case de l'heure (port, destination de repli = case de la cible).
  *
- * Marques : la case d'arrivée du déplacé (sauf échanges 8 / 1023) et celle du partenaire d'échange déclenchent
- * leurs marques ; un portail d'arrivée transporte le déplacé (port `ExecuteMarks` → `UsePortal`).
- * Déclencheurs : 'MS' sur les deux échangés, sinon 'TP' (4, 1100) ou 'M' ; 'PO' sur le lanceur.
+ * Marques : la case d'arrivée du déplacé (sauf échanges 8 / 1023), PUIS celle du partenaire d'échange déclenchent
+ * leurs marques ; un portail d'arrivée transporte le déplacé (port `ExecuteMarks` → `UsePortal`, portals.ts `arriveAt`).
+ * Déclencheurs : 'MS' sur les deux échangés, sinon 'TP' (4, 1100) ou 'M' ; 'PO' sur le lanceur. Écart : le port
+ * déclenche aussi 'TP' sur les deux échangés d'un 1100 (sortie `FightRollbackPreviousPosition` avec `SwappedWith`) ; ici
+ * un seul événement 'MS' (qui satisfait les codes MS et M, pas TP) — un buff « TP » seul ne réagit pas à ce téléfrag.
  */
 import type { ZoneSpec } from '../../../data/model'
 import { CELL_X, CELL_Y, pointToCell } from '../../../map/geometry'
@@ -43,7 +45,6 @@ import {
   cantBeMoved,
   cantSwitchPosition,
   cellOf,
-  enterCell,
   fireMoveTriggers,
   hasState,
   isFreeCell,
@@ -56,7 +57,7 @@ import {
   turnStartCell,
   type MoveEvent,
 } from './common'
-import { portalAt, travelThrough } from './portals'
+import { arriveAt } from './portals'
 
 export const TELEPORT = 4
 export const EXCHANGE = 8
@@ -165,13 +166,8 @@ export function teleportDestination(
 
 /** Arrivée d'un déplacement instantané : portail éventuel, puis marques de la case (pièges, auras...). */
 function arrive(engine: Engine, fight: FightState, f: Fighter, author: Fighter): void {
-  if (!f.alive || fight.ended) return
-  if (fight.glyphs.length > 0) {
-    const portal = portalAt(fight, f.cell)
-    // Portail d'arrivée : voyage jusqu'à la sortie, dont les marques (hors portails) s'appliquent ensuite.
-    if (portal !== undefined) travelThrough(engine, fight, f, portal, [], author, false)
-  }
-  enterCell(engine, fight, f, f.cell)
+  // Portail d'arrivée : voyage jusqu'à la sortie, dont les marques (hors portails) s'appliquent ensuite.
+  arriveAt(engine, fight, f, author)
 }
 
 function markInvalid(f: Fighter): void {

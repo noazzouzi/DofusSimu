@@ -160,6 +160,17 @@ export function sanitizeEvent(v: unknown): FightEvent | null {
       const level = e.level === 'ai' || e.level === 'warn' || e.level === 'info' ? e.level : undefined
       return { t: 'log', text: str(e.text), level }
     }
+    case 'aiNote': {
+      // E3 : annotation de l'IA (bulle de pensée) ; nature inconnue ramenée à 'intent'.
+      if (!num(e.fighter)) return null
+      const kind = e.kind === 'plan' || e.kind === 'intent' || e.kind === 'tactic' || e.kind === 'focus' || e.kind === 'creative' ? e.kind : 'intent'
+      const ev: FightEvent = { t: 'aiNote', fighter: Math.trunc(e.fighter), kind, text: str(e.text) }
+      const c = cells(e.cells)
+      const targets = cells(e.targets)
+      if (c) ev.cells = c
+      if (targets) ev.targets = targets
+      return ev
+    }
     case 'fightEnd':
       return { t: 'fightEnd', winner: e.winner === 0 || e.winner === 1 ? e.winner : null, rounds: int(e.rounds), reason: str(e.reason) }
   }

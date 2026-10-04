@@ -323,6 +323,7 @@ export function applyEventMut(s: ViewState, ev: FightEvent, index: number, ctx: 
       for (const f of ev.fighters) addFighter(s, fighterFromSnapshot(f, index, ctx, ev.index))
       break
     case 'log':
+    case 'aiNote':
       break
     case 'fightEnd':
       s.ended = { winner: ev.winner, rounds: ev.rounds, reason: ev.reason }

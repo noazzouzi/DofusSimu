@@ -11,6 +11,7 @@ import { checkStatesCriterion } from './criteria'
 import type { Engine } from './engine'
 import { applyEffects } from './effects/core'
 import { modifiedSpellLevel } from './effects/buffs/spellMods'
+import { forcedRollMode } from './effects/special'
 import { nextRandom } from './random'
 import type { Fighter, FightState, KnownSpell } from './types'
 
@@ -151,7 +152,12 @@ export function castSpell(engine: Engine, fight: FightState, caster: Fighter, sp
     caster.tags.critWeight = pCrit
   }
   if (crit) engine.trigger(fight, caster, { type: 'CC', source: caster })
+  // Poisse / Chance (effets 781/782) : jets minimaux / maximaux pour les sorts du porteur.
+  const forced = fight.options.rollMode === 'random' ? forcedRollMode(engine, fight, caster) : undefined
+  const savedMode = fight.options.rollMode
+  if (forced) fight.options.rollMode = forced
   applyEffects(engine, fight, caster, spell, spellId, effects, cell, casterCell, crit, false, 0)
+  if (forced) fight.options.rollMode = savedMode
   delete caster.tags.critWeight
   engine.checkEnd(fight)
   return { ok: true, crit }

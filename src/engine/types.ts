@@ -165,6 +165,12 @@ export interface Fighter {
   spellMods?: Record<number, SpellModifiers>
   /** États neutralisés par un buff 952 (toujours présents dans `states`, mais sans leurs drapeaux). */
   disabledStates?: number[]
+  /**
+   * (E4, docs/design/ai.md §3.3) Révision : incrémentée par `Engine.recomputeStats` et à chaque changement de case
+   * (marche, poussée, téléportation, portage, mort, résurrection). Clé de cache de l'IA (DPT, menace) : deux valeurs
+   * égales garantissent mêmes caractéristiques, buffs/états et case. Absente = 0 (combattant jamais recalculé).
+   */
+  rev?: number
 }
 
 export interface Glyph {
@@ -286,7 +292,24 @@ export type FightEvent =
   | { t: 'trap'; trap: { uid: number; cells: number[]; color: string; spellId: number }; added: boolean }
   | { t: 'wave'; index: number; total: number; fighters: FighterSnapshot[] }
   | { t: 'log'; text: string; level?: 'info' | 'ai' | 'warn' }
+  | AiNoteEvent
   | { t: 'fightEnd'; winner: TeamId | null; rounds: number; reason: string }
+
+/** Nature d'une annotation de l'IA (E3) : plan stratégique, intention, tactique, cible focale, coup « créatif ». */
+export type AiNoteKind = 'plan' | 'intent' | 'tactic' | 'focus' | 'creative'
+
+/**
+ * (E3, docs/design/ai.md §3.3) Annotation de l'IA pour le replay : bulle de pensée sur `fighter`, avec cases
+ * (flèches / zones d'intention) et cibles facultatives. Purement descriptive : n'entre pas dans le hash des événements.
+ */
+export interface AiNoteEvent {
+  t: 'aiNote'
+  fighter: number
+  kind: AiNoteKind
+  text: string
+  cells?: number[]
+  targets?: number[]
+}
 
 /** Actions qu'une IA peut demander pendant son tour. */
 export type Action =
@@ -304,6 +327,12 @@ export interface FightOptions {
   record: boolean
   /** Nombre maximal de tours de jeu avant de déclarer un match nul. */
   maxRounds: number
+  /**
+   * (E1, docs/design/ai.md §3.3, §13.1) Re-semis des dés. 'none' (défaut, absent) : un seul flux depuis `seed`.
+   * 'perTurn' : `startTurn` pose `rngState = mix32(mix32(seed, round), fighterId)` (src/core/hash.ts), de sorte qu'une
+   * décision différente à un tour ne décale pas les dés des tours suivants (nombres aléatoires communs, rembobinage).
+   */
+  rngRekey?: 'none' | 'perTurn'
 }
 
 /** Hooks de scénario (donjons à vagues, phases de boss, invulnérabilités...). */
@@ -318,6 +347,11 @@ export interface ScenarioHooks {
   checkEnd?(fight: FightState): TeamId | null | undefined
   /** Peut interdire des dégâts (invulnérabilités scénarisées). */
   canBeDamaged?(fight: FightState, target: Fighter, source: Fighter | undefined): boolean
+  /**
+   * (E2, docs/design/ai.md §3.3) Copie de `fight.scenarioState` utilisée par `Engine.cloneFight` à la place de
+   * `structuredClone` (5-20 µs par clone). Doit renvoyer un objet indépendant pour tout ce que les hooks modifient.
+   */
+  cloneState?(s: Record<string, unknown>): Record<string, unknown>
 }
 
 export interface FightState {
@@ -347,6 +381,11 @@ export interface FightState {
    * modifié en place : un clone de combat (`cloneFight`, copie superficielle) peut donc le partager sans risque.
    */
   deaths?: DeathRecord[]
+  /**
+   * (E5, docs/design/ai.md §3.3) Nombre d'effets (non purement visuels) rencontrés SANS interprète pendant ce combat
+   * (effects/core.ts `runEffect`). > 0 ⇒ résultat « faible confiance ». Absent = 0. Copié par `cloneFight`.
+   */
+  unknownEffects?: number
 }
 
 export interface FighterMetrics {

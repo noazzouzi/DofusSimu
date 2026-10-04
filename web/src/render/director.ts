@@ -10,7 +10,7 @@
  *   buff/state→ libellé flottant ; push → glissade (+ choc) ; teleport → disparition / réapparition
  *   summon    → apparition avec rebond ; wave → bannière + apparitions échelonnées
  *   death     → bascule et fondu ; glyph/trap → pulsation du contour
- *   roundStart / turnStart → bannières ; log 'ai' → bulle de pensée ; fightEnd → écran de résultat
+ *   roundStart / turnStart → bannières ; log 'ai' / aiNote → bulle de pensée ; fightEnd → écran de résultat
  */
 import type { FightEvent } from '@/engine/types'
 import { distance, isValidCell } from '@/map/geometry'
@@ -45,7 +45,7 @@ export interface DirectorUi {
 }
 
 const MS_PER_CELL = 210
-const CONSEQUENCES = new Set<FightEvent['t']>(['damage', 'heal', 'shield', 'apmp', 'buff', 'unbuff', 'state', 'push', 'teleport', 'death', 'summon', 'glyph', 'trap', 'log'])
+const CONSEQUENCES = new Set<FightEvent['t']>(['damage', 'heal', 'shield', 'apmp', 'buff', 'unbuff', 'state', 'push', 'teleport', 'death', 'summon', 'glyph', 'trap', 'log', 'aiNote'])
 
 const KIND_LABEL: Record<string, string> = {
   push: 'poussée',
@@ -72,7 +72,7 @@ const SLOT_PX = 19
 const TEXT_BUSY_MS = 560
 
 /** Événements qui ne sont pas des actions de jeu (un tour sans autre événement est un tour passé). */
-const PASSIVE = new Set<FightEvent['t']>(['log', 'apmp', 'unbuff', 'state', 'glyph', 'trap', 'buff'])
+const PASSIVE = new Set<FightEvent['t']>(['log', 'aiNote', 'apmp', 'unbuff', 'state', 'glyph', 'trap', 'buff'])
 
 export class Director {
   private texts: TextSlot[] = []
@@ -360,6 +360,16 @@ export class Director {
         }
         this.ui.infoStrip(ev.text, ev.level === 'warn' ? 'warn' : 'info')
         return ev.level === 'warn' ? 1100 : 800
+      }
+      case 'aiNote': {
+        // E3 : annotation de l'IA → bulle de pensée sur le combattant (comme un `log` de niveau 'ai').
+        const f = F(next, ev.fighter)
+        if (f && f.alive) {
+          this.r.add(bubbleAnim(f.id, ev.text, t0, 2600))
+          return 900
+        }
+        this.ui.infoStrip(ev.text, 'info')
+        return 700
       }
       case 'fightEnd':
         return 0

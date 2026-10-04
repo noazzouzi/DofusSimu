@@ -5,6 +5,7 @@
  * Le déplacement (move.ts), le lancement de sorts (cast.ts) et l'interprétation des effets
  * (effects/*) s'appuient sur les primitives exposées ici.
  */
+import { mix32 } from '../core/hash'
 import { addStats, emptyStats, type Element, type Stats, type TeamId } from '../core/types'
 import { erosion } from '../damage/life'
 import type { DataStore } from '../data/store'
@@ -89,7 +90,8 @@ export class Engine {
       events: record ? fight.events.slice() : [],
       options: { ...fight.options, record },
       metrics: Object.fromEntries(Object.entries(fight.metrics).map(([k, v]) => [k, { ...v }])),
-      scenarioState: structuredClone(fight.scenarioState),
+      // E2 : copie fournie par le scénario (rapide) ; à défaut copie profonde générique.
+      scenarioState: this.scenario?.cloneState ? this.scenario.cloneState(fight.scenarioState) : structuredClone(fight.scenarioState),
     }
     return c
   }
@@ -195,6 +197,7 @@ export class Engine {
     f.states = states
     if (mods || f.spellMods) f.spellMods = mods
     if (disabled || f.disabledStates) f.disabledStates = disabled
+    f.rev = (f.rev ?? 0) + 1 // E4 : caractéristiques/états recalculés
   }
 
   addBuff(fight: FightState, target: Fighter, buff: Omit<Buff, 'uid'>): Buff {
@@ -378,6 +381,7 @@ export class Engine {
       const carried = fight.fighters[target.carrying]
       carried.carriedBy = undefined
       carried.cell = target.cell
+      carried.rev = (carried.rev ?? 0) + 1 // E4
       target.carrying = undefined
     }
     if (target.carriedBy !== undefined) {
@@ -513,11 +517,14 @@ export class Engine {
   }
 
   startTurn(fight: FightState, f: Fighter): void {
+    // E1 : dés re-semés par (tour de jeu, combattant) — une décision différente ne décale pas les tours suivants.
+    if (fight.options.rngRekey === 'perTurn') fight.rngState = mix32(mix32(fight.options.seed, fight.round), f.id) | 0
     // Durées des effets lancés par ce combattant : décrémentées au début de son tour.
     this.decrementCastedBuffs(fight, f)
     for (const k in f.cooldowns) if (f.cooldowns[k] > 0) f.cooldowns[k]--
     f.castsThisTurn = {}
     f.castsOnTarget = {}
+    delete f.tags.endTurnNow
     this.recomputeStats(f)
     f.ap = Math.max(0, f.stats.ap)
     f.mp = Math.max(0, f.stats.mp)

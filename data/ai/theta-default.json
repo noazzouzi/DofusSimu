@@ -1,0 +1,122 @@
+{
+  "value": {
+    "monsterDamage": 1.0,
+    "summonDamage": 0.5,
+    "killKappa": 0.3,
+    "killTau": 1.0,
+    "allyShield": 0.8,
+    "summonLife": 0.4,
+    "erosion": 0.5,
+    "deathPotMult": 2.0,
+    "incoming": 0.8,
+    "incomingTank": 0.6,
+    "dot": 0.9,
+    "dotDecay": 0.8,
+    "control": 0.15,
+    "potBefore": 0.35,
+    "potAfter": 0.15,
+    "continuation": 0.8,
+    "cdCost": 0.08,
+    "unusedAp": 2,
+    "positionCap": 50,
+    "minGain": 20,
+    "endMoveMinGain": 5,
+    "roleUtility": { "healer": 2000, "mpLock": 1500, "apLock": 1500, "placer": 1000 }
+  },
+  "threat": {
+    "tauFrac": 0.25,
+    "zoneFactor": 0.6,
+    "laterEnemyWeight": 0.8,
+    "hitWeak": 0.6,
+    "hitNextTurn": 0.25,
+    "pacifistFactor": 0.9,
+    "deathSigmaFrac": 0.25
+  },
+  "tactical": {
+    "fast": { "width": 1, "topK": 6, "depth": 8, "rollouts": 0, "nodes": 40 },
+    "standard": { "width": 6, "topK": 12, "depth": 6, "rollouts": 3, "nodes": 1500, "keyBoost": 2, "maxKeys": 12 },
+    "deep": { "width": 12, "topK": 20, "depth": 8, "rollouts": 6, "nodes": 15000, "mcts": 1500, "maxKeys": 30 },
+    "beta": 0.25,
+    "replanHpDev": 0.15,
+    "maxReplans": 4,
+    "diversityMargin": 0.3,
+    "lethalBand": 0.08
+  },
+  "tactics": {
+    "prior": {
+      "stateChain": 1,
+      "mpLock": 1,
+      "carryThrow": 1,
+      "glyphClock": 1,
+      "healCleanse": 1,
+      "bodyBlock": 1,
+      "groupForZone": 1,
+      "burstSetup": 1
+    },
+    "epsilon": 0.05,
+    "maxPerNode": 4
+  },
+  "team": {
+    "emergencyDeathProb": 0.35,
+    "protectDeathProb": 0.15,
+    "maxIntentsPerAlly": 3,
+    "commit": 0.1,
+    "reservedCellPenalty": 50,
+    "coherenceBonus": 100,
+    "killerMinDptFrac": 0.6
+  },
+  "planner": {
+    "beamWidth": 16,
+    "horizonPlayerSlots": 12,
+    "rootDiversity": 2,
+    "maxKillsPerSlot": 2,
+    "wExposure": 1.0,
+    "corruptBonus": 1500,
+    "failCost": 800,
+    "glyphCost": 120,
+    "unreachableHourCost": 2000,
+    "maxAliveFactor": 2,
+    "overloadCost": 400,
+    "hourCostScale": 1.0,
+    "lambdaEhp": 0.25,
+    "lambdaBurst": 0.5,
+    "glyphAvailability": 0.6,
+    "oracleAlpha": 0.2
+  },
+  "vortex": {
+    "corruptKill": 4000,
+    "plannedFirstKill": 2500,
+    "unplannedKillBase": 1500,
+    "waveHpSlope": 0.3,
+    "contractHpSlope": 0.7,
+    "floorSigma": 2,
+    "shiftDetour": 150,
+    "swapCell": 300,
+    "vortexKill": 20000,
+    "killMin": -3000,
+    "killMax": 4000,
+    "placementIndex": 0
+  },
+  "burst": {
+    "minCommit": 0.6,
+    "beam": 32,
+    "phase2VortexTurns": 2
+  },
+  "monster": {
+    "topK": 8,
+    "predictTopK": 4,
+    "referenceTopK": 24,
+    "noiseTau": 0,
+    "minActionScore": 1,
+    "wDmg": 1.0,
+    "wKill": 1.0,
+    "kappa": 0.5,
+    "wAP": 0.8,
+    "wMP": 0.8,
+    "wHeal": 0.9,
+    "wFF": 0.6,
+    "summonValue": 0.5,
+    "reflectAversion": 0.2,
+    "positionDuringTurn": 0.25
+  }
+}

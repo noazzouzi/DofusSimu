@@ -70,8 +70,13 @@ export function getEffectHandler(effectId: number): EffectHandlerEntry | undefin
   return REGISTRY.get(effectId)
 }
 
-export function noteUnknownEffect(effectId: number): void {
+/**
+ * Compte un effet sans interprète : compteur global du module (couverture) et, si `fight` est fourni, compteur PAR
+ * COMBAT `fight.unknownEffects` (E5, docs/design/ai.md §3.3 : résultat « faible confiance »).
+ */
+export function noteUnknownEffect(effectId: number, fight?: FightState): void {
   UNKNOWN.set(effectId, (UNKNOWN.get(effectId) ?? 0) + 1)
+  if (fight) fight.unknownEffects = (fight.unknownEffects ?? 0) + 1
 }
 
 /** Effets rencontrés sans interprète (effectId -> occurrences). */

@@ -529,7 +529,8 @@ export function runEffect(engine: Engine, fight: FightState, a: RunEffectArgs): 
   }
   const entry = getEffectHandler(effect.effectId)
   if (!entry) {
-    noteUnknownEffect(effect.effectId)
+    // E5 : compteur par combat, sauf pour un effet purement visuel (`clientOnly`) qui ne change pas l'état.
+    noteUnknownEffect(effect.effectId, effect.clientOnly ? undefined : fight)
     return
   }
   const ctx: EffectContext = { engine, fight, ...a }

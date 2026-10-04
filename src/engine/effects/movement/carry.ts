@@ -17,7 +17,6 @@ import type { Engine } from '../../engine'
 import type { Fighter, FightState } from '../../types'
 import {
   cantBeMoved,
-  enterCell,
   fireMoveTriggers,
   hasStateEffect,
   isFreeCell,
@@ -28,6 +27,7 @@ import {
   STATE_CARRIED,
   STATE_CARRIER,
 } from './common'
+import { arriveAt } from './portals'
 
 function stateEffect(stateId: number): EffectData {
   return {
@@ -123,6 +123,7 @@ export function throwCarried(engine: Engine, fight: FightState, carrier: Fighter
   }
   if (cell !== carrier.cell && !isFreeCell(engine, fight, cell)) return undefined
   carried.cell = carrier.cell
+  carried.rev = (carried.rev ?? 0) + 1 // E4
   unlink(engine, fight, carrier, carried)
   if (cell !== carried.cell) relocate(engine, fight, carried, cell)
   else {
@@ -131,7 +132,8 @@ export function throwCarried(engine: Engine, fight: FightState, carrier: Fighter
     setCell(fight, carried, cell)
     if (fight.options.record) engine.emit(fight, { t: 'teleport', target: carried.id, from: cell, to: cell })
   }
-  enterCell(engine, fight, carried, cell)
+  // Port `ThrowFighter` → `ExecuteMarks(fromDrag)` : portail éventuel, puis pièges / auras de la case.
+  arriveAt(engine, fight, carried, author)
   fireMoveTriggers(engine, fight, carried, 'M', author)
   return carried
 }
@@ -145,5 +147,6 @@ export function releaseCarried(engine: Engine, fight: FightState, carried: Fight
     return
   }
   carried.cell = carrier.cell
+  carried.rev = (carried.rev ?? 0) + 1 // E4
   unlink(engine, fight, carrier, carried)
 }

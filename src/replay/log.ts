@@ -48,7 +48,7 @@ export function plural(n: number, one: string, many = one + 's'): string {
 }
 
 /** Événements qui ne sont pas des actions du combattant (un tour sans rien d'autre est « passé »). */
-const PASSIVE = new Set<FightEvent['t']>(['log', 'apmp', 'unbuff', 'state', 'glyph', 'trap', 'buff', 'turnStart', 'turnEnd'])
+const PASSIVE = new Set<FightEvent['t']>(['log', 'aiNote', 'apmp', 'unbuff', 'state', 'glyph', 'trap', 'buff', 'turnStart', 'turnEnd'])
 
 /** Événements qui ouvrent une nouvelle action (fin du contexte d'un lancer de sort). */
 const BOUNDARY = new Set<FightEvent['t']>(['cast', 'move', 'turnStart', 'turnEnd', 'roundStart', 'fightEnd', 'wave', 'tackle', 'fightStart'])
@@ -237,6 +237,10 @@ export class LogBuilder {
       }
       case 'log':
         this.push(i, ev.level === 'ai' ? 'ai' : ev.level === 'warn' ? 'warn' : 'info', [{ text: ev.text }])
+        break
+      case 'aiNote':
+        // E3 : annotation de l'IA, affichée comme une pensée du combattant.
+        this.push(i, 'ai', [this.name(s, ev.fighter), { text: ' : ', style: 'muted' }, { text: ev.text }], ev.fighter)
         break
       case 'fightEnd': {
         const head = ev.winner === 0 ? 'Victoire des personnages' : ev.winner === 1 ? 'Défaite : les monstres l’emportent' : 'Match nul'

@@ -15,7 +15,9 @@
  *  - un portail emprunté (entrée et sortie) est inactif pour le reste du même déplacement (port `Mark.Use()`) ; la
  *    sortie reste occupée par le voyageur, donc inactive tant qu'il y reste ;
  *  - une poussée qui traverse un portail continue depuis la sortie avec la force restante (movement/drag.ts).
- * Déclencheurs : 'PT' sur le voyageur, 'CPT' sur le poseur du portail d'entrée (INCERTAIN), 'PO' sur l'auteur.
+ * Déclencheurs : 'PT' sur le voyageur, 'CPT' sur le poseur du portail d'entrée (INCERTAIN) ; le 'PO' de l'auteur est
+ * émis une seule fois par l'appelant (fin du déplacement). Écart : 'PT' et 'P' / 'MA' / 'M' sont deux événements (le
+ * port n'a qu'une sortie d'effet, marquée `ThroughPortal`) — un buff « P|PT » se déclencherait deux fois.
  * Écart connu : marks.ts (marche) calcule la sortie avec son propre départage des égalités et sans retirer les
  * portails occupés de la chaîne ; ce module suit le port (movement/chain.ts).
  * Non modélisé ici : la projection des SORTS à travers un portail (relève du lancement de sort).
@@ -23,7 +25,7 @@
 import type { Engine } from '../../engine'
 import type { Fighter, FightState, Glyph } from '../../types'
 import { nearestChain } from './chain'
-import { hasStateEffect, monsterFlag, relocate, SE_CANT_USE_PORTALS } from './common'
+import { enterCell, hasStateEffect, monsterFlag, relocate, SE_CANT_USE_PORTALS } from './common'
 
 /** Portail centré sur `cell` (le premier posé), ou undefined. */
 export function portalAt(fight: FightState, cell: number): Glyph | undefined {
@@ -81,7 +83,9 @@ export function canUsePortal(engine: Engine, f: Fighter): boolean {
 /**
  * Transporte `f`, qui vient d'arriver sur le portail `entry`, au portail de sortie. Retourne la sortie empruntée
  * (ajoutée avec l'entrée à `used`), ou undefined si le voyage est impossible. `dragRule` : restriction du 1er tour
- * de jeu (poussées / attirances, port `ApplyDrag`). Les marques de la case de sortie restent à l'appelant.
+ * de jeu (poussées / attirances, port `ApplyDrag`). Les marques de la case de sortie restent à l'appelant, ainsi que
+ * le déclencheur 'PO' de l'auteur (un seul par déplacement, émis par `fireMoveTriggers` : port, une seule sortie
+ * d'effet par poussée, marquée `ThroughPortal`). `author` : réservé (non utilisé).
  */
 export function travelThrough(
   engine: Engine,
@@ -101,6 +105,19 @@ export function travelThrough(
   const owner = fight.fighters[entry.sourceId]
   engine.trigger(fight, f, { type: 'PT', source: owner })
   if (owner !== undefined && owner.alive && !fight.ended) engine.trigger(fight, owner, { type: 'CPT', source: f })
-  if (author !== undefined && author.alive && !fight.ended) engine.trigger(fight, author, { type: 'PO', source: author })
   return exit
+}
+
+/**
+ * Arrivée d'un déplacement instantané (téléportation, échange, jet, lâcher) — port `ExecuteMarks(fromDrag: true)` :
+ * un portail actif sous `f` le transporte (`UsePortal`, sans la restriction du 1er tour), puis les marques de la case
+ * finale (pièges, glyphes-auras ; hors portails) s'appliquent.
+ */
+export function arriveAt(engine: Engine, fight: FightState, f: Fighter, author: Fighter | undefined): void {
+  if (!f.alive || fight.ended) return
+  if (fight.glyphs.length > 0) {
+    const portal = portalAt(fight, f.cell)
+    if (portal !== undefined) travelThrough(engine, fight, f, portal, [], author, false)
+  }
+  enterCell(engine, fight, f, f.cell)
 }

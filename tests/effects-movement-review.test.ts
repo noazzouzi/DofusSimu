@@ -20,13 +20,13 @@ import { applyEffects, castSubSpell } from '../src/engine/effects/core'
 import { installDamageHooks } from '../src/engine/effects/damage'
 import { installMarks } from '../src/engine/effects/marks'
 import '../src/engine/effects/misc'
-import { carryFighter, dragFighter, teleportFighter } from '../src/engine/effects/movement'
+import { carryFighter, dragFighter, teleportFighter, throwCarried } from '../src/engine/effects/movement'
 import { registerEffect } from '../src/engine/effects/registry'
 import '../src/engine/effects/summons'
 import type { Engine } from '../src/engine/engine'
 import { move } from '../src/engine/move'
 import { Direction } from '../src/map/geometry'
-import { cellAt, data, effect, events, fight, giveState, newEngine, player, pushDamageTaken } from './effects-movement-helpers'
+import { cellAt, data, effect, events, fight, giveState, newEngine, player, pushDamageTaken, spy, spyCalls } from './effects-movement-helpers'
 
 const XELOR = 5
 const IOP = 8
@@ -282,6 +282,39 @@ describe('1021 / 1022 forcés, 1043, 2184', () => {
     const fs = fight(engine, [a, b, player({ name: 'E', breedId: IOP, team: 1, cell: cellAt(20, 0) })])
     applyEffects(engine, fs, a, null, 0, [effect(2184)], b.cell, a.cell, false, false, 0)
     expect(b.cell).toBe(cellAt(11, 0))
+  })
+})
+
+describe('portails (Portail 14574 de l’Eliotrope) et déplacements forcés', () => {
+  const ELIOTROPE = 16
+  const PORTAIL = 14574
+  /** Eliotrope en (14, 3), portails en (14, 0) et (15, 5). */
+  const setup = () => {
+    const engine = newEngine(installMarks)
+    const elio = player({ name: 'Eliotrope', breedId: ELIOTROPE, spellIds: [PORTAIL], cell: cellAt(14, 3), stats: { initiative: 9999 } })
+    const ally = player({ name: 'Allié', breedId: IOP, cell: cellAt(13, 0) })
+    const panda = player({ name: 'Pandawa', breedId: PANDAWA, cell: cellAt(13, 1) })
+    const fs = fight(engine, [elio, ally, panda, player({ name: 'E', breedId: IOP, team: 1, cell: cellAt(25, -5) })])
+    expect(castSpell(engine, fs, elio, PORTAIL, cellAt(14, 0)).ok).toBe(true)
+    expect(castSpell(engine, fs, elio, PORTAIL, cellAt(15, 5)).ok).toBe(true)
+    return { engine, fs, elio, ally, panda }
+  }
+
+  it('poussée à travers un portail : un seul déclencheur PO pour l’auteur (une seule sortie d’effet dans le port)', () => {
+    const { engine, fs, elio, ally } = setup()
+    spy(engine, fs, elio, 'PO')
+    spyCalls.length = 0
+    expect(dragFighter(engine, fs, elio, ally, 3, Direction.SE)).toBe(true)
+    expect(ally.cell).toBe(cellAt(17, 5))
+    expect(spyCalls.filter(c => c.holder === elio.id && c.type === 'PO')).toHaveLength(1)
+  })
+
+  it('jet sur un portail : le porté l’emprunte (port ThrowFighter → ExecuteMarks → UsePortal)', () => {
+    const { engine, fs, ally, panda } = setup()
+    expect(carryFighter(engine, fs, panda, ally, KARCHAM)).toBe(true)
+    expect(throwCarried(engine, fs, panda, cellAt(14, 0), panda)).toBe(ally)
+    expect(ally.cell).toBe(cellAt(15, 5))
+    expect(events(fs, 'teleport').at(-1)).toMatchObject({ target: ally.id, from: cellAt(14, 0), to: cellAt(15, 5) })
   })
 })
 

@@ -101,6 +101,8 @@ export function move(fight: FightState, f: Fighter, path: number[], engine: Engi
     if (f.mp <= 0) break
     f.mp--
     f.cell = next
+    f.rev = (f.rev ?? 0) + 1 // E4 : changement de case (et de celle, effective, de l'entité portée)
+    if (f.carrying !== undefined) fight.fighters[f.carrying].rev = (fight.fighters[f.carrying].rev ?? 0) + 1
     walked.push(next)
     steps++
     const trapped = fight.traps.some(t => t.cells.includes(next))
