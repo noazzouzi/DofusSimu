@@ -29,7 +29,7 @@ import type { ThetaJson as StrategyParams } from '../theta'
 import type { AIView, Perception, ReachInfo, ThreatModel } from '../types'
 import { castGeom, firstCastCell, LosOracle, levelFor, nextTurnStaticOk } from './castCells'
 import { createDptTable, type DptTableImpl } from './dpt'
-import { fnvInt, revKey } from './hash'
+import { fnvInt, mobilityDigest, positionKey, stateSig } from './hash'
 import { buildOccupancy, cachedReach, canTackleNow } from './reach'
 import { phi, softmaxInto } from './rng'
 import type { SpellProfileX } from './spellProfile'
@@ -93,7 +93,10 @@ export function pacifistStates(engine: Engine, p: SpellProfileX): boolean {
 
 // ───────────────────────────── modèle ─────────────────────────────
 
-/** Ligne de la menace d'un ennemi : valeurs par allié (indexées comme `ThreatModelImpl.allies`). */
+/**
+ * Ligne de la menace d'un ennemi : valeurs par allié (indexées comme `ThreatModelImpl.allies`). Les lignes (et leurs
+ * tableaux) sont réutilisées d'un `sync` à l'autre : ne pas les conserver au-delà du prochain `sync`.
+ */
 export interface EnemyThreat {
   e: Fighter
   active: boolean
@@ -105,6 +108,8 @@ export interface EnemyThreat {
   frac: number
   weight: number
   hit: Float64Array
+  /** PA restants sur la case de lancer retenue (le DPT est calculé avec ces PA). */
+  apAt: Float64Array
   dmg: Float64Array
   /** dpt complet (hit = 1) sur l'allié. */
   full: Float64Array
@@ -120,6 +125,24 @@ export interface EnemyThreat {
   pacifist: boolean
 }
 
+/** Portée d'un ennemi sur une case avec un sort donné (mémo de géométrie). */
+interface PairHit { hit: number; apAt: number; fromStart: boolean }
+
+/**
+ * Géométrie d'un ennemi (indépendante des PV, des boucliers et des caractéristiques offensives) : actif, PA/PM du
+ * prochain tour, accessibilité, LdV et mémo « (sort, case visée) → portée ». Clé : positions de tous les combattants
+ * (`positionKey`), ordre des prochains tours, mobilité de l'ennemi (`mobilityDigest`). Partagée par tous les états de
+ * même clé (enfants d'un nœud qui ne déplacent personne), d'où une menace « incrémentale ».
+ */
+interface GeoRow {
+  k2: number
+  active: boolean; ap: number; mp: number; frac: number; weight: number; maxRange: number; pacifist: boolean
+  reachLo: ReachInfo | null; reachHi: ReachInfo | null; los: LosOracle | null
+  memo: Map<number, PairHit>
+}
+/** Plafond du cache de géométries (vidé en bloc : aucune influence sur les décisions). */
+const GEO_CACHE_MAX = 2048
+
 interface ThreatParams {
   tauFrac: number
   zoneFactor: number
@@ -131,6 +154,37 @@ interface ThreatParams {
 }
 const DEFAULT_PARAMS: ThreatParams = { tauFrac: 0.25, zoneFactor: 0.6, laterEnemyWeight: 0.8, hitWeak: 0.6, hitNextTurn: 0.25, pacifistFactor: 0.9, deathSigmaFrac: 0.25 }
 
+/** Hash de l'ordre des prochains tours (combattants et tours passés). */
+export function orderKey(order: SlotOrder): number {
+  let h = 0x811c9dc5
+  for (const sl of order.slots) h = fnvInt(h, sl.fighterId * 2 + (sl.passes ? 1 : 0))
+  return h
+}
+
+/** Drapeaux de tacle d'un combattant (clé de position) : ne tacle pas (1), intaclable (2). */
+export function tackleFlags(engine: Engine, f: Fighter): number {
+  return (canTackleNow(engine, f) ? 0 : 1) | (engine.stateFlag(f, 'cantBeTackled') ? 2 : 0)
+}
+
+/**
+ * Cadre d'un état partagé par la menace et le potentiel d'un même camp : ordre des prochains tours et clé de position
+ * (64 bits, ordre compris). Mémo à une entrée par (moteur, camp) validé par l'identité de l'état et `stateSig`.
+ */
+export interface GeoFrame { order: SlotOrder; p1: number; p2: number }
+interface FrameMemo extends GeoFrame { engine: Engine; s: FightState; side: TeamId; sig: number }
+const FRAMES: FrameMemo[] = []
+
+export function geoFrame(engine: Engine, s: FightState, side: TeamId, sig: number): GeoFrame {
+  for (const f of FRAMES) if (f.s === s && f.sig === sig && f.side === side && f.engine === engine) return f
+  const order = new SlotOrder(engine, s)
+  const ok = orderKey(order)
+  const pk = positionKey(s, f => believedCell(f, side), f => tackleFlags(engine, f))
+  const memo: FrameMemo = { engine, s, side, sig, order, p1: fnvInt(pk.h1, ok), p2: fnvInt(pk.h2, ok) }
+  if (FRAMES.length >= 4) FRAMES.shift()
+  FRAMES.push(memo)
+  return memo
+}
+
 export class ThreatModelImpl implements ThreatModel {
   readonly dpt: DptTableImpl
   readonly params: ThreatParams
@@ -141,11 +195,16 @@ export class ThreatModelImpl implements ThreatModel {
   enemies: EnemyThreat[] = []
   /** incoming par id de combattant. */
   inc = new Float64Array(0)
+  /** Diagnostic (bancs) : géométries d'ennemis réutilisées / recalculées. */
+  geoHits = 0
+  geoMisses = 0
   private allyIndex = new Int16Array(0)
   private enemyIndex = new Int16Array(0)
   private signature = 0
   private occ = new Int16Array(CELL_COUNT)
   private readonly cellMemo = new Map<number, { own: number; teamDelta: number }>()
+  private readonly geoCache = new Map<number, GeoRow>()
+  private readonly pool: EnemyThreat[] = []
   private readonly tmpScores = new Float64Array(64)
   private readonly tmpPi = new Float64Array(64)
 
@@ -155,37 +214,23 @@ export class ThreatModelImpl implements ThreatModel {
     this.params = theta ? { ...DEFAULT_PARAMS, ...theta.threat } : DEFAULT_PARAMS
   }
 
-  /** Empreinte de l'état (positions, PV, bouclier, PA/PM, révisions, créneau). */
-  private sig(s: FightState): number {
-    let h = fnvInt(fnvInt(0x811c9dc5, s.round), s.turnIndex)
-    for (const f of s.fighters) {
-      if (!f.alive) {
-        h = fnvInt(h, ~f.id)
-        continue
-      }
-      h = fnvInt(h, f.cell)
-      h = fnvInt(h, f.hp)
-      h = fnvInt(h, f.shield)
-      h = fnvInt(h, Math.round(f.ap * 100))
-      h = fnvInt(h, Math.round(f.mp * 100))
-      h = fnvInt(h, revKey(f))
-    }
-    return h
-  }
-
   sync(s: FightState): void {
-    const sig = this.sig(s)
+    const sig = stateSig(s)
     if (s === this.s && sig === this.signature) return
     this.signature = sig
-    this.build(s)
+    this.build(s, sig)
   }
 
-  private build(s: FightState): void {
-    const engine = this.view.engine
+  /** Recalcul : géométrie par ennemi (cache par position/mobilité) puis couche « PV » (DPT en cache, π, agrégation). */
+  private build(s: FightState, sig: number): void {
     const side = this.side
     this.s = s
     this.cellMemo.clear()
-    this.order = new SlotOrder(engine, s)
+    buildOccupancy(s, side, this.occ)
+    const fr = geoFrame(this.view.engine, s, side, sig)
+    const order = (this.order = fr.order)
+    const p1 = fr.p1
+    const p2 = fr.p2
     const n = s.fighters.length
     if (this.inc.length < n) {
       this.inc = new Float64Array(n)
@@ -201,20 +246,30 @@ export class ThreatModelImpl implements ThreatModel {
       this.allyIndex[f.id] = this.allies.length
       this.allies.push(f)
     }
-    buildOccupancy(s, side, this.occ)
     this.enemies = []
     for (const e of s.fighters) {
       if (!e.alive || e.team === side) continue
       if (believedCell(e, side) < 0) continue
+      const md = mobilityDigest(e)
+      const k1 = fnvInt(fnvInt(p1, e.id), md)
+      const k2 = fnvInt(fnvInt(p2, e.id), md)
+      let g = this.geoCache.get(k1)
+      if (g && g.k2 === k2) this.geoHits++
+      else {
+        g = this.geoRow(s, e, order)
+        g.k2 = k2
+        if (this.geoCache.size >= GEO_CACHE_MAX) this.geoCache.clear()
+        this.geoCache.set(k1, g)
+      }
       this.enemyIndex[e.id] = this.enemies.length
-      this.enemies.push(this.enemyRow(s, e))
+      this.enemies.push(this.hpRow(s, e, g, this.enemies.length))
     }
     // Agrégation : incoming des alliés qui jouent APRÈS l'ennemi.
     for (const row of this.enemies) {
       if (!row.active) continue
       for (let i = 0; i < this.allies.length; i++) {
         const a = this.allies[i]
-        if (!this.order.before(row.e.id, a.id)) continue
+        if (!order.before(row.e.id, a.id)) continue
         let v = row.pi[i] * row.dmg[i]
         v += this.zoneShare(row, i)
         this.inc[a.id] += row.weight * v
@@ -243,75 +298,134 @@ export class ThreatModelImpl implements ThreatModel {
     return cachedReach(this.view.engine, s, e, this.side, mp, ap, this.occ)
   }
 
-  private enemyRow(s: FightState, e: Fighter): EnemyThreat {
+  /** Géométrie d'un ennemi : actif, PA/PM du prochain tour, accessibilité, LdV (mémo des portées vide). */
+  private geoRow(s: FightState, e: Fighter, order: SlotOrder): GeoRow {
+    this.geoMisses++
     const engine = this.view.engine
     const P = this.params
-    const nA = this.allies.length
-    const row: EnemyThreat = {
-      e, active: false, ap: 0, mp: 0, reachLo: null, reachHi: null, frac: 0, weight: 1,
-      hit: new Float64Array(nA), dmg: new Float64Array(nA), full: new Float64Array(nA), score: new Float64Array(nA),
-      pi: new Float64Array(nA), best: new Int16Array(nA).fill(-1), threat: 0, target: -1, hitsFromStart: false, pacifist: false,
+    const g: GeoRow = {
+      k2: 0, active: false, ap: 0, mp: 0, frac: 0, weight: 1, maxRange: 0, pacifist: false,
+      reachLo: null, reachHi: null, los: null, memo: new Map(),
     }
-    const order = this.order
-    if (isStaticFighter(e) || order.passes(e.id) || order.rank(e.id) >= order.count) return row
+    if (isStaticFighter(e) || order.passes(e.id) || order.rank(e.id) >= order.count) return g
     const am = nextTurnApMp(e, order)
-    if (am.ap <= 0) return row
-    if (flagAtNextTurn(engine, e, 'cantDealDamage', order)) return row
-    row.active = true
-    row.ap = am.ap
-    row.mp = am.mp
+    if (am.ap <= 0) return g
+    if (flagAtNextTurn(engine, e, 'cantDealDamage', order)) return g
+    g.active = true
+    g.ap = am.ap
+    g.mp = am.mp
     const lo = Math.floor(am.mp)
-    row.frac = am.mp - lo
-    row.reachLo = this.reachOf(s, e, lo, am.ap)
-    if (row.frac > 1e-6) row.reachHi = this.reachOf(s, e, lo + 1, am.ap)
-    row.weight = order.teamPlaysBefore(this.side, e.id, s.timeline[s.turnIndex] ?? -1) ? P.laterEnemyWeight : 1
-    const los = new LosOracle(s, this.side, e.id, this.occ)
+    g.frac = am.mp - lo
+    g.reachLo = this.reachOf(s, e, lo, am.ap)
+    if (g.frac > 1e-6) g.reachHi = this.reachOf(s, e, lo + 1, am.ap)
+    g.weight = order.teamPlaysBefore(this.side, e.id, s.timeline[s.turnIndex] ?? -1) ? P.laterEnemyWeight : 1
+    // L'oracle lit `this.occ`, identique à chaque réutilisation (même clé de position).
+    g.los = new LosOracle(s, this.side, e.id, this.occ)
     const profiles = this.dpt.profiles.ofFighter(e)
-    let maxRange = 0
-    for (const p of profiles) if (p.damage.length && p.maxRange > maxRange) maxRange = p.maxRange
-    const pacifist = profiles.some(p => pacifistStates(engine, p))
-    row.pacifist = pacifist
+    for (const p of profiles) if (p.damage.length && p.maxRange > g.maxRange) g.maxRange = p.maxRange
+    g.pacifist = profiles.some(p => pacifistStates(engine, p))
+    return g
+  }
+
+  /** Portée de `e` (meilleur sort `bi`) sur la case `cell` : 1, `hitWeak`, interpolation ⌈PM⌉, `hitNextTurn` ou 0. */
+  private pairHit(s: FightState, e: Fighter, g: GeoRow, bi: number, cell: number): PairHit {
+    const key = bi * CELL_COUNT + cell
+    let r = g.memo.get(key)
+    if (r) return r
+    const P = this.params
+    const reachLo = g.reachLo!
+    const los = g.los!
+    let hit = 0
+    let apAt = g.ap
+    let fromStart = false
+    const c1 = this.castCell(s, e, bi, cell, reachLo, los, g.ap)
+    if (c1 >= 0) {
+      hit = 1
+      apAt = reachLo.apLeft[c1]
+      fromStart = c1 === reachLo.cells[0]
+    } else {
+      const profiles = this.dpt.profiles.ofFighter(e)
+      let weak = -1
+      for (let k = 0; k < profiles.length && weak < 0; k++) {
+        if (k === bi || !profiles[k].damage.length) continue
+        const c = this.castCell(s, e, k, cell, reachLo, los, g.ap)
+        if (c >= 0) weak = c
+      }
+      let hiHit = -1
+      if (g.reachHi) hiHit = this.castCell(s, e, bi, cell, g.reachHi, los, g.ap)
+      if (weak >= 0) {
+        hit = P.hitWeak
+        apAt = reachLo.apLeft[weak]
+      }
+      if (hiHit >= 0) {
+        if (hit === 0) apAt = g.reachHi!.apLeft[hiHit]
+        hit = hit + g.frac * (1 - hit)
+      }
+      if (hit === 0 && distance(believedCell(e, this.side), cell) <= 2 * g.mp + g.maxRange + 1) hit = P.hitNextTurn
+    }
+    r = { hit, apAt, fromStart }
+    g.memo.set(key, r)
+    return r
+  }
+
+  /** Ligne réutilisable (tableaux de taille ≥ nombre d'alliés). */
+  private rowFromPool(k: number, nA: number): EnemyThreat {
+    let row = this.pool[k]
+    if (!row || row.hit.length < nA) {
+      const m = Math.max(nA, 4)
+      row = this.pool[k] = {
+        e: undefined as unknown as Fighter, active: false, ap: 0, mp: 0, reachLo: null, reachHi: null, frac: 0, weight: 1,
+        hit: new Float64Array(m), apAt: new Float64Array(m), dmg: new Float64Array(m), full: new Float64Array(m),
+        score: new Float64Array(m), pi: new Float64Array(m), best: new Int16Array(m), threat: 0, target: -1,
+        hitsFromStart: false, pacifist: false,
+      }
+    }
+    row.hit.fill(0)
+    row.apAt.fill(0)
+    row.dmg.fill(0)
+    row.full.fill(0)
+    row.score.fill(0)
+    row.pi.fill(0)
+    row.best.fill(-1)
+    return row
+  }
+
+  /** Couche « PV » d'une ligne : meilleur sort et DPT (caches), portée (mémo), dégâts attendus, score, π, menace. */
+  private hpRow(s: FightState, e: Fighter, g: GeoRow, k: number): EnemyThreat {
+    const P = this.params
+    const nA = this.allies.length
+    const row = this.rowFromPool(k, nA)
+    row.e = e
+    row.active = g.active
+    row.ap = g.ap
+    row.mp = g.mp
+    row.reachLo = g.reachLo
+    row.reachHi = g.reachHi
+    row.frac = g.frac
+    row.weight = g.weight
+    row.pacifist = g.pacifist
+    row.hitsFromStart = false
+    row.threat = 0
+    row.target = -1
+    if (!g.active) return row
+    const potential = this.perception?.potential
     for (let i = 0; i < nA; i++) {
       const a = this.allies[i]
       const best = this.dpt.bestCast(e, a, 'next')
-      row.best[i] = best.index
-      if (best.index < 0) continue
-      let hit = 0
-      let apAtCell = am.ap
-      const c1 = this.castCell(s, e, best.index, a.cell, row.reachLo, los, am.ap)
-      if (c1 >= 0) {
-        hit = 1
-        apAtCell = row.reachLo.apLeft[c1]
-        if (c1 === row.reachLo.cells[0]) row.hitsFromStart = true
-      } else {
-        let weak = -1
-        for (let k = 0; k < profiles.length && weak < 0; k++) {
-          if (k === best.index || !profiles[k].damage.length) continue
-          const c = this.castCell(s, e, k, a.cell, row.reachLo, los, am.ap)
-          if (c >= 0) weak = c
-        }
-        let hiHit = -1
-        if (row.reachHi) hiHit = this.castCell(s, e, best.index, a.cell, row.reachHi, los, am.ap)
-        if (weak >= 0) {
-          hit = P.hitWeak
-          apAtCell = row.reachLo.apLeft[weak]
-        }
-        if (hiHit >= 0) {
-          if (hit === 0) apAtCell = row.reachHi!.apLeft[hiHit]
-          hit = hit + row.frac * (1 - hit)
-        }
-        if (hit === 0 && distance(believedCell(e, this.side), a.cell) <= 2 * am.mp + maxRange + 1) hit = P.hitNextTurn
-      }
-      const full = this.dpt.dpt(e, a, apAtCell)
-      row.full[i] = full
+      const bi = best.index
+      row.best[i] = bi
+      if (bi < 0) continue
+      const ph = this.pairHit(s, e, g, bi, a.cell)
+      const hit = ph.hit
+      if (ph.fromStart) row.hitsFromStart = true
       row.hit[i] = hit
+      row.apAt[i] = ph.apAt
+      const full = this.dpt.dpt(e, a, ph.apAt)
+      row.full[i] = full
       let dmg = full * hit
-      if (pacifist && hit > 0 && this.perception?.potential) dmg += P.pacifistFactor * this.perception.potential.potential(a.id) * Math.min(1, hit)
+      if (g.pacifist && hit > 0 && potential) dmg += P.pacifistFactor * potential.potential(a.id) * Math.min(1, hit)
       row.dmg[i] = dmg
-      const he = hpEff(a)
-      let sc = Math.min(dmg, he)
-      if (dmg >= he && dmg > 0) sc += 0.5 * a.maxHp + this.dpt.dpt(a, e)
-      row.score[i] = sc
+      row.score[i] = scoreOf(dmg, a, dmg >= hpEff(a) && dmg > 0 ? this.dpt.dpt(a, e) : 0)
     }
     this.finishRow(row)
     return row
@@ -324,10 +438,7 @@ export class ThreatModelImpl implements ThreatModel {
     for (let i = 0; i < nA; i++) if (row.score[i] > max) max = row.score[i]
     row.threat = 0
     row.target = -1
-    if (max <= 0) {
-      row.pi.fill(0)
-      return
-    }
+    if (max <= 0) return
     softmaxInto(row.score, nA, this.params.tauFrac * max, row.pi)
     let bestPi = -1
     for (let i = 0; i < nA; i++) {

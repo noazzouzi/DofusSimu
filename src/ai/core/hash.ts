@@ -113,3 +113,227 @@ export function stateHash(s: FightState): bigint {
   b = fnvInt(b, marksB)
   return (BigInt(a >>> 0) << 32n) | BigInt(b >>> 0)
 }
+
+/** Résultat partagé de `geometryKey` (clé 64 bits = deux hash 32 bits). */
+export const GEO_KEY = { h1: 0, h2: 0 }
+
+/**
+ * Clé de GÉOMÉTRIE d'un état vu par `team` (dans `GEO_KEY`) : tout ce dont dépendent l'accessibilité, les cases de
+ * lancer, la ligne de vue et l'ordre des prochains tours, mais PAS les PV ni les PA/PM courants — tour/créneau,
+ * longueur de la timeline, et pour chaque combattant : vivant, case crue par `team`, porté, révision (E4 :
+ * caractéristiques, buffs, états, case), relances > 1 (sorts indisponibles au prochain tour) ; plus les marques.
+ * Deux enfants d'un nœud qui ne diffèrent que par des PV partagent la même géométrie (caches de menace et de
+ * potentiel, §6.5-§6.6). `believed(f)` = case crue par l'équipe (vue honnête).
+ */
+export function geometryKey(s: FightState, believed: (f: Fighter) => number): typeof GEO_KEY {
+  let a = fnvInt(fnvInt(fnvInt(0x811c9dc5, s.round), s.turnIndex), s.timeline.length)
+  let b = fnvInt(fnvInt(fnvInt(0x050c5d1f, s.round), s.turnIndex), s.timeline.length)
+  const fs = s.fighters
+  for (let i = 0; i < fs.length; i++) {
+    const f = fs[i]
+    if (!f.alive) {
+      a = fnvInt(a, ~f.id)
+      b = fnvInt(b, ~f.id)
+      continue
+    }
+    const cell = f.carriedBy !== undefined ? -3 - f.carriedBy : believed(f)
+    const rk = revKey(f)
+    let cd = 0
+    for (const k in f.cooldowns) {
+      const v = f.cooldowns[k]
+      if (v > 1) cd = (cd + fnvInt(fnvInt(0x9747b28c, Number(k)), v)) | 0
+    }
+    a = fnvInt(fnvInt(fnvInt(fnvInt(a, f.id), cell), rk), cd)
+    b = fnvInt(fnvInt(fnvInt(fnvInt(b, f.id), cell), rk), cd)
+  }
+  for (const m of s.glyphs) {
+    a = fnvInt(fnvInt(a, m.uid), m.center)
+    b = fnvInt(fnvInt(b, m.uid), m.center)
+  }
+  for (const m of s.traps) {
+    a = fnvInt(fnvInt(a, m.uid), m.center)
+    b = fnvInt(fnvInt(b, m.uid), m.center)
+  }
+  GEO_KEY.h1 = a
+  GEO_KEY.h2 = b
+  return GEO_KEY
+}
+
+// ───────────────────────────── empreintes par usage (clés de cache) ─────────────────────────────
+
+/** FNV-1a d'une chaîne (clés de modificateurs de sort). */
+function fnvStr(h: number, s: string): number {
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193)
+  return h
+}
+
+/** Effets de buff lus par le calcul des dégâts côté cible (dommages subis 1163, armure 265/105). */
+const RECEIVED_EFFECTS = new Set([1163, 265, 105])
+
+/** Caractéristiques sans effet sur les dégâts d'un sort (exclues de `damageDigest` : un retrait de PM ne vide pas le DPT). */
+const NON_DAMAGE_STATS = new Set(['vitality', 'wisdom', 'ap', 'mp', 'range', 'summons', 'initiative', 'prospecting', 'heals',
+  'apReduction', 'mpReduction', 'apParry', 'mpParry', 'tackleBlock', 'tackleEvade', 'lifePoints', 'finalHealPct'])
+
+function statsInto(h: number, f: Fighter): number {
+  const st = f.stats as unknown as Record<string, number>
+  for (const k in st) {
+    if (NON_DAMAGE_STATS.has(k)) continue
+    h = fnvStr(h, k)
+    h = fnvInt(h, Math.round(st[k] * 16))
+  }
+  return h
+}
+
+function modsInto(h: number, f: Fighter): number {
+  const mods = f.spellMods
+  if (!mods) return h
+  for (const sid in mods) {
+    const m = mods[sid] as Record<string, number>
+    h = fnvInt(h, Number(sid))
+    for (const k in m) h = fnvInt(fnvStr(h, k), Math.round(m[k] * 16))
+  }
+  return h
+}
+
+function computeDamageDigest(f: Fighter): number {
+  let h = fnvInt(fnvInt(fnvInt(0x811c9dc5, f.id), f.level), f.team)
+  h = fnvStr(h, f.kind)
+  h = statsInto(h, f)
+  for (const s of f.states) h = fnvInt(h, s)
+  if (f.disabledStates) for (const s of f.disabledStates) h = fnvInt(h, ~s)
+  h = modsInto(h, f)
+  for (const b of f.buffs) {
+    if (!RECEIVED_EFFECTS.has(b.effect.effectId)) continue
+    h = fnvInt(fnvInt(fnvInt(fnvInt(h, b.effect.effectId), Math.round(b.value * 16)), b.delay), b.triggerCount ?? 0)
+    h = fnvInt(fnvInt(h, b.effect.diceNum), b.effect.value)
+    h = fnvStr(h, b.triggers ?? '')
+    h = fnvStr(h, b.kind ?? '')
+  }
+  return h >>> 0
+}
+
+const DMG_MEMO = new Map<number, number>()
+const MOB_MEMO = new Map<number, number>()
+const MEMO_MAX = 200000
+
+/**
+ * Empreinte « dégâts » d'un combattant (clés du DPT) : niveau, camp, nature, caractéristiques, états, modificateurs de
+ * sort et buffs lus côté cible (1163, 265, 105). Mémoïsée par révision (E4) : un buff de PM ou un déplacement change
+ * la révision mais pas cette empreinte, et le DPT reste en cache. Les PV n'y entrent pas (sorts « % PV » non cachés).
+ */
+export function damageDigest(f: Fighter): number {
+  if (f.rev === undefined) return computeDamageDigest(f)
+  let d = DMG_MEMO.get(f.rev)
+  if (d === undefined) {
+    if (DMG_MEMO.size >= MEMO_MAX) DMG_MEMO.clear()
+    DMG_MEMO.set(f.rev, (d = computeDamageDigest(f)))
+  }
+  return d
+}
+
+function computeMobilityDigest(f: Fighter): number {
+  let h = fnvInt(fnvInt(0x9747b28c, f.id), f.team)
+  const st = f.stats
+  h = fnvInt(fnvInt(fnvInt(h, Math.round(st.ap * 16)), Math.round(st.mp * 16)), st.range)
+  h = fnvInt(fnvInt(h, st.tackleBlock), st.tackleEvade)
+  for (const s of f.states) h = fnvInt(h, s)
+  if (f.disabledStates) for (const s of f.disabledStates) h = fnvInt(h, ~s)
+  h = modsInto(h, f)
+  return h >>> 0
+}
+
+/**
+ * Empreinte « mobilité / lancers » d'un combattant (clés des géométries de menace et de potentiel) : PA/PM/PO de
+ * base, tacle/fuite, états, modificateurs de sort (mémoïsés par révision), plus la partie VIVANTE des buffs qui
+ * décident du prochain tour (PA/PM temporaires, états, tour annulé : durée, lanceur, délai — décrémentés en place sans
+ * nouvelle révision), les relances > 1 et les marqueurs de mobilité. Ni la case ni les PV n'y entrent.
+ */
+export function mobilityDigest(f: Fighter): number {
+  let d: number | undefined
+  if (f.rev === undefined) d = computeMobilityDigest(f)
+  else {
+    d = MOB_MEMO.get(f.rev)
+    if (d === undefined) {
+      if (MOB_MEMO.size >= MEMO_MAX) MOB_MEMO.clear()
+      MOB_MEMO.set(f.rev, (d = computeMobilityDigest(f)))
+    }
+  }
+  let h = d
+  for (const b of f.buffs) {
+    const sd = b.statDelta
+    const apmp = sd !== undefined && (sd.ap !== undefined || sd.mp !== undefined)
+    if (!apmp && b.stateId === undefined && !b.passTurn) continue
+    h = fnvInt(fnvInt(fnvInt(fnvInt(h, b.sourceId), b.remaining), b.delay), b.stateId ?? -1)
+    if (apmp) h = fnvInt(fnvInt(h, Math.round((sd!.ap ?? 0) * 16)), Math.round((sd!.mp ?? 0) * 16))
+    if (b.passTurn) h = fnvInt(h, 0x7a55)
+  }
+  for (const k in f.cooldowns) {
+    const v = f.cooldowns[k]
+    if (v > 1) h = fnvInt(fnvInt(h, Number(k)), v)
+  }
+  const t = f.tags
+  h = fnvInt(h, (t.rooted ? 1 : 0) | (t.cantTackle ? 2 : 0) | (t.static === true ? 4 : 0) | (t.canPlay === false ? 8 : 0)
+    | (t.cannotPlay === true ? 16 : 0) | (typeof t.skipTurns === 'number' && t.skipTurns > 0 ? 32 : 0))
+  return h >>> 0
+}
+
+/** Résultat partagé de `positionKey` (clé 64 bits). */
+export const POS_KEY = { h1: 0, h2: 0 }
+
+/**
+ * Clé de POSITION d'un état vu par une équipe (dans `POS_KEY`) : tour, créneau et timeline (ordre des prochains
+ * tours), et pour chaque combattant vivant : case crue, porté/porteur, tacle/fuite et drapeaux de tacle (`tackleFlags`),
+ * plus les marques. Tout ce qui fait varier l'accessibilité et la ligne de vue des AUTRES ; la mobilité propre du
+ * combattant qui marche ou lance s'ajoute par `mobilityDigest`.
+ */
+export function positionKey(s: FightState, believed: (f: Fighter) => number, tackleFlags: (f: Fighter) => number): typeof POS_KEY {
+  let a = fnvInt(fnvInt(0x811c9dc5, s.round), s.turnIndex)
+  let b = fnvInt(fnvInt(0x050c5d1f, s.round), s.turnIndex)
+  for (const id of s.timeline) {
+    a = fnvInt(a, id)
+    b = fnvInt(b, id)
+  }
+  const fs = s.fighters
+  for (let i = 0; i < fs.length; i++) {
+    const f = fs[i]
+    if (!f.alive) {
+      a = fnvInt(a, ~f.id)
+      b = fnvInt(b, ~f.id)
+      continue
+    }
+    const cell = f.carriedBy !== undefined ? -3 - f.carriedBy : believed(f)
+    const tk = (f.stats.tackleBlock * 4096 + f.stats.tackleEvade) * 4 + tackleFlags(f)
+    a = fnvInt(fnvInt(fnvInt(a, f.id), cell), tk)
+    b = fnvInt(fnvInt(fnvInt(b, f.id), cell), tk)
+  }
+  for (const m of s.glyphs) {
+    a = fnvInt(fnvInt(a, m.uid), m.center)
+    b = fnvInt(fnvInt(b, m.uid), m.center)
+  }
+  for (const m of s.traps) {
+    a = fnvInt(fnvInt(a, m.uid), m.visible ? m.center : -m.center - 1)
+    b = fnvInt(fnvInt(b, m.uid), m.visible ? m.center : -m.center - 1)
+  }
+  POS_KEY.h1 = a
+  POS_KEY.h2 = b
+  return POS_KEY
+}
+
+/**
+ * Empreinte d'un état pour les `sync` incrémentaux (menace, potentiel) : tour, créneau, et pour chaque combattant
+ * vivant : case, PV, bouclier, PV max, PA/PM courants (× 100), révision. Égalité ⇒ (sauf collision) rien à recalculer.
+ */
+export function stateSig(s: FightState): number {
+  let h = fnvInt(fnvInt(fnvInt(0x811c9dc5, s.round), s.turnIndex), s.timeline.length)
+  const fs = s.fighters
+  for (let i = 0; i < fs.length; i++) {
+    const f = fs[i]
+    if (!f.alive) {
+      h = fnvInt(h, ~f.id)
+      continue
+    }
+    h = fnvInt(fnvInt(fnvInt(fnvInt(h, f.cell), f.hp), f.shield), f.maxHp)
+    h = fnvInt(fnvInt(fnvInt(h, Math.round(f.ap * 100)), Math.round(f.mp * 100)), revKey(f))
+  }
+  return h
+}

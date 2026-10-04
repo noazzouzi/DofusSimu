@@ -44,6 +44,11 @@ export interface RunOptions {
   record?: boolean
   /** Re-semis des dés par tour (E1) ; défaut 'perTurn' (CRN). */
   rngRekey?: 'none' | 'perTurn'
+  /**
+   * Annotations de l'IA (`AIConfig.explain` : événements `aiNote` du replay) ; défaut = `record`. N'influence aucune
+   * décision (§13.2 : même combat, annoté ou non).
+   */
+  explain?: boolean
 }
 
 export interface RunResult {
@@ -313,6 +318,7 @@ function prepare(
   const playerTeam = team[0]?.team ?? 0
   const cfg = defaultAIConfig(spec.mode, seed, spec.theta as StrategyParams)
   cfg.monster = { ...cfg.monster, noiseTau: spec.monsterNoise }
+  cfg.explain = opts.explain ?? opts.record ?? false
   const controllers = createControllers(engine, cfg, { scenario: scenario.aiModel(params, spec.theta) })
   let provider: ControllerProvider = controllers
   if (spec.playerPolicy === 'random') {
@@ -327,7 +333,8 @@ function prepare(
 function summarize(p: Prepared, seed: number, s: ScenarioSummary): FightSummary {
   const { fight } = p
   const chars = fight.fighters.filter(f => f.team === p.playerTeam && f.kind === 'player')
-  const hpLeftPct = chars.reduce((a, f) => a + (f.alive ? f.hp : 0), 0) / Math.max(1, chars.reduce((a, f) => a + f.baseMaxHp, 0))
+  // PV restants plafonnés aux PV max de début de combat (un buff de Vitalité ne fait pas dépasser 100 %).
+  const hpLeftPct = chars.reduce((a, f) => a + (f.alive ? Math.min(f.hp, f.baseMaxHp) : 0), 0) / Math.max(1, chars.reduce((a, f) => a + f.baseMaxHp, 0))
   const st = p.controllers.stats()
   const spellUse: Record<number, number> = {}
   for (const k of Object.keys(p.spellUse).map(Number).sort((a, b) => a - b)) spellUse[k] = p.spellUse[k]
@@ -398,7 +405,8 @@ export function runMicro(data: DataStore, spec: FightSpec, seed: number, microId
     corruptedByRound: [],
     hoursUsed: 0,
   })
-  return { summary: { ...base, deaths: r.deaths, hpLeftPct: r.hpLeftPct, score: r.pWin }, fight: p.fight, params: p.params, micro: r }
+  const hpLeftPct = Math.max(0, Math.min(1, r.hpLeftPct))
+  return { summary: { ...base, deaths: r.deaths, hpLeftPct, score: r.pWin }, fight: p.fight, params: p.params, micro: r }
 }
 
 /** Exécute une tâche de worker (toutes ses graines, dans l'ordre). */

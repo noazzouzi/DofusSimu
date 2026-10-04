@@ -82,59 +82,78 @@ function exhaustive(engine: Engine, fight: FightState, f: Fighter): Map<number, 
 }
 
 describe('T-reach : computeReach = move réel (tacle exact)', () => {
-  it('500 cas aléatoires : PA/PM restants identiques après exécution du chemin', () => {
+  it('500 cas aléatoires : PA/PM restants identiques après exécution du chemin (priorités PM et PA)', () => {
     const rng = new Rng(20261004)
     let checked = 0
     let tackledPaths = 0
     for (let k = 0; k < 500; k++) {
       const { engine, fight, mover } = tackleScene(rng, k)
       const view = createView(engine, fight, mover, 1)
-      const reach = computeReach(view, fight, mover)
-      expect(reach.count).toBeGreaterThan(0)
-      expect(reach.cells[0]).toBe(mover.cell)
-      // Jusqu'à 4 cases tirées parmi les atteignables (plus la plus lointaine).
-      const picks = new Set<number>([reach.cells[reach.count - 1]])
-      for (let i = 0; i < 3; i++) picks.add(reach.cells[Math.floor(rng.next() * reach.count)])
-      for (const cell of picks) {
-        const path = reachPath(reach, mover.cell, cell)!
-        expect(path[0]).toBe(mover.cell)
-        const c = engine.cloneFight(fight)
-        const m = c.fighters[mover.id]
-        const ap0 = m.ap
-        const steps = move(c, m, path, engine)
-        expect(steps).toBe(path.length - 1)
-        expect(m.cell).toBe(cell)
-        expect(m.ap).toBe(reach.apLeft[cell])
-        expect(m.mp).toBe(reach.mpLeft[cell])
-        if (m.ap < ap0) tackledPaths++
-        checked++
+      for (const priority of ['mp', 'ap'] as const) {
+        const reach = computeReach(view, fight, mover, { priority })
+        expect(reach.count).toBeGreaterThan(0)
+        expect(reach.cells[0]).toBe(mover.cell)
+        // Jusqu'à 4 cases tirées parmi les atteignables (plus la plus lointaine).
+        const picks = new Set<number>([reach.cells[reach.count - 1]])
+        for (let i = 0; i < 3; i++) picks.add(reach.cells[Math.floor(rng.next() * reach.count)])
+        for (const cell of picks) {
+          const path = reachPath(reach, mover.cell, cell)!
+          expect(path[0]).toBe(mover.cell)
+          const c = engine.cloneFight(fight)
+          const m = c.fighters[mover.id]
+          const ap0 = m.ap
+          const steps = move(c, m, path, engine)
+          expect(steps).toBe(path.length - 1)
+          expect(m.cell).toBe(cell)
+          expect(m.ap).toBe(reach.apLeft[cell])
+          expect(m.mp).toBe(reach.mpLeft[cell])
+          if (m.ap < ap0) tackledPaths++
+          checked++
+        }
       }
     }
-    expect(checked).toBeGreaterThan(1500)
+    expect(checked).toBeGreaterThan(3000)
     // Le corpus exerce vraiment le tacle.
-    expect(tackledPaths).toBeGreaterThan(100)
+    expect(tackledPaths).toBeGreaterThan(200)
   })
 
-  it('ensemble des cases = recherche exhaustive ; couple (PA, PM) = maximum lexicographique du front de Pareto', () => {
+  it('priorité PM : ensemble des cases = recherche exhaustive, PM maximaux exacts, PA optimaux parmi ces chemins', () => {
     const rng = new Rng(77)
     let cells = 0
-    let optimal = 0
+    let optimalAp = 0
+    let apFirstCells = 0
+    let apFirstOptimal = 0
+    let apFirstMissing = 0
     for (let k = 0; k < 150; k++) {
       const { engine, fight, mover } = tackleScene(rng, 1000 + k)
       mover.mp = Math.min(mover.mp, 5)
       const view = createView(engine, fight, mover, 1)
       const reach = computeReach(view, fight, mover)
+      const reachAp = computeReach(view, fight, mover, { priority: 'ap' })
       const ref = exhaustive(engine, engine.cloneFight(fight), engine.cloneFight(fight).fighters[mover.id])
       const got = new Set(Array.from(reach.cells.subarray(0, reach.count)))
       expect(got).toEqual(new Set(ref.keys()))
       for (const [c, list] of ref) {
-        const best = list.reduce((b, x) => (x[0] > b[0] || (x[0] === b[0] && x[1] > b[1]) ? x : b))
+        const maxMp = Math.max(...list.map(x => x[1]))
+        const maxApAtMaxMp = Math.max(...list.filter(x => x[1] === maxMp).map(x => x[0]))
+        expect(reach.mpLeft[c]).toBe(maxMp)
         cells++
-        if (reach.apLeft[c] === best[0] && reach.mpLeft[c] === best[1]) optimal++
+        if (reach.apLeft[c] === maxApAtMaxMp) optimalAp++
+        // Priorité PA : sous-ensemble, PA maximaux du front dans la quasi-totalité des cas.
+        if (reachAp.mpLeft[c] < 0) {
+          apFirstMissing++
+          continue
+        }
+        const maxAp = Math.max(...list.map(x => x[0]))
+        apFirstCells++
+        if (reachAp.apLeft[c] === maxAp) apFirstOptimal++
       }
+      for (let i = 0; i < reachAp.count; i++) expect(ref.has(reachAp.cells[i])).toBe(true)
     }
-    // Label-setting exact sauf cas d'arrondi non monotone du tacle (rarissimes).
-    expect(optimal / cells).toBeGreaterThan(0.995)
+    expect(optimalAp / cells).toBeGreaterThan(0.995)
+    expect(apFirstOptimal / apFirstCells).toBeGreaterThan(0.99)
+    // Le corpus (tacles extrêmes) contient des cases qu'un arbre « PA d'abord » ne voit pas : d'où la priorité PM.
+    expect(apFirstMissing).toBeGreaterThan(0)
   })
 
   it('0 PM : seule la case actuelle ; PM fractionnaires : chemins sur ⌊PM⌋', () => {

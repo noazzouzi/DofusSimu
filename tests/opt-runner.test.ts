@@ -12,13 +12,14 @@ import { playRandomTurn } from '../src/ai/policies/random'
 import { playScriptedTurn } from '../src/ai/policies/scripted'
 import { Rng } from '../src/core/rng'
 import { loadDataStore } from '../src/data/node'
+import { sampleVariant as scenarioVariant, variantKey } from '../src/dungeons'
 import type { UncertainParam } from '../src/dungeons/types'
 import { canCast, createEngine } from '../src/engine'
 import { distance } from '../src/map/geometry'
 import { MemoryFightCache, JsonlFightCache, cacheKey, canonicalJson } from '../src/optimizer/cache'
 import { checkpoints, compareConfigs, notableSeeds, runBatch } from '../src/optimizer/montecarlo'
 import { createLocalPool } from '../src/optimizer/pool/pool'
-import { buildTeam, controlScenario, fightDigest, fightParams, parseControlId, resolveScenario, runOne, runTask, toReplay } from '../src/optimizer/runner'
+import { buildTeam, controlScenario, fightDigest, fightParams, parseControlId, resolveScenario, runMicro, runOne, runTask, toReplay } from '../src/optimizer/runner'
 import { campaignSeed, campaignSeeds, chunkSeeds, sampleVariant, variantKeyOf, weightedIndex } from '../src/optimizer/seeds'
 import {
   batchShouldStop,
@@ -28,13 +29,15 @@ import {
   quantile,
   rankKey,
   summarizeBatch,
+  variantMarginals,
   wilson,
   worstVariant,
 } from '../src/optimizer/stats'
-import { getPreset, parseTeam } from '../src/optimizer/team/presets'
+import { PRESETS, getPreset, parseTeam, presetMember } from '../src/optimizer/team/presets'
+import { DAMAGE_SPECS } from '../src/engine/effects/damage/pipeline'
 import type { FightSpec, FightSummary } from '../src/optimizer/types'
 import { parseReplay } from '../src/replay/validate'
-import { parseArgs, writeReplay } from '../src/cli/simulate'
+import { fighterTable, parseArgs, writeReplay } from '../src/cli/simulate'
 
 const DATA = loadDataStore('data')
 /** Combat de contrôle : 4 monstres de vague du Vortex (grade 5) sur la vraie salle, sans règles serveur. */
@@ -103,6 +106,17 @@ describe('seeds (§13.1) : CRN et variantes INCERTAINES', () => {
     }
   })
 
+  it('variantes identiques à celles du scénario (src/dungeons sampleVariant / variantKey, WP3)', () => {
+    const vortex = resolveScenario('vortex')
+    for (const seed of campaignSeeds(77, 500)) {
+      const mine = sampleVariant(vortex.uncertain, seed)
+      const theirs = scenarioVariant(vortex, seed)
+      expect(mine.params).toEqual(theirs.params)
+      expect(mine.key).toBe(theirs.key)
+      expect(variantKeyOf(vortex.uncertain, { ...vortex.defaultParams, ...mine.params })).toBe(variantKey({ ...vortex.defaultParams, ...mine.params }, vortex.uncertain))
+    }
+  })
+
   it('fightParams : défaut, variante tirée, paramètres imposés prioritaires', () => {
     const vortex = resolveScenario('vortex')
     const unc = vortex.uncertain
@@ -162,6 +176,12 @@ describe('stats (§15.2) : Wilson, agrégats, comparaisons appariées', () => {
     expect(rankKey(summarizeBatch([fakeSummary(1, false, 0.3)]))).toBeCloseTo(0.3)
     expect(worstVariant(summarizeBatch([...s, fakeSummary(9, false, 0, { variant: 'x=1' })]))?.key).toBe('x=1')
     expect(failReasons(s)).toEqual([{ reason: 'défaite', n: 2 }])
+    // Effets marginaux des valeurs INCERTAINES (clés « a=1|b=x »).
+    const mv = variantMarginals([
+      fakeSummary(1, true, 1, { variant: 'default' }), fakeSummary(2, false, 0, { variant: 'a=1' }),
+      fakeSummary(3, false, 0.2, { variant: 'a=1|b=x' }), fakeSummary(4, true, 1, { variant: 'b=x' }),
+    ])
+    expect(mv.map(m => `${m.param}=${m.value}:${m.n}/${m.baseN}:${m.winRate}/${m.baseWinRate}`)).toEqual(['a=1:2/2:0/1', 'b=x:2/2:0.5/0.5'])
   })
 
   it('arrêts séquentiels et différence appariée', () => {
@@ -243,6 +263,9 @@ describe('runner : combat complet sur données réelles', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true })
     }
+    const table = fighterTable(res.fight).split('\n')
+    expect(table).toHaveLength(1 + TEAM.length + res.fight.fighters.filter(f => f.team === 0 && f.kind === 'summon' && (res.fight.metrics[f.id]?.damageDealt || res.fight.metrics[f.id]?.healingDone)).length)
+    expect(table[1]).toMatch(/^Iop \(killer\)/)
     expect(parseArgs(['vortex', '--ai', 'fast', '--runs=10', '--robust', '--team', 'iop:killer']).flags).toEqual(
       new Map<string, string | true>([['ai', 'fast'], ['runs', '10'], ['robust', true], ['team', 'iop:killer']]),
     )
@@ -255,6 +278,22 @@ describe('runner : combat complet sur données réelles', () => {
     expect(Number.isFinite(r.summary.score)).toBe(true)
     expect(r.summary.variant).toBe(fightParams(resolveScenario('vortex'), spec({ scenarioId: 'vortex', variantPolicy: 'sampled' }), 7).variant)
     expect(runOne(DATA, spec({ scenarioId: 'vortex', variantPolicy: 'sampled' }), 7).summary).toEqual(r.summary)
+  })
+
+  it('micro-scénarios du Vortex (prefix12, phase2, poutch) : résumé = MicroResult, déterministe, tâches de worker', () => {
+    const team = parseTeam('iop:killer,cra:killer,enutrof:mpLock,pandawa:placer', DATA)
+    const s = spec({ scenarioId: 'vortex', team })
+    for (const id of ['prefix12', 'phase2', 'poutch'] as const) {
+      const r = runMicro(DATA, s, 3, id)
+      expect(r.micro, id).toBeDefined()
+      expect(r.summary.score).toBe(r.micro!.pWin)
+      expect(r.summary.progress).toBe(r.micro!.progress)
+      expect(r.summary.hpLeftPct).toBeGreaterThanOrEqual(0)
+      expect(r.summary.hpLeftPct).toBeLessThanOrEqual(1)
+      expect(runMicro(DATA, s, 3, id).summary).toEqual(r.summary)
+      expect(runTask(DATA, { taskId: 3, spec: s, seeds: [3], kind: id, record: false })).toEqual([r.summary])
+    }
+    expect(() => runMicro(DATA, spec(), 1, 'prefix12')).toThrow(/indisponible/)
   })
 
   it('runTask : graines dans l\'ordre ; t0 refusé (WP4b)', () => {
@@ -300,6 +339,44 @@ describe('politiques `scripted` et `random`', () => {
     expect(first.t === 'cast' && rotationIds.has(first.spellId)).toBe(true)
     expect(cra.ap).toBeLessThan(cra.stats.ap)
     expect(target.hp).toBeLessThan(target.maxHp)
+  })
+
+  it('scripted : chaque preset frappe le mannequin (proche ou à 13 cases) ; ≥ 90 % des sorts à dégâts touchent aussitôt', () => {
+    // Mannequin passif de WP3 (src/dungeons/generic/dummy.ts, résistances du mix Vortex), 3 tours, un seul personnage.
+    const dummyCell = 311
+    const near = 323 // 3 cases
+    const silent: string[] = []
+    const misses: string[] = []
+    let damageCasts = 0
+    for (const p of PRESETS) {
+      for (const params of [{ dummyCell, playerCells: [near] }, {}]) {
+        const r = runOne(DATA, { ...spec({ scenarioId: 'dummy', team: [presetMember(p, DATA)] }), params }, 1, { record: true })
+        const team = r.fight.fighters.filter(f => f.team === 0)
+        const dealt = team.reduce((a, f) => a + (r.fight.metrics[f.id]?.damageDealt ?? 0), 0)
+        if (!(dealt > 0)) silent.push(`${p.id} ${params.dummyCell ? 'proche' : 'loin'}`)
+        // Un lancer d'un sort à dégâts du personnage doit toucher un ennemi (pas de lancer « pour un buff »).
+        const me = team[0]
+        const events = r.fight.events
+        for (let i = 0; i < events.length; i++) {
+          const e = events[i]
+          if (e.t !== 'cast' || e.fighter !== me.id || e.element === undefined) continue
+          const lvl = me.spells.find(s => s.spellId === e.spellId)?.level
+          if (!lvl || !lvl.effects.some(x => DAMAGE_SPECS.has(x.effectId))) continue
+          // Les positions bougent (poussées) : on compte un dégât sur un ennemi avant le lancer suivant. Les sorts à
+          // dégâts différés ou conditionnels (Flèche Détonante, états) peuvent légitimement ne rien infliger tout de suite.
+          let hit = false
+          for (let j = i + 1; j < events.length && events[j].t !== 'cast' && events[j].t !== 'turnEnd'; j++) {
+            const d = events[j]
+            if (d.t === 'damage' && r.fight.fighters[d.target].team !== 0) hit = true
+          }
+          damageCasts++
+          if (!hit) misses.push(`${p.id} : ${e.spellName} sur ${e.cell}`)
+        }
+      }
+    }
+    expect(silent).toEqual([])
+    console.info(`[scripted/mannequin] ${damageCasts} lancers de sorts à dégâts, ${misses.length} sans dégât immédiat (poisons, bombes, différés) : ${misses.slice(0, 8).join(' ; ')}…`)
+    expect(misses.length / damageCasts).toBeLessThan(0.1)
   })
 
   it('random : légal, déterministe par graine IA', () => {

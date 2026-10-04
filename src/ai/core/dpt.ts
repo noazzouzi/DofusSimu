@@ -6,8 +6,8 @@
  * et « dommages subis » de `d`, critique pondéré) + DoT × min(durée, 2) × 0,8 + effets différés × 0,8.
  * `dpt(a, d, ap)` : sac à dos borné sur les PA (≤ 24 ; `castsPerTurn`, `castsPerTarget`, relances) du meilleur tour
  * de `a` contre `d` sans contrainte de position, × calibration (`data/ai/calibration.json`, bornée à [0,5 ; 2]).
- * Caches par (a.rev, d.rev, PA, relances) — `Fighter.rev` (E4) garantit mêmes caractéristiques/buffs ; les PV
- * n'entrent dans la clé que pour les sorts en % de PV.
+ * Caches par empreintes « dégâts » (`damageDigest`, mémoïsées par `Fighter.rev` E4), PA, relances ; les PV n'entrent
+ * dans la clé que pour les sorts en % de PV (lancers « % PV » jamais cachés).
  */
 import calibrationJson from '../../../data/ai/calibration.json'
 import { Element, type Stats } from '../../core/types'
@@ -24,7 +24,7 @@ import type { Fighter, KnownSpell } from '../../engine/types'
 import type { ZoneSpec } from '../../data/model'
 import { compileZone } from '../../map/zones'
 import type { DptTable } from '../types'
-import { revKey } from './hash'
+import { damageDigest, fnvInt } from './hash'
 import { createSpellProfileIndex, type DamageLineX, type SpellProfileIndexX, type SpellProfileX } from './spellProfile'
 
 // ───────────────────────────── calibration ─────────────────────────────
@@ -263,7 +263,11 @@ export interface TurnDamage {
 const MAX_AP = 24
 const DP_MEAN = new Float64Array(MAX_AP + 1)
 const DP_VAR = new Float64Array(MAX_AP + 1)
-const DP_CHOICE: number[][] = Array.from({ length: MAX_AP + 1 }, () => [])
+/** Objets du sac à dos (un par lancer possible) : sort, coût, décisions par budget. */
+const MAX_ITEMS = 96
+const ITEM_SPELL = new Int16Array(MAX_ITEMS)
+const ITEM_COST = new Int16Array(MAX_ITEMS)
+const DP_TAKE = new Uint8Array(MAX_ITEMS * (MAX_AP + 1))
 
 /** Un sort est-il lançable au tour considéré ? Renvoie le nombre maximal de lancers (0 = indisponible). */
 export function castsAvailable(a: Fighter, ks: KnownSpell, p: SpellProfileX, targetId: number, mode: TurnMode): number {
@@ -276,11 +280,25 @@ export function castsAvailable(a: Fighter, ks: KnownSpell, p: SpellProfileX, tar
   return n > 0 ? n : 0
 }
 
+/** Entrée du cache des tours (clé effective 64 bits : hash de la Map + `k2`). */
+interface TurnEntry { k2: number; r: TurnDamage }
+
+/** Plafonds des caches (vidés en bloc au dépassement : aucune influence sur les décisions). */
+const CAST_CACHE_MAX = 40000
+const TURN_CACHE_MAX = 60000
+
 export class DptTableImpl implements DptTable {
   readonly profiles: SpellProfileIndexX
-  private readonly castCache = new Map<string, CastDamage>()
-  private readonly turnCache = new Map<string, TurnDamage>()
+  /**
+   * Dégâts par lancer : révision de l'attaquant → révision du défenseur → un `CastDamage` par sort (index de
+   * `a.spells`), calculé à la demande. Les sorts « % PV » ne sont jamais mis en cache (ils dépendent des PV).
+   */
+  private readonly castCache = new Map<number, Map<number, (CastDamage | undefined)[]>>()
+  private castEntries = 0
+  private readonly turnCache = new Map<number, TurnEntry>()
+  private readonly bestCache = new Map<number, { k2: number; r: { index: number; mean: number } }>()
   private readonly tmp: CastDamage = { mean: 0, variance: 0 }
+  private readonly hpTmp: CastDamage = { mean: 0, variance: 0 }
 
   constructor(readonly engine: Engine) {
     this.profiles = createSpellProfileIndex(engine)
@@ -290,19 +308,36 @@ export class DptTableImpl implements DptTable {
     return calibrationOf(a)
   }
 
-  /** Dégâts d'un lancer du i-ème sort de `a` sur `d` (au centre, mis en cache). */
+  /**
+   * Dégâts d'un lancer du i-ème sort de `a` sur `d` (au centre, mis en cache par révisions). L'objet renvoyé est
+   * partagé (cache) : le lire, ne pas le modifier ; pour un sort « % PV », il est réutilisé à l'appel suivant.
+   */
   perCast(a: Fighter, spellIndex: number, d: Fighter): CastDamage {
-    const ks = a.spells[spellIndex]
     const p = this.profiles.ofFighter(a)[spellIndex]
-    if (!p.damage.length) return ZERO_CAST
-    const hpDep = p.damage.some(l => l.family === 'hp')
-    const key = `${revKey(a)}:${ks.spellId}:${revKey(d)}${hpDep ? `:${a.hp}:${d.hp}` : ''}`
-    let r = this.castCache.get(key)
+    if (!p || !p.damage.length) return ZERO_CAST
+    const ks = a.spells[spellIndex]
+    if (hpDependentProfile(p)) {
+      castDamage(a, d, p, ks.isWeapon === true, 1, isMeleeSpell(p), this.hpTmp)
+      return this.hpTmp
+    }
+    const ak = damageDigest(a)
+    let byD = this.castCache.get(ak)
+    if (!byD) this.castCache.set(ak, (byD = new Map()))
+    const dk = damageDigest(d)
+    let row = byD.get(dk)
+    if (!row) {
+      if (this.castEntries >= CAST_CACHE_MAX) {
+        this.castCache.clear()
+        this.castEntries = 0
+        this.castCache.set(ak, (byD = new Map()))
+      }
+      byD.set(dk, (row = new Array(a.spells.length)))
+      this.castEntries++
+    }
+    let r = row[spellIndex]
     if (!r) {
       castDamage(a, d, p, ks.isWeapon === true, 1, isMeleeSpell(p), this.tmp)
-      r = { mean: this.tmp.mean, variance: this.tmp.variance }
-      if (this.castCache.size > 60000) this.castCache.clear()
-      this.castCache.set(key, r)
+      row[spellIndex] = r = { mean: this.tmp.mean, variance: this.tmp.variance }
     }
     return r
   }
@@ -313,19 +348,45 @@ export class DptTableImpl implements DptTable {
    */
   turn(a: Fighter, d: Fighter, ap: number, mode: TurnMode, filter?: (spellIndex: number) => boolean): TurnDamage {
     const apInt = Math.max(0, Math.min(MAX_AP, Math.floor(ap + 1e-9)))
-    let key = ''
+    let h = 0
+    let h2 = 0
     if (!filter) {
-      let cdSig = 0
-      for (const k in a.cooldowns) if (a.cooldowns[k]) cdSig = (cdSig * 31 + Number(k) * 7 + a.cooldowns[k]) | 0
-      if (mode === 'now') for (const k in a.castsThisTurn) cdSig = (cdSig * 17 + Number(k) * 3 + a.castsThisTurn[k]) | 0
-      key = `${revKey(a)}:${revKey(d)}:${apInt}:${mode}:${cdSig}${hpDependent(this.profiles.ofFighter(a)) ? `:${a.hp}:${d.hp}` : ''}`
-      const hit = this.turnCache.get(key)
-      if (hit) return hit
+      // Clé : révisions, PA, mode, relances (et lancers du tour en 'now'), PV si un sort dépend des PV.
+      const da = damageDigest(a)
+      const dd = damageDigest(d)
+      h = fnvInt(fnvInt(fnvInt(0x811c9dc5, da), dd), apInt * 2 + (mode === 'now' ? 1 : 0))
+      h2 = fnvInt(fnvInt(fnvInt(0x050c5d1f, da), dd), apInt * 2 + (mode === 'now' ? 1 : 0))
+      for (const k in a.cooldowns) {
+        const v = a.cooldowns[k]
+        if (!v || (mode === 'next' && v <= 1)) continue
+        h = fnvInt(fnvInt(h, Number(k)), v)
+        h2 = fnvInt(fnvInt(h2, Number(k)), v)
+      }
+      if (mode === 'now') {
+        for (const k in a.castsThisTurn) {
+          h = fnvInt(fnvInt(h, Number(k) + 1e6), a.castsThisTurn[k])
+          h2 = fnvInt(fnvInt(h2, Number(k) + 1e6), a.castsThisTurn[k])
+        }
+        const suffix = `:${d.id}`
+        for (const k in a.castsOnTarget) {
+          const v = a.castsOnTarget[k]
+          if (!v || !k.endsWith(suffix)) continue
+          h = fnvInt(fnvInt(h, parseInt(k, 10) + 2e6), v)
+          h2 = fnvInt(fnvInt(h2, parseInt(k, 10) + 2e6), v)
+        }
+      }
+      if (hpDependent(this.profiles.ofFighter(a))) {
+        h = fnvInt(fnvInt(h, a.hp), d.hp)
+        h2 = fnvInt(fnvInt(h2, a.hp), d.hp)
+      }
+      const hit = this.turnCache.get(h)
+      if (hit && hit.k2 === h2) return hit.r
     }
     const profiles = this.profiles.ofFighter(a)
+    // Sac à dos borné (chaque lancer possible = un objet 0/1), table de décisions pour reconstruire le choix.
     DP_MEAN.fill(0, 0, apInt + 1)
     DP_VAR.fill(0, 0, apInt + 1)
-    for (let k = 0; k <= apInt; k++) DP_CHOICE[k].length = 0
+    let nItems = 0
     let freeMean = 0
     let freeVar = 0
     const freeCasts: number[] = []
@@ -346,34 +407,41 @@ export class DptTableImpl implements DptTable {
         continue
       }
       n = Math.min(n, Math.floor(apInt / cost))
-      for (let copy = 0; copy < n; copy++) {
+      const mean = cd.mean
+      const variance = cd.variance
+      for (let copy = 0; copy < n && nItems < MAX_ITEMS; copy++) {
+        const row = nItems * (MAX_AP + 1)
+        ITEM_SPELL[nItems] = i
+        ITEM_COST[nItems] = cost
+        for (let w = 0; w <= apInt; w++) DP_TAKE[row + w] = 0
         for (let w = apInt; w >= cost; w--) {
-          const v = DP_MEAN[w - cost] + cd.mean
+          const v = DP_MEAN[w - cost] + mean
           if (v > DP_MEAN[w] + 1e-9) {
             DP_MEAN[w] = v
-            DP_VAR[w] = DP_VAR[w - cost] + cd.variance
-            const ch = DP_CHOICE[w]
-            ch.length = 0
-            for (const x of DP_CHOICE[w - cost]) ch.push(x)
-            ch.push(ks.spellId)
+            DP_VAR[w] = DP_VAR[w - cost] + variance
+            DP_TAKE[row + w] = 1
           }
         }
+        nItems++
       }
     }
-    // Plus petit budget atteignant le maximum (PA réellement utilisés).
+    // Plus petit budget atteignant le maximum (PA réellement utilisés), puis reconstruction.
     let best = 0
     for (let w = 1; w <= apInt; w++) if (DP_MEAN[w] > DP_MEAN[best] + 1e-9) best = w
+    const casts: number[] = freeCasts
     let apUsed = 0
-    for (const id of DP_CHOICE[best]) apUsed += profiles[a.spells.findIndex(s => s.spellId === id)]?.apCost ?? 0
-    const r: TurnDamage = {
-      mean: DP_MEAN[best] + freeMean,
-      variance: DP_VAR[best] + freeVar,
-      casts: [...freeCasts, ...DP_CHOICE[best]],
-      apUsed,
+    let w = best
+    for (let it = nItems - 1; it >= 0 && w > 0; it--) {
+      if (DP_TAKE[it * (MAX_AP + 1) + w]) {
+        casts.push(a.spells[ITEM_SPELL[it]].spellId)
+        apUsed += ITEM_COST[it]
+        w -= ITEM_COST[it]
+      }
     }
-    if (key) {
-      if (this.turnCache.size > 60000) this.turnCache.clear()
-      this.turnCache.set(key, r)
+    const r: TurnDamage = { mean: DP_MEAN[best] + freeMean, variance: DP_VAR[best] + freeVar, casts, apUsed }
+    if (!filter) {
+      if (this.turnCache.size >= TURN_CACHE_MAX) this.turnCache.clear()
+      this.turnCache.set(h, { k2: h2, r })
     }
     return r
   }
@@ -392,8 +460,31 @@ export class DptTableImpl implements DptTable {
     return this.turn(a, d, ap ?? this.nextAp(a), 'next').variance * c * c
   }
 
-  /** Plus gros lancer unique (espérance) de `a` sur `d` parmi les sorts disponibles au prochain tour. */
+  /**
+   * Plus gros lancer unique (espérance) de `a` sur `d` parmi les sorts disponibles (prochain tour ou reste du tour).
+   * Résultat partagé en mode 'next' (cache par empreintes et relances) : le lire immédiatement.
+   */
   bestCast(a: Fighter, d: Fighter, mode: TurnMode = 'next'): { index: number; mean: number } {
+    let h = 0
+    let h2 = 0
+    if (mode === 'next') {
+      const da = damageDigest(a)
+      const dd = damageDigest(d)
+      h = fnvInt(fnvInt(0x2545f491, da), dd)
+      h2 = fnvInt(fnvInt(0x050c5d1f, da), dd)
+      for (const k in a.cooldowns) {
+        const v = a.cooldowns[k]
+        if (v <= 1) continue
+        h = fnvInt(fnvInt(h, Number(k)), v)
+        h2 = fnvInt(fnvInt(h2, Number(k)), v)
+      }
+      if (hpDependent(this.profiles.ofFighter(a))) {
+        h = fnvInt(fnvInt(h, a.hp), d.hp)
+        h2 = fnvInt(fnvInt(h2, a.hp), d.hp)
+      }
+      const hit = this.bestCache.get(h)
+      if (hit && hit.k2 === h2) return hit.r
+    }
     const profiles = this.profiles.ofFighter(a)
     let index = -1
     let mean = 0
@@ -406,15 +497,30 @@ export class DptTableImpl implements DptTable {
         index = i
       }
     }
-    return { index, mean }
+    const r = { index, mean }
+    if (mode === 'next') {
+      if (this.bestCache.size >= TURN_CACHE_MAX) this.bestCache.clear()
+      this.bestCache.set(h, { k2: h2, r })
+    }
+    return r
   }
 
   /** Vide les caches (tests, changement de données). */
   clear(): void {
     this.castCache.clear()
+    this.castEntries = 0
     this.turnCache.clear()
+    this.bestCache.clear()
   }
 }
+
+/** Le sort a-t-il une ligne « % PV » (dégâts dépendant des PV du lanceur ou de la cible) ? */
+function hpDependentProfile(p: SpellProfileX): boolean {
+  let v = HP_DEP_P.get(p)
+  if (v === undefined) HP_DEP_P.set(p, (v = p.damage.some(l => l.family === 'hp')))
+  return v
+}
+const HP_DEP_P = new WeakMap<SpellProfileX, boolean>()
 
 const HP_DEP = new WeakMap<readonly SpellProfileX[], boolean>()
 /** Un des sorts dépend-il des PV (famille « % PV ») ? */

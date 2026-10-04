@@ -20,7 +20,8 @@
  *  | horloge et joueur mort | variante `deadPlayerAdvancesClock` : l'Auroraire lance 4996 au créneau du mort (clock.ts) |
  *  | glyphes | variante `glyphTrigger = 'turnEnd'` : glyphes 5011 posés convertis en glyphes de fin de tour |
  *  | heure de mort (repli) | `markDeathHour` : si la chaîne des données 5001 → 5000 n'a pas posé l'état d'heure sur le
- *  |   | mort (défaut du moteur constaté, voir le rapport WP3a), le scénario le pose (même effet que 5000) |
+ *  |   | mort (défaut du moteur : `addState`, effects/buffs/states.ts, refuse une cible mourante — voir
+ *  |   | `markDeathHour`), le scénario le pose (même effet que 5000) |
  *
  * Les hooks (`ScenarioHooks`) ne reçoivent pas le moteur : `createVortexFight` enregistre le moteur du combat
  * (clé = tableau `spells` du Vortex, partagé par tous les clones du combat ; repli : la carte).
@@ -318,9 +319,16 @@ function tickDeadPlayers(engine: Engine, fight: FightState, round: number, befor
 
 /**
  * Mort d'un monstre de vague (`onDeath`) : repli du marquage de l'heure de mort. Les données (5002 X → 5001 → 5000)
- * posent l'état de l'heure courante sur le mourant ; si le moteur ne l'a pas fait (défaut constaté), le scénario le
- * pose (état 221..232, durée infinie, « désenvoûtement fort » : conservé à la mort). Rien pour un corrompu
- * (tué par *Action !*) ni après *Action !*.
+ * posent l'état de l'heure courante sur le mourant ; si le moteur ne l'a pas fait, le scénario le pose (état 221..232,
+ * durée infinie, « désenvoûtement fort » : conservé à la mort). Rien pour un corrompu (tué par *Action !*) ni après
+ * *Action !*.
+ *
+ * Défaut du moteur (diagnostiqué, rapport WP3a) : le ciblage du mourant est correct (`fromDeath` propagé par le
+ * déclencheur X jusqu'au 5000 lancé par l'Auroraire), mais `addState` (src/engine/effects/buffs/states.ts) commence par
+ * `if (!t.alive …) return false` : l'effet 950 de 5001 (état 233 « Mort latente », masque C) n'est donc jamais posé
+ * sur le mourant, et le masque `a,E233,*E22h` de 5000 l'écarte ensuite. Correctif suggéré à l'équipe moteur : accepter
+ * une cible mourante (`isDying(t)`, effects/core.ts). Le jour où il est appliqué, ce repli ne fait plus rien (l'état
+ * est déjà là) — tests/vortex-scenario.test.ts (« diagnostic moteur », `it.fails`) le signalera.
  */
 export function markDeathHour(fight: FightState, f: Fighter): void {
   const vx = vortexState(fight)

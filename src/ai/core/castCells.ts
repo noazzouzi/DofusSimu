@@ -17,7 +17,7 @@ import { modifiedSpellLevel } from '../../engine/effects/buffs/spellMods'
 import type { Engine } from '../../engine/engine'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
 import { CELL_COUNT, distance, isInCastRange } from '../../map/geometry'
-import { hasLineOfSight } from '../../map/los'
+import { losLine } from '../../map/los'
 import type { ReachInfo } from '../types'
 import { buildOccupancy } from './reach'
 
@@ -57,47 +57,41 @@ export function inverseRange(g: CastGeom, target: number): Int16Array {
 
 // ───────────────────────────── ligne de vue ─────────────────────────────
 
-const LOS_STAMP = new Uint32Array(CELL_COUNT * CELL_COUNT)
-const LOS_VALUE = new Uint8Array(CELL_COUNT * CELL_COUNT)
-let losGeneration = 0
-
 /**
- * Ligne de vue selon `canCast` pour un lanceur sur un état figé (positions vues par `team`), mémoïsée. Le lanceur ne
- * bloque jamais (il aura quitté sa case) ; une instance ne doit plus servir après une modification de l'état.
+ * Ligne de vue selon `canCast` pour un lanceur sur un état figé (positions vues par `team`) : cases intermédiaires
+ * transparentes et inoccupées (le lanceur ne bloque jamais : il aura quitté sa case), case cible transparente. Carte
+ * des cases bloquantes construite une fois (560 octets) puis lignes précalculées du client (`losLine`) : aucune
+ * allocation par requête. Une instance ne doit plus servir après une modification des positions.
  */
 export class LosOracle {
   readonly occ: Int16Array
-  private readonly gen: number
-  private readonly blocks: (c: number) => boolean
-  private readonly targetBlocks: (c: number) => boolean
+  /** 1 = case bloquante (opaque ou occupée par un autre que le lanceur). */
+  private readonly blocked = new Uint8Array(CELL_COUNT)
+  /** 1 = case opaque (test de la case cible). */
+  private readonly opaque = new Uint8Array(CELL_COUNT)
 
   constructor(readonly s: FightState, team: TeamId, readonly casterId: number, occ?: Int16Array) {
     this.occ = occ ?? buildOccupancy(s, team)
-    losGeneration = (losGeneration + 1) >>> 0
-    if (losGeneration === 0) {
-      LOS_STAMP.fill(0)
-      losGeneration = 1
-    }
-    this.gen = losGeneration
     const cells = s.map.cells
     const o = this.occ
-    this.blocks = (c: number) => {
+    const bl = this.blocked
+    const op = this.opaque
+    for (let c = 0; c < CELL_COUNT; c++) {
       const mc = cells[c]
-      if (!mc || !mc.los) return true
+      const opq = !mc || !mc.los
+      op[c] = opq ? 1 : 0
       const id = o[c]
-      return id >= 0 && id !== casterId
+      bl[c] = opq || (id >= 0 && id !== casterId) ? 1 : 0
     }
-    this.targetBlocks = (c: number) => !cells[c]?.los
   }
 
   los(from: number, to: number): boolean {
-    if (from === to) return !this.targetBlocks(to)
-    const k = from * CELL_COUNT + to
-    if (LOS_STAMP[k] === this.gen) return LOS_VALUE[k] === 1
-    const v = hasLineOfSight(from, to, this.blocks, this.targetBlocks)
-    LOS_STAMP[k] = this.gen
-    LOS_VALUE[k] = v ? 1 : 0
-    return v
+    if (from === to) return this.opaque[to] === 0
+    const line = losLine(from, to)
+    const end = line.length - 1
+    const bl = this.blocked
+    for (let i = 0; i < end; i++) if (bl[line[i]]) return false
+    return end >= 0 && this.opaque[to] === 0
   }
 }
 
@@ -172,6 +166,8 @@ export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, 
   const g = castGeom(caster, lvl)
   const cost = lvl.apCost
   const start = reach.count > 0 ? reach.cells[0] : caster.cell
+  // Rejet rapide : toute case atteignable est à ≤ PM du départ, toute case de lancer à ≤ PO de la cible.
+  if (start >= 0 && reach.count > 0 && distance(start, target) > reach.mpLeft[start] + g.max) return out
   if (start >= 0 && reach.apLeft[start] >= cost && castGeometryOk(s, caster, spell, lvl, g, start, target, los, nextTurn)) {
     out.push(start)
     if (out.length >= limit) return out

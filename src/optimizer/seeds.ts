@@ -5,8 +5,10 @@
  *    graines (nombres aléatoires communs, CRN) ; avec E1 (`rngRekey: 'perTurn'`, défaut de `runOne`) les dés d'un
  *    tour ne dépendent que de (graine, tour, combattant).
  *  - Variante de scénario : `Rng(mix32(fightSeed, 0x5C))` ; chaque paramètre INCERTAIN (`UncertainParam`, première
- *    valeur = défaut) est tiré indépendamment selon ses poids, dans l'ordre de `scenario.uncertain`. La clé de variante
- *    (`FightSummary.variant`) liste les paramètres hors défaut (`clé=valeur` séparés par ';'), 'default' sinon.
+ *    valeur = défaut) est tiré indépendamment selon ses poids, dans l'ordre de `scenario.uncertain` (un tirage par
+ *    paramètre, même imposé). La clé de variante (`FightSummary.variant`) liste les paramètres hors défaut
+ *    (`clé=valeur` séparés par '|', tableaux en `a,b,c`), 'default' sinon. Tirage et clé sont IDENTIQUES à ceux du
+ *    scénario (src/dungeons `sampleVariant` / `variantKey`, WP3) : vérifié par tests/opt-runner.test.ts.
  *
  * Tout est entier ou à base de `Rng.next()` (opérations 32 bits + division exacte) : mêmes tirages en Node et dans le
  * navigateur, quel que soit le nombre de workers.
@@ -35,21 +37,28 @@ export function variantRng(fightSeed: number): Rng {
   return new Rng(mix32(fightSeed, VARIANT_SALT))
 }
 
-/** Valeur d'un paramètre en texte stable (clés de variante, rapports). */
+/** Séparateur des paramètres d'une clé de variante (même format que src/dungeons `variantKey`). */
+export const VARIANT_KEY_SEP = '|'
+
+/** Valeur d'un paramètre en texte stable (clés de variante, rapports) : tableaux en `a,b,c`. */
 export function paramText(v: unknown): string {
-  return Array.isArray(v) ? `[${v.join(',')}]` : String(v)
+  return Array.isArray(v) ? v.join(',') : String(v)
 }
 
-/** Index tiré selon des poids (somme quelconque > 0 ; poids négatifs ou non finis ignorés). */
+/**
+ * Index tiré selon des poids (somme quelconque > 0 ; poids négatifs ou non finis comptés 0) : cumul des poids
+ * NORMALISÉS comparé à `u` — exactement l'arithmétique du tirage des scénarios (src/dungeons/vortex/params.ts
+ * `sampleUncertain`), pour des variantes identiques au bit près. `u` ∈ [0, 1) ; au-delà du cumul : dernier index.
+ */
 export function weightedIndex(weights: readonly number[], u: number): number {
+  const w = (i: number): number => (weights[i] > 0 && Number.isFinite(weights[i]) ? weights[i] : 0)
   let total = 0
-  for (const w of weights) if (w > 0 && Number.isFinite(w)) total += w
-  if (!(total > 0)) return 0
-  let r = u * total
+  for (let i = 0; i < weights.length; i++) total += w(i)
+  if (!(total > 0)) total = 1
+  let acc = 0
   for (let i = 0; i < weights.length; i++) {
-    const w = weights[i] > 0 && Number.isFinite(weights[i]) ? weights[i] : 0
-    if (r < w) return i
-    r -= w
+    acc += w(i) / total
+    if (u < acc) return i
   }
   return weights.length - 1
 }
@@ -57,7 +66,7 @@ export function weightedIndex(weights: readonly number[], u: number): number {
 export interface SampledVariant {
   /** Valeurs tirées hors défaut (à fusionner sur les paramètres par défaut du scénario). */
   params: Record<string, ScenarioParams[string]>
-  /** Clé lisible : 'default' ou `clé=valeur;…` (paramètres hors défaut, ordre de `uncertain`). */
+  /** Clé lisible : 'default' ou `clé=valeur|…` (paramètres hors défaut, ordre de `uncertain`). */
   key: string
 }
 
@@ -68,15 +77,18 @@ export interface SampledVariant {
 export function sampleVariant(uncertain: readonly UncertainParam[], fightSeed: number, fixed: ReadonlySet<string> = new Set()): SampledVariant {
   const rng = variantRng(fightSeed)
   const params: Record<string, ScenarioParams[string]> = {}
-  const parts: string[] = []
   for (const u of uncertain) {
     const i = weightedIndex(u.weights, rng.next())
     if (fixed.has(u.key) || i === 0 || i >= u.values.length) continue
     const v = u.values[i]
     params[u.key] = Array.isArray(v) ? v.slice() : v
-    parts.push(`${u.key}=${paramText(v)}`)
   }
-  return { params, key: parts.length ? parts.join(';') : 'default' }
+  return { params, key: variantKeyOf(uncertain, params) }
+}
+
+/** Égalité de deux valeurs de paramètre (tableaux comparés élément par élément). */
+function sameParam(a: unknown, b: unknown): boolean {
+  return Array.isArray(a) && Array.isArray(b) ? a.length === b.length && a.every((x, i) => x === b[i]) : a === b
 }
 
 /** Clé de variante de paramètres imposés (hors défaut), même format que `sampleVariant`. */
@@ -85,10 +97,10 @@ export function variantKeyOf(uncertain: readonly UncertainParam[], params: Reado
   for (const u of uncertain) {
     if (!(u.key in params)) continue
     const v = params[u.key]
-    if (paramText(v) === paramText(u.values[0])) continue
+    if (sameParam(v, u.values[0])) continue
     parts.push(`${u.key}=${paramText(v)}`)
   }
-  return parts.length ? parts.join(';') : 'default'
+  return parts.length ? parts.join(VARIANT_KEY_SEP) : 'default'
 }
 
 /** Paquets de graines (répartition sur les workers, §15.2 : paquets de 8). */

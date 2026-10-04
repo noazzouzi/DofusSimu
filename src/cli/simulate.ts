@@ -23,11 +23,13 @@ import { openCampaignCache, type FightCache } from '../optimizer/cache'
 import { notableSeeds, runBatch } from '../optimizer/montecarlo'
 import { createNodePool, defaultPoolSize } from '../optimizer/pool/node'
 import { createLocalPool, type ManagedPool } from '../optimizer/pool/pool'
-import { runOne, toReplay } from '../optimizer/runner'
+import { runOne, toReplay, type RunResult } from '../optimizer/runner'
 import { campaignSeeds } from '../optimizer/seeds'
-import { failReasons, worstVariant } from '../optimizer/stats'
+import { failReasons, variantMarginals, worstVariant } from '../optimizer/stats'
 import { PRESETS, parseTeam, validatePreset, type StuffChoice } from '../optimizer/team/presets'
 import type { FightSpec, FightSummary, StopRule } from '../optimizer/types'
+import type { TeamId } from '../core/types'
+import type { FightState } from '../engine/types'
 import type { Replay } from '../replay/types'
 
 const COMMANDS = ['fight', 'batch', 'bench', 'presets', 'tune', 'stuff', 'team', 'optimize', 'rewind', 'report'] as const
@@ -170,9 +172,33 @@ export function writeReplay(file: string, replay: Replay, entry: Omit<ReplayInde
   return path
 }
 
-/** Rejoue une graine avec enregistrement et écrit son replay (`label` : suffixe du nom de fichier). */
-function saveReplay(data: DataStore, spec: FightSpec, seed: number, out: string | undefined, label: string, dir = REPLAY_DIR, title?: string): string {
-  const res = runOne(data, spec, seed, { record: true })
+/**
+ * Tableau des personnages (et invocations alliées) d'un combat : PV restants, dégâts infligés/subis, soins, retraits,
+ * kills (métriques du moteur).
+ */
+export function fighterTable(fight: FightState, team: TeamId = 0): string {
+  const rows = [['', 'PV', 'dégâts', 'subis', 'soins', 'PA/PM retirés', 'kills']]
+  for (const f of fight.fighters) {
+    if (f.team !== team) continue
+    const m = fight.metrics[f.id]
+    if (f.kind === 'summon' && !(m?.damageDealt || m?.healingDone)) continue
+    rows.push([
+      `${f.kind === 'summon' ? '  ↳ ' : ''}${f.name}${f.role ? ` (${f.role})` : ''}`,
+      f.alive ? `${f.hp}/${f.maxHp}` : 'mort',
+      String(Math.round(m?.damageDealt ?? 0)),
+      String(Math.round(m?.damageTaken ?? 0)),
+      String(Math.round(m?.healingDone ?? 0)),
+      `${(m?.apRemoved ?? 0).toFixed(0)}/${(m?.mpRemoved ?? 0).toFixed(0)}`,
+      String(m?.kills ?? 0),
+    ])
+  }
+  const widths = rows[0].map((_, j) => Math.max(...rows.map(r => r[j].length)))
+  return rows.map(r => r.map((c, j) => (j === 0 ? c.padEnd(widths[j]) : c.padStart(widths[j]))).join('  ')).join('\n')
+}
+
+/** Écrit le replay d'un combat joué avec `record: true` (`label` : suffixe du nom de fichier). */
+function writeFightReplay(data: DataStore, spec: FightSpec, res: RunResult, out: string | undefined, label: string, dir = REPLAY_DIR, title?: string): string {
+  const seed = res.summary.seed
   const createdAt = new Date().toISOString()
   const replay = toReplay(data, spec, res, { generator: 'dofussimu-cli (npm run sim)', createdAt, title })
   const scen = spec.scenarioId.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -187,6 +213,11 @@ function saveReplay(data: DataStore, spec: FightSpec, seed: number, out: string 
   })
 }
 
+/** Rejoue une graine avec enregistrement et écrit son replay. */
+function saveReplay(data: DataStore, spec: FightSpec, seed: number, out: string | undefined, label: string, dir = REPLAY_DIR, title?: string): string {
+  return writeFightReplay(data, spec, runOne(data, spec, seed, { record: true }), out, label, dir, title)
+}
+
 // ───────────────────────────── commandes ─────────────────────────────
 
 function cmdFight(a: Args, data: DataStore): number {
@@ -195,12 +226,17 @@ function cmdFight(a: Args, data: DataStore): number {
   const seed = num(a, 'seed', 1) >>> 0
   const replayFlag = bool(a, 'no-replay') ? 'none' : str(a, 'replay') ?? 'auto'
   const t0 = performance.now()
-  const { summary } = runOne(data, spec, seed)
+  // Un seul combat : l'enregistrement ne change pas le combat (§13.2), il n'est fait que si un replay est demandé.
+  const res = runOne(data, spec, seed, { record: replayFlag !== 'none' })
   const ms = performance.now() - t0
+  const { summary } = res
   if (bool(a, 'json')) console.log(JSON.stringify({ summary, ms }, null, 2))
-  else console.log(`${scenarioId} — ${spec.mode}${spec.playerPolicy === 'random' ? ' (aléatoire)' : ''}, graine ${seed} (${ms.toFixed(0)} ms)\n${describe(summary)}`)
+  else {
+    console.log(`${scenarioId} — ${spec.mode}${spec.playerPolicy === 'random' ? ' (aléatoire)' : ''}, graine ${seed} (${ms.toFixed(0)} ms)\n${describe(summary)}`)
+    console.log(fighterTable(res.fight, res.fight.fighters.find(f => f.kind === 'player')?.team ?? 0))
+  }
   if (replayFlag !== 'none') {
-    const path = saveReplay(data, spec, seed, replayFlag === 'auto' ? undefined : replayFlag, 'fight', replayDirOf(a))
+    const path = writeFightReplay(data, spec, res, replayFlag === 'auto' ? undefined : replayFlag, 'fight', replayDirOf(a))
     console.log(`Replay : ${relative(process.cwd(), path)}`)
   }
   return 0
@@ -260,6 +296,7 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
     masterSeed: master,
     result: r,
     worstVariant: worst,
+    variantMarginals: variantMarginals(run.summaries),
     failReasons: fails,
     computed: run.computed,
     cached: run.cached,
@@ -274,8 +311,16 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
     console.log(`${scenarioId} — ${spec.mode}${spec.playerPolicy === 'random' ? ' (aléatoire)' : ''}, ${r.n} combats (${run.computed} joués, ${run.cached} en cache) en ${(ms / 1000).toFixed(1)} s (${out.fightsPerSecond.toFixed(2)} combats/s, ${workers} worker(s))`)
     console.log(`Victoires ${r.wins}/${r.n} = ${pct(r.winRate)}  IC95 Wilson [${pct(r.wilson95[0])} ; ${pct(r.wilson95[1])}]`)
     console.log(`Score moyen ${r.meanScore.toFixed(3)}, tours moyens ${r.meanRounds.toFixed(1)}, p10 PV restants ${pct(r.p10HpLeft)}`)
-    for (const [k, v] of Object.entries(r.byVariant)) console.log(`  variante ${k} : ${v.n} combats, ${pct(v.winRate)}`)
-    if (worst && Object.keys(r.byVariant).length > 1) console.log(`  pire variante : ${worst.key} (${pct(worst.winRate)})`)
+    const variants = Object.entries(r.byVariant)
+    if (variants.length <= 8) for (const [k, v] of variants) console.log(`  variante ${k} : ${v.n} combats, ${pct(v.winRate)}`)
+    else {
+      // Trop de variantes distinctes (paramètres tirés indépendamment) : effets marginaux par valeur INCERTAINE.
+      console.log(`  ${variants.length} variantes distinctes ; effet de chaque règle INCERTAINE (tirée / au défaut) :`)
+      for (const m of variantMarginals(run.summaries)) {
+        console.log(`    ${`${m.param}=${m.value}`.padEnd(40)} ${String(m.n).padStart(4)} combats ${pct(m.winRate).padStart(7)} (défaut ${pct(m.baseWinRate)}), score ${m.meanScore.toFixed(3)} (défaut ${m.baseMeanScore.toFixed(3)})`)
+      }
+    }
+    if (worst && variants.length > 1) console.log(`  pire variante : ${worst.key} (${pct(worst.winRate)}, ${worst.n} combats)`)
     for (const f of fails.slice(0, 6)) console.log(`  échec « ${f.reason} » : ${f.n}`)
     console.log(`Résumé : ${relative(process.cwd(), summaryFile)}`)
   }

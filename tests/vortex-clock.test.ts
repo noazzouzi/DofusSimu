@@ -21,6 +21,8 @@ import {
   hourBit,
 } from '../src/dungeons/vortex/clock'
 import { HOUR_CELL, IKARGN, SAME_HOUR, VORTEX_DEFAULT_PARAMS } from '../src/dungeons/vortex/constants'
+import { isWaveMonster } from '../src/dungeons/vortex/clock'
+import { scriptedVortexController } from '../src/dungeons/generic/controllers'
 import { vortexState } from '../src/dungeons/vortex/params'
 import { vortexSlotHours } from '../src/dungeons/vortex/placement'
 import { createSmokeTeam, SMOKE_BREEDS } from '../src/dungeons/vortex/scenario'
@@ -273,6 +275,69 @@ describe('T-clock : personnage mort (paramètre deadPlayerAdvancesClock)', () =>
   }
 })
 
+/**
+ * Ordre exact des créneaux (index compris) : la prévision suit les retraits de la timeline (morts, au début de chaque
+ * tour de jeu) et les réinsertions des ressuscités juste après le Vortex (780 de 5003, `reviveFighter`).
+ */
+function compareExact(slots: readonly ClockSlot[], s: Setup, rounds: number, act?: (f: Fighter) => void): number {
+  const real = slots.filter(sl => sl.index >= 0)
+  let n = 0
+  run(s, rounds, f => {
+    const sl = real[n + 1]
+    if (sl && s.fight.round <= sl.round) {
+      expect({ round: s.fight.round, id: f.id, index: s.fight.turnIndex, hour: currentHour(s.fight) }, `créneau ${n + 1}`).toEqual({
+        round: sl.round,
+        id: sl.fighterId,
+        index: sl.index,
+        hour: sl.hour,
+      })
+      n++
+    }
+    act?.(f)
+  })
+  return n
+}
+
+describe('T-clock : morts, résurrections et réinsertion dans la timeline', () => {
+  it('k = 3 : P4 (après le Vortex) tue des monstres ⇒ retirés au tour suivant, réinsérés après le Vortex', () => {
+    const s = setup({ initiative: 1000, seed: 12 })
+    const p4 = s.players[3]
+    turnOf(s, p4, 2)
+    const vx = vortexState(s.fight)!
+    expect(s.fight.timeline.indexOf(p4.id)).toBeGreaterThan(s.fight.timeline.indexOf(vx.vortexId))
+    // P4 tue deux monstres de vague (un avant, un après lui dans la timeline).
+    const victims = s.fight.fighters.filter(isWaveMonster).slice(0, 2)
+    for (const m of victims) s.engine.kill(s.fight, m, p4)
+    const slots = forecastHours(s.fight, 4, VORTEX_DEFAULT_PARAMS)
+    s.engine.endTurn(s.fight, p4)
+    expect(compareExact(slots, s, 4)).toBeGreaterThan(20)
+    // Au tour 3, les victimes retirées de la timeline jouent juste après le Vortex (avant l'Auroraire) ; la première de
+    // la timeline (gardée par `Engine.nextTurn` au début du tour de jeu, même morte) rejoue à sa place au tour 4.
+    const first = s.fight.timeline[0]
+    const removed = victims.filter(m => m.id !== first).map(m => m.id)
+    expect(removed.length).toBeGreaterThan(0)
+    const r3 = slots.filter(sl => sl.round === 3 && sl.index >= 0).map(sl => sl.fighterId)
+    const vi = r3.indexOf(vx.vortexId)
+    expect(new Set(r3.slice(vi + 1, vi + 1 + removed.length))).toEqual(new Set(removed))
+    expect(r3[vi + 1 + removed.length]).toBe(vx.auroraireId)
+  })
+
+  // Prévision sur les tours 2-6 : exacte (index compris) jusqu'à l'arrivée de la vague 2 (tour 7, inconnue de la prévision).
+  it('k = 4 : monstres tués par P1 ressuscités au tour du Vortex, rejouent à leur place ; rezAllPerTurn = false', () => {
+    for (const rezAllPerTurn of [true, false]) {
+      const params = { rezAllPerTurn }
+      const s = setup({ initiative: 4000, seed: 13, params })
+      const [p1] = s.players
+      turnOf(s, p1, 2)
+      const wave = s.fight.fighters.filter(isWaveMonster)
+      for (const m of wave) s.engine.kill(s.fight, m, p1)
+      const slots = forecastHours(s.fight, 5, { ...VORTEX_DEFAULT_PARAMS, ...params })
+      s.engine.endTurn(s.fight, p1)
+      expect(compareExact(slots, s, 5)).toBeGreaterThan(30)
+    }
+  })
+})
+
 describe('T-clock : fenêtres d’étoile = pose réelle de « Même heure » (234)', () => {
   it('Ikargn tué à l’heure I : étoile exactement pendant les fenêtres prévues, puis corruption', () => {
     const s = setup({ initiative: 4000, seed: 5 })
@@ -323,6 +388,61 @@ describe('T-clock : fenêtres d’étoile = pose réelle de « Même heure » (2
     const obs = run(s, 4)
     expect(obs.some(o => o.fighterId === ika.id)).toBe(false)
   })
+})
+
+/**
+ * T-clock sur des combats « vivants » (attaque au plus près pour tout le monde : morts, résurrections, corruptions,
+ * vagues, glyphes déclenchées en marchant) : à la fin de chaque tour, la prévision (sans glyphe) est comparée créneau
+ * par créneau (tour, combattant, index, heure) aux tours suivants, jusqu'au premier événement qu'elle ne peut pas
+ * connaître : une mort, une arrivée de vague, ou un changement d'heure en cours de tour (glyphe déclenchée).
+ */
+describe('T-clock : combats complets (30 tours, prévision glissante exacte)', () => {
+  for (const [seed, initiative] of [[1, 4000], [2, 1000], [3, 4000]] as const) {
+    it(`graine ${seed}, ${initiative === 4000 ? 'k = 4' : 'k = 3'}`, () => {
+      const engine = createEngine(data, vortexHooks)
+      const players = createSmokeTeam(data, SMOKE_BREEDS, { initiative, hp: 60_000 })
+      const fight = createVortexFight(engine, players, { params: { ...VORTEX_DEFAULT_PARAMS, maxRounds: 30 }, seed, rollMode: 'random', record: false, rngRekey: 'perTurn' })
+      const ctrl = scriptedVortexController()
+      let pending: ClockSlot[] = []
+      let ptr = 0
+      let compared = 0
+      let invalidations = 0
+      const signature = () => `${fight.deaths?.length ?? 0}:${vortexState(fight)!.wavesSpawned}`
+      let sig = signature()
+      for (let i = 0; i < 5000 && !fight.ended; i++) {
+        const f = engine.nextTurn(fight)
+        if (!f) break
+        if (signature() !== sig) {
+          pending = []
+          invalidations++
+        }
+        const sl = pending[ptr]
+        if (sl) {
+          expect({ round: fight.round, id: f.id, index: fight.turnIndex, hour: currentHour(fight) }, `graine ${seed} tour ${fight.round}`).toEqual({
+            round: sl.round,
+            id: sl.fighterId,
+            index: sl.index,
+            hour: sl.hour,
+          })
+          compared++
+          ptr++
+        }
+        const h0 = currentHour(fight)
+        sig = signature()
+        ctrl.playTurn(engine, fight, f)
+        if (fight.ended) break
+        if (currentHour(fight) !== h0 || signature() !== sig) invalidations++
+        // Prévision faite à la fin du tour (état après les actions), avant `endTurn`.
+        pending = forecastHours(fight, 2, VORTEX_DEFAULT_PARAMS).filter(x => x.index >= 0)
+        ptr = 1
+        sig = signature()
+        if (f.alive) engine.endTurn(fight, f)
+      }
+      expect(fight.round).toBeGreaterThanOrEqual(30)
+      expect(compared).toBeGreaterThan(400)
+      expect(invalidations).toBeGreaterThan(5)
+    })
+  }
 })
 
 describe('prévision : propriétés', () => {

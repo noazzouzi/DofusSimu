@@ -104,6 +104,47 @@ export function worstVariant(b: BatchResult, minN = 1): { key: string; n: number
   return worst
 }
 
+/**
+ * Effet marginal de chaque valeur INCERTAINE hors défaut (clés de variante `clé=valeur|…`, src/optimizer/seeds.ts) :
+ * taux de victoire et score moyen des combats où la valeur a été tirée, comparés aux combats où le paramètre est resté
+ * au défaut. Lisible même quand chaque combat a sa propre variante (11 paramètres ⇒ des centaines de variantes).
+ * Tri : écart de score croissant (valeurs les plus pénalisantes d'abord), puis libellé.
+ */
+export function variantMarginals(summaries: readonly FightSummary[]): {
+  param: string; value: string; n: number; winRate: number; meanScore: number; baseN: number; baseWinRate: number; baseMeanScore: number
+}[] {
+  const s = sortBySeed(summaries)
+  const parsed = s.map(x => {
+    const m = new Map<string, string>()
+    if (x.variant !== 'default') {
+      for (const part of x.variant.split('|')) {
+        const eq = part.indexOf('=')
+        if (eq > 0) m.set(part.slice(0, eq), part.slice(eq + 1))
+      }
+    }
+    return m
+  })
+  const pairs = new Map<string, { param: string; value: string }>()
+  for (const m of parsed) for (const [k, v] of m) pairs.set(`${k}=${v}`, { param: k, value: v })
+  const out = []
+  for (const key of [...pairs.keys()].sort()) {
+    const { param, value } = pairs.get(key)!
+    const hit: FightSummary[] = []
+    const base: FightSummary[] = []
+    s.forEach((x, i) => {
+      const v = parsed[i].get(param)
+      if (v === value) hit.push(x)
+      else if (v === undefined) base.push(x)
+    })
+    const rate = (xs: FightSummary[]) => (xs.length ? xs.filter(x => x.win).length / xs.length : 0)
+    out.push({
+      param, value, n: hit.length, winRate: rate(hit), meanScore: mean(hit.map(x => x.score)),
+      baseN: base.length, baseWinRate: rate(base), baseMeanScore: mean(base.map(x => x.score)),
+    })
+  }
+  return out.sort((a, b) => a.meanScore - a.baseMeanScore - (b.meanScore - b.baseMeanScore) || `${a.param}=${a.value}`.localeCompare(`${b.param}=${b.value}`))
+}
+
 /** Causes d'échec regroupées (§15.2), triées par effectif décroissant puis libellé. */
 export function failReasons(summaries: readonly FightSummary[]): { reason: string; n: number }[] {
   const m = new Map<string, number>()

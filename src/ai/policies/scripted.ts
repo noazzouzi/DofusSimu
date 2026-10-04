@@ -5,15 +5,16 @@
  *
  * Tour d'un personnage (preset lu dans `fighter.tags.presetId`, à défaut preset par défaut de sa classe) :
  *  1. étapes de la rotation dans l'ordre (chacune `repeat` fois au plus) : meilleure case cible du sort selon une
- *     estimation ANALYTIQUE (`scoreCast` : dégâts moyens des lignes × multiplicateur de caractéristique sur les
- *     ennemis touchés, tir ami pénalisé ×1,5, soins plafonnés aux PV manquants, retraits PA/PM, buffs/débuffs,
- *     invocations) ; un sort n'est lancé que si son score est > 0 ;
+ *     estimation ANALYTIQUE (`scoreCast` : dégâts moyens DoMath des lignes — `expectedDamage`, résistances de la
+ *     cible — sur les ennemis touchés, sous-sorts 1160/2160/2960 compris sur 2 niveaux, effets différés à moitié, tir
+ *     ami pénalisé ×1,5, soins plafonnés aux PV manquants, retraits PA/PM, buffs/débuffs, invocations) ; un sort n'est
+ *     lancé que si son score est > 0 (un sort à dégâts doit toucher un ennemi : pas de lancer « pour son buff ») ;
  *  2. complément générique : tant qu'un sort a un score > 0 depuis la case actuelle, le meilleur (ordre : dégâts
  *     moyens par PA, puis id) ;
  *  3. déplacement : au plus un déplacement « pour lancer » par tour (case atteignable la moins coûteuse d'où un sort
- *     de la rotation, ou l'un des 4 meilleurs sorts offensifs, porte), sinon approche à la portée idéale ; en fin de
- *     tour, un profil distance s'éloigne des ennemis proches (distance minimale maximale), un profil mêlée (portée
- *     offensive ≤ 2 ou tank) reste au contact.
+ *     de la rotation, ou l'un des 4 meilleurs sorts offensifs, porte) ; en fin de tour, un profil mêlée (portée idéale
+ *     ≤ 2 ou tank) reste au contact, un profil distance qui n'a engagé aucun ennemi (dégâts, retraits) s'approche à
+ *     sa portée idéale (portée du meilleur sort à dégâts, bornée à [1, 8]), sinon s'éloigne des ennemis proches.
  * Les invocations alliées jouent le complément générique + approche. Déplacements de placement purs (porter/jeter,
  * téléportations) : non joués (score analytique nul) — simplification assumée de la référence `scripted`.
  *
@@ -23,11 +24,13 @@
  * (`createView(...).visible()`, src/ai/core) : ni `fight.events`, ni pièges invisibles, ni dés futurs.
  */
 import { createView } from '../core'
+import type { Element } from '../../core/types'
+import { expectedDamage } from '../../damage/damage'
 import type { EffectData, SpellLevelData } from '../../data/model'
 import { canCast } from '../../engine/cast'
 import type { Engine } from '../../engine/engine'
 import { modifiedSpellLevel } from '../../engine/effects/buffs/spellMods'
-import { DAMAGE_SPECS } from '../../engine/effects/damage/pipeline'
+import { DAMAGE_SPECS, resolveElement } from '../../engine/effects/damage/pipeline'
 import { pathTo, reachableCells, type Reachable } from '../../engine/move'
 import { performAction, type Controller } from '../../engine/runner'
 import { compileTargetMask, matchesTargetMask } from '../../engine/targetMask'
@@ -96,7 +99,9 @@ function spellInfo(lvl: SpellLevelData): SpellInfo {
     damagePerCast: dmg,
     offensive: kinds.some(k => k === 'damage' || k === 'apmp' || k === 'debuff'),
     selfOnly: lvl.range <= 0 && lvl.minRange <= 0,
-    needsFreeCell: lvl.needFreeCell || kinds.some(k => k === 'summon' || k === 'mark'),
+    // Case libre : exigée par le sort, ou invocation/marque SANS dégâts (les sorts de l'Huppermage posent une rune ET
+    // frappent la cible : ils visent un combattant).
+    needsFreeCell: lvl.needFreeCell || (kinds.some(k => k === 'summon' || k === 'mark') && !kinds.includes('damage')),
   }
   infoCache.set(lvl, info)
   return info
@@ -127,12 +132,17 @@ interface TurnCtx {
   scores: Map<number, CastValue>
 }
 
-/** Estimation d'un lancer : total et parts offensive (ennemis), soin utile, soutien (buffs, boucliers, invocations). */
+/**
+ * Estimation d'un lancer : total et parts offensive (ennemis), soin utile, soutien (buffs, boucliers, invocations) ;
+ * `engage` = part « directe » sur les ennemis (dégâts et retraits PA/PM, hors simples débuffs) : un lancer qui n'en a
+ * pas (ex. Roulette de l'Ecaflip, qui débuffe toute la carte) ne compte pas comme un engagement du combat.
+ */
 interface CastValue {
   total: number
   offense: number
   heal: number
   support: number
+  engage: number
 }
 
 function turnCtx(engine: Engine, fight: FightState, me: Fighter, seed: number): TurnCtx {
@@ -167,25 +177,84 @@ function occupantAt(ctx: TurnCtx, cell: number): Fighter | undefined {
 
 // ───────────────────────────── estimation d'un lancer ─────────────────────────────
 
+/** Effets « lance un sort » dont le lanceur est le lanceur du sort parent (1160/2160 : sur chaque cible ; 2960 : une fois). */
+const SUB_SPELL_ON_TARGETS = new Set([1160, 2160])
+const SUB_SPELL_ON_CELL = 2960
+/** Profondeur maximale des sous-sorts estimés (le moteur va jusqu'à 4 ; au-delà, contribution négligeable). */
+const MAX_SUB_DEPTH = 2
+
 /**
- * Estimation analytique (PVe approximatifs) du lancer de `spell` sur `cell` depuis `from`, par composantes.
- * N'appelle ni `castSpell` ni `cloneFight` (0 nœud).
+ * Dégâts moyens d'une ligne sur `t` : formule DoMath (src/damage `expectedDamage` : caractéristique, puissance,
+ * dommages fixes, résistances de la cible, mêlée/distance) pour les dommages « boostés » ; approximation par le
+ * multiplicateur de caractéristique pour les autres familles (fixes, % PV, PM utilisés).
+ */
+function lineDamage(me: Fighter, t: Fighter, e: EffectData, v: number): number {
+  const spec = DAMAGE_SPECS.get(e.effectId)
+  if (spec?.family === 'boosted') {
+    const element = resolveElement(spec.element, me.stats)
+    if (element >= 0) {
+      const min = e.diceNum
+      const max = e.diceSide > 0 ? e.diceSide : e.diceNum
+      const input = {
+        attacker: me.stats,
+        defender: t.stats,
+        element: element as Element,
+        crit: false,
+        isWeapon: false,
+        isMelee: me.cell >= 0 && t.cell >= 0 && distance(me.cell, t.cell) <= 1,
+        defenderIsPlayer: t.kind === 'player',
+      }
+      return Math.max(0, expectedDamage(input, null, { min, max }, 0))
+    }
+  }
+  return v * statMult(me, e.element)
+}
+
+/**
+ * Estimation analytique (PVe approximatifs) du lancer de `spell` sur `cell` depuis `from`, par composantes. Les
+ * sous-sorts lancés par le lanceur (1160/2160 sur chaque cible touchée, 2960 sur la case) sont estimés récursivement
+ * (≤ 2 niveaux) : beaucoup de sorts portent leurs dégâts dans un sous-sort (runes de l'Huppermage, cartes de
+ * l'Ecaflip…). N'appelle ni `castSpell` ni `cloneFight` (0 nœud).
  */
 function scoreCast(ctx: TurnCtx, spell: KnownSpell, cell: number, from: number): CastValue {
+  const v0: CastValue = { total: 0, offense: 0, heal: 0, support: 0, engage: 0 }
+  scoreEffects(ctx, levelOf(ctx, spell).effects, spellInfo(spell.level).kinds, cell, from, 0, v0)
+  v0.total = v0.offense + v0.heal + v0.support
+  return v0
+}
+
+/** Accumule dans `v0` la valeur des `effects` lancés sur `cell` (voir `scoreCast`). */
+function scoreEffects(ctx: TurnCtx, effects: readonly EffectData[], kinds: readonly EffectKind[], cell: number, from: number, depth: number, v0: CastValue): void {
   const me = ctx.me
-  const lvl = levelOf(ctx, spell)
-  const info = spellInfo(spell.level)
-  const v0: CastValue = { total: 0, offense: 0, heal: 0, support: 0 }
-  const effects = lvl.effects
   let lastZone: EffectData['zone'] | undefined
   let lastCells: number[] = []
   for (let i = 0; i < effects.length; i++) {
     const e = effects[i]
-    const kind = info.kinds[i] ?? effectKind(e)
-    if (kind === 'other') continue
+    const kind = kinds[i] ?? effectKind(e)
+    if (kind === 'other') {
+      if (depth >= MAX_SUB_DEPTH || e.delay > 0) continue
+      const sub = SUB_SPELL_ON_TARGETS.has(e.effectId) || e.effectId === SUB_SPELL_ON_CELL
+        ? ctx.engine.data.spellLevel(e.diceNum, { grade: e.diceSide || undefined })
+        : undefined
+      if (!sub) continue
+      const subKinds = spellInfo(sub).kinds
+      if (e.effectId === SUB_SPELL_ON_CELL) {
+        if (matchesTargetMask(e.targetMask, me, me)) scoreEffects(ctx, sub.effects, subKinds, cell, from, depth + 1, v0)
+        continue
+      }
+      if (e.zone !== lastZone) {
+        lastZone = e.zone
+        lastCells = zoneCells(e.zone, cell, from)
+      }
+      for (const c of lastCells) {
+        const t = occupantAt(ctx, c)
+        if (t && matchesTargetMask(e.targetMask, me, t)) scoreEffects(ctx, sub.effects, subKinds, t.cell, from, depth + 1, v0)
+      }
+      continue
+    }
     if (kind === 'summon' || kind === 'mark') {
       // Invocation / marque : utile près des ennemis, sur une case libre.
-      if (occupantAt(ctx, cell)) continue
+      if (depth > 0 || occupantAt(ctx, cell)) continue
       const near = ctx.enemies.some(en => distance(en.cell, cell) <= 2)
       v0.support += kind === 'summon' ? (near ? 25 : 12) : near ? 10 : 0
       continue
@@ -194,16 +263,21 @@ function scoreCast(ctx: TurnCtx, spell: KnownSpell, cell: number, from: number):
       lastZone = e.zone
       lastCells = zoneCells(e.zone, cell, from)
     }
+    // Effets différés (poisons, explosions programmées) : comptés à moitié.
+    const w = e.delay > 0 ? 0.5 : 1
     const v = avgDice(e)
     let hitCaster = false
     const apply = (t: Fighter) => {
       const enemy = t.team !== me.team
       switch (kind) {
         case 'damage': {
-          const d = v * statMult(me, e.element)
+          const d = w * lineDamage(me, t, e, v)
           const ehp = t.hp + t.shield
-          if (enemy) v0.offense += Math.min(d, ehp) + (d >= ehp ? 0.3 * t.maxHp : 0)
-          else v0.offense -= 1.5 * d
+          if (enemy) {
+            const val = Math.min(d, ehp) + (d >= ehp ? 0.3 * t.maxHp : 0)
+            v0.offense += val
+            v0.engage += val
+          } else v0.offense -= 1.5 * d
           break
         }
         case 'heal': {
@@ -217,6 +291,7 @@ function scoreCast(ctx: TurnCtx, spell: KnownSpell, cell: number, from: number):
           break
         case 'apmp':
           v0.offense += enemy ? 12 * v : -12 * v
+          if (enemy) v0.engage += 12 * v
           break
         case 'buff':
           v0.support += enemy ? -6 : 8
@@ -235,8 +310,6 @@ function scoreCast(ctx: TurnCtx, spell: KnownSpell, cell: number, from: number):
     }
     if (!hitCaster && compileTargetMask(e.targetMask).addsCaster && matchesTargetMask(e.targetMask, me, me)) apply(me)
   }
-  v0.total = v0.offense + v0.heal + v0.support
-  return v0
 }
 
 /** Estimation mise en cache par (sort, case) pour l'état courant (orientation de zone depuis la case actuelle). */
@@ -257,6 +330,8 @@ function acceptable(ctx: TurnCtx, spell: KnownSpell, v: CastValue, mode: 'any' |
   if (v.offense > 0) return true
   if (mode === 'offense') return false
   if (v.heal > 0) return true
+  // Un sort à dégâts lancé sans toucher d'ennemi (pour un effet secondaire de buff) gaspille ses PA.
+  if (spellInfo(spell.level).damagePerCast > 0) return false
   return v.support > 0 && (ctx.me.castsThisTurn[spell.spellId] ?? 0) === 0
 }
 
@@ -285,6 +360,8 @@ interface CastChoice {
   score: number
   /** Part offensive de l'estimation (> 0 : le lancer touche un ennemi). */
   offense: number
+  /** Part directe (dégâts, retraits PA/PM) sur les ennemis. */
+  engage: number
 }
 
 /** Préfiltre de portée (sans LdV ni ligne) : la case est-elle dans l'anneau de portée depuis `from` ? */
@@ -312,22 +389,38 @@ function bestTarget(
     const v = cachedScore(ctx, spell, cell)
     if (!acceptable(ctx, spell, v, mode) || (best && v.total <= best.score)) continue
     if (canCast(ctx.engine, ctx.fight, me, spell, cell, from === me.cell ? {} : { fromCell: from }) !== null) continue
-    best = { spellId: spell.spellId, cell, score: v.total, offense: v.offense }
+    best = { spellId: spell.spellId, cell, score: v.total, offense: v.offense, engage: v.engage }
   }
   return best
 }
 
 // ───────────────────────────── déplacements ─────────────────────────────
 
-/** Portée maximale « utile » des sorts offensifs (profil mêlée ≤ 2). */
-function offensiveRange(ctx: TurnCtx): number {
-  let r = 0
+/** Portée maximale d'un sort (PO comprise si modifiable). */
+function spellRange(ctx: TurnCtx, s: KnownSpell): number {
+  const lvl = levelOf(ctx, s)
+  return lvl.range + (lvl.rangeBoostable ? ctx.me.stats.range : 0)
+}
+
+/**
+ * Portée « idéale » d'approche : portée du sort à dégâts le plus rentable (dégâts moyens par PA), sorts de la rotation
+ * d'abord, bornée à [1, 8] (un sort de zone géante ou à portée de toute la carte ne doit pas figer le personnage loin
+ * des ennemis) ; à défaut de sort à dégâts, portée des sorts offensifs (retraits, débuffs) ; 1 sans sort offensif.
+ */
+function idealRange(ctx: TurnCtx, preset: Preset | undefined): number {
+  const rotation = new Set(preset?.rotation.map(r => r.spell) ?? [])
+  let best: { r: number; key: number } | undefined
+  let fallback = 0
   for (const s of ctx.me.spells) {
-    if (!spellInfo(s.level).offensive) continue
-    const lvl = levelOf(ctx, s)
-    r = Math.max(r, lvl.range + (lvl.rangeBoostable ? ctx.me.stats.range : 0))
+    const info = spellInfo(s.level)
+    if (!info.offensive || info.selfOnly) continue
+    const r = spellRange(ctx, s)
+    fallback = Math.max(fallback, r)
+    if (!(info.damagePerCast > 0)) continue
+    const key = (rotation.has(s.spellId) ? 1e6 : 0) + info.damagePerCast / Math.max(1, s.level.apCost)
+    if (!best || key > best.key || (key === best.key && r > best.r)) best = { r, key }
   }
-  return r
+  return Math.max(1, Math.min(8, best ? best.r : fallback || 1))
 }
 
 function moveTo(ctx: TurnCtx, reach: Reachable, cell: number): boolean {
@@ -443,6 +536,8 @@ export function playScriptedTurn(engine: Engine, fight: FightState, me: Fighter,
   const preset = presetOf(me)
   let ctx = turnCtx(engine, fight, me, seed)
   let actions = 0
+  /** Lancers réussis qui engageaient un ennemi (dégâts ou retraits PA/PM). */
+  let hits = 0
   let movedToCast = false
   const steps: RotationStep[] = preset?.rotation ?? []
   const known = (id: number) => me.spells.find(s => s.spellId === id)
@@ -451,6 +546,7 @@ export function playScriptedTurn(engine: Engine, fight: FightState, me: Fighter,
     if (actions >= MAX_ACTIONS || fight.ended || !me.alive) return false
     actions++
     const ok = performAction(engine, fight, me, { type: 'cast', spellId: c.spellId, cell: c.cell }).ok
+    if (ok && c.engage > 0) hits++
     ctx = refresh(ctx)
     return ok
   }
@@ -499,12 +595,13 @@ export function playScriptedTurn(engine: Engine, fight: FightState, me: Fighter,
   }
   if (fight.ended || !me.alive) return
 
-  // 3. Fin de tour : profil mêlée (portée ≤ 2 ou tank) → contact ; distance → s'éloigner (ou approcher si rien lancé).
+  // 3. Fin de tour : profil mêlée (portée ≤ 2 ou tank) → contact ; distance → s'éloigner après avoir frappé, sinon
+  //    approcher à la portée offensive (un tour passé à se buffer loin des ennemis ne doit pas immobiliser le personnage).
   ctx = refresh(ctx)
-  const range = offensiveRange(ctx)
+  const range = idealRange(ctx, preset)
   const melee = range <= 2 || preset?.role === 'tank'
   if (melee) approach(ctx, 1)
-  else if (actions === 0) approach(ctx, Math.max(2, range))
+  else if (hits === 0) approach(ctx, range)
   else kite(ctx)
 }
 

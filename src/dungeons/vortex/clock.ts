@@ -14,9 +14,14 @@
  *    au décalage suivant : la fenêtre d'une heure h va du créneau où h arrive au créneau où l'heure change (`starWindows`).
  *
  * Créneaux renvoyés par `forecastHours` : le créneau COURANT d'abord (index 0, heure actuelle de l'Auroraire), puis les
- * créneaux à venir dans l'ordre réel du moteur (morts sautés ; monstres de vague morts supposés ressuscités au tour du
- * Vortex ; vagues futures et invocations futures inconnues : absentes). Un tic d'horloge d'un personnage mort
- * (variante) est un créneau VIRTUEL : `index` −1, `fighterId` = le mort, `isPlayer` vrai — personne n'y joue.
+ * créneaux à venir dans l'ordre réel du moteur, index compris : morts sautés puis retirés au début de chaque tour de
+ * jeu ; monstres de vague morts ressuscités au début du tour du Vortex (tous, ou un par tour si `rezAllPerTurn` est
+ * faux ; aucun après *Action !*) et, s'ils avaient quitté la timeline, réinsérés juste après lui ; pas de créneau pour
+ * un tour annulé (140 : corrompus, tour d'*Action !* — le tour commence puis passe, `Engine.nextTurn`). Vagues et
+ * invocations FUTURES inconnues : absentes (la prévision n'est exacte, index compris, que jusqu'à la prochaine arrivée
+ * de vague ; les heures des créneaux joueurs restent exactes au-delà, les monstres n'avançant pas l'horloge). Un tic
+ * d'horloge d'un personnage mort (variante) est un créneau VIRTUEL : `index` −1, `fighterId` = le mort, `isPlayer`
+ * vrai — personne n'y joue.
  */
 import type { Fighter, FightState } from '../../engine/types'
 import { CELL_COUNT, CELL_X, CELL_Y } from '../../map/geometry'
@@ -174,7 +179,9 @@ export function forecastHours(
   const aur = auroraireOf(s)
   if (!aur || s.ended || rounds <= 0) return slots
   const vx = vortexState(s)
-  const tl = s.timeline
+  // Timeline de travail : `Engine.nextTurn` retire les morts au début de chaque tour de jeu et `reviveFighter` (780)
+  // réinsère un ressuscité juste après le Vortex ; les index des créneaux sont ceux de cette timeline simulée.
+  const tl = s.timeline.slice()
   const order = vx?.slotOrder?.length ? vx.slotOrder : rootsOf(s)
   const ticks = (vx?.clockTicks ?? []).slice()
   const deadVariant = p.deadPlayerAdvancesClock
@@ -189,16 +196,21 @@ export function forecastHours(
     const k = glyphs?.get(slots.length - 1)
     if (k) hour = nextHour(hour, k)
   }
+  // Résurrections au début du tour du Vortex (5003 → 780) : monstres de vague morts non corrompus, du plus récent au
+  // plus ancien (ordre de 780), tous (défaut) ou un seul par tour (`rezAllPerTurn` faux) ; aucune après *Action !*.
+  const rezQueue = (vx?.actionRound ?? 0) > 0 ? [] : deadWaveMonstersByRecency(s)
+  const rezAll = vx?.rezAllPerTurn ?? true
+  const revived = new Set<number>()
+  const alive = (f: Fighter): boolean => f.alive || revived.has(f.id)
+  // Débuts de tour déjà simulés par combattant (durée restante des tours annulés).
+  const starts = new Map<number, number>()
   // Créneau courant.
   if (s.round > 0 && s.turnIndex >= 0 && s.turnIndex < tl.length) {
     idx = s.turnIndex
     const cur = s.fighters[tl[idx]]
     if (cur) push({ round, index: idx, fighterId: cur.id, isPlayer: isClockPlayer(cur), isVortex: cur.monsterId === VORTEX, hour })
   }
-  // Index du Vortex dans le tour courant : un monstre de vague mort APRÈS lui sera ressuscité avant son créneau.
-  const vortexIdx = tl.findIndex(id => s.fighters[id]?.monsterId === VORTEX && s.fighters[id].alive)
-  const curIdx = idx
-  for (let guard = 0; slots.length < maxSlots && guard < (tl.length + order.length + 2) * (rounds + 2); guard++) {
+  for (let guard = 0; slots.length < maxSlots && guard < (tl.length + order.length + rezQueue.length + 2) * (rounds + 2); guard++) {
     idx++
     if (idx >= tl.length) {
       if (deadVariant) {
@@ -211,14 +223,17 @@ export function forecastHours(
       round++
       idx = 0
       if (round > endRound) break
+      // Début du tour de jeu : morts retirés (le premier de la timeline est gardé, comme `curId` dans le moteur).
+      for (let i = tl.length - 1; i >= 1; i--) {
+        const f = s.fighters[tl[i]]
+        if (!f || !alive(f)) tl.splice(i, 1)
+      }
     }
     const f = s.fighters[tl[idx]]
-    if (!f) continue
-    let starts: boolean
-    if (f.alive) starts = !(round === startRound && ((f.tags.skipTurns as number | undefined) ?? 0) > 0)
-    else if (isWaveMonster(f)) starts = round > startRound || (vortexIdx >= 0 && curIdx < vortexIdx && idx > vortexIdx)
-    else starts = false
-    if (!starts) continue
+    if (!f || !alive(f)) continue
+    if (f.alive && round === startRound && ((f.tags.skipTurns as number | undefined) ?? 0) > 0) continue
+    const k = starts.get(f.id) ?? 0
+    starts.set(f.id, k + 1)
     if (deadVariant) {
       const pos = canonicalPos(s, order, f)
       for (const id of pendingDeadTicks(s, order, ticks, round, pos < 0 ? 0 : pos)) {
@@ -231,9 +246,46 @@ export function forecastHours(
       hour = nextHour(hour, 1)
       ticks[f.id] = round
     }
-    push({ round, index: idx, fighterId: f.id, isPlayer: isClockPlayer(f), isVortex: f.monsterId === VORTEX, hour })
+    // Tour annulé (140 : corrompus, *Action !*) : le tour commence (déclencheurs TB, tics des morts) puis passe aussitôt
+    // (`Engine.nextTurn`) — pas de créneau joué.
+    if (!(f.alive && passesTurnAt(f, k))) {
+      push({ round, index: idx, fighterId: f.id, isPlayer: isClockPlayer(f), isVortex: f.monsterId === VORTEX, hour })
+    }
+    if (f.monsterId === VORTEX && rezQueue.length) {
+      for (const id of rezQueue.splice(0, rezAll ? rezQueue.length : 1)) {
+        revived.add(id)
+        if (!tl.includes(id)) tl.splice(idx + 1, 0, id)
+      }
+    }
   }
   return slots
+}
+
+/**
+ * Le combattant passera-t-il son `k`-ième prochain tour (k = 0 : le prochain) ? Buff « tour annulé » (140) encore actif
+ * après le décompte de son début de tour : permanent (corrompus, 5002), ou durée restante (un buff qu'il s'est lancé
+ * lui-même, comme *Action !*, est décompté au début de chacun de ses tours ; celui d'un autre lanceur est supposé
+ * décompté une fois par tour de jeu — approximation ; un buff différé est ignoré).
+ */
+export function passesTurnAt(f: Fighter, k: number): boolean {
+  for (const b of f.buffs) {
+    if (!b.passTurn || b.delay > 0) continue
+    if (b.remaining < 0) return true
+    if (b.remaining - (b.sourceId === f.id ? 1 : 0) - k > 0) return true
+  }
+  return false
+}
+
+/** Monstres de vague morts ressuscitables (non corrompus), du plus récent au plus ancien (`fight.deaths`, ordre de 780). */
+export function deadWaveMonstersByRecency(s: FightState): number[] {
+  const out: number[] = []
+  const deaths = s.deaths ?? []
+  for (let i = deaths.length - 1; i >= 0; i--) {
+    const f = s.fighters[deaths[i].fighter]
+    if (!f || f.alive || out.includes(f.id) || !isWaveMonster(f) || isCorrupted(f)) continue
+    out.push(f.id)
+  }
+  return out
 }
 
 /**

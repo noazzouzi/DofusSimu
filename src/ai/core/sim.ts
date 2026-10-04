@@ -66,8 +66,7 @@ export function applyMacro(engine: Engine, s: FightState, meId: number, m: Macro
  */
 export function advanceUntil(engine: Engine, s: FightState, controllers: ControllerProvider,
                              stop: (next: Fighter) => boolean, maxTurns = 64): Fighter | undefined {
-  const cur = engine.current(s)
-  if (cur && cur.alive && !s.ended) engine.endTurn(s, cur)
+  endCurrentTurn(engine, s)
   for (let i = 0; i < maxTurns && !s.ended; i++) {
     const f = engine.nextTurn(s)
     if (!f) return undefined
@@ -79,8 +78,14 @@ export function advanceUntil(engine: Engine, s: FightState, controllers: Control
   return undefined
 }
 
-/** Termine le tour du combattant courant d'un clone (fin de tour simulée : glyphes TE, poisons TE, scénario). */
+/**
+ * Termine le tour du combattant courant d'un clone (fin de tour simulée : glyphes TE, poisons TE, scénario), comme
+ * `runFight` : `endTurn` s'il est vivant, sinon le seul événement `turnEnd`. Sans effet avant le premier tour.
+ */
 export function endCurrentTurn(engine: Engine, s: FightState): void {
+  if (s.ended || s.round === 0) return
   const cur = engine.current(s)
-  if (cur && cur.alive && !s.ended) engine.endTurn(s, cur)
+  if (!cur) return
+  if (cur.alive) engine.endTurn(s, cur)
+  else engine.emit(s, { t: 'turnEnd', fighter: cur.id })
 }

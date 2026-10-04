@@ -274,10 +274,11 @@ describe('mort, heure de mort, résurrection', () => {
     expect(ika.stats.mp).toBe(5)
   })
 
-  // Défaut du moteur constaté (rapport WP3a) : la chaîne des données 5002 (X) → 5001 → 5000 ne pose pas l'état
-  // d'heure sur le mourant (5000 est lancé par l'Auroraire en zone « a » avec le masque E233 : le mourant n'est pas
-  // ciblé, `fromDeath` n'étant pas propagé au sous-sort d'un autre lanceur). Le scénario pose l'état en repli
-  // (`markDeathHour`). Ce test échouera (et devra être retiré) le jour où le moteur sera corrigé.
+  // Défaut du moteur diagnostiqué (rapport WP3a) : la chaîne des données 5002 (X) → 5001 → 5000 ne pose pas l'état
+  // d'heure sur le mourant. Le ciblage est correct (`fromDeath` propagé jusqu'au 5000 de l'Auroraire), mais `addState`
+  // (src/engine/effects/buffs/states.ts) refuse toute cible `!alive` : l'état 233 de 5001 (masque C) n'est jamais posé,
+  // puis le masque `a,E233,*E22h` de 5000 écarte le mourant. Le scénario pose l'état en repli (`markDeathHour`). Ce test
+  // échouera (et devra être retiré) le jour où le moteur sera corrigé.
   it.fails('diagnostic moteur : les données seules (sans le repli du scénario) marquent l’heure de mort', () => {
     const engine = createEngine(data) // aucun hook de scénario : seules les données agissent
     const team = createSmokeTeam(data)
@@ -292,6 +293,23 @@ describe('mort, heure de mort, résurrection', () => {
     expect(currentHour(fight)).toBe(1)
     engine.kill(fight, mons[1], first)
     expect(deathHours(mons[1])).toBe(hourBit(1))
+  })
+
+  // Cause racine du défaut ci-dessus, isolée : 5001 (lancé par le mourant via le déclencheur X de 5002) cible bien le
+  // mourant, mais l'effet 950 (état 233 « Mort latente ») n'est pas posé (`addState` : `!t.alive`). Attendu : un
+  // événement `state` 233 ajouté sur le mourant avant son retrait à la mort (233 est désenvoûtable, 2).
+  it.fails('diagnostic moteur : 5001 effet 950 pose l’état 233 sur le mourant (déclencheur X)', () => {
+    const engine = createEngine(data)
+    const team = createSmokeTeam(data)
+    team.forEach((f, i) => (f.cell = [424, 438, 441, 443][i]))
+    const ika = createMonsterFighter(data, { monsterId: IKARGN, grade: 5, team: 1, cell: 270 })
+    const fight = engine.createFight({ map: data.map(VORTEX_MAP_ID)!, fighters: [...team, ika], options: { seed: 1, rollMode: 'random', record: true, maxRounds: 60 } })
+    castStartingSpell(engine, fight, ika)
+    const first = engine.nextTurn(fight)!
+    const n0 = fight.events.length
+    engine.kill(fight, ika, first)
+    const added = fight.events.slice(n0).some(e => e.t === 'state' && e.target === ika.id && e.stateId === 233 && e.added)
+    expect(added).toBe(true)
   })
 
   it('variante rezHpPct [50, 50] et rezMinusOneMp', () => {

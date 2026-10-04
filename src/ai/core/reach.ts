@@ -1,8 +1,16 @@
 /**
  * Accessibilité avec tacle (docs/design/ai.md §6.2) — WP1.
  *
- * Recherche « au mieux » sur les cases, avec pour chaque case le meilleur couple (PA, PM) restants — ordre
- * lexicographique PA puis PM — et un unique prédécesseur. Quitter une case adjacente à des tacleurs applique la règle
+ * Recherche « au mieux » sur les cases, avec pour chaque case UN couple (PM, PA) restants et un unique prédécesseur
+ * (arbre des chemins). Priorité (`priority`) :
+ *  - 'mp' (défaut, design §6.2 « meilleur couple (PM, PA) ») : PM d'abord, puis PA. Les PM après tacle ne dépendent
+ *    que des PM (fonction croissante) : les PM annoncés sont EXACTEMENT les PM maximaux et l'ensemble des cases est
+ *    exactement l'ensemble atteignable (test T-reach) ; les PA sont les meilleurs parmi ces chemins (optimaux dans
+ *    > 99,5 % des cas : un chemin plus long qui évite un tacleur peut garder plus de PA avec moins de PM).
+ *  - 'ap' : PA d'abord, puis PM — meilleur pour lancer depuis la case, mais une case atteignable seulement par un
+ *    chemin tacleur (plus court) peut manquer. Les candidats de lancer (candidates.ts) combinent les deux arbres.
+ * Un arbre à un seul label par case ne peut pas être exact pour les deux critères à la fois (front de Pareto).
+ * Quitter une case adjacente à des tacleurs applique la règle
  * DÉTERMINISTE de Dofus 3 exactement comme `move` (src/engine/move.ts) : ratio = Π tackleRatio(fuite, tacle) des
  * ennemis adjacents (sauf `tags.cantTackle` / état cantTackle ; aucun si le marcheur est cantBeTackled), puis
  * PA/PM = `apMpAfterTackle`, pas impossible si PM ≤ 0 après le tacle, −1 PM par pas. Les valeurs annoncées pour une
@@ -23,10 +31,12 @@ import type { Engine } from '../../engine/engine'
 import type { Fighter, FightState } from '../../engine/types'
 import { CELL_COUNT, distance, neighborsOf } from '../../map/geometry'
 import type { AIView, ReachInfo } from '../types'
-import { fnvInt, revKey } from './hash'
+import { fnvInt, mobilityDigest } from './hash'
 import { believedCell, trapKnownBy } from './view'
 
 export interface ReachOptions {
+  /** Ordre des labels : 'mp' (défaut : ensemble exact) ou 'ap' (PA maximaux, voir l'en-tête). */
+  priority?: 'mp' | 'ap'
   /** PM disponibles (défaut : PM courants) ; partie fractionnaire ignorée. */
   mp?: number
   /** PA disponibles (défaut : PA courants). */
@@ -114,9 +124,9 @@ function heapPop(): number {
   return top
 }
 
-/** Clé de priorité (PA d'abord, puis PM). PM entiers ≤ 1023. */
-function key(ap: number, mp: number): number {
-  return ap * 1024 + mp
+/** Clé de priorité : PM d'abord puis PA (PA < 4096), ou PA d'abord puis PM (PM entiers ≤ 1023). */
+function key(ap: number, mp: number, apFirst: boolean): number {
+  return apFirst ? ap * 1024 + mp : mp * 4096 + ap
 }
 
 /** Le combattant `e` tacle-t-il (même test que `escapeRatio` de move.ts) ? */
@@ -188,9 +198,10 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
   }
   const evade = f.stats.tackleEvade
   const allow = opts.allowEventCells
+  const apFirst = opts.priority === 'ap'
 
   heapSize = 0
-  heapPush(start, key(ap0, mp0))
+  heapPush(start, key(ap0, mp0, apFirst))
   let count = 0
   while (heapSize > 0) {
     const c = heapPop()
@@ -216,7 +227,7 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
     }
     if (mpAfter <= 0) continue
     const nmp = mpAfter - 1
-    const k = key(ap, nmp)
+    const k = key(ap, nmp, apFirst)
     const ns = neighborsOf(c)
     for (let i = 0; i < ns.length; i++) {
       const n = ns[i]
@@ -226,7 +237,8 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
       if (EVENT[n] && !(allow && allow.has(n))) continue
       if (out.mpLeft[n] >= 0) {
         const prevAp = AP64[n]
-        if (prevAp > ap || (prevAp === ap && out.mpLeft[n] >= nmp)) continue
+        const prevMp = out.mpLeft[n]
+        if (apFirst ? prevAp > ap || (prevAp === ap && prevMp >= nmp) : prevMp > nmp || (prevMp === nmp && prevAp >= ap)) continue
       }
       out.mpLeft[n] = nmp
       out.apLeft[n] = ap
@@ -278,8 +290,12 @@ export function apSpent(reach: ReachInfo, cell: number): number {
 
 // ───────────────────────────── cache partagé ─────────────────────────────
 
+/** Entrée du cache : second hash de vérification (clé effective 64 bits) et résultat partagé. */
+interface ReachEntry { k2: number; r: ReachInfo }
 /** Cache d'accessibilité (par moteur) : clé = combattant + révision + PA/PM + empreinte LOCALE de l'occupation. */
-const REACH_CACHE = new WeakMap<Engine, Map<string, ReachInfo>>()
+const REACH_CACHE = new WeakMap<Engine, Map<number, ReachEntry>>()
+/** Plafond d'entrées (≈ 7 ko chacune). */
+const REACH_CACHE_MAX = 4000
 const SCRATCH_REACH = createReachInfo()
 
 /** Copie indépendante d'un `ReachInfo`. */
@@ -298,31 +314,48 @@ export function cloneReach(r: ReachInfo): ReachInfo {
 }
 
 /**
- * `computeReachFor` mis en cache (résultat partagé : NE PAS le modifier). L'empreinte ne couvre que ce qui peut
- * changer le résultat : combattants à distance ≤ PM + 1 du départ (blocage, tacle et révision des tacleurs),
- * marques (cases-événements), révision du marcheur (caractéristiques, états, case).
+ * `computeReachFor` mis en cache (résultat partagé : NE PAS le modifier). L'empreinte (2 × 32 bits) ne couvre que ce
+ * qui peut changer le résultat : combattants à distance ≤ PM + 1 du départ (blocage ; tacle et drapeau de tacle des
+ * ennemis), marques (cases-événements), mobilité du marcheur (`mobilityDigest` : fuite, états, marqueurs), case,
+ * PA/PM, priorité.
  */
-export function cachedReach(engine: Engine, s: FightState, f: Fighter, team: TeamId, mp: number, ap: number, occupancy?: Int16Array): ReachInfo {
+export function cachedReach(engine: Engine, s: FightState, f: Fighter, team: TeamId, mp: number, ap: number, occupancy?: Int16Array,
+                            priority: 'mp' | 'ap' = 'mp'): ReachInfo {
   let cache = REACH_CACHE.get(engine)
   if (!cache) REACH_CACHE.set(engine, (cache = new Map()))
   const start = believedCell(f, team)
   const mpi = Math.max(0, Math.floor(mp))
-  let h = fnvInt(fnvInt(0x811c9dc5, s.traps.length), s.glyphs.length)
+  const apq = Math.round(ap * 100)
+  // Marcheur : empreinte de mobilité (fuite, états, marqueurs), pas sa révision (un buff de dégâts ne change rien).
+  const md = mobilityDigest(f)
+  let h = fnvInt(fnvInt(fnvInt(fnvInt(0x811c9dc5, f.id), md), start), mpi * 2 + (priority === 'ap' ? 1 : 0))
+  let h2 = fnvInt(fnvInt(fnvInt(fnvInt(0x050c5d1f, f.id), md), start), mpi * 2 + (priority === 'ap' ? 1 : 0))
+  h = fnvInt(h, apq)
+  h2 = fnvInt(h2, apq)
   for (const o of s.fighters) {
     if (!o.alive || o.id === f.id || o.carriedBy !== undefined) continue
     const c = believedCell(o, team)
     if (c < 0 || distance(c, start) > mpi + 1) continue
-    h = fnvInt(fnvInt(fnvInt(h, o.id), c), o.team === f.team ? 0 : revKey(o))
+    // Voisin : blocage (case) et, pour un ennemi, tacle (valeur et drapeaux).
+    const tk = o.team === f.team ? 0 : o.stats.tackleBlock * 2 + (canTackleNow(engine, o) ? 1 : 0)
+    h = fnvInt(fnvInt(fnvInt(h, o.id), c), tk)
+    h2 = fnvInt(fnvInt(fnvInt(h2, o.id), c), tk)
   }
-  for (const g of s.glyphs) h = fnvInt(h, g.center)
-  for (const t of s.traps) h = fnvInt(fnvInt(h, t.center), trapKnownBy(s, t, team) ? 1 : 0)
-  const key = `${f.id}:${revKey(f)}:${start}:${mpi}:${Math.round(ap * 100)}:${h}`
-  let r = cache.get(key)
-  if (!r) {
-    computeReachFor(engine, s, f, team, { mp: mpi, ap, out: SCRATCH_REACH, occupancy })
-    r = cloneReach(SCRATCH_REACH)
-    if (cache.size > 20000) cache.clear()
-    cache.set(key, r)
+  for (const g of s.glyphs) {
+    if (g.trigger !== 'enter' && g.markType !== 'portal') continue
+    h = fnvInt(h, g.center + 1000)
+    h2 = fnvInt(h2, g.center + 1000)
   }
+  for (const t of s.traps) {
+    if (!trapKnownBy(s, t, team)) continue
+    h = fnvInt(h, t.center + 2000)
+    h2 = fnvInt(h2, t.center + 2000)
+  }
+  const e = cache.get(h)
+  if (e && e.k2 === h2) return e.r
+  computeReachFor(engine, s, f, team, { mp: mpi, ap, out: SCRATCH_REACH, occupancy, priority })
+  const r = cloneReach(SCRATCH_REACH)
+  if (cache.size >= REACH_CACHE_MAX) cache.clear()
+  cache.set(h, { k2: h2, r })
   return r
 }
