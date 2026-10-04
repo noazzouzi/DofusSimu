@@ -90,12 +90,13 @@ describe('effets « info-bulle » (forClientOnly) ignorés', () => {
     const fs = fight(engine, [xelor, ally])
     dragFighter(engine, fs, xelor, ally, 2, Direction.SE)
     expect(ally.cell).toBe(cellAt(14, 0))
+    // Case de début de tour de l'allié (il n'a pas encore joué) : sa case de départ.
+    ally.tags.turnStartCell = cellAt(12, 0)
     const e1099 = data().spellLevel(REMBOBINAGE, { playerLevel: 200 })!.effects.find(e => e.effectId === 1099 && e.triggers === 'I')!
     expect(e1099.clientOnly).toBe(true)
     applyEffects(engine, fs, xelor, null, REMBOBINAGE, [e1099], ally.cell, xelor.cell, false, false, 0)
     expect(ally.cell).toBe(cellAt(14, 0))
-    // Sans le drapeau : retour à la case de début de combat (= début de tour, l'allié n'a pas encore joué).
-    ally.tags.turnStartCell = cellAt(12, 0)
+    // Sans le drapeau : retour à la case de début de tour.
     applyEffects(engine, fs, xelor, null, REMBOBINAGE, [{ ...e1099, clientOnly: false }], ally.cell, xelor.cell, false, false, 0)
     expect(ally.cell).toBe(cellAt(12, 0))
   })
