@@ -17,7 +17,12 @@ export type { CharacterBuild } from '../stats/build'
 export interface MemberSpec { name: string; breedId: number; presetId: string; build: CharacterBuild; variants: (0 | 1)[]; role?: RoleId }
 
 export interface FightSpec { scenarioId: string; team: MemberSpec[]; placement?: number[]; mode: AIMode
-  theta: StrategyParams; params?: Partial<ScenarioParams>; variantPolicy: 'default' | 'sampled'; monsterNoise: number }
+  theta: StrategyParams; params?: Partial<ScenarioParams>; variantPolicy: 'default' | 'sampled'; monsterNoise: number
+  /**
+   * Ajout WP4 (facultatif, rétro-compatible) : politique des personnages. 'ai' (défaut) = contrôleurs de `mode` ;
+   * 'random' = politique aléatoire légale (src/ai/policies/random.ts), référence basse de l'échelle des modes (§16.5).
+   */
+  playerPolicy?: 'ai' | 'random' }
 
 /**
  * Résumé d'un combat. `hpLeftPct` : fraction [0, 1] des PV max de début de combat des personnages encore en vie ;

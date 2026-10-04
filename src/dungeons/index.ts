@@ -1,13 +1,23 @@
 /**
- * Registre des scénarios de donjon (docs/design/ai.md §12) — WP3.
- * S0 : seul le Vortex (bouchon) est enregistré. TODO(WP3) : scénarios génériques (generic/dummy.ts, skirmish.ts).
+ * Registre des scénarios de donjon (docs/design/ai.md §12, §16.5) — WP3.
+ *
+ * Scénarios enregistrés : 'vortex' (Œil de Vortex), 'skirmish' (n'importe quels monstres sur n'importe quelle carte),
+ * 'dummy' (mannequin d'entraînement passif). Usage :
+ * `const s = getScenario(id); const engine = createEngine(data, s.hooks); const fight = s.createFight(engine, team, …)`.
  */
-import type { DungeonScenario } from './types'
+import { dummyScenario } from './generic/dummy'
+import { skirmishScenario } from './generic/skirmish'
+import type { DungeonScenario, ScenarioParams } from './types'
+import { sampleUncertain } from './vortex/params'
 import { vortexScenario } from './vortex/scenario'
 
 export type * from './types'
 
-const SCENARIOS = new Map<string, DungeonScenario>([[vortexScenario.id, vortexScenario]])
+const SCENARIOS = new Map<string, DungeonScenario>([
+  [vortexScenario.id, vortexScenario],
+  [skirmishScenario.id, skirmishScenario],
+  [dummyScenario.id, dummyScenario],
+])
 
 /** Enregistre (ou remplace) un scénario. */
 export function registerScenario(s: DungeonScenario): void {
@@ -24,3 +34,21 @@ export function getScenario(id: string): DungeonScenario {
 export function listScenarios(): string[] {
   return [...SCENARIOS.keys()]
 }
+
+/**
+ * Variante INCERTAINE d'un scénario pour une graine de combat (§12.1, §13.1 : `Rng(mix32(fightSeed, 0x5C))`) :
+ * paramètres différents du défaut à fusionner dans `params`, et clé lisible ('default' si tout est au défaut).
+ */
+export function sampleVariant(scenario: DungeonScenario, fightSeed: number): { params: Partial<ScenarioParams>; key: string } {
+  return sampleUncertain(scenario.uncertain, fightSeed)
+}
+
+export { vortexScenario } from './vortex/scenario'
+export { skirmishScenario } from './generic/skirmish'
+export { dummyScenario } from './generic/dummy'
+export { runVortexSmoke, createSmokeTeam, summarizeVortex, setVortexAIModelFactory, basicVortexAIModel } from './vortex/scenario'
+export { createVortexFight, vortexHooks } from './vortex/setup'
+export { resolveVortexParams, sampleVortexVariant, variantKey, vortexState } from './vortex/params'
+export { forecastHours, starWindows, lineCells, currentHour, deathHours } from './vortex/clock'
+export { trackVortex, VortexTracker } from './vortex/tracker'
+export { rankVortexPlacements, defaultVortexPlacement } from './vortex/placement'

@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "description": "Calibration du DPT analytique (docs/design/ai.md §6.4) : rapport « DPT simulé / DPT analytique » par preset, classe ou monstre, borné à [0,5 ; 2]. Mesuré sur le micro-scénario « poutch » (3 tours, IA fast, 16 graines) ; 1 = non mesuré.",
+    "version": 1,
+    "bounds": [0.5, 2],
+    "keys": "preset:<presetId> (tags.presetId du combattant), breed:<breedId>, monster:<monsterId>"
+  },
+  "default": 1,
+  "presets": {},
+  "breeds": {},
+  "monsters": {}
+}

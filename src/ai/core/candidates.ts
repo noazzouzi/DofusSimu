@@ -1,0 +1,456 @@
+/**
+ * Génération générique des candidats et préfiltre `quick` (docs/design/ai.md §8.1, §11.3) — WP1, partagé par les
+ * joueurs (WP2) et les monstres.
+ *
+ * Règles du §8.1 implémentées ici (celles qui relèvent du socle) :
+ *  C1 filtre statique avant toute géométrie (PA, relance, lancers par tour, états du lanceur, preventsSpellCast, sort
+ *     `unsupported` si `unsupportedSpells = 'skip'`, sorts réservés) ;
+ *  C2 sorts à cible entité : cases occupées dont l'occupant est accepté par le masque d'au moins un effet ; un ennemi
+ *     invulnérable n'est retenu que si le sort retire un état ou déplace (R9) ;
+ *  C3 sorts de zone : centres dont la zone touche ≥ 1 cible utile, les 6 meilleurs par poids rapide (cibles
+ *     pondérées, tir ami soustrait) ;
+ *  C4 sorts à case libre (invocation, téléportation, glyphe, piège) : ≤ 8 cases (les plus proches des ennemis, plus 2
+ *     éloignées pour les téléportations du lanceur) ;
+ *  C5 sorts sur soi : case actuelle (et cases atteintes si la zone autour du lanceur touche un ennemi) ;
+ *  C6 portée inverse (anneau précalculé) ∩ `reach` ;
+ *  C7 ≤ 3 cases de lancer par (sort, cible), triées par (PA perdus au tacle, PM dépensés, `cellIncoming`) ; la case
+ *     actuelle est toujours gardée si elle est valide ;
+ *  C8 dominance : même sort, même cible, même classe de danger de la case finale ⇒ la moins coûteuse en PM.
+ * C9-C12 (rejets après simulation, mouvements seuls, profondeur) relèvent de la recherche (WP2).
+ *
+ * `quickEstimate` (sans clone) : dégâts analytiques plafonnés × v_e + P(kill)·valeur, retraits × apWorth/mpWorth,
+ * Pacifiste, poussées, soins plafonnés, boucliers utiles, buffs (Δpotentiel approché), tir ami. Sert seulement à TRIER.
+ */
+import type { TeamId } from '../../core/types'
+import { expectedApMpRemoved } from '../../damage/apmp'
+import { heal as healFormula } from '../../damage/heal'
+import type { ScenarioAIModel } from '../../dungeons/types'
+import { matchesTargetMask } from '../../engine/targetMask'
+import type { Fighter, FightState, KnownSpell } from '../../engine/types'
+import { CELL_COUNT, distance } from '../../map/geometry'
+import { zoneEfficiency, zoneMembership } from '../../map/zones'
+import type { AIView, Blackboard, MacroAction, Perception, ReachInfo } from '../types'
+import { castCellsFor, castFailureStatic, castGeom, castGeometryOk, inverseRange, LosOracle, levelFor } from './castCells'
+import { calibrationOf, createDptTable, type DptTableImpl } from './dpt'
+import { killProbability } from './kill'
+import type { PerceptionX } from './perception'
+import { damageWeightOf, type ValueWeights } from './potential'
+import { apSpent, buildOccupancy, cachedReach, mpSpent, reachPath } from './reach'
+import { createSpellProfileIndex, type SpellProfileX } from './spellProfile'
+import { hpEff } from './threat'
+import { believedCell } from './view'
+
+export interface GenerateOptions {
+  perception?: Perception
+  /** Accessibilité précalculée de `me` sur `s`. */
+  reach?: ReachInfo
+  /** Cases de lancer gardées par (sort, cible) — C7 (défaut 3). */
+  maxCastCells?: number
+  /** Centres de zone gardés par sort — C3 (défaut 6). */
+  maxZoneCenters?: number
+  /** Cases libres gardées par sort — C4 (défaut 8). */
+  maxFreeCells?: number
+  /** 'skip' (défaut) : sorts `unsupported` exclus (C1). */
+  unsupportedSpells?: 'skip' | 'allow'
+  /** Sorts réservés (intentions `reserve`) exclus. */
+  reserved?: ReadonlySet<number>
+  /** Calculer `prior` avec `quickEstimate` (défaut : vrai si une perception est fournie). */
+  withPrior?: boolean
+  scenario?: ScenarioAIModel
+  bb?: Blackboard
+}
+
+const DEFAULT_WEIGHTS: ValueWeights & { incoming: number } = { monsterDamage: 1, summonDamage: 0.5, killKappa: 0.3, killTau: 1, incoming: 0.8 }
+
+function weightsOf(p?: Perception): ValueWeights & { incoming: number } {
+  return (p as PerceptionX | undefined)?.theta?.value ?? DEFAULT_WEIGHTS
+}
+
+/** Combattants visibles (case crue par l'équipe) : [fighter, case]. */
+function visibleFighters(s: FightState, team: TeamId): { f: Fighter; cell: number }[] {
+  const out: { f: Fighter; cell: number }[] = []
+  for (const f of s.fighters) {
+    if (!f.alive || f.carriedBy !== undefined) continue
+    const c = believedCell(f, team)
+    if (c >= 0) out.push({ f, cell: c })
+  }
+  return out
+}
+
+/** Le sort a-t-il un effet (non visuel) dont le masque accepte `t` (lanceur `me`) ? */
+function someEffectAccepts(p: SpellProfileX, me: Fighter, t: Fighter): boolean {
+  for (const e of p.level.effects) {
+    if (e.clientOnly) continue
+    if (matchesTargetMask(e.targetMask, me, t)) return true
+  }
+  return false
+}
+
+/** Cible « utile » pour un sort : ennemi si le sort agit sur les ennemis, allié pour soin/buff, soi pour les buffs. */
+function usefulTarget(p: SpellProfileX, me: Fighter, t: Fighter): number {
+  const enemy = t.team !== me.team
+  if (enemy) {
+    if (p.damage.length || p.apRemoval || p.mpRemoval || p.enemyDebuff || p.moves.length || p.states.length || p.received.length) return 1
+    return 0
+  }
+  if (t.id === me.id) return p.selfBuff || p.heals.length || p.shields.length || p.moves.length ? 1 : 0
+  if (p.heals.length || p.shields.length || p.allyBuff || p.moves.length || p.removesStates) return 1
+  return p.damage.length ? -1 : 0
+}
+
+/**
+ * Candidats génériques de `me` sur `s` (déplacement optionnel puis lancer), règles C1-C8. Clé déterministe
+ * « spellId:cell:caseDeLancer ».
+ */
+export function generateCasts(view: AIView, s: FightState, me: Fighter, opts: GenerateOptions = {}): MacroAction[] {
+  const out: MacroAction[] = []
+  if (!me.alive) return out
+  const engine = view.engine
+  const team = view.team
+  const p = opts.perception as PerceptionX | undefined
+  const profiles = (p?.profiles ?? createSpellProfileIndex(engine)).ofFighter(me)
+  const occ = buildOccupancy(s, team)
+  const meCell = believedCell(me, team)
+  if (meCell < 0) return out
+  const reach = opts.reach ?? cachedReach(engine, s, me, team, me.mp, me.ap, occ)
+  const los = new LosOracle(s, team, me.id, occ)
+  const maxCells = opts.maxCastCells ?? 3
+  const maxCenters = opts.maxZoneCenters ?? 6
+  const maxFree = opts.maxFreeCells ?? 8
+  const skipUnsupported = (opts.unsupportedSpells ?? 'skip') === 'skip'
+  const withPrior = opts.withPrior ?? !!p
+  const fighters = visibleFighters(s, team)
+  const cells: number[] = []
+  const threat = p?.threat
+  if (p && withPrior) p.sync(s)
+
+  const emit = (ks: KnownSpell, prof: SpellProfileX, target: number, from: number): void => {
+    const path = from === meCell ? undefined : reachPath(reach, meCell, from) ?? undefined
+    if (from !== meCell && !path) return
+    const m: MacroAction = { cast: { spellId: ks.spellId, cell: target }, cat: prof.cat, prior: 0, key: `${ks.spellId}:${target}:${from}` }
+    if (path) m.path = path
+    if (withPrior && p) m.prior = quickEstimate(view, s, me, m, p, { scenario: opts.scenario, bb: opts.bb })
+    out.push(m)
+  }
+
+  /** C6/C7/C8 : cases de lancer d'un (sort, cible). */
+  const castFrom = (ks: KnownSpell, prof: SpellProfileX, target: number): void => {
+    const lvl = levelFor(me, ks)
+    castCellsFor(s, me, ks, lvl, target, reach, los, Math.max(12, maxCells * 4), cells)
+    if (!cells.length) return
+    const ranked = cells.slice()
+    ranked.sort((a, b) => {
+      if (a === meCell) return -1
+      if (b === meCell) return 1
+      return apSpent(reach, a) - apSpent(reach, b) || mpSpent(reach, a) - mpSpent(reach, b) || a - b
+    })
+    const classes = new Set<number>()
+    let kept = 0
+    for (const c of ranked) {
+      if (kept >= maxCells) break
+      // C8 : classe de danger de la case finale (quartiles de PV effectifs menacés).
+      let cls = 0
+      if (threat) {
+        const inc = threat.cellIncoming(me, c)
+        cls = Math.min(4, Math.floor((4 * inc) / Math.max(1, hpEff(me))))
+      }
+      const key = cls * 4 + Math.min(3, apSpent(reach, c))
+      if (classes.has(key) && c !== meCell) continue
+      classes.add(key)
+      emit(ks, prof, target, c)
+      kept++
+    }
+  }
+
+  for (let i = 0; i < me.spells.length; i++) {
+    const ks = me.spells[i]
+    const prof = profiles[i]
+    if (skipUnsupported && prof.unsupported) continue
+    if (opts.reserved?.has(ks.spellId)) continue
+    const lvl = levelFor(me, ks)
+    if (castFailureStatic(engine, me, ks, lvl, me.ap) !== null) continue
+    const g = castGeom(me, lvl)
+
+    // C5 : sorts sur soi (portée 0).
+    if (g.max === 0) {
+      const centers: { c: number; w: number }[] = []
+      if (reach.apLeft[meCell] >= lvl.apCost) centers.push({ c: meCell, w: 1e9 })
+      if (prof.zoneRadius > 0 && prof.zone) {
+        for (let k = 0; k < reach.count; k++) {
+          const c = reach.cells[k]
+          if (c === meCell || reach.apLeft[c] < lvl.apCost) continue
+          const w = zoneWeight(prof, me, c, c, fighters, i, p)
+          if (w > 0) centers.push({ c, w })
+        }
+      }
+      centers.sort((a, b) => b.w - a.w || a.c - b.c)
+      for (const { c } of centers.slice(0, maxCenters)) {
+        if (castGeometryOk(s, me, ks, lvl, g, c, c, los)) emit(ks, prof, c, c)
+      }
+      continue
+    }
+
+    // C4 : case libre nécessaire (invocation, téléportation, glyphe, piège).
+    if (lvl.needFreeCell) {
+      const enemies = fighters.filter(x => x.f.team !== me.team)
+      const near = (c: number) => enemies.reduce((m, x) => Math.min(m, distance(c, x.cell)), 99)
+      const cand: { c: number; d: number }[] = []
+      const bound = g.max + Math.floor(me.mp)
+      for (let c = 0; c < CELL_COUNT; c++) {
+        if (occ[c] >= 0 || !s.map.cells[c]?.walkable || distance(meCell, c) > bound) continue
+        cand.push({ c, d: near(c) })
+      }
+      const selfMove = prof.moves.some(mv => mv.onCaster)
+      cand.sort((a, b) => a.d - b.d || a.c - b.c)
+      const order = selfMove ? [...cand.slice(0, maxFree), ...cand.slice(-2).reverse()] : cand
+      let kept = 0
+      const seen = new Set<number>()
+      for (const { c } of order) {
+        if (kept >= maxFree + (selfMove ? 2 : 0)) break
+        if (seen.has(c)) continue
+        seen.add(c)
+        castCellsFor(s, me, ks, lvl, c, reach, los, 1, cells)
+        if (!cells.length) continue
+        emit(ks, prof, c, cells[0])
+        kept++
+      }
+      continue
+    }
+
+    // C2 : sorts monocibles (zone ponctuelle) sur entités.
+    if (prof.zoneRadius === 0) {
+      for (const { f, cell } of fighters) {
+        if (usefulTarget(prof, me, f) <= 0) continue
+        if (!someEffectAccepts(prof, me, f)) continue
+        if (f.team !== me.team && engine.stateFlag(f, 'invulnerable') && !prof.removesStates && !prof.moves.length) continue
+        castFrom(ks, prof, cell)
+      }
+      continue
+    }
+
+    // C3 : sorts de zone — centres qui touchent au moins une cible utile.
+    const r = prof.zoneRadius
+    const centers = new Map<number, number>()
+    for (const { f, cell } of fighters) {
+      if (usefulTarget(prof, me, f) <= 0) continue
+      const around = inverseRange({ min: 0, max: r, line: false, diag: false }, cell)
+      for (let k = 0; k < around.length; k++) {
+        const c = around[k]
+        if (centers.has(c) || !s.map.cells[c]?.walkable) continue
+        centers.set(c, zoneWeight(prof, me, c, meCell, fighters, i, p))
+      }
+    }
+    const ranked = [...centers.entries()].filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1] || a[0] - b[0])
+    // Couverture d'abord : chaque cible utile touchée par au moins un centre retenu, puis complément par poids.
+    const useful = fighters.filter(x => usefulTarget(prof, me, x.f) > 0)
+    const covered = new Set<number>()
+    const chosen = new Set<number>()
+    let kept = 0
+    for (let pass = 0; pass < 2 && kept < maxCenters; pass++) {
+      for (const [c] of ranked) {
+        if (kept >= maxCenters) break
+        if (chosen.has(c)) continue
+        let touched: number[] = []
+        if (prof.zone) {
+          const inZone = zoneMembership(prof.zone, c, meCell)
+          touched = useful.filter(x => inZone(x.cell)).map(x => x.f.id)
+        }
+        if (pass === 0 && !touched.some(id => !covered.has(id))) continue
+        const before = out.length
+        castFrom(ks, prof, c)
+        if (out.length > before) {
+          chosen.add(c)
+          kept++
+          for (const id of touched) covered.add(id)
+        }
+      }
+    }
+  }
+  return out
+}
+
+/** Poids rapide d'un centre de zone : cibles utiles touchées (dégâts par lancer si disponibles), tir ami soustrait. */
+function zoneWeight(prof: SpellProfileX, me: Fighter, center: number, casterCell: number, fighters: { f: Fighter; cell: number }[],
+                    spellIndex: number, p?: PerceptionX): number {
+  if (!prof.zone) return 0
+  const inZone = zoneMembership(prof.zone, center, casterCell)
+  let w = 0
+  for (const { f, cell } of fighters) {
+    if (!inZone(cell)) continue
+    const u = usefulTarget(prof, me, f)
+    if (u === 0) continue
+    const eff = zoneEfficiency(prof.zone, center, cell, casterCell)
+    const dmg = p && prof.damage.length ? p.dpt.perCast(me, spellIndex, f).mean : 100
+    w += u > 0 ? eff * Math.max(1, dmg) : -0.6 * eff * Math.max(1, dmg)
+  }
+  return w
+}
+
+// ───────────────────────────── préfiltre ─────────────────────────────
+
+const ELEMENT_STATS = new Set(['strength', 'intelligence', 'chance', 'agility'])
+const RES_STATS = new Set(['neutralResPct', 'earthResPct', 'fireResPct', 'waterResPct', 'airResPct', 'allResPct', 'meleeResPct', 'rangedResPct', 'spellResPct'])
+
+/** Valeur approchée (Δ potentiel / Δ menace) d'un buff `+value stat` sur l'allié `f` (potentiel `pot`, incoming `inc`). */
+function buffValue(stat: string, value: number, f: Fighter, pot: number, inc: number): number {
+  const st = f.stats as unknown as Record<string, number>
+  if (stat === 'ap') return (pot / Math.max(1, f.stats.ap)) * value
+  if (stat === 'mp') return 0.1 * pot * Math.min(value, 3)
+  if (stat === 'power' || stat === 'spellPower') return (pot * value) / (100 + Math.max(0, f.stats.power) + 800)
+  if (ELEMENT_STATS.has(stat)) return (0.5 * pot * value) / (100 + Math.max(0, st[stat] ?? 0) + Math.max(0, f.stats.power))
+  if (stat === 'damage' || stat.endsWith('Damage')) return stat === 'criticalDamage' ? 0.3 * value : 3 * value
+  if (stat === 'finalDamagePct' || stat === 'spellDamagePct' || stat === 'meleeDamagePct' || stat === 'rangedDamagePct') return (pot * value) / 100
+  if (RES_STATS.has(stat)) return (0.5 * inc * value) / 100
+  if (stat === 'range') return 0.05 * pot
+  return 0.02 * pot
+}
+
+/** Sort lancé par une macro (premier lancer) et sa case de lancer. */
+function castOf(m: MacroAction, meCell: number): { spellId: number; cell: number; from: number } | null {
+  if (m.cast) return { spellId: m.cast.spellId, cell: m.cast.cell, from: m.path && m.path.length ? m.path[m.path.length - 1] : meCell }
+  return null
+}
+
+/**
+ * Estimation analytique (PVe) d'une macro-action, sans clone (§8.1). Séquences : somme des étapes (cases de lancer
+ * successives). Sert seulement à TRIER (test T-prefilter).
+ */
+export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: MacroAction, perception: Perception,
+                              opts: { bb?: Blackboard; scenario?: ScenarioAIModel } = {}): number {
+  if (m.seq && m.seq.length) {
+    let v = m.cast || m.path ? quickEstimate(view, s, me, { ...m, seq: undefined }, perception, opts) : 0
+    for (const x of m.seq) v += quickEstimate(view, s, me, x, perception, opts)
+    return v
+  }
+  const meCell = believedCell(me, view.team)
+  const c = castOf(m, meCell)
+  if (!c) return 0
+  const p = perception as PerceptionX
+  const dpt: DptTableImpl = p.dpt ?? createDptTable(view.engine)
+  const si = me.spells.findIndex(x => x.spellId === c.spellId)
+  if (si < 0) return 0
+  const prof = dpt.profiles.ofFighter(me)[si]
+  const w = weightsOf(p)
+  const scenario = opts.scenario ?? p.scenario
+  const bb = opts.bb ?? p.bb
+  const threat = p.threat
+  const potential = p.potential
+  const calib = calibrationOf(me)
+  const zone = prof.zone
+  const inZone = zone && prof.zoneRadius > 0 ? zoneMembership(zone, c.cell, c.from) : null
+  let value = 0
+  for (const f of s.fighters) {
+    if (!f.alive || f.carriedBy !== undefined) continue
+    const cell = f.id === me.id ? c.from : believedCell(f, view.team)
+    if (cell < 0) continue
+    let eff = 1
+    if (inZone) {
+      if (!inZone(cell)) continue
+      eff = zoneEfficiency(zone!, c.cell, cell, c.from)
+    } else if (cell !== c.cell) continue
+    if (!someEffectAccepts(prof, me, f)) continue
+    const enemy = f.team !== me.team
+    const he = hpEff(f)
+    if (prof.damage.length) {
+      const cd = dpt.perCast(me, si, f)
+      const dmg = cd.mean * eff * calib
+      if (enemy) {
+        const v = damageWeightOf(f, w, scenario, bb)
+        const killValue = w.killKappa * f.maxHp + w.killTau * threat.threatOf(f)
+        value += Math.min(dmg, he) * v + killProbability(dmg, cd.variance * eff * eff, f.hp + f.shield) * killValue
+      } else {
+        value -= 0.6 * Math.min(dmg, he) + (dmg >= f.hp + f.shield ? f.baseMaxHp : 0)
+      }
+    }
+    if (enemy) {
+      const th = threat.threatOf(f)
+      for (const r of prof.removals) {
+        if (!r.sides.enemy) continue
+        const pool = r.pool
+        const pts = Math.max(0, f.stats[pool])
+        const removed = r.dodgeable
+          ? expectedApMpRemoved(pool === 'ap' ? me.stats.apReduction : me.stats.mpReduction, pool === 'ap' ? f.stats.apParry : f.stats.mpParry, pts, pts, Math.round(r.value))
+          : Math.min(pts, r.value)
+        const row = threat.rowOf(f)
+        const alpha = row && row.hitsFromStart ? 0.15 : 0.6
+        const worth = pool === 'ap' ? th / Math.max(1, f.stats.ap) : (alpha * th) / Math.max(1, f.stats.mp)
+        value += removed * worth
+      }
+      for (const st of prof.states) {
+        if (st.remove || !st.sides.enemy) continue
+        const data = view.engine.data.state(st.stateId)
+        if (data?.cantDealDamage) value += 0.9 * th
+        else if (data?.cantBeMoved || data?.cantSwitchPosition) value += 0.05 * th
+        else value += 0.02 * th
+      }
+      for (const mv of prof.moves) {
+        if (mv.onCaster || !mv.sides.enemy) continue
+        if (mv.kind === 'push' || mv.kind === 'pull') value += 0.15 * th * Math.min(mv.cells, 4) / 4
+      }
+      for (const rl of prof.received) if (rl.sides.enemy && rl.pct > 100) value += ((rl.pct - 100) / 100) * 0.5 * th
+      if (prof.removesStates && view.engine.stateFlag(f, 'invulnerable')) value += 0.3 * f.maxHp
+    } else {
+      // Retraits subis par un allié : potentiel perdu.
+      for (const r of prof.removals) {
+        if (!(r.sides.ally || (r.sides.self && f.id === me.id))) continue
+        const pot = potential.potential(f.id)
+        const pts = Math.max(0, f.stats[r.pool])
+        value -= Math.min(pts, r.value) * (r.pool === 'ap' ? pot / Math.max(1, f.stats.ap) : (0.3 * pot) / Math.max(1, f.stats.mp))
+      }
+      // Alliés (soi compris) : soins plafonnés aux PV manquants, boucliers utiles, buffs.
+      const missing = f.maxHp - f.hp
+      if (missing > 0) {
+        for (const h of prof.heals) {
+          if (!h.sides.ally && !(h.sides.self && f.id === me.id)) continue
+          const base = (h.min + h.max) / 2
+          const amount = h.kind === 'pctMax' ? (base * f.maxHp) / 100 : h.kind === 'fixed' ? base : healFormula(base, me.stats, { element: h.element >= 0 ? (h.element as 0) : undefined })
+          value += 0.9 * Math.min(amount * h.p * eff, missing) * (1 + (1 - f.hp / Math.max(1, f.maxHp)))
+        }
+      }
+      const inc = threat.incoming(f.id)
+      for (const sh of prof.shields) {
+        if (!sh.sides.ally && !(sh.sides.self && f.id === me.id)) continue
+        const amount = sh.kind === 'pctLevel' ? (sh.value * me.level) / 100 : sh.kind === 'pctMaxHp' ? (sh.value * me.maxHp) / 100 : sh.value
+        // Même poids que V (allyLife : 0,8·bouclier).
+        value += 0.8 * amount * eff * (f.kind === 'summon' ? 0.4 : 1)
+      }
+      const pot = potential.potential(f.id)
+      for (const st of prof.stats) {
+        if (st.sign < 0) continue
+        if (!(st.sides.ally || (st.sides.self && f.id === me.id))) continue
+        value += buffValue(st.stat, st.value, f, pot, inc)
+      }
+    }
+  }
+  // Déplacement du lanceur : case de lancer (chemin) puis téléportation éventuelle — Δ des dégâts attendus sur lui.
+  let dest = c.from
+  if (prof.moves.some(mv => mv.onCaster && (mv.kind === 'teleport' || mv.kind === 'swap' || mv.kind === 'symmetric'))) dest = c.cell
+  if (dest !== meCell && dest >= 0 && dest < CELL_COUNT) value -= w.incoming * threat.cellIncomingTeamDelta(me, dest)
+  const occupied = s.fighters.some(f => f.alive && f.carriedBy === undefined && (f.id === me.id ? c.from : believedCell(f, view.team)) === c.cell)
+  if (prof.summonLines.length && !occupied) {
+    // Même valeur que V : PV de l'invocation × ω (0,4) + un leurre (≈ 100 PVe de menace détournée).
+    for (const sl of prof.summonLines) {
+      if (sl.revive) {
+        const dead = s.fighters.some(f => !f.alive && f.team === me.team && f.kind === 'player')
+        if (dead) value += 0.5 * me.baseMaxHp
+        continue
+      }
+      const mdata = sl.monsterId > 0 ? view.engine.data.monster(sl.monsterId) : undefined
+      const g = mdata?.grades.find(x => x.grade === sl.grade) ?? mdata?.grades[0]
+      const hp = g ? g.lifePoints + (g.stats.vitality ?? 0) + Math.floor((me.baseMaxHp * (g.summonerShare?.lifePct ?? 0)) / 100) : 0.3 * me.baseMaxHp
+      value += 0.4 * hp + 100
+    }
+  }
+  if (prof.glyph || prof.trap) value += 100
+  if (bb) {
+    for (const it of bb.intents) {
+      if (it.owner !== me.id || it.target === undefined) continue
+      const t = s.fighters[it.target]
+      if (!t || !t.alive) continue
+      const tc = believedCell(t, view.team)
+      const hit = inZone ? inZone(tc) : tc === c.cell
+      if (hit && ((it.kind === 'control' && m.cat === 'control') || it.kind === 'burst' || it.kind === 'protect' || it.kind === 'cleanse')) value += 0.5 * it.price
+    }
+  }
+  return value
+}

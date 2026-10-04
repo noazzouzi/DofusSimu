@@ -6,15 +6,16 @@
  * équipe (WP2) ; monstres, boss et leurs invocations → `MonsterBrain` réglage `play` (WP1), dans tous les modes.
  * Mode `scripted` : politique de rotations des presets (WP4, src/ai/policies/scripted.ts).
  *
- * S0 : `TeamController`, `MonsterBrain` et la politique `scripted` sont des BOUCHONS qui jouent le contrôleur glouton
- * de repli (src/ai/fallback.ts). TODO(WP1/WP2/WP4) : brancher les implémentations réelles (S1/S2).
+ * Registre : `registerAIController(clé, fabrique)` permet de brancher un contrôleur sur une clé `fighter.ai` (clé
+ * exacte ou préfixe avant « : ») ; il prime sur l'aiguillage par défaut. Avant chaque tour joué, la mémoire de
+ * visibilité de la vue honnête est mise à jour (src/ai/core/view.ts).
  */
 import type { TeamId } from '../core/types'
 import type { ScenarioAIModel } from '../dungeons/types'
 import type { Engine } from '../engine/engine'
 import { passController, type Controller } from '../engine/runner'
-import type { Fighter } from '../engine/types'
-import { fightAISeed } from './core'
+import type { Fighter, FightState } from '../engine/types'
+import { fightAISeed, observeVisibility } from './core'
 import { createMonsterBrain } from './monster/brain'
 import { createScriptedPolicy } from './policies/scripted'
 import { createTeamController, type TeamBrainSnapshot, type TeamController } from './team/controller'
@@ -77,9 +78,42 @@ export interface ControllersOptions {
   scenario?: ScenarioAIModel
 }
 
+/** Fabrique d'un contrôleur pour une clé d'IA (`fighter.ai`) enregistrée. */
+export type ControllerFactory = (engine: Engine, cfg: AIConfig) => Controller
+
+/**
+ * Registre des contrôleurs par clé `fighter.ai` (« clé exacte », puis préfixe avant « : », ex. `monster:3834` →
+ * `monster`). Les clés enregistrées priment sur l'aiguillage par défaut (personnages → `TeamController`, monstres →
+ * `MonsterBrain`). Usage : contrôleurs de test, IA scriptées de boss, politiques de référence.
+ */
+const REGISTRY = new Map<string, ControllerFactory>()
+
+export function registerAIController(key: string, factory: ControllerFactory): void {
+  REGISTRY.set(key, factory)
+}
+
+export function unregisterAIController(key: string): void {
+  REGISTRY.delete(key)
+}
+
+function registryFactory(aiKey: string): ControllerFactory | undefined {
+  const exact = REGISTRY.get(aiKey)
+  if (exact) return exact
+  const colon = aiKey.indexOf(':')
+  return colon > 0 ? REGISTRY.get(aiKey.slice(0, colon)) : undefined
+}
+
+/** L'équipe compte-t-elle un personnage joueur (vivant ou mort) ? Les invocations jouent pour l'équipe de leur invocateur. */
+function isPlayerTeam(fight: FightState, team: TeamId): boolean {
+  for (const f of fight.fighters) if (f.team === team && f.kind === 'player') return true
+  return false
+}
+
 /**
  * Fournisseur de contrôleurs d'un combat (voir l'en-tête). Un `TeamController` par équipe de personnages (partagé par
- * ses alliés, tableau noir commun) ; un `MonsterBrain` 'play' pour tous les monstres.
+ * ses alliés, tableau noir commun) ; un `MonsterBrain` 'play' pour tous les monstres et leurs invocations, dans tous les
+ * modes. Avant chaque tour joué, la mémoire de visibilité est mise à jour (`observeVisibility` : dernière case connue
+ * des invisibles, vue honnête §6.1).
  */
 export function createControllers(engine: Engine, cfg: AIConfig, options: ControllersOptions = {}): AIControllerProvider {
   const scenario = options.scenario ?? createGenericModel(cfg.theta)
@@ -90,16 +124,31 @@ export function createControllers(engine: Engine, cfg: AIConfig, options: Contro
     return c
   }
   const monsters = createMonsterBrain(cfg, 'play')
-  // Politique `scripted` (WP4, src/ai/policies/scripted.ts ; BOUCHON S0).
+  // Politique `scripted` (WP4, src/ai/policies/scripted.ts).
   const scripted = cfg.mode === 'scripted' ? createScriptedPolicy(cfg) : undefined
-  // Équipes de personnages : une invocation joue toujours après son invocateur, son équipe est donc déjà connue.
-  const playerTeams = new Set<TeamId>()
-  void engine
+  const custom = new Map<string, Controller>()
+  const customFor = (key: string): Controller | undefined => {
+    let c = custom.get(key)
+    if (c) return c
+    const factory = registryFactory(key)
+    if (!factory) return undefined
+    custom.set(key, (c = factory(engine, cfg)))
+    return c
+  }
+  // Aiguilleur unique : l'équipe d'un combattant (joueurs ou monstres) est lue dans le combat au moment du tour.
+  const dispatcher = (aiKey: string): Controller => ({
+    playTurn(eng: Engine, fight: FightState, f: Fighter): void {
+      observeVisibility(fight)
+      const c = customFor(aiKey) ?? (isPlayerTeam(fight, f.team) ? (scripted ?? teamOf(f.team)) : monsters)
+      c.playTurn(eng, fight, f)
+    },
+  })
+  const byKey = new Map<string, Controller>()
   const pick = (f: Fighter): Controller => {
-    if (f.ai === 'pass') return passController
-    if (f.kind === 'player') playerTeams.add(f.team)
-    else if (!playerTeams.has(f.team)) return monsters
-    return scripted ?? teamOf(f.team)
+    if (f.ai === 'pass' && !REGISTRY.has('pass')) return passController
+    let c = byKey.get(f.ai)
+    if (!c) byKey.set(f.ai, (c = dispatcher(f.ai)))
+    return c
   }
   const stats = (): AIRunStats => {
     const out: AIRunStats = { nodes: 0, creativeActions: 0, tactics: {}, keyDecisions: 0 }
