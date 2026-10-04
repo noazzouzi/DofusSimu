@@ -119,6 +119,26 @@ export function nearestCell(cell: number, pool: readonly number[]): number {
 }
 
 /**
+ * Premier maillon de la chaîne depuis `start` (sans `start`) accepté par `accept`, construit paresseusement :
+ * équivalent à `nearestChain(start, cells).find(accept)` mais s'arrête dès le premier maillon accepté (zones
+ * « toute la carte »). −1 si aucun.
+ */
+export function firstInChain(start: number, cells: readonly number[], accept: (cell: number) => boolean): number {
+  const pool = cells.slice()
+  let k = pool.indexOf(start)
+  if (k >= 0) pool.splice(k, 1)
+  let cur = start
+  for (;;) {
+    const n = nearestCell(cur, pool)
+    if (n < 0) return -1
+    if (accept(n)) return n
+    k = pool.indexOf(n)
+    pool.splice(k, 1)
+    cur = n
+  }
+}
+
+/**
  * Chaîne depuis `start` : à chaque pas, la cellule restante la plus proche. Renvoie les maillons SANS `start`
  * (tableau vide si aucun maillon) ; `ordered` inverse l'ordre (port `isOrdered`).
  */

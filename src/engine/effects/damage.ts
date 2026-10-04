@@ -19,6 +19,7 @@ import { healLastDamage, healPercentMaxHp, shieldFromLevel, shieldFromMaxHp } fr
 import type { Engine } from '../engine'
 import type { Buff, Fighter, FightState } from '../types'
 import {
+  applyDamageFramed,
   applySplashDamage,
   castDamageDealt,
   computeAndApplyDamage,
@@ -37,6 +38,7 @@ import {
   MOD_RECEIVED_DAMAGE,
   MOD_RECEIVED_HEAL,
   MOD_SHARE,
+  modifierMagnitude,
   resolveElement,
   rollEffectValue,
   splashRecipients,
@@ -77,7 +79,7 @@ function lifeLossHandler(ctx: EffectContext): void {
     const v = rollEffectValue(ctx)
     const amount = effect.effectId === 1048 ? Math.floor((t.hp * v) / 100) : Math.round(v)
     if (amount <= 0) continue
-    engine.applyDamage(fight, t === caster ? undefined : caster, t, amount, -1, 'indirect', { ignoreShield: true })
+    applyDamageFramed(ctx, t === caster ? undefined : caster, t, amount, -1, 'indirect', { ignoreShield: true })
     if (effect.duration !== 0 && t.alive) {
       engine.addBuff(fight, t, {
         sourceId: caster.id,
@@ -88,7 +90,7 @@ function lifeLossHandler(ctx: EffectContext): void {
         delay: 0,
         dispellable: effect.dispellable === 1,
         kind: 'special',
-        label: `-${amount} PV`,
+        label: fight.options.record ? `-${amount} PV` : '',
       })
     }
   }
@@ -226,24 +228,33 @@ function percentMaxHpHealHandler(ctx: EffectContext): void {
   for (const t of ctx.targets) if (t.alive) deliverHeal(ctx, t, healPercentMaxHp(t.maxHp, rollEffectValue(ctx)))
 }
 
-/** 90 : le lanceur perd `diceNum` % de ses PV actuels et la cible est soignée du même montant. */
+/**
+ * 90 : le lanceur perd UNE fois `diceNum` % de ses PV actuels (« faux dommage » : ni bouclier ni multiplicateurs) et
+ * CHAQUE cible est soignée de ce montant (port D3 `HandleDispatchLifePointsPercent`, appelé une fois par effet si
+ * la liste de cibles n'est pas vide, puis soin de `currentDamageRange` par cible) — *Transfusion*, *Perfusion*,
+ * *Mot de Solidarité* soignent plusieurs alliés sans multiplier le coût.
+ */
 function transferHandler(ctx: EffectContext): void {
-  const { engine, fight, caster } = ctx
-  for (const t of ctx.targets) {
-    if (t === caster || !t.alive || !caster.alive) continue
-    const amount = Math.floor((caster.hp * rollEffectValue(ctx)) / 100)
-    if (amount <= 0) continue
-    engine.applyDamage(fight, undefined, caster, amount, -1, 'indirect', { ignoreShield: true })
-    deliverHeal(ctx, t, amount)
-  }
+  const { caster } = ctx
+  if (!caster.alive) return
+  let any = false
+  for (const t of ctx.targets) if (t !== caster && t.alive) any = true
+  if (!any) return
+  const amount = Math.floor((caster.hp * rollEffectValue(ctx)) / 100)
+  if (amount <= 0) return
+  applyDamageFramed(ctx, undefined, caster, amount, -1, 'indirect', { ignoreShield: true })
+  for (const t of ctx.targets) if (t !== caster && t.alive) deliverHeal(ctx, t, amount)
 }
 
-/** 786 (buff D) : l'attaquant du porteur est soigné de `value` % des dommages infligés. */
+/**
+ * 786 (buff D) : l'attaquant du porteur est soigné de `value` % des PV réellement perdus par le porteur (après
+ * bouclier ; port D3 `HandleHealAttackers` : `TriggeringOutput.ComputeLifeDamage()`).
+ */
 function healAttackersHandler(ctx: EffectContext): void {
   const t = ctx.trigger
   if (!t || t.type !== 'D' || !t.source || !t.source.alive) return
   const top = currentDamage()
-  const dealt = top ? top.final : (t.amount ?? 0)
+  const dealt = top ? top.life : (t.amount ?? 0)
   const pct = ctx.effect.value || ctx.effect.diceNum
   const h = Math.floor((dealt * pct) / 100)
   if (h > 0) deliverHeal(ctx, t.source, h)
@@ -312,7 +323,7 @@ export function giveShield(ctx: EffectContext, target: Fighter, amount: number):
     dispellable: effect.dispellable === 1,
     kind: 'special',
     crit: ctx.crit,
-    label: `Bouclier ${a}`,
+    label: fight.options.record ? `Bouclier ${a}` : '',
   })
   if (caster.alive) engine.trigger(fight, caster, { type: 'CS', source: caster, amount: a })
 }
@@ -350,9 +361,11 @@ function modifierHandler(ctx: EffectContext): void {
   if (effect.duration === 0) return
   const id = effect.effectId
   const armor = id === MOD_ARMOR || id === MOD_ARMOR_D2
+  // Dés nuls ⇒ `value` (1164 *Décalage horaire* d=0 v=100) ; armure : `value` + jet des dés (port D3 GetDamageInterval).
+  const zeroDice = effect.diceNum === 0 && effect.diceSide === 0
   for (const t of ctx.targets) {
     if (!t.alive) continue
-    const v = armor ? effect.value + Math.round(rollEffectValue(ctx)) : Math.round(rollEffectValue(ctx))
+    const v = armor ? effect.value + Math.round(rollEffectValue(ctx)) : zeroDice ? modifierMagnitude(effect) : Math.round(rollEffectValue(ctx))
     engine.addBuff(fight, t, {
       sourceId: caster.id,
       spellId: ctx.spellId,
@@ -362,22 +375,37 @@ function modifierHandler(ctx: EffectContext): void {
       delay: 0,
       dispellable: effect.dispellable === 1,
       kind: 'special',
-      label: id === MOD_RECEIVED_DAMAGE || id === MOD_RECEIVED_HEAL ? `${MODIFIER_LABELS[id]} ×${v} %` : `${MODIFIER_LABELS[id]} ${v || ''}`.trim(),
+      label: !fight.options.record
+        ? ''
+        : id === MOD_RECEIVED_DAMAGE || id === MOD_RECEIVED_HEAL
+          ? `${MODIFIER_LABELS[id]} ×${v} %`
+          : `${MODIFIER_LABELS[id]} ${v || ''}`.trim(),
     })
   }
 }
 
 // ───────────────────────────── enregistrement ─────────────────────────────
 
-registerEffect([...DAMAGE_SPECS.keys()], FAMILY, damageHandler)
-registerEffect([1047, 1048], FAMILY, lifeLossHandler)
-registerEffect(Object.keys(SPLASH_DAMAGE).map(Number), FAMILY, splashDamageHandler)
-registerEffect(2020, FAMILY, splashHealTakenHandler)
-registerEffect(2973, FAMILY, splashHealDealtHandler)
-registerEffect(Object.keys(HEAL_ELEMENTS).map(Number), FAMILY, healHandler)
-registerEffect([143, 407], FAMILY, fixedHealHandler)
-registerEffect(1109, FAMILY, percentMaxHpHealHandler)
-registerEffect(90, FAMILY, transferHandler)
-registerEffect(786, FAMILY, healAttackersHandler)
-registerEffect([...SHIELD_EFFECTS], FAMILY, shieldHandler)
-registerEffect(Object.keys(MODIFIER_LABELS).map(Number), FAMILY, modifierHandler)
+/**
+ * Enregistre un interprète de la famille. Les effets `forClientOnly` (affichage seulement : la ligne visible d'un sort
+ * dont l'effet réel est porté par un sous-sort, ex. 1223 de *Couronne d'Épines*, 1061 de *Musette Animée*, 90 de
+ * *Sacrifice*) sont ignorés — les appliquer doublerait les dommages / soins.
+ */
+function register(ids: number | number[], handler: (ctx: EffectContext) => void): void {
+  registerEffect(ids, FAMILY, ctx => {
+    if (!ctx.effect.clientOnly) handler(ctx)
+  })
+}
+
+register([...DAMAGE_SPECS.keys()], damageHandler)
+register([1047, 1048], lifeLossHandler)
+register(Object.keys(SPLASH_DAMAGE).map(Number), splashDamageHandler)
+register(2020, splashHealTakenHandler)
+register(2973, splashHealDealtHandler)
+register(Object.keys(HEAL_ELEMENTS).map(Number), healHandler)
+register([143, 407], fixedHealHandler)
+register(1109, percentMaxHpHealHandler)
+register(90, transferHandler)
+register(786, healAttackersHandler)
+register([...SHIELD_EFFECTS], shieldHandler)
+register(Object.keys(MODIFIER_LABELS).map(Number), modifierHandler)

@@ -58,6 +58,13 @@ export interface Buff {
   disabledStateId?: number
   /** Tour annulé (effet 140) : le porteur passe automatiquement ses tours tant que ce buff est actif. */
   passTurn?: boolean
+  /** Buff accordé par une glyphe-aura (uid de la marque) : retiré quand le porteur sort de l'aura (effects/marks.ts). */
+  markUid?: number
+  /**
+   * Effet différé (`kind: 'delayed'`) : case ciblée par le lancer d'origine (port `HandleDelayedCast` :
+   * `buff.TargetedCell`), transmise à l'exécution dans `EffectContext.originCell` (effects/core.ts).
+   */
+  targetCell?: number
 }
 
 /**

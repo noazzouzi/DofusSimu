@@ -6,8 +6,9 @@
  *  - durée décomptée au début du tour du LANCEUR (Engine.decrementCastedBuffs) ; −1 ou ≥ 63 = permanent ;
  *  - `dispellable` : 1 désenvoûtable (et retiré à la mort), 2 retiré à la mort (et par désenvoûtement fort),
  *    3 désenvoûtement fort uniquement, 4 jamais ; le booléen `Buff.dispellable` vaut `dispellable === 1` ;
- *  - `maxStack` (spell-level) > 0 : quand la cible porte déjà `maxStack` buffs identiques (même sort, même effet,
- *    même paramètre), le plus ancien est retiré avant d'appliquer le nouveau (port D3 `StorePendingBuff`) ; ≤ 0 = illimité.
+ *  - `maxStack` (spell-level) > 0 : quand la cible porte déjà `maxStack` buffs identiques (même sort, même effet — ou
+ *    sa version critique / d'un autre rang —, même paramètre), le plus ancien est retiré avant d'appliquer le nouveau
+ *    (port D3 `StorePendingBuff`, cf. `enforceMaxStack`) ; ≤ 0 = illimité.
  */
 import type { EffectData, SpellLevelData } from '../../../data/model'
 import type { Stats } from '../../../core/types'
@@ -88,20 +89,64 @@ function buffParam(b: Buff): number {
   return b.spellMod?.spellId ?? b.stateId ?? b.disabledStateId ?? 0
 }
 
+/** Premier code d'une liste de déclencheurs « A|B|C ». */
+function firstTrigger(triggers: string): string {
+  const i = triggers.indexOf('|')
+  return i < 0 ? triggers : triggers.slice(0, i)
+}
+
+/** effectUid -> l'effet appartient à `criticalEffects` de son spell-level. */
+const CRIT_BY_UID = new Map<number, boolean>()
+
+/** L'effet est-il un effet CRITIQUE de son sort (liste `criticalEffects`) ? Mis en cache par effectUid. */
+function isCriticalEffect(ctx: EffectContext, spellId: number, e: EffectData): boolean {
+  if (e.uid !== undefined) {
+    const c = CRIT_BY_UID.get(e.uid)
+    if (c !== undefined) return c
+  }
+  let crit = false
+  const data = ctx.engine.data.spell(spellId)
+  if (data) {
+    for (const l of data.levels) {
+      for (const x of l.criticalEffects) if (x === e || (e.uid !== undefined && x.uid === e.uid)) crit = true
+      if (crit) break
+    }
+  }
+  if (e.uid !== undefined) CRIT_BY_UID.set(e.uid, crit)
+  return crit
+}
+
 /**
- * Applique la règle de cumul avant l'ajout d'un buff identique (même sort, même effectId, même paramètre) sur
- * `target` : retire les plus anciens tant que leur nombre atteint `maxStack`.
+ * Applique la règle de cumul avant l'ajout d'un buff identique sur `target` : retire les plus anciens tant que leur
+ * nombre atteint `maxStack`. « Identique » (port OTOMAI `HaxeFighter.StorePendingBuff` / `BuffComparer`, quel que
+ * soit le lanceur) : même sort, même effectId, même paramètre (sort modifié, état) ET même effet — même effectUid,
+ * même `order` (même effet à un autre rang du sort), ou version critique ↔ normale du même effet. Deux effets
+ * distincts d'un même spell-level (ex. *Intenable* : deux 1171 sous conditions d'états différentes) se cumulent.
+ *
+ * `kind` (facultatif) : nature du buff qui va être posé. Par défaut un buff « instantané » de la famille (seuls les
+ * buffs non déclencheurs / non différés sont comptés) ; 'trigger' / 'delayed' permettent au noyau (effects/core.ts,
+ * `runEffect`) d'appliquer la même règle à ses buffs déclencheurs (même premier code de `triggers`, comme
+ * `BuffComparer`) et différés — ce que le noyau ne fait pas encore (poisons cumulés au-delà de `maxStack`).
  */
-export function enforceMaxStack(ctx: EffectContext, target: Fighter, param = 0): void {
+export function enforceMaxStack(ctx: EffectContext, target: Fighter, param = 0, kind?: 'trigger' | 'delayed'): void {
   const max = spellMaxStack(ctx)
   if (max <= 0) return
-  const effectId = ctx.effect.effectId
+  const e = ctx.effect
+  let eCrit: boolean | undefined
   for (;;) {
     let count = 0
     let oldest: Buff | undefined
     for (const b of target.buffs) {
-      if (b.spellId !== ctx.spellId || b.effect.effectId !== effectId) continue
-      if (b.kind === 'trigger' || b.kind === 'delayed' || buffParam(b) !== param) continue
+      if (b.spellId !== ctx.spellId || b.effect.effectId !== e.effectId) continue
+      const bk = b.kind === 'trigger' || b.kind === 'delayed' ? b.kind : undefined
+      if (bk !== kind || buffParam(b) !== param) continue
+      if (kind === 'trigger' && firstTrigger(b.triggers ?? '') !== firstTrigger(e.triggers)) continue
+      const be = b.effect
+      if (be !== e && (be.uid === undefined || be.uid !== e.uid) && be.order !== e.order) {
+        // Effets distincts du même sort : identiques seulement si l'un est la version critique de l'autre.
+        eCrit ??= isCriticalEffect(ctx, ctx.spellId, e)
+        if (isCriticalEffect(ctx, b.spellId, be) === eCrit) continue
+      }
       count++
       oldest ??= b
     }

@@ -5,7 +5,10 @@
  *
  *  - 149 apparence, 333 couleur, 335 apparence ajoutée, 1060 / 2868 / 2871 taille ;
  *  - 3792 / 3793 scripts visuels (`value` = id dans `spell.boundScriptUsageData` ; vérifié sans gameplay) ;
- *  - 666 « Pas d'effet supplémentaire », 2883 « Durée du tour » (sans objet en simulation) : non journalisés.
+ *  - 666 « Pas d'effet supplémentaire », 2883 « Durée du tour » (sans objet en simulation) : non journalisés ;
+ *  - 2876 / 2877 validation / invalidation d'un challenge, 2192 mise en scène (`TriggerStaging`), 130 vol de kamas :
+ *    sans effet sur le combat simulé (ActionId pydofus3 `FightValidateChallenge`, `FightInvalidateChallenge`,
+ *    `TriggerStaging`, `CharacterStealGold`), non journalisés.
  */
 import { registerEffect, type EffectContext } from './registry'
 
@@ -20,7 +23,7 @@ export const VISUAL_EFFECTS: Readonly<Record<number, string>> = {
   3792: 'script visuel',
   3793: 'script visuel',
 }
-export const NOOP_EFFECTS: readonly number[] = [666, 2883]
+export const NOOP_EFFECTS: readonly number[] = [666, 2883, 2876, 2877, 2192, 130]
 
 function visualHandler(ctx: EffectContext): void {
   const { engine, fight } = ctx

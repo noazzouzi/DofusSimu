@@ -249,8 +249,10 @@ export class Engine {
       f.maxHp = Math.max(1, f.maxHp + dVit)
       f.hp = Math.min(f.maxHp, Math.max(1, f.hp + dVit))
     }
-    const dAp = f.stats.ap - before.ap
-    const dMp = f.stats.mp - before.mp
+    // Variation des totals EFFECTIFS (bornés à 0) : un malus de −100 PM sur 6 PM n'en retire que 6, et sa fin n'en
+    // rend que 6 (sinon un désenvoûtement en cours de tour rendrait 100 PM).
+    const dAp = Math.max(0, f.stats.ap) - Math.max(0, before.ap)
+    const dMp = Math.max(0, f.stats.mp) - Math.max(0, before.mp)
     if (!dAp && !dMp) return
     f.ap = Math.max(0, f.ap + dAp)
     f.mp = Math.max(0, f.mp + dMp)

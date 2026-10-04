@@ -2,13 +2,13 @@
  * Désenvoûtements et retraits d'effets (kind `dispel` + 132 ; docs/research/effects.md §2.3, §7.11) :
  *  - 132 « Enlève les envoûtements » : retire tous les buffs désenvoûtables (`dispellable` 1) de la cible ;
  *  - 1075 « Durée des effets : −X » : réduit de `diceNum` tours les buffs désenvoûtables (1) de la cible ; un buff
- *    ramené à 0 est retiré ; les effets permanents (−1) et encore différés ne sont pas touchés (OTOMAI
- *    `HaxeFighter.ReduceBuffDurations`) — Vortex *Heuristique* : −2 tours ;
+ *    ramené à 0 est retiré ; les effets permanents (−1 ou ≥ 63) et encore différés ne sont pas touchés (OTOMAI
+ *    `HaxeFighter.ReduceBuffDurations`, D2 `BuffManager.incrementDuration`) — Vortex *Heuristique* : −2 tours ;
  *  - 406 « Enlève les effets du sort `value` » : tous les buffs issus de ce sort, quels que soient leur lanceur et leur
  *    désenvoûtabilité (auto-consommation : déclencheur D + propre sort, purge du poison par un soin…) ;
  *  - 1406 « Enlève les effets du rang `diceSide` du sort `value` » (rang 0 = tous les rangs).
- * 132 et 1075 émettent le déclencheur 'DIS' (« le porteur est désenvoûté ») sur la cible ; 406/1406 non (ce sont des
- * retraits ciblés, souvent l'auto-consommation d'un buff).
+ * 132 et 1075 émettent le déclencheur 'DIS' (« le porteur est désenvoûté ») sur la cible — 1075 seulement s'il a
+ * retiré au moins un buff (OTOMAI) ; 406/1406 non (ce sont des retraits ciblés, souvent l'auto-consommation d'un buff).
  */
 import type { Engine } from '../../engine'
 import type { Buff, Fighter, FightState } from '../../types'
@@ -34,17 +34,25 @@ export function dispelBuffs(engine: Engine, fight: FightState, target: Fighter, 
   return uids?.length ?? 0
 }
 
-/** Réduit de `turns` la durée des buffs désenvoûtables de `target` (retire ceux qui tombent à 0), puis 'DIS'. */
+/** Durée à partir de laquelle un buff est permanent (D2 `BasicBuff.incrementDuration` : `duration >= 63` intouché). */
+const PERMANENT_DURATION = 63
+
+/**
+ * Réduit de `turns` la durée des buffs désenvoûtables de `target` (retire ceux qui tombent à 0) ; 'DIS' n'est
+ * déclenché que si au moins un buff a été retiré (OTOMAI `HaxeFighter.ReduceBuffDurations` : sortie `FromDispell`
+ * seulement si `num > 0`). Les durées ≥ 63 (déclencheurs « tout le combat ») ne sont pas touchées.
+ */
 export function shortenBuffs(engine: Engine, fight: FightState, target: Fighter, turns: number, source?: Fighter): void {
   let uids: number[] | undefined
   if (turns > 0) {
     for (const b of target.buffs) {
-      if (!b.dispellable || b.delay > 0 || b.kind === 'delayed' || b.remaining < 0) continue
+      if (!b.dispellable || b.delay > 0 || b.kind === 'delayed' || b.remaining < 0 || b.remaining >= PERMANENT_DURATION) continue
       b.remaining -= turns
       if (b.remaining <= 0) (uids ??= []).push(b.uid)
     }
   }
-  if (uids) for (const uid of uids) engine.removeBuff(fight, target, uid)
+  if (!uids) return
+  for (const uid of uids) engine.removeBuff(fight, target, uid)
   if (target.alive && !fight.ended) engine.trigger(fight, target, { type: 'DIS', source })
 }
 

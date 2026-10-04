@@ -14,6 +14,10 @@
  *
  * « Source » = l'entité déclenchante si l'effet est joué par un buff déclenché (`ctx.trigger.source` ; à défaut le
  * porteur du buff), sinon le lanceur de l'effet (port : `IsTriggered ? TriggeringFighter : caster`).
+ * « Case ciblée par le sort parent » : pour un effet DIFFÉRÉ (`delay`), celle du lancer d'origine (`ctx.originCell`,
+ * port `HandleDelayedCast` : `buff.TargetedCell`) et non la case du porteur — Pluie de Flèches (Cra), Prémonition.
+ * Écart connu : la case d'une cible est sa position ACTUELLE, le port prend sa position « avant le sort »
+ * (`GetBeforeLastSpellPosition`) — différence seulement si un effet précédent du même sort l'a déplacée.
  *
  * Limites : `value` des variantes « GlobalLimitation » (2017, 2160, 2792, 2793, 2795) = nombre max d'exécutions par
  * exécution de l'effet parent, toutes cibles confondues (port `HasReachedMaxUseLimit` : `utilisations >= value`) ;
@@ -81,10 +85,12 @@ function castSpellHandler(ctx: EffectContext): void {
     castSubSpell(engine, fight, caster, spellId, grade, cell, ctx.crit, ctx.depth, opts)
   }
 
+  // Case ciblée par le lancer parent ; pour un effet différé, celle du lancer d'origine (Pluie de Flèches, Prémonition).
+  const parentCell = ctx.originCell ?? ctx.targetCell
   // 2960 : une seule exécution sur la case ciblée, sans besoin d'entité (conditions « * » du lanceur seulement).
   if (rule.who === 'caster' && rule.where === 'cell') {
     if (effect.targetMask && !casterPassesMask(effect.targetMask, ctx.caster)) return
-    run(ctx.caster, ctx.targetCell)
+    run(ctx.caster, parentCell)
     return
   }
   const source = effectSource(ctx)
@@ -107,7 +113,7 @@ function castSpellHandler(ctx: EffectContext): void {
         cell = t.cell
         break
       case 'cell':
-        cell = ctx.targetCell
+        cell = parentCell
         break
       case 'source':
         cell = source.cell

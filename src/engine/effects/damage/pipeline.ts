@@ -114,15 +114,17 @@ DAMAGE_SPECS.set(671, { family: 'hp', element: N, steal: false, hpSource: 'caste
 // ───────────────────────────── contexte d'un dommage ─────────────────────────────
 
 /**
- * Nature d'un dommage selon son origine : marque (piège / glyphe), buff déclenché (poison si TB/TE), sous-sort
- * ou effet indirect, sinon direct (effects.md §2.2).
+ * Nature d'un dommage selon son origine : marque (piège / glyphe), buff déclenché (poison si TB/TE), sinon direct
+ * (effects.md §2.2). Un sous-sort lancé par un effet INSTANTANÉ (`ctx.indirect` vrai, sans déclencheur ni marque :
+ * 1160 / 792 d'un sort lancé, sort de départ d'une invocation) inflige des dommages directs : port D3 `DS` =
+ * « effet parent absent ou non déclenché » ; le déclencheur / la marque d'origine sont propagés aux sous-sorts.
  */
 export function damageKindOf(ctx: EffectContext): DamageKind {
   const m = ctx.mark
   if (m) return m.kind === 'trap' ? 'trap' : m.kind === 'rune' ? 'indirect' : 'glyph'
   const t = ctx.trigger
   if (t) return t.type === 'TB' || t.type === 'TE' ? 'poison' : 'indirect'
-  return ctx.indirect ? 'indirect' : 'direct'
+  return 'direct'
 }
 
 /** Mêlée = lanceur ≠ cible et cases adjacentes AU MOMENT de l'application (port D3, DoMath piège). */
@@ -201,6 +203,16 @@ export function diceMax(e: EffectData): number {
   return e.diceSide > e.diceNum ? e.diceSide : e.diceNum
 }
 
+/**
+ * Valeur d'un modificateur à pourcentage (1163, 1159, 1164) : `diceNum`, ou `value` quand les deux dés sont nuls
+ * (port D3 `HaxeSpellEffect.GetEffectMinRoll` : `param1 == 0 && param2 == 0 ⇒ param3`). Données réelles :
+ * *Assaisonnement* (24780) 1163 d=0 v=130, *Gélifiant* (29844) 1159 d=0 v=130, *Décalage horaire* (5109) 1164
+ * d=0 v=100 — lire `diceNum` annulerait tous les dommages / soins de la cible.
+ */
+export function modifierMagnitude(e: EffectData): number {
+  return e.diceNum === 0 && e.diceSide === 0 ? e.value : e.diceNum
+}
+
 // ───────────────────────────── buffs modificateurs ─────────────────────────────
 
 /** Effets modificateurs lus au moment du dommage / du soin. */
@@ -246,16 +258,17 @@ function healEvent(source: Fighter | undefined): TriggerEvent {
  * ses codes correspond et qu'il lui reste des déclenchements ; buff différé : non.
  */
 export function buffApplies(b: Buff, ev: TriggerEvent, holder: Fighter): boolean {
-  if (b.delay > 0 || b.kind === 'delayed') return false
+  // Effet d'affichage seulement (forClientOnly) : le noyau peut en faire un buff déclencheur, sans effet réel.
+  if (b.delay > 0 || b.kind === 'delayed' || b.effect.clientOnly) return false
   if (b.kind !== 'trigger' || !b.triggers) return true
   if (b.maxTriggers !== undefined && (b.triggerCount ?? 0) >= b.maxTriggers) return false
   for (const c of parseTriggerCodes(b.triggers)) if (triggerMatches(c, ev, holder)) return true
   return false
 }
 
-/** Valeur portée par un buff modificateur : valeur résolue (buff spécial), sinon `diceNum` de l'effet. */
+/** Valeur portée par un buff modificateur : valeur résolue (buff spécial), sinon valeur de l'effet (`modifierMagnitude`). */
 function modValue(b: Buff): number {
-  return b.kind === 'trigger' || !b.value ? b.effect.diceNum : b.value
+  return b.kind === 'trigger' || !b.value ? modifierMagnitude(b.effect) : b.value
 }
 
 /** Valeur d'une réduction fixe (265 : `value`, plus rarement `diceNum` ; port D3 GetDamageInterval = param1 + param3). */
@@ -321,7 +334,7 @@ export function scanReceivedMods(fight: FightState, target: Fighter, ev: Trigger
         }
         break
       case MOD_SHARE:
-        if (!push && b.delay <= 0) m.shareGroups++
+        if (!push && b.delay <= 0 && !b.effect.clientOnly) m.shareGroups++
         break
       case MOD_DAMAGE_TO_HEAL:
         if (m.healRatio === 0 && buffApplies(b, ev, target)) m.healRatio = modValue(b)
@@ -367,8 +380,13 @@ export interface DamageFrame {
   target: Fighter
   source: Fighter | undefined
   cell: number
-  /** Dommage final (avant bouclier). */
+  /**
+   * Dommage final (avant bouclier), borné aux PV + bouclier de la cible avant le coup (port D3 `ApplyDamage` :
+   * `curLife − dmg < minLife ⇒ dmg = curLife`) : un coup fatal ne renvoie que ce qu'il a réellement retiré.
+   */
   final: number
+  /** PV réellement perdus (après bouclier, bornés aux PV) : port D3 `EffectOutput.ComputeLifeDamage` (786). */
+  life: number
   /** Dommage initial : jet boosté et dégressivité, avant résistances, armure et multiplicateurs (port D3 LastTheoreticalRawDamageTaken). */
   raw: number
   element: number
@@ -378,16 +396,23 @@ export interface DamageFrame {
 const FRAMES: DamageFrame[] = []
 let frameTop = 0
 
-function pushFrame(target: Fighter, source: Fighter | undefined, final: number, raw: number, element: number, kind: DamageKind): void {
+/** `ignoreShield` : « faux dommage » (perte de PV, transfert) qui ne touche pas le bouclier. */
+function pushFrame(target: Fighter, source: Fighter | undefined, amount: number, raw: number, element: number, kind: DamageKind, ignoreShield = false): void {
   let f = FRAMES[frameTop]
   if (!f) {
-    f = { target, source, cell: -1, final: 0, raw: 0, element: -1, kind }
+    f = { target, source, cell: -1, final: 0, life: 0, raw: 0, element: -1, kind }
     FRAMES[frameTop] = f
   }
+  const shield = ignoreShield ? 0 : target.shield
+  const hp = target.hp > 0 ? target.hp : 0
+  const cap = hp + shield
+  const final = amount < cap ? amount : cap
+  const life = final - shield
   f.target = target
   f.source = source
   f.cell = target.cell
   f.final = final
+  f.life = life > 0 ? life : 0
   f.raw = raw
   f.element = element
   f.kind = kind
@@ -401,6 +426,28 @@ function popFrame(): void {
 /** Dommage dont les déclencheurs sont en cours d'exécution (sommet de pile), ou undefined. */
 export function currentDamage(): DamageFrame | undefined {
   return frameTop > 0 ? FRAMES[frameTop - 1] : undefined
+}
+
+/**
+ * `Engine.applyDamage` encadré dans la pile, pour les dommages calculés hors du pipeline (renvoi, perte de PV,
+ * transfert) : sans cadre, un renvoi 1223 / soin 2020 / 786 déclenché par ce dommage lirait le cadre d'un dommage
+ * englobant (ou rien).
+ */
+export function applyDamageFramed(
+  ctx: EffectContext,
+  source: Fighter | undefined,
+  receiver: Fighter,
+  amount: number,
+  element: Element | -1,
+  kind: DamageKind,
+  opts: { melee?: boolean; ignoreShield?: boolean } = {},
+): number {
+  pushFrame(receiver, source, amount, amount, element, kind, opts.ignoreShield === true)
+  try {
+    return ctx.engine.applyDamage(ctx.fight, source, receiver, amount, element, kind, opts)
+  } finally {
+    popFrame()
+  }
 }
 
 // ───────────────────────────── dommages occasionnés par le lancer en cours (2973) ─────────────────────────────
@@ -548,12 +595,17 @@ function neutralDefender(src: PreparedDamage, keepFlatRes: boolean): PreparedDam
 function computeBoosted(ctx: EffectContext, target: Fighter, effect: EffectData, spec: DamageSpec, element: Element, kind: DamageKind, melee: boolean, mods: ReceivedMods): void {
   const fight = ctx.fight
   const caster = ctx.caster
-  let eff = ctx.efficiency.get(target.id) ?? 1
-  if (spec.family === 'mp') eff *= mpRatio(caster)
+  const eff = ctx.efficiency.get(target.id) ?? 1
+  // Facteurs hors zone : PM restants (1012-1016) et bonus combo des bombes (1027). Port D3 : deux `floor` séparés
+  // avant la dégressivité ; ici un seul facteur appliqué AVEC la zone (même troncature), via le bonus « portail »
+  // de DoMath (`1 + bonus/100`, multiplié à l'efficacité) — INCERTAIN à 1 point près. Les paliers de zone restent
+  // exacts (un facteur > 1 replié dans l'efficacité était perdu par `setArea`).
+  let extra = spec.family === 'mp' ? mpRatio(caster) : 1
   const combo = caster.stats.comboDamagePct ?? 0
-  if (combo) eff *= 1 + combo / 100 // INCERTAIN : bonus combo replié dans l'efficacité (port D3 : floor séparé)
+  if (combo) extra *= 1 + combo / 100
   const input = fillInput(ctx, target, element, critApplies(ctx, effect), melee, kind, mods)
   setArea(input, eff, effect.zone)
+  input.portalBonusPct = extra !== 1 ? (extra - 1) * 100 : undefined
   const p = prepareDamage(input, PREP_N)
   const lo = diceMin(effect)
   const hi = diceMax(effect)
@@ -578,6 +630,15 @@ function computeBoosted(ctx: EffectContext, target: Fighter, effect: EffectData,
 }
 
 const HP_SNAP: HpSnapshot = { casterHp: 0, casterMaxHp: 0, casterBaseMaxHp: 0, targetHp: 0, targetMaxHp: 0, targetBaseMaxHp: 0 }
+
+/**
+ * PV max NON érodés d'un combattant : PV max de début de combat + variation de Vitalité des buffs (le moteur la
+ * reporte sur `maxHp`, Engine.applyPoolDelta). `uneroded − maxHp` = PV érodés (1092-1096, 1118-1122) : sans la
+ * correction, un bonus de Vitalité (1078, 125...) masquait l'érosion et un malus passait pour de l'érosion.
+ */
+export function unerodedMaxHp(f: Fighter): number {
+  return f.baseMaxHp + (f.stats.vitality - f.baseStats.vitality)
+}
 const HP_INPUT: HpBasedDamageInput = { percent: 0, referenceHp: 0, defender: undefined as unknown as Stats, element: -1, defenderIsPlayer: false }
 
 /** Un jet de dommage non boosté : `value` = % (famille hp) ou jet (famille fixed). */
@@ -603,10 +664,10 @@ function computeUnboosted(ctx: EffectContext, target: Fighter, effect: EffectDat
     const s = HP_SNAP
     s.casterHp = caster.hp
     s.casterMaxHp = caster.maxHp
-    s.casterBaseMaxHp = caster.baseMaxHp
+    s.casterBaseMaxHp = unerodedMaxHp(caster)
     s.targetHp = target.hp
     s.targetMaxHp = target.maxHp
-    s.targetBaseMaxHp = target.baseMaxHp
+    s.targetBaseMaxHp = unerodedMaxHp(target)
     ref = hpReference(spec.hpSource!, s)
   }
   const i = HP_INPUT
@@ -678,10 +739,13 @@ const DELIVER: DeliverInfo = { element: -1, kind: 'direct', melee: false, isWeap
 /** Applique un dommage à un combattant en l'encadrant dans la pile (pour les effets déclenchés). */
 function applyFramed(ctx: EffectContext, receiver: Fighter, amount: number, d: DeliverInfo): number {
   const { engine, fight, caster } = ctx
-  receiver.tags.lastDmgFinal = amount
+  pushFrame(receiver, caster, amount, d.raw, d.element, d.kind)
+  const final = FRAMES[frameTop - 1].final
+  receiver.tags.lastDmgFinal = final
   receiver.tags.lastDmgRaw = d.raw
   receiver.tags.lastDmgElement = d.element
-  pushFrame(receiver, caster, amount, d.raw, d.element, d.kind)
+  // Dommages occasionnés par le lancer en cours (2973) : valeur réellement retirée (PV + bouclier), par receveur.
+  accumulateCastDamage(ctx, final)
   try {
     return engine.applyDamage(fight, caster, receiver, amount, d.element, d.kind, { crit: d.crit, melee: d.melee, isWeapon: d.isWeapon })
   } finally {
@@ -693,11 +757,11 @@ function applyFramed(ctx: EffectContext, receiver: Fighter, amount: number, d: D
 function sharers(fight: FightState, target: Fighter): Fighter[][] {
   const groups: Fighter[][] = []
   for (const b of target.buffs) {
-    if (b.effect.effectId !== MOD_SHARE || b.delay > 0) continue
+    if (b.effect.effectId !== MOD_SHARE || b.delay > 0 || b.effect.clientOnly) continue
     const g: Fighter[] = [target]
     for (const f of fight.fighters) {
       if (f === target || !f.alive) continue
-      if (f.buffs.some(o => o.effect.effectId === MOD_SHARE && o.delay <= 0 && o.spellId === b.spellId && o.sourceId === b.sourceId)) g.push(f)
+      if (f.buffs.some(o => o.effect.effectId === MOD_SHARE && o.delay <= 0 && !o.effect.clientOnly && o.spellId === b.spellId && o.sourceId === b.sourceId)) g.push(f)
     }
     groups.push(g)
   }
@@ -709,14 +773,16 @@ function sharers(fight: FightState, target: Fighter): Fighter[][] {
  * Retourne les PV réellement perdus (somme si partage) — base du vol de vie.
  */
 export function deliverDamage(ctx: EffectContext, target: Fighter, amount: number, mods: ReceivedMods, d: DeliverInfo): number {
-  const { engine, fight } = ctx
-  if (amount <= 0 || !target.alive) return 0
-  // Conversion des dommages subis en soins (1164, port D3 GetHealOnDamageRatio).
+  const { fight } = ctx
+  if (!target.alive) return 0
+  // Conversion des dommages subis en soins (1164, port D3 `ReceiveDamageOrHeal` : `healOnDamageRatio` appliqué au
+  // dommage ENTRANT, avant les résistances de la cible ; soin ordinaire ⇒ « soins reçus » 1159 et déclencheur H).
   if (mods.healRatio > 0) {
-    engine.heal(fight, ctx.caster, target, Math.floor((amount * mods.healRatio) / 100))
+    const base = d.raw > 0 ? d.raw : amount
+    deliverHeal(ctx, target, Math.floor((base * mods.healRatio) / 100))
     return 0
   }
-  accumulateCastDamage(ctx, amount)
+  if (amount <= 0) return 0
   // Partage (1061) : réparti à parts égales entre les porteurs du même buff (après résistances de la cible).
   if (mods.shareGroups > 0 && d.kind !== 'reflect') {
     // Copies locales : les déclencheurs des dommages partagés réutilisent les objets de travail du module.
@@ -748,7 +814,18 @@ function reflect(ctx: EffectContext, target: Fighter, base: number, mods: Receiv
     const res = effectiveResistPercent(raw, caster.kind === 'player')
     dmg = Math.trunc(r * (1 - res / 100))
   }
-  if (dmg > 0) ctx.engine.applyDamage(ctx.fight, target, caster, dmg, element, 'reflect', { melee: isMeleeHit(target, caster) })
+  if (dmg > 0) applyDamageFramed(ctx, target, caster, dmg, element, 'reflect', { melee: isMeleeHit(target, caster) })
+}
+
+/**
+ * Soin d'un vol de vie : `floor(PV perdus / 2)` puis × % soins finaux du lanceur (port D3 `GetLifeStealEffect` →
+ * `ExecuteLifePointsWin` : `IsDealtHealMultiplierAppliable` vrai pour les vols) ; ni « soins reçus » ni déclencheur
+ * H (OTOMAI HaxeBuff).
+ */
+export function lifeStealAmount(caster: Fighter, lost: number): number {
+  const h = Math.floor(lost / 2)
+  const pct = caster.stats.finalHealPct ?? 0
+  return pct ? Math.floor((h * (100 + pct)) / 100) : h
 }
 
 /**
@@ -786,8 +863,8 @@ export function computeAndApplyDamage(ctx: EffectContext, target: Fighter, effec
   const reflectFlat = mods.reflectFlat
   const reflectBoosted = mods.reflectBoosted
   const lost = deliverDamage(ctx, target, amount, mods, d)
-  // Vol de vie : la moitié des PV réellement perdus, sans déclencher les buffs H (OTOMAI HaxeBuff).
-  if (s.steal && target !== caster && lost > 0 && caster.alive) engine.heal(ctx.fight, caster, caster, Math.floor(lost / 2), { noTrigger: true })
+  // Vol de vie : la moitié des PV réellement perdus (× soins finaux), sans déclencher les buffs H (OTOMAI HaxeBuff).
+  if (s.steal && target !== caster && lost > 0 && caster.alive) engine.heal(ctx.fight, caster, caster, lifeStealAmount(caster, lost), { noTrigger: true })
   if (reflectBase > 0 && kind !== 'reflect') {
     MODS.reflectFlat = reflectFlat
     MODS.reflectBoosted = reflectBoosted
@@ -840,7 +917,9 @@ export function computeHeal(ctx: EffectContext, target: Fighter, effect: EffectD
   const o = HEAL_OPTS
   o.element = element
   o.isWeapon = ctx.spell?.isWeapon === true
-  o.spellPower = undefined
+  // Puissance aux sorts (98) : ajoutée à la carac des soins comme des dommages (port D3 `GetDamageBonus` : seule la
+  // Puissance 25 est exclue des soins ; formulas.md §7) — cohérent avec `fillInput`.
+  o.spellPower = o.isWeapon ? undefined : caster.stats.spellPower
   o.finalHealPct = caster.stats.finalHealPct ?? 0
   o.efficiency = ctx.efficiency.get(target.id) ?? 1
   const bonus = spellBaseHealBonus(caster, ctx.spellId)

@@ -125,7 +125,12 @@ export function throwCarried(engine: Engine, fight: FightState, carrier: Fighter
   carried.cell = carrier.cell
   unlink(engine, fight, carrier, carried)
   if (cell !== carried.cell) relocate(engine, fight, carried, cell)
-  else setCell(fight, carried, cell)
+  else {
+    // Lâcher sur la case du porteur (porteur poussé) : le replay ne suit pas le porté pendant les marches du porteur,
+    // sa case y est donc périmée — événement explicite.
+    setCell(fight, carried, cell)
+    if (fight.options.record) engine.emit(fight, { t: 'teleport', target: carried.id, from: cell, to: cell })
+  }
   enterCell(engine, fight, carried, cell)
   fireMoveTriggers(engine, fight, carried, 'M', author)
   return carried

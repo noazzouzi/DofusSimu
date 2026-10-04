@@ -245,6 +245,12 @@ export interface ApplyOptions {
   trigger?: TriggerEvent
   /** Seule cible possible si elle est dans la zone (glyphe déclenché par un combattant : `forceTarget` du port). */
   forceTarget?: Fighter
+  /**
+   * Avec `forceTarget` : la cible forcée est retenue même hors de la zone de l'effet (si elle vérifie le masque).
+   * Glyphe-aura (effects/marks.ts) : le port cible le combattant qui entre comme `additionalTarget` et écarte les
+   * combattants déjà affectés (`FromGlyphAura` / `TriggeredFighters`), soit lui seul, où qu'il soit dans l'aura.
+   */
+  forceAnywhere?: boolean
   /** Cible ajoutée même hors zone (combattant qui déclenche un piège : `additionalTarget` du port). */
   additionalTarget?: Fighter
   /** Exécution issue d'une mort (déclencheur X) : le mourant reste lanceur/cible possible (`IsAlive(isFromDeath)`). */
@@ -386,6 +392,25 @@ function applyEffectsInner(
   }
 }
 
+/** Jeton U / u isolé dans un masque (entité qui vient d'apparaître). */
+const APPEARING_TOKEN = /(^|,)[Uu](,|$)/
+
+/** Ajoute une cible hors zone (C / O / K / U / cible additionnelle) si elle est valide et vérifie le masque. */
+function addOutOfArea(
+  targets: Fighter[],
+  efficiency: Map<number, number>,
+  f: Fighter | undefined,
+  eff: number,
+  mask: string,
+  caster: Fighter,
+  mctx: MaskContext,
+  dying: boolean,
+): void {
+  if (!f || !(f.alive || (dying && isDying(f))) || targets.includes(f) || !matchesTargetMask(mask, caster, f, mctx)) return
+  targets.push(f)
+  efficiency.set(f.id, eff)
+}
+
 /** Combattant vivant (ou mourant si `dying`) sur une case. */
 function occupantAt(engine: Engine, fight: FightState, c: number, dying: boolean): Fighter | undefined {
   const f = engine.fighterAt(fight, c)
@@ -422,10 +447,9 @@ export function target(
   maskFight = fight
   const mctx: MaskContext = opts?.trigger?.source ? { ...BASE_MASK_CONTEXT, triggering: opts.trigger.source } : BASE_MASK_CONTEXT
   const mask = effect.targetMask
-  const ok = (f: Fighter) => f.alive || (dying && isDying(f))
   for (const c of cells) {
     const f = occupantAt(engine, fight, c, dying)
-    if (!f || !ok(f)) continue
+    if (!f || !(f.alive || (dying && isDying(f)))) continue
     if (force && f !== force) continue
     if (!matchesTargetMask(mask, caster, f, mctx)) continue
     targets.push(f)
@@ -433,26 +457,21 @@ export function target(
   }
   if (mask) {
     const m = compileTargetMask(mask)
-    const add = (f: Fighter | undefined, eff: number) => {
-      if (!f || !ok(f) || targets.includes(f) || !matchesTargetMask(mask, caster, f, mctx)) return
-      targets.push(f)
-      efficiency.set(f.id, eff)
-    }
     // Masque U/u sur une zone ponctuelle : l'entité qui vient d'apparaître est la cible, où qu'elle soit (port).
-    if (appearing.length && effect.zone.shape === 'P' && /(^|,)[Uu](,|$)/.test(mask)) {
+    if (appearing.length && effect.zone.shape === 'P' && APPEARING_TOKEN.test(mask)) {
       targets.length = 0
-      for (const f of appearing) add(f, 1)
+      for (const f of appearing) addOutOfArea(targets, efficiency, f, 1, mask, caster, mctx, dying)
     }
-    if (m.addsCaster && effect.effectId !== 780) add(caster, 1)
-    if (m.addsTriggering) add(opts?.trigger?.source, 1)
-    if (m.addsCarried && caster.carrying !== undefined) add(fight.fighters[caster.carrying], 1)
+    if (m.addsCaster && effect.effectId !== 780) addOutOfArea(targets, efficiency, caster, 1, mask, caster, mctx, dying)
+    if (m.addsTriggering) addOutOfArea(targets, efficiency, opts?.trigger?.source, 1, mask, caster, mctx, dying)
+    if (m.addsCarried && caster.carrying !== undefined) addOutOfArea(targets, efficiency, fight.fighters[caster.carrying], 1, mask, caster, mctx, dying)
   }
   if (opts?.additionalTarget && !force) {
     const f = opts.additionalTarget
-    if (ok(f) && !targets.includes(f) && matchesTargetMask(mask, caster, f, mctx)) {
-      targets.push(f)
-      efficiency.set(f.id, f.cell >= 0 ? zoneEfficiency(effect.zone, cell, f.cell, casterCell) : 1)
-    }
+    addOutOfArea(targets, efficiency, f, f.cell >= 0 ? zoneEfficiency(effect.zone, cell, f.cell, casterCell) : 1, mask, caster, mctx, dying)
+  }
+  if (force && opts?.forceAnywhere === true) {
+    addOutOfArea(targets, efficiency, force, force.cell >= 0 ? zoneEfficiency(effect.zone, cell, force.cell, casterCell) : 1, mask, caster, mctx, dying)
   }
   targets.sort((a, b) => distance(cell, a.cell) - distance(cell, b.cell) || a.id - b.id)
   return { effect, cells, targets, efficiency }
@@ -480,6 +499,8 @@ export function runEffect(engine: Engine, fight: FightState, a: RunEffectArgs): 
         kind: 'delayed',
         crit: a.crit,
         label: `Effet différé (${effect.delay} tour${effect.delay > 1 ? 's' : ''})`,
+        // Case ciblée par le lancer d'origine (ajout effects/castspell : 2794 / 2960 différés, port `HandleDelayedCast`).
+        targetCell: a.originCell ?? a.targetCell,
       })
     }
     return
@@ -580,6 +601,7 @@ export function resolveDelayedEffects(engine: Engine, fight: FightState, caster:
         crit: b.crit ?? false,
         indirect: false,
         depth: 1,
+        originCell: b.targetCell,
       })
       if (fight.ended) return
     }

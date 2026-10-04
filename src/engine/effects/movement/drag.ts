@@ -15,8 +15,10 @@
  *  - dommages de collision (5 et 1041 seulement) : force restante (×2 en diagonale) ; cible k = 0 puis au plus
  *    `force` combattants percutés en chaîne derrière elle (k = 1, 2...), chacun avec SES résistances poussée :
  *    `trunc(force × (floor(niv/2) + 32 + DoPou − RePou) / (4 × 2^k))` (src/damage/push.ts, variante 'dofus3') ; niveau
- *    de l'invocateur pour une invocation ; nuls si le lanceur est Pacifiste ou la cible immunisée (effet d'état 26) ;
- *    appliqués par `Engine.applyDamage(kind 'push')` ⇒ déclencheurs PD / CPD ;
+ *    de l'invocateur pour une invocation ; puis × « dommages subis » (1163) de la cible s'il s'applique à la poussée
+ *    (buff instantané ou déclencheur PD : effects/damage/pipeline.ts `sustainedPercent`) — ni résistances, ni armure,
+ *    ni bonus ; nuls si le lanceur est Pacifiste ou la cible immunisée (effet d'état 26) ; appliqués par
+ *    `Engine.applyDamage(kind 'push')` (bouclier, érosion) ⇒ déclencheurs PD / CPD ;
  *  - un porteur poussé lâche le porté sur sa case de départ ; la case d'arrivée déclenche ses marques ;
  *  - déclencheurs : 'P' (poussé) ou 'MA' (attiré) sur la cible si elle a bougé, 'PO' sur le lanceur.
  *
@@ -27,6 +29,7 @@ import { pushDamage } from '../../../damage/push'
 import { CELL_X, CELL_Y, cellInDirection, directionBetween, lookDirection4, oppositeDirection } from '../../../map/geometry'
 import type { Engine } from '../../engine'
 import type { Fighter, FightState, Glyph } from '../../types'
+import { sustainedPercent } from '../damage/pipeline'
 import { throwCarried } from './carry'
 import {
   cantBeMoved,
@@ -164,7 +167,6 @@ export function dragFighter(
   const portals = fight.glyphs.length > 0 && hasAnyPortal(fight)
   let used: Glyph[] | undefined
   let segmentStart = initial
-  let throughPortal = false
   let moved = false
   let stop = STOP_COMPLETE
   let remaining = 0
@@ -185,7 +187,7 @@ export function dragFighter(
       if (entry !== undefined) {
         if (fight.options.record && segmentStart !== to) engine.emit(fight, { t: 'push', target: f.id, from: segmentStart, to })
         used ??= []
-        if (travelThrough(engine, fight, f, entry, used, author, true) !== undefined) throughPortal = true
+        travelThrough(engine, fight, f, entry, used, author, true)
         segmentStart = f.cell
       }
     }
@@ -246,9 +248,12 @@ function pusherLevel(fight: FightState, author: Fighter): number {
   return author.level
 }
 
+const PUSH_INFO = { kind: 'push' as const }
+
 /** Dommages de collision subis par `target` au rang `k` de la chaîne (avant bouclier). */
 export function collisionDamage(engine: Engine, fight: FightState, author: Fighter, target: Fighter, force: number, k: number): number {
   if (force <= 0 || isPacifist(engine, author)) return 0
+  const sustained = target.buffs.length > 0 ? sustainedPercent(fight, target, author, PUSH_INFO) : 100
   return pushDamage({
     casterLevel: pusherLevel(fight, author),
     pushDamage: author.stats.pushDamage,
@@ -256,6 +261,7 @@ export function collisionDamage(engine: Engine, fight: FightState, author: Fight
     remainingCells: force,
     chainIndex: k,
     variant: 'dofus3',
+    sustainedPct: sustained === 100 ? undefined : sustained,
   })
 }
 

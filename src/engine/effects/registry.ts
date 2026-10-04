@@ -41,6 +41,12 @@ export interface EffectContext {
    * marque (origine des poussées). Absent pour un sort lancé normalement.
    */
   mark?: { kind: 'trap' | 'glyph' | 'aura' | 'rune'; uid: number; cell: number }
+  /**
+   * Effet différé arrivé à échéance : case ciblée par le lancer d'origine (`Buff.targetCell`, port `HandleDelayedCast`).
+   * `targetCell` reste la case du porteur ; les effets « sur la case ciblée » (2794 / 2960, invocations, marques) lisent
+   * `originCell ?? targetCell`. Absent hors effet différé.
+   */
+  originCell?: number
 }
 
 export type EffectHandler = (ctx: EffectContext) => void

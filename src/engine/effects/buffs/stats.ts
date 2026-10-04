@@ -7,7 +7,8 @@
  *    (`itemEffectStat` / `itemEffectSign` : 118 +Force, 157 −Force, 210 +% Rés. Terre, 2803 +% Rés. mêlée…) ;
  *  - lignes « fightBuff » (buffs de combat, absentes des objets) : table FIGHT_LINES ci-dessous.
  * La valeur est tirée dans [diceNum, diceSide] (moyenne en mode 'average') et devient un `statDelta` pour `duration`
- * tours. La Vitalité (125, 1078, 1033, 2844) modifie aussi les PV max/courants (Engine.applyPoolDelta).
+ * tours. La Vitalité (125, 1078, 1033, 2844) modifie aussi les PV max/courants (Engine.applyPoolDelta) ; la Sagesse
+ * et l'Agilité font varier Retrait/Esquive PA-PM et Tacle/Fuite via Engine.recomputeStats (pas de double compte ici).
  * Déclencheurs : perte de portée 'R', de PA 'APA', de PM 'MPA' sur la cible.
  */
 import type { Stats, StatKey } from '../../../core/types'
@@ -145,12 +146,12 @@ function amountOf(def: StatDef, target: Fighter, roll: number): number {
   }
 }
 
-/** `statDelta` d'un montant signé ; la Sagesse apporte aussi 1/10 en Retrait et Esquive PA/PM (déjà inclus dans les stats). */
+/**
+ * `statDelta` d'un montant signé. Les caractéristiques dérivées (⌊Sagesse/10⌋ en Retrait et Esquive PA/PM,
+ * ⌊Agilité/10⌋ en Tacle et Fuite) sont recalculées par `Engine.recomputeStats` à partir du total : ne PAS les
+ * ajouter ici (sinon un +100 Sagesse donnerait +20 Retrait PA au lieu de +10).
+ */
 function deltaOf(stat: keyof Stats, delta: number): Partial<Stats> {
-  if (stat === 'wisdom') {
-    const d = Math.trunc(delta / 10)
-    return { wisdom: delta, apReduction: d, mpReduction: d, apParry: d, mpParry: d }
-  }
   const out: Partial<Stats> = {}
   out[stat] = delta
   return out

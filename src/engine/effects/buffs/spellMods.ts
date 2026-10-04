@@ -5,10 +5,10 @@
  *
  * Module PUR (aucun enregistrement d'effet, aucune dépendance au moteur) : importé par engine.ts et cast.ts.
  *
- * `diceNum` = sort modifié. `diceNum = 0` est lu comme « tous les sorts du porteur » (INCERTAIN : *Acuité Absolue* ne
- * désactive la ligne de vue que via un 289 sur le sort 0, alors que *Tirs Éloignés* liste aussi chaque sort offensif
- * en plus du 0). Pour ne pas compter deux fois ces sorts, une clé fixée pour un sort précis REMPLACE la valeur
- * générique (sort 0) de la même clé.
+ * `diceNum` = sort modifié ; `diceNum = 0` = « tous les sorts du porteur » (*Acuité Absolue* : 289 sur le sort 0,
+ * effet réel, « désactive la ligne de vue sur tous ses sorts »). Les 280/281 sur le sort 0 de *Tirs Éloignés* /
+ * *Acuité Absolue* sont `forClientOnly` (affichage) : seuls les modificateurs par sort comptent. Par prudence, une clé
+ * posée pour un sort précis REMPLACE la valeur générique (sort 0) de la même clé (jamais de double compte).
  */
 import type { SpellLevelData } from '../../../data/model'
 import type { Fighter, SpellModEntry, SpellModifiers, SpellModKey } from '../../types'

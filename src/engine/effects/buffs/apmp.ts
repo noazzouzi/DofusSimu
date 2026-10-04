@@ -8,11 +8,14 @@
  * p = clamp((restants − déjà retirés) / max × Retrait_lanceur / Esquive_cible / 2, 10 %, 90 %).
  * « restants » = PA/PM courants si la cible joue, sinon son total (les points sont rendus en fin de tour) ;
  * « max » = son total de PA/PM (stats, buffs compris). En mode 'average' : espérance exacte du nombre de points
- * retirés (non entière) ; en 'min' / 'max' aussi (le retrait n'a pas de jet de dés).
+ * retirés (non entière), moyennée sur le jet [diceNum, diceSide] du nombre de points tentés ; en 'min' / 'max' :
+ * espérance pour le jet min / max (le retrait lui-même n'a pas de jet de dés).
  *
  * Les points retirés deviennent un débuff de `duration` tours (statDelta) qui réduit aussi les points courants si la
- * cible joue (Engine.applyPoolDelta). Déclencheurs : 'APA' / 'MPA' sur la cible (tentative), 'CAPA' / 'CMPA'
- * (tentative) et 'CAPAS' / 'CMPAS' (réussite) sur le lanceur. Métriques `apRemoved` / `mpRemoved` du lanceur.
+ * cible joue (Engine.applyPoolDelta). Déclencheurs : 'APA' / 'MPA' sur la cible seulement si des points ont
+ * réellement été perdus (OTOMAI `HaxeBuff` : `ApStolen > 0` / `AmStolen > 0` — un retrait entièrement esquivé ne
+ * déclenche rien), 'CAPA' / 'CMPA' (tentative, même esquivée) et 'CAPAS' / 'CMPAS' (réussite) sur le lanceur.
+ * Métriques `apRemoved` / `mpRemoved` du lanceur.
  * Un état portant l'effet d'état 29 / 30 (InvulnerableToLostAp / Mp, mechanics.md §12) annule le retrait.
  */
 import { apMpRemovalProbability, expectedApMpRemoved } from '../../../damage/apmp'
@@ -38,11 +41,9 @@ export function immuneToLoss(ctx: EffectContext, f: Fighter, pool: Pool): boolea
   return false
 }
 
-/** Points « restants » et « max » de la cible pour le jet d'esquive. */
-function poolOf(ctx: EffectContext, f: Fighter, pool: Pool): { current: number; max: number } {
-  const total = Math.max(0, f.stats[pool])
-  const current = isPlaying(ctx, f) ? Math.max(0, f[pool]) : total
-  return { current, max: Math.max(total, current) }
+/** Points « restants » de la cible : PA/PM courants si elle joue, sinon son total (rendu en fin de tour). */
+function currentPoints(ctx: EffectContext, f: Fighter, pool: Pool): number {
+  return isPlaying(ctx, f) ? Math.max(0, f[pool]) : Math.max(0, f.stats[pool])
 }
 
 /** Taille du tampon de l'espérance sans allocation (au-delà : calcul générique de src/damage). */
@@ -66,7 +67,7 @@ function expectedRemoved(removal: number, dodge: number, current: number, max: n
       dpNext[k + 1] += pk * p
       dpNext[k] += pk * (1 - p)
     }
-    dp.set(dpNext.subarray(0, n + 1))
+    for (let k = 0; k <= n; k++) dp[k] = dpNext[k]
   }
   let mean = 0
   for (let k = 1; k <= n; k++) mean += k * dp[k]
@@ -75,8 +76,9 @@ function expectedRemoved(removal: number, dodge: number, current: number, max: n
 
 /** Nombre de points retirés par un retrait esquivable (jet par point, ou espérance hors mode 'random'). */
 export function rollDodgeableRemoval(ctx: EffectContext, caster: Fighter, target: Fighter, pool: Pool, attempted: number): number {
-  const { current, max } = poolOf(ctx, target, pool)
+  const current = currentPoints(ctx, target, pool)
   if (current <= 0 || attempted <= 0) return 0
+  const max = Math.max(target.stats[pool], current)
   const removal = pool === 'ap' ? caster.stats.apReduction : caster.stats.mpReduction
   const dodge = pool === 'ap' ? target.stats.apParry : target.stats.mpParry
   if (ctx.fight.options.rollMode !== 'random') return expectedRemoved(removal, dodge, current, max, attempted)
@@ -110,6 +112,9 @@ function removal(ctx: EffectContext, pool: Pool, dodgeable: boolean, steal: bool
   const attemptCode = pool === 'ap' ? 'CAPA' : 'CMPA'
   const successCode = pool === 'ap' ? 'CAPAS' : 'CMPAS'
   const lossCode = pool === 'ap' ? 'APA' : 'MPA'
+  const e = ctx.effect
+  // Mode espérance avec un nombre de points tenté variable ([diceNum, diceSide]) : moyenne exacte sur chaque jet.
+  const averageRange = dodgeable && fight.options.rollMode === 'average' && e.diceSide > e.diceNum
   for (const t of ctx.targets) {
     if (!t.alive) continue
     const attempted = rollValue(ctx)
@@ -117,13 +122,17 @@ function removal(ctx: EffectContext, pool: Pool, dodgeable: boolean, steal: bool
     let removed = 0
     let effective = 0
     if (!immuneToLoss(ctx, t, pool)) {
-      if (dodgeable) {
+      if (averageRange) {
+        for (let a = e.diceNum; a <= e.diceSide; a++) removed += rollDodgeableRemoval(ctx, caster, t, pool, a)
+        removed /= e.diceSide - e.diceNum + 1
+        effective = removed
+      } else if (dodgeable) {
         removed = rollDodgeableRemoval(ctx, caster, t, pool, attempted)
         effective = removed
       } else {
         // Non esquivable : le débuff vaut le montant (immobilisation 100 PM), l'effet réel est borné aux points restants.
         removed = attempted
-        effective = Math.min(attempted, poolOf(ctx, t, pool).current)
+        effective = Math.min(attempted, currentPoints(ctx, t, pool))
       }
     }
     if (removed > 0) {
@@ -135,7 +144,8 @@ function removal(ctx: EffectContext, pool: Pool, dodgeable: boolean, steal: bool
     if (fight.ended) return
     // En mode espérance, la réussite est décidée à ≥ 0,5 point retiré (déclencheurs non fractionnables).
     const success = fight.options.rollMode === 'random' ? effective > 0 : effective >= 0.5
-    if (t.alive) engine.trigger(fight, t, { type: lossCode, source: caster, amount: effective })
+    // Perte subie (APA / MPA) : seulement si des points ont été perdus (pas sur un retrait esquivé ou annulé).
+    if (success && t.alive) engine.trigger(fight, t, { type: lossCode, source: caster, amount: effective })
     if (caster.alive) {
       engine.trigger(fight, caster, { type: attemptCode, source: caster, amount: effective })
       if (success && caster.alive) engine.trigger(fight, caster, { type: successCode, source: caster, amount: effective })

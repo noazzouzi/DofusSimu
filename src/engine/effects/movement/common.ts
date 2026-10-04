@@ -198,21 +198,15 @@ export function fireMoveTriggers(engine: Engine, fight: FightState, moved: Fight
   if (author !== undefined && author.alive && !fight.ended) engine.trigger(fight, author, { type: 'PO', source: author })
 }
 
-/** Une marque « portail » (glyphe `markType: 'portal'`) occupe-t-elle la case ? */
-export function hasPortalAt(fight: FightState, cell: number): boolean {
-  const gs = fight.glyphs
-  for (let i = 0; i < gs.length; i++) if (gs[i].markType === 'portal' && gs[i].cells.includes(cell)) return true
-  return false
-}
+const FROM_DRAG = { fromDrag: true }
 
 /**
  * Arrivée sur une case par un déplacement forcé (port `ExecuteMarks(fromDrag: true)` : poussée, téléportation,
- * échange, jet) : pièges, glyphes-auras... via `engine.hooks.onEnterCell`. Les portails des déplacements forcés
- * sont gérés par ce module (movement/portals.ts) : le crochet n'est jamais appelé sur une case de portail.
+ * échange, jet) : pièges, glyphes-auras... via `engine.hooks.onEnterCell` (effects/marks.ts). Avec `fromDrag`, les
+ * marques n'utilisent pas les portails : ceux des déplacements forcés sont gérés ici (movement/portals.ts).
  */
 export function enterCell(engine: Engine, fight: FightState, f: Fighter, cell: number): void {
   const hook = engine.hooks.onEnterCell
   if (hook === undefined || !f.alive || fight.ended || cell < 0 || f.cell !== cell) return
-  if (fight.glyphs.length > 0 && hasPortalAt(fight, cell)) return
-  hook(fight, f, cell, { fromDrag: true })
+  hook(fight, f, cell, FROM_DRAG)
 }

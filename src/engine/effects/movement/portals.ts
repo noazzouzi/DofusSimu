@@ -1,39 +1,29 @@
 /**
- * Portails Eliotrope (mechanics.md §16, docs/research/classes/eliotrope.md §3, port D3 `DamageEffectHandler`
- * `HandleAddPortal / HandleDisablePortal / HandleUsePortal / UsePortal / RedefinePortals`, `PushUtils.ApplyDrag`,
- * `PortalUtils`).
+ * Portails Eliotrope empruntés par un DÉPLACEMENT FORCÉ (poussée, attirance, téléportation, échange, jet) —
+ * mechanics.md §16, docs/research/classes/eliotrope.md §3, port D3 `PushUtils.ApplyDrag`, `DamageEffectHandler`
+ * `UsePortal / RedefinePortals`, `PortalUtils`.
  *
- * Modèle partagé avec effects/marks.ts : un portail est une glyphe `markType: 'portal'` de `FightState.glyphs`
- * (case `center`, équipe `team`, poseur `sourceId`, désactivation `disabledUntil`, bonus `portalBonusPerCell` /
- * `portalBaseBonus`). Les effets 1181 / 1182 / 1183 de ce module ne sont enregistrés que si aucune autre famille
- * (marks) ne l'a fait : ils servent de repli et suivent le même modèle.
- *
- * Règles retenues :
- *  - pose (1181) : case marchable ; un portail déjà centré sur la case est remplacé ; au plus 4 portails par ÉQUIPE
- *    (le plus ancien disparaît, port `HandleAddPortal`) ; durée infinie ; disparaît à la mort du poseur (Engine.kill) ;
- *  - portail actif : non désactivé (1183 : jusqu'au prochain début de tour du lanceur de 1183), aucun combattant
- *    vivant dessus (hors le voyageur), et une chaîne vers au moins un autre portail de l'équipe ;
+ * Les portails sont des marques d'effects/marks.ts (glyphes `markType: 'portal'` de `FightState.glyphs`, pose 1181,
+ * emprunt 1182, désactivation 1183, emprunt à la marche via `onEnterCell`). Ce module ne gère que le passage pendant
+ * un déplacement forcé, que marks.ts ignore (`onEnterCell(..., { fromDrag: true })`) :
+ *  - portail actif : non désactivé (`disabledUntil`), et chaîne vers au moins un autre portail de l'équipe ;
  *  - sortie : dernier maillon de la chaîne « plus proche voisin » partant du portail d'entrée, calculée sur les
- *    portails actifs de l'équipe puis privée de ceux occupés (port `RedefinePortals`) ;
- *  - emprunt par un déplacement forcé (poussée, attirance, téléportation, jet) : le combattant doit pouvoir utiliser
- *    les portails (monstre `canUsePortal`, pas d'effet d'état 17) ; au 1er tour de jeu, seuls les portails de son
- *    équipe le transportent (port `ApplyDrag`) ; 1182 n'a pas cette restriction (port `UsePortal`) ;
- *  - un portail emprunté (entrée et sortie) est inactif pour le reste du même déplacement (port `Use()`) ; la sortie
- *    reste occupée par le voyageur, donc inactive tant qu'il y reste.
+ *    portails actifs de l'équipe puis privée de ceux qu'occupe un combattant (port `RedefinePortals`) ;
+ *  - le voyageur doit pouvoir emprunter les portails (monstre `canUsePortal`, pas d'effet d'état 17 : Enraciné,
+ *    Indéplaçable...) ; pour une poussée / attirance, au 1er tour de jeu, seuls les portails de son équipe le
+ *    transportent (port `ApplyDrag` : `TeamId == fighter.TeamId || GameTurn != 1`) ;
+ *  - un portail emprunté (entrée et sortie) est inactif pour le reste du même déplacement (port `Mark.Use()`) ; la
+ *    sortie reste occupée par le voyageur, donc inactive tant qu'il y reste ;
+ *  - une poussée qui traverse un portail continue depuis la sortie avec la force restante (movement/drag.ts).
  * Déclencheurs : 'PT' sur le voyageur, 'CPT' sur le poseur du portail d'entrée (INCERTAIN), 'PO' sur l'auteur.
- * Non modélisé (documenté) : projection des SORTS à travers un portail (cible = sortie + (entrée − lanceur), bonus
- * `portalBaseBonus + portalBonusPerCell × Σ distances` aux dommages/soins, masques R/r, déclencheur PST) — relève du
- * lancement de sort (cast.ts) ; la marche sur un portail relève de move.ts / effects/marks.ts (`onEnterCell`).
+ * Écart connu : marks.ts (marche) calcule la sortie avec son propre départage des égalités et sans retirer les
+ * portails occupés de la chaîne ; ce module suit le port (movement/chain.ts).
+ * Non modélisé ici : la projection des SORTS à travers un portail (relève du lancement de sort).
  */
 import type { Engine } from '../../engine'
 import type { Fighter, FightState, Glyph } from '../../types'
 import { nearestChain } from './chain'
-import { hasStateEffect, isWalkable, monsterFlag, relocate, SE_CANT_USE_PORTALS } from './common'
-
-/** Couleur d'affichage d'un portail (replay). */
-export const PORTAL_COLOR = '#3fb8c9'
-/** Nombre maximal de portails par équipe (port `HandleAddPortal`). */
-export const MAX_PORTALS_PER_TEAM = 4
+import { hasStateEffect, monsterFlag, relocate, SE_CANT_USE_PORTALS } from './common'
 
 /** Portail centré sur `cell` (le premier posé), ou undefined. */
 export function portalAt(fight: FightState, cell: number): Glyph | undefined {
@@ -50,11 +40,6 @@ export function hasAnyPortal(fight: FightState): boolean {
 
 function enabled(p: Glyph): boolean {
   return p.disabledUntil === undefined || p.disabledUntil < 0
-}
-
-function occupied(engine: Engine, fight: FightState, cell: number, except: Fighter | undefined): boolean {
-  const o = engine.fighterAt(fight, cell)
-  return o !== undefined && o !== except
 }
 
 /**
@@ -80,7 +65,8 @@ export function portalExit(
   // Chaîne calculée sur tous les portails actifs, puis privée de ceux qu'occupe un combattant (port RedefinePortals).
   for (let i = chain.length - 1; i >= 0; i--) {
     const c = chain[i]
-    if (occupied(engine, fight, c, traveller)) continue
+    const o = engine.fighterAt(fight, c)
+    if (o !== undefined && o !== traveller) continue
     const exit = portalAt(fight, c)
     if (exit !== undefined && exit.team === entry.team) return exit
   }
@@ -94,8 +80,8 @@ export function canUsePortal(engine: Engine, f: Fighter): boolean {
 
 /**
  * Transporte `f`, qui vient d'arriver sur le portail `entry`, au portail de sortie. Retourne la sortie empruntée
- * (ajoutée à `used`), ou undefined si le voyage est impossible. `dragRule` : restriction du 1er tour de jeu
- * (poussées/attirances, port `ApplyDrag`).
+ * (ajoutée avec l'entrée à `used`), ou undefined si le voyage est impossible. `dragRule` : restriction du 1er tour
+ * de jeu (poussées / attirances, port `ApplyDrag`). Les marques de la case de sortie restent à l'appelant.
  */
 export function travelThrough(
   engine: Engine,
@@ -112,73 +98,9 @@ export function travelThrough(
   if (exit === undefined) return undefined
   used.push(entry, exit)
   relocate(engine, fight, f, exit.center)
-  engine.trigger(fight, f, { type: 'PT', source: fight.fighters[entry.sourceId] })
   const owner = fight.fighters[entry.sourceId]
+  engine.trigger(fight, f, { type: 'PT', source: owner })
   if (owner !== undefined && owner.alive && !fight.ended) engine.trigger(fight, owner, { type: 'CPT', source: f })
   if (author !== undefined && author.alive && !fight.ended) engine.trigger(fight, author, { type: 'PO', source: author })
   return exit
-}
-
-// ───────────────────────────── pose / désactivation ─────────────────────────────
-
-function removePortal(engine: Engine, fight: FightState, p: Glyph): void {
-  fight.glyphs = fight.glyphs.filter(g => g !== p)
-  if (fight.options.record) {
-    engine.emit(fight, { t: 'glyph', glyph: { uid: p.uid, cells: p.cells, color: p.color, spellId: p.spellId }, added: false })
-  }
-}
-
-/** Pose un portail de `owner` sur `cell` (effet 1181). Retourne le portail créé, ou undefined (case non marchable). */
-export function addPortal(
-  engine: Engine,
-  fight: FightState,
-  owner: Fighter,
-  cell: number,
-  spellId: number,
-  bonus: { perCell: number; base: number } = { perCell: 2, base: 0 },
-): Glyph | undefined {
-  if (!isWalkable(fight, cell)) return undefined
-  const existing = portalAt(fight, cell)
-  if (existing !== undefined) removePortal(engine, fight, existing)
-  let count = 0
-  let oldest: Glyph | undefined
-  for (const g of fight.glyphs) {
-    if (g.markType !== 'portal' || g.team !== owner.team) continue
-    count++
-    oldest ??= g
-  }
-  if (count >= MAX_PORTALS_PER_TEAM && oldest !== undefined) removePortal(engine, fight, oldest)
-  const portal: Glyph = {
-    uid: engine.uid(fight),
-    sourceId: owner.id,
-    spellId,
-    cells: [cell],
-    center: cell,
-    remaining: -1,
-    effects: [],
-    trigger: 'enter',
-    color: PORTAL_COLOR,
-    markType: 'portal',
-    team: owner.team,
-    portalBonusPerCell: bonus.perCell,
-    portalBaseBonus: bonus.base,
-  }
-  fight.glyphs = [...fight.glyphs, portal]
-  if (fight.options.record) {
-    engine.emit(fight, { t: 'glyph', glyph: { uid: portal.uid, cells: portal.cells, color: portal.color, spellId }, added: true })
-  }
-  return portal
-}
-
-/** Désactive un portail jusqu'au prochain début de tour de `until` (effet 1183). Le glyphe est remplacé (clones). */
-export function disablePortal(fight: FightState, p: Glyph, until: Fighter): void {
-  fight.glyphs = fight.glyphs.map(g => (g === p ? { ...g, disabledUntil: until.id } : g))
-}
-
-/** Début du tour de `f` : réactive les portails qu'il avait désactivés (1183). */
-export function reactivatePortals(fight: FightState, f: Fighter): void {
-  let touched = false
-  for (const g of fight.glyphs) if (g.markType === 'portal' && g.disabledUntil === f.id) touched = true
-  if (!touched) return
-  fight.glyphs = fight.glyphs.map(g => (g.markType === 'portal' && g.disabledUntil === f.id ? { ...g, disabledUntil: undefined } : g))
 }

@@ -7,6 +7,7 @@ import type { EffectData, MapData } from '../src/data/model'
 import { loadDataStore, type NodeDataStore } from '../src/data/node'
 import { applyEffects, installEffectCore } from '../src/engine/effects/core'
 import '../src/engine/effects/buffs'
+import '../src/engine/effects/castspell'
 import { Engine } from '../src/engine/engine'
 import { createMonsterFighter, createPlayerFighter } from '../src/engine/factory'
 import type { Fighter, FightOptions, FightState } from '../src/engine/types'
@@ -26,7 +27,11 @@ export function openMap(): MapData {
 }
 
 /** Case aux coordonnées (x, y) de la carte (cf. src/map/geometry.ts). */
-export const cellAt = (x: number, y: number): number => pointToCell(x, y)
+export function cellAt(x: number, y: number): number {
+  const c = pointToCell(x, y)
+  if (c < 0) throw new Error(`case invalide (${x}, ${y})`)
+  return c
+}
 
 export function newEngine(): Engine {
   const engine = new Engine(data())

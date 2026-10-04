@@ -11,7 +11,7 @@
  */
 import type { SpellModKey } from '../../types'
 import type { EffectContext } from '../registry'
-import { addEffectBuff, enforceMaxStack, recording, registerBuffEffect, signed } from './common'
+import { addEffectBuff, enforceMaxStack, isPlaying, recording, registerBuffEffect, signed } from './common'
 
 /** effectId -> [clé, signe appliqué à `value` (0 = valeur fixée), libellé]. */
 const MODIFIERS: Record<number, readonly [SpellModKey, number, string]> = {
@@ -74,11 +74,16 @@ registerBuffEffect(SPELL_MODIFIER_EFFECT_IDS, modifierHandler)
 
 // ───────────────────────────── relances ─────────────────────────────
 
-/** 1045 : relance restante du sort `diceNum` fixée à `value` tours. */
+/**
+ * 1045 : relance restante du sort `diceNum` fixée à `value` tours. Le moteur décompte `Fighter.cooldowns` au DÉBUT
+ * du tour du porteur, le client à la FIN de chacun de ses tours (mechanics.md §4.4, `currentTurn` +1 en fin de tour) :
+ * équivalent pour le combattant qui joue, mais une cible qui ne joue pas perdrait un tour de relance. On lui ajoute
+ * donc 1 (ex. 1045 v2 posé par une invocation sur son invocateur `h,P` : sort bloqué pendant ses 2 prochains tours).
+ */
 registerBuffEffect(1045, ctx => {
   const spellId = ctx.effect.diceNum
   const turns = Math.max(0, ctx.effect.value)
-  for (const t of ctx.targets) if (t.alive) t.cooldowns[spellId] = turns
+  for (const t of ctx.targets) if (t.alive) t.cooldowns[spellId] = turns > 0 && !isPlaying(ctx, t) ? turns + 1 : turns
 })
 
 /** 1036 : relance restante du sort `diceNum` réduite de `value` tours (modificateur si `duration` ≠ 0). */

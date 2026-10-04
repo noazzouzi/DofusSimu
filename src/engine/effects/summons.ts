@@ -8,13 +8,17 @@
  *    jusqu'à `value` invocations (0 ⇒ 1) ;
  *  - 180 / 1189 double du lanceur (avec / sans emplacement), 1097 illusions (Roublardise) ;
  *  - 405 / 2796 tue la cible et la remplace par l'invocation ;
- *  - 780 résurrection du dernier allié mort (#1–#2 % de ses PV max érodés, état Zombi), 1034 (idem, en invocation).
+ *  - 780 résurrection du dernier allié mort (#1–#2 % de ses PV max érodés, état Zombi), 1034 (idem, en invocation),
+ *    147 (idem, `value` %).
  *
  * Limites : les invocations dont le monstre a `useSummonSlot` (et qui jouent) coûtent `summonCost` points (≥ 1,
- * refonte Osamodas 3.1) sur la caractéristique Invocations du lanceur ; les bombes (`useBombSlot`) sont limitées à
+ * refonte Osamodas 3.1) sur la caractéristique Invocations du lanceur (personnages seulement : les monstres n'en ont
+ * pas dans les données) ; les bombes (`useBombSlot`) sont limitées à
  * `tags.maxBombs` (défaut 3, INCERTAIN) ; statiques, tourelles, arbres… sont illimités ; `bypassSummoningLimit` du sort
  * lève la limite. Une invocation joue juste après son invocateur (Engine.spawn), lance son sort de départ à
- * l'apparition, déclenche `CI` sur l'invocateur et produit l'événement de replay `summon`.
+ * l'apparition, déclenche `CI` sur l'invocateur et produit l'événement de replay `summon` ; son apparition (comme une
+ * résurrection) déclenche les marques de sa case comme une arrivée forcée (port `HandleSummon` → `ExecuteMarks`).
+ * Effet différé : la case ciblée est celle du lancer d'origine (`ctx.originCell`) et la zone est recalculée.
  */
 import type { EffectData, MonsterData, SpellLevelData } from '../../data/model'
 import type { GameDataStore } from '../../data/store'
@@ -26,6 +30,7 @@ import { roll } from '../random'
 import { casterPassesMask, matchesTargetMask } from '../targetMask'
 import type { Fighter, FightState } from '../types'
 import { castSubSpell, markAppearing, usedSummonSlots, type TriggerEvent } from './core'
+import { relocate } from './movement/common'
 import { registerEffect, type EffectContext } from './registry'
 
 /** Nombre de bombes simultanées par défaut (caractéristique `maxBomb` non modélisée) — INCERTAIN pour Dofus 3. */
@@ -92,10 +97,20 @@ function isFreeWalkable(engine: Engine, fight: FightState, cell: number): boolea
   return cell >= 0 && engine.isCellFree(fight, cell)
 }
 
-/** Cases candidates d'une invocation en zone, dans l'ordre du port (depuis la case du lanceur). */
+/** Case ciblée par le lancer (pour un effet différé : celle du lancer d'origine, `originCell`). */
+function castCell(ctx: EffectContext): number {
+  return ctx.originCell ?? ctx.targetCell
+}
+
+/**
+ * Cases candidates d'une invocation en zone, dans l'ordre du port (depuis la case du lanceur). Les cases pré-calculées
+ * par le noyau ne valent que pour un effet lancé directement : un effet différé ou déclenché ne reçoit que la case du
+ * porteur (`cells = [porteur]`), la zone est alors recalculée autour de la case ciblée (du lancer d'origine).
+ */
 function areaCells(ctx: EffectContext): number[] {
   const ref = ctx.caster.cell >= 0 ? ctx.caster.cell : ctx.casterCell
-  const cells = ctx.cells.length ? ctx.cells.slice() : zoneCells(ctx.effect.zone, ctx.targetCell, ctx.casterCell)
+  const direct = ctx.originCell === undefined && ctx.cells.length > 1
+  const cells = direct ? ctx.cells.slice() : zoneCells(ctx.effect.zone, castCell(ctx), ctx.casterCell)
   return cells.sort((a, b) => comparePositions(ref, a, b))
 }
 
@@ -135,7 +150,8 @@ export function castStartingSpell(engine: Engine, fight: FightState, f: Fighter,
 
 /**
  * Ajoute un combattant invoqué au combat : timeline (juste après l'invocateur), événement `summon`, entité
- * « apparue » (masques U), sort de départ, puis déclencheur `CI` (« le porteur invoque ») de l'invocateur.
+ * « apparue » (masques U), marques de sa case, déclencheur `CI` (« le porteur invoque ») de l'invocateur, puis sort
+ * de départ — ordre du port : `HandleSummon` (→ `ExecuteMarks`), `TriggerHandler`, puis `GetStartingSpell`.
  */
 export function addSummon(engine: Engine, fight: FightState, summoner: Fighter, f: Fighter, opts: SummonOptions = {}): Fighter {
   if (f.hp <= 0) f.hp = f.maxHp = f.baseMaxHp = 1
@@ -143,9 +159,22 @@ export function addSummon(engine: Engine, fight: FightState, summoner: Fighter, 
   engine.spawn(fight, f)
   engine.emit(fight, { t: 'summon', summoner: summoner.id, fighter: snapshot(f) })
   markAppearing(f)
-  if (!opts.noStartingSpell) castStartingSpell(engine, fight, f, { crit: opts.crit, depth: opts.depth })
+  enterArrivalCell(engine, fight, f)
   if (!fight.ended && summoner.alive) engine.trigger(fight, summoner, { type: 'CI', source: summoner })
+  if (!opts.noStartingSpell && !fight.ended) castStartingSpell(engine, fight, f, { crit: opts.crit, depth: opts.depth })
   return f
+}
+
+const FROM_DRAG = { fromDrag: true }
+
+/**
+ * Apparition (invocation, résurrection) ou téléportation sur une case : marques de la case (pièges, glyphes-auras),
+ * comme une arrivée forcée (port `HandleSummon` → `ExecuteMarks(fromDrag: true)` : pas de glyphe immédiate).
+ */
+function enterArrivalCell(engine: Engine, fight: FightState, f: Fighter): void {
+  if (fight.ended || !f.alive || f.cell < 0) return
+  if (fight.traps.length === 0 && fight.glyphs.length === 0) return
+  engine.hooks.onEnterCell?.(fight, f, f.cell, FROM_DRAG)
 }
 
 /** Invoque le monstre `monsterId` (grade `grade`) pour `summoner` sur `cell` (supposée libre). */
@@ -169,7 +198,8 @@ export function summonMonster(
 
 /** Copie d'un combattant (double 180/1189, illusion 1097) : mêmes caractéristiques, sans sorts. */
 export function createDoubleFighter(caster: Fighter, cell: number, opts: { illusion?: boolean; slot?: boolean } = {}): Fighter {
-  const stats = { ...caster.stats }
+  // Caractéristiques permanentes de l'original (ses buffs ne sont pas copiés) — INCERTAIN.
+  const stats = { ...caster.baseStats }
   const hp = opts.illusion ? 1 : Math.max(1, caster.hp)
   const maxHp = opts.illusion ? 1 : Math.max(hp, caster.maxHp)
   return {
@@ -212,13 +242,14 @@ function summonHandler(ctx: EffectContext): void {
   if (effect.targetMask && !casterPassesMask(effect.targetMask, caster)) return
   const m = engine.data.monster(effect.diceNum)
   if (!m) return
-  const cell = ctx.targetCell
+  const cell = castCell(ctx)
   const mc = fight.map.cells[cell]
   if (!mc || !mc.walkable) return
   const isBomb = effect.effectId === 1008 || m.useBombSlot === true
   const cost = summonSlotCost(m)
   const bypass = engine.data.spell(ctx.spellId)?.bypassSummoningLimit === true
-  let slots = cost > 0 && !bypass ? availableSummonSlots(fight, caster) : Infinity
+  // Limite des personnages seulement : les monstres n'ont pas de caractéristique Invocations dans les données (INCERTAIN).
+  let slots = cost > 0 && !bypass && caster.kind === 'player' ? availableSummonSlots(fight, caster) : Infinity
   let bombs = isBomb ? ((caster.tags.maxBombs as number | undefined) ?? DEFAULT_MAX_BOMBS) - bombCount(fight, caster) : Infinity
   const opts: SummonOptions = { crit: ctx.crit, depth: ctx.depth, controllable: effect.effectId === 1011 }
   if (!isAreaSummon(ctx)) {
@@ -249,10 +280,10 @@ function doubleHandler(ctx: EffectContext): void {
   const { engine, fight, caster, effect } = ctx
   if (caster.summonerId !== undefined) return
   if (effect.targetMask && !casterPassesMask(effect.targetMask, caster)) return
-  const cell = ctx.targetCell
+  const cell = castCell(ctx)
   if (!isFreeWalkable(engine, fight, cell)) return
   const slot = effect.effectId === 180
-  if (slot && availableSummonSlots(fight, caster) < 1) return
+  if (slot && caster.kind === 'player' && availableSummonSlots(fight, caster) < 1) return
   addSummon(engine, fight, caster, createDoubleFighter(caster, cell, { slot }), { crit: ctx.crit, depth: ctx.depth, noStartingSpell: true })
 }
 
@@ -263,7 +294,7 @@ function doubleHandler(ctx: EffectContext): void {
 function illusionsHandler(ctx: EffectContext): void {
   const { engine, fight, caster, effect } = ctx
   if (caster.summonerId !== undefined || caster.cell < 0) return
-  const target = ctx.targetCell
+  const target = castCell(ctx)
   if (engine.fighterAt(fight, target)) return
   const d = distance(caster.cell, target)
   if (d <= 0) return
@@ -286,10 +317,9 @@ function illusionsHandler(ctx: EffectContext): void {
     count--
   }
   if (moveTo >= 0 && caster.alive) {
-    const from = caster.cell
-    caster.cell = moveTo
-    engine.emit(fight, { t: 'teleport', target: caster.id, from, to: moveTo })
-    engine.hooks.onEnterCell?.(fight, caster, moveTo)
+    // Téléportation (historique de position tenu par movement/common) : arrivée forcée pour les marques.
+    relocate(engine, fight, caster, moveTo)
+    enterArrivalCell(engine, fight, caster)
   }
 }
 
@@ -303,7 +333,7 @@ function killAndSummonHandler(ctx: EffectContext): void {
     if (fight.ended || !caster.alive) break
     if (!t.alive || t.cell < 0) continue
     const freed = t.summonerId === caster.id ? ((t.tags.summonCost as number | undefined) ?? 0) : 0
-    if (cost > 0 && usedSummonSlots(fight, caster) - freed + cost > caster.stats.summons) continue
+    if (cost > 0 && caster.kind === 'player' && usedSummonSlots(fight, caster) - freed + cost > caster.stats.summons) continue
     const cell = t.cell
     engine.kill(fight, t, caster)
     if (fight.ended || !caster.alive || !isFreeWalkable(engine, fight, cell)) continue
@@ -370,6 +400,7 @@ export function reviveFighter(engine: Engine, fight: FightState, caster: Fighter
   })
   markAppearing(f)
   if (!fight.ended && caster.alive) engine.trigger(fight, caster, { type: 'CI', source: caster })
+  enterArrivalCell(engine, fight, f)
 }
 
 const ZOMBI_EFFECT: EffectData = {
@@ -394,7 +425,8 @@ const ZOMBI_EFFECT: EffectData = {
  * 780 / 1034 : invoque le dernier allié mort avec #1–#2 % de ses PV. Case : celle de sa mort si libre, sinon la case
  * ciblée (port) ; en zone étendue (Vortexiphan C63,3), les cases libres de la zone dans l'ordre du port (≥ rayon min,
  * distance croissante, sens horaire) et, avec `summonOptions.reviveAllInArea`, tous les alliés éligibles.
- * 1034 sur un monstre : nouvelle invocation du même monstre/grade (port `CharacterSummonDeadAllyAsSummonInFight`).
+ * 1034 sur un monstre : nouvelle invocation du même monstre/grade sur la case ciblée, le cadavre étant consommé (port
+ * `CharacterSummonDeadAllyAsSummonInFight`, `RemoveDeadFighter`).
  */
 function reviveHandler(ctx: EffectContext): void {
   const { engine, fight, caster, effect } = ctx
@@ -404,21 +436,29 @@ function reviveHandler(ctx: EffectContext): void {
   const area = isAreaSummon(ctx)
   const free = area ? areaCells(ctx).filter(c => isFreeWalkable(engine, fight, c)) : []
   const count = area && summonOptions.reviveAllInArea ? candidates.length : 1
-  const lo = effect.diceNum
-  const hi = effect.diceSide > 0 ? effect.diceSide : effect.diceNum
+  // 147 « Ressuscite un allié avec #3 % de sa vie » : pourcentage dans `value`.
+  const lo = effect.effectId === 147 ? effect.value : effect.diceNum
+  const hi = effect.effectId === 147 ? effect.value : effect.diceSide > 0 ? effect.diceSide : effect.diceNum
+  const target = castCell(ctx)
   for (let i = 0; i < count && i < candidates.length; i++) {
     if (fight.ended) break
     const { f, cell: deathCell } = candidates[i]
+    // 1034 sur un monstre : nouvelle invocation (port : `SummonMonster` placé sur la case ciblée, le mort reste mort).
+    const asNewSummon = effect.effectId === 1034 && f.monsterId !== undefined && f.kind !== 'player'
     let cell = -1
     if (area) {
       while (free.length && !isFreeWalkable(engine, fight, free[0])) free.shift()
       cell = free.shift() ?? -1
+    } else if (asNewSummon) {
+      if (isFreeWalkable(engine, fight, target)) cell = target
     } else if (isFreeWalkable(engine, fight, deathCell)) cell = deathCell
-    else if (isFreeWalkable(engine, fight, ctx.targetCell)) cell = ctx.targetCell
+    else if (isFreeWalkable(engine, fight, target)) cell = target
     if (cell < 0) break
     const pct = roll(fight, lo, hi)
-    if (effect.effectId === 1034 && f.monsterId !== undefined && f.kind !== 'player') {
-      const s = summonMonster(engine, fight, caster, f.monsterId, f.grade ?? 1, cell, { crit: ctx.crit, depth: ctx.depth })
+    if (asNewSummon) {
+      // Le cadavre est « consommé » (port `RemoveDeadFighter`) : il ne peut pas être ré-invoqué une seconde fois.
+      if (fight.deaths) fight.deaths = fight.deaths.filter(d => d.fighter !== f.id)
+      const s = summonMonster(engine, fight, caster, f.monsterId!, f.grade ?? 1, cell, { crit: ctx.crit, depth: ctx.depth })
       if (s) s.hp = Math.max(1, Math.min(s.maxHp, Math.floor((s.maxHp * pct) / 100)))
       continue
     }
@@ -429,6 +469,7 @@ function reviveHandler(ctx: EffectContext): void {
 
 registerEffect([181, 1011, 1008], 'summons', summonHandler, false)
 registerEffect([180, 1189], 'summons', doubleHandler, false)
-registerEffect(1097, 'summons', illusionsHandler, false)
+// 1024 « Crée des illusions » (4 sorts de monstres) : traité comme 1097 — INCERTAIN.
+registerEffect([1097, 1024], 'summons', illusionsHandler, false)
 registerEffect([405, 2796], 'summons', killAndSummonHandler, true)
-registerEffect([780, 1034], 'summons', reviveHandler, false)
+registerEffect([780, 1034, 147], 'summons', reviveHandler, false)

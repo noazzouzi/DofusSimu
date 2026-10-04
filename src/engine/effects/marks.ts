@@ -14,12 +14,13 @@
  *    case du combattant si le sort a des effets en zone `P`) ;
  *  - 1165 glyphe « immédiat » : déclenché quand un combattant y entre en marchant (pas par poussée/téléportation, ni à
  *    la pose : le port a désactivé l'exécution à la pose) — glyphes des monstres du Vortex (5012 → 5011) ;
- *  - 1091 glyphe-aura : appliqué une fois à chaque combattant présent à la pose ou qui y entre (même poussé) ; ses
+ *  - 1091 glyphe-aura : appliqué une fois à chaque combattant présent à la pose ou qui y entre (même poussé, ou en
+ *    apparaissant), lui seul étant ciblé même hors de la zone du sort de l'aura (port : `additionalTarget`) ; ses
  *    buffs directs sont retirés quand il en sort ou quand l'aura disparaît ;
  *  - 2022 rune (inerte) : déclenchée par 2023, puis consommée ; une nouvelle rune remplace celle de la même case ;
  *  - 1181 portail (4 par équipe au plus, le plus ancien disparaît), 1183 désactivation jusqu'au prochain tour du
  *    lanceur, 1182 utilisation ; un combattant qui marche sur un portail actif (≥ 2 portails) est téléporté au portail
- *    de sortie de la chaîne.
+ *    de sortie de la chaîne (même règle que les déplacements forcés : movement/portals.ts `travelThrough`).
  * Déclenchements forcés : 1026 glyphes du lanceur issus du sort `value` (0 = tous), 1025 pièges du lanceur ; dissipations
  * 2018 / 2019 / 2024 (glyphes / pièges / runes du lanceur issus du sort `diceNum`, 0 = tous ; le sort comparé est celui
  * qui a posé la marque ou celui qu'elle lance).
@@ -28,13 +29,14 @@
  * jusqu'à leur déclenchement. `installMarks(engine)` chaîne les crochets onEnterCell / onTurnStart / onTurnEnd.
  */
 import type { EffectData } from '../../data/model'
-import type { GameDataStore } from '../../data/store'
 import { distance } from '../../map/geometry'
 import { isCellInZone, zoneCells } from '../../map/zones'
 import type { Engine } from '../engine'
 import { casterPassesMask } from '../targetMask'
 import type { Fighter, FightState, Glyph, Trap } from '../types'
 import { applyEffects, type ApplyOptions, type TriggerEvent } from './core'
+import { nearestChain } from './movement/chain'
+import { canUsePortal as canTravelThroughPortal, travelThrough } from './movement/portals'
 import { registerEffect, type EffectContext } from './registry'
 
 /** Options globales des marques (points INCERTAINS). */
@@ -62,11 +64,11 @@ function markEffects(engine: Engine, spellId: number, grade: number, crit: boole
   return crit && lvl.criticalEffects.length ? lvl.criticalEffects : lvl.effects
 }
 
-/** Cases d'une marque : zone de l'effet de pose centrée sur la case principale (cases de la carte uniquement). */
+/** Cases d'une marque : zone de l'effet de pose centrée sur la case principale (cases de la carte ; port `Mark.CreateMark`). */
 function markCells(fight: FightState, effect: EffectData, center: number): number[] {
   const out: number[] = []
   for (const c of zoneCells(effect.zone, center, center)) if (fight.map.cells[c]) out.push(c)
-  if (!out.includes(center)) out.unshift(center)
+  if (!out.length) out.push(center)
   return out
 }
 
@@ -131,8 +133,12 @@ function executeMark(
     if (kind === 'glyph') {
       opts.forceTarget = fighter
       if (hasPointEffect(effects)) cell = fighter.cell
-    } else if (kind === 'aura') opts.forceTarget = fighter
-    else if (kind === 'trap') opts.additionalTarget = fighter
+    } else if (kind === 'aura') {
+      // Port : le combattant qui entre est une cible additionnelle (même hors de la zone du sort, ex. sort en P1 sur
+      // la case principale d'une aura en anneau) et les combattants déjà affectés sont écartés ⇒ lui seul.
+      opts.forceTarget = fighter
+      opts.forceAnywhere = true
+    } else if (kind === 'trap') opts.additionalTarget = fighter
   }
   const known = caster.spells.find(s => s.spellId === spellId) ?? null
   markChain++
@@ -180,14 +186,26 @@ function clearAuraBuffs(engine: Engine, fight: FightState, uid: number): void {
 
 /**
  * Recalcule les auras : entrée des combattants présents non encore affectés, sortie de ceux qui ont quitté la zone,
- * retrait des buffs d'auras disparues (expirées au début du tour du poseur). Appelé aux débuts/fins de tour et à
- * chaque arrivée sur une case marquée ; utilisable par les autres modules après un déplacement.
+ * retrait des buffs d'auras disparues (expirées au début du tour du poseur). Appelé aux débuts de tour (et, sans le
+ * balayage des auras disparues, aux fins de tour et à chaque arrivée sur une case) ; utilisable par les autres
+ * modules après un déplacement.
  */
 export function refreshAuras(engine: Engine, fight: FightState): void {
-  let anyAura = false
+  updateAuras(engine, fight)
+  sweepAuraBuffs(engine, fight)
+}
+
+function hasAura(fight: FightState): boolean {
+  const gs = fight.glyphs
+  for (let i = 0; i < gs.length; i++) if (gs[i].trigger === 'aura') return true
+  return false
+}
+
+/** Entrées / sorties des auras présentes (sans balayage : une aura retirée par `removeGlyph` nettoie ses buffs). */
+function updateAuras(engine: Engine, fight: FightState): void {
+  if (!hasAura(fight)) return
   for (const g of fight.glyphs.slice()) {
     if (g.trigger !== 'aura' || !fight.glyphs.includes(g)) continue
-    anyAura = true
     const source = fight.fighters[g.sourceId]
     if (!source?.alive) continue
     for (const f of fight.fighters) {
@@ -198,12 +216,19 @@ export function refreshAuras(engine: Engine, fight: FightState): void {
       else if (!inside && was) leaveAura(engine, fight, g, f)
     }
   }
-  // Buffs d'auras disparues (la marque a expiré ou a été retirée par le moteur).
+}
+
+/** Retire les buffs d'auras disparues (la marque a expiré au début du tour du poseur, ou a été retirée). */
+function sweepAuraBuffs(engine: Engine, fight: FightState): void {
   for (const f of fight.fighters) {
     if (!f.alive) continue
-    for (const b of f.buffs.slice()) {
-      if (b.markUid === undefined) continue
-      if (!anyAura || !fight.glyphs.some(g => g.uid === b.markUid)) engine.removeBuff(fight, f, b.uid)
+    const buffs = f.buffs
+    for (let i = buffs.length - 1; i >= 0; i--) {
+      const b = buffs[i]
+      if (b?.markUid === undefined) continue
+      let alive = false
+      for (const g of fight.glyphs) if (g.uid === b.markUid) alive = true
+      if (!alive) engine.removeBuff(fight, f, b.uid)
     }
   }
 }
@@ -234,12 +259,15 @@ export function enterCell(engine: Engine, fight: FightState, f: Fighter, cell: n
     if (type !== 'glyph') continue
     if (g.trigger === 'enter' && !opts.fromDrag) executeMark(engine, fight, g, 'glyph', f)
   }
-  if (f.alive && !fight.ended) refreshAuras(engine, fight)
+  if (f.alive && !fight.ended) updateAuras(engine, fight)
 }
 
 /** Début du tour de `f` : réactivation des portails qu'il a désactivés, glyphes de début de tour, auras. */
 export function marksTurnStart(engine: Engine, fight: FightState, f: Fighter): void {
-  if (!fight.glyphs.length) return
+  if (!fight.glyphs.length) {
+    sweepAuraBuffs(engine, fight)
+    return
+  }
   for (const g of fight.glyphs) if (g.disabledUntil === f.id) g.disabledUntil = undefined
   refreshAuras(engine, fight)
   triggerTurnGlyphs(engine, fight, f, 'turnStart')
@@ -249,7 +277,7 @@ export function marksTurnStart(engine: Engine, fight: FightState, f: Fighter): v
 export function marksTurnEnd(engine: Engine, fight: FightState, f: Fighter): void {
   if (!fight.glyphs.length) return
   triggerTurnGlyphs(engine, fight, f, 'turnEnd')
-  if (!fight.ended) refreshAuras(engine, fight)
+  if (!fight.ended) updateAuras(engine, fight)
 }
 
 function triggerTurnGlyphs(engine: Engine, fight: FightState, f: Fighter, trigger: GlyphTrigger): void {
@@ -265,7 +293,8 @@ const installed = new WeakSet<Engine>()
 
 /**
  * Installe les crochets des marques sur le moteur (idempotent), en conservant les crochets existants : à appeler
- * après `installEffectCore` (les glyphes de début de tour passent alors après les effets différés et les buffs TB).
+ * après `installEffectCore`. Ordre (mechanics.md §9.2) : début de tour = effets différés et buffs TB puis glyphes de
+ * début de tour ; fin de tour = buffs TE puis glyphes de fin de tour.
  */
 export function installMarks(engine: Engine): void {
   if (installed.has(engine)) return
@@ -282,8 +311,8 @@ export function installMarks(engine: Engine): void {
     if (f.alive && !fight.ended) marksTurnStart(engine, fight, f)
   }
   engine.hooks.onTurnEnd = (fight, f) => {
-    if (f.alive && !fight.ended) marksTurnEnd(engine, fight, f)
     prevEnd?.(fight, f)
+    if (f.alive && !fight.ended) marksTurnEnd(engine, fight, f)
   }
 }
 
@@ -463,56 +492,28 @@ export function activePortals(fight: FightState, team: number): Glyph[] {
 }
 
 /**
- * Chaîne de portails depuis `entry` (port `PortalUtils.GetPortalChainFromPortalCells`) : portail actif le plus
- * proche non visité (distance de Manhattan), et ainsi de suite ; égalités départagées par l'angle orienté depuis
- * l'axe +y (simplification du port, INCERTAIN). Renvoie les cases SANS l'entrée ; vide si < 2 portails.
+ * Chaîne de portails depuis `entry` (port `PortalUtils.GetPortalChainFromPortalCells`, implémentation partagée
+ * movement/chain.ts) : portail le plus proche non visité (distance de Manhattan), et ainsi de suite ; égalités
+ * départagées par l'angle orienté comme le port. Renvoie les cases SANS l'entrée ; vide si < 2 portails.
  */
 export function portalChain(entry: number, portalCells: readonly number[]): number[] {
-  const rest = portalCells.filter(c => c !== entry)
-  const chain: number[] = []
-  let cur = entry
-  while (rest.length) {
-    let best = -1
-    let bestD = Infinity
-    let bestA = Infinity
-    for (const c of rest) {
-      const d = distance(cur, c)
-      const a = d === bestD ? orientedAngle(cur, c) : 0
-      if (d < bestD || (d === bestD && a < bestA)) {
-        best = c
-        bestD = d
-        bestA = d < bestD ? 0 : orientedAngle(cur, c)
-      }
-    }
-    chain.push(best)
-    rest.splice(rest.indexOf(best), 1)
-    cur = best
-  }
-  return chain
+  return nearestChain(entry, portalCells)
 }
 
-function orientedAngle(from: number, to: number): number {
-  // Angle positif (sens trigonométrique) entre l'axe +y logique et le vecteur from → to.
-  const a = cellXY(from)
-  const b = cellXY(to)
-  const ang = Math.atan2(b.x - a.x, b.y - a.y)
-  return ang < 0 ? ang + 2 * Math.PI : ang
-}
-
-function cellXY(cell: number): { x: number; y: number } {
-  // Coordonnées logiques (cf. map/geometry : CELL_X / CELL_Y), recalculées sans dépendance supplémentaire.
-  const w = 14
-  const row = Math.floor(cell / w)
-  const col = cell % w
-  const half = row >> 1
-  return { x: col + half + (row & 1), y: col - half }
-}
-
-/** Portail de sortie depuis le portail d'entrée `entry` (−1 si aucun réseau). */
+/**
+ * Portail de sortie depuis le portail d'entrée `entry` (−1 si aucun réseau) : dernier maillon de la chaîne des
+ * portails actifs de l'équipe, en sautant ceux qu'occupe un combattant (port `RedefinePortals`, movement/portals.ts).
+ */
 export function portalExit(fight: FightState, entry: Glyph): number {
   if (!isPortalActive(entry) || entry.team === undefined) return -1
   const chain = portalChain(entry.center, activePortals(fight, entry.team).map(g => g.center))
-  return chain.length ? chain[chain.length - 1] : -1
+  for (let i = chain.length - 1; i >= 0; i--) if (!occupied(fight, chain[i])) return chain[i]
+  return -1
+}
+
+function occupied(fight: FightState, cell: number): boolean {
+  for (const f of fight.fighters) if (f.alive && f.cell === cell && f.carriedBy === undefined) return true
+  return false
 }
 
 /**
@@ -539,31 +540,25 @@ export function portalBonus(fight: FightState, entry: Glyph): number {
   return base + perCell * sum
 }
 
-/** Le combattant peut-il emprunter un portail (monstre `canUsePortal`, effet d'état 17 CantUsePortals, Indéplaçable) ? */
+/** Le combattant peut-il emprunter un portail (monstre `canUsePortal`, effet d'état 17 CantUsePortals) ? */
 export function canUsePortal(engine: Engine, f: Fighter): boolean {
-  if (f.monsterId !== undefined && engine.data.monster(f.monsterId)?.canUsePortal === false) return false
-  for (const s of f.states) {
-    const st = engine.data.state(s)
-    if (st?.cantBeMoved || st?.effectsIds?.includes(17)) return false
-  }
+  return canTravelThroughPortal(engine, f)
+}
+
+/**
+ * `f` (sur le portail `entry`) l'emprunte : même règle que les déplacements forcés (movement/portals.ts `travelThrough` :
+ * sortie hors portails occupés, portails empruntés inactifs pour ce trajet, déclencheurs PT / CPT), puis marques de la
+ * case de sortie (arrivée « forcée » : le portail de sortie n'est pas repris).
+ */
+function usePortalAt(engine: Engine, fight: FightState, f: Fighter, entry: Glyph): boolean {
+  if (!isPortalActive(entry)) return false
+  const exit = travelThrough(engine, fight, f, entry, [], undefined, false)
+  if (exit === undefined) return false
+  enterCell(engine, fight, f, exit.center, FROM_DRAG)
   return true
 }
 
-/** Téléporte `f` (sur le portail `entry`) au portail de sortie si possible. */
-function usePortalAt(engine: Engine, fight: FightState, f: Fighter, entry: Glyph): boolean {
-  if (!isPortalActive(entry) || !canUsePortal(engine, f)) return false
-  const exit = portalExit(fight, entry)
-  if (exit < 0 || exit === f.cell || !engine.isCellFree(fight, exit)) return false
-  const from = f.cell
-  f.cell = exit
-  engine.emit(fight, { t: 'teleport', target: f.id, from, to: exit })
-  engine.trigger(fight, f, { type: 'PT', source: f })
-  const owner = fight.fighters[entry.sourceId]
-  if (owner?.alive) engine.trigger(fight, owner, { type: 'CPT', source: f })
-  // Marques de la case de sortie (le portail de sortie lui-même n'est pas repris : arrivée « forcée »).
-  enterCell(engine, fight, f, exit, { fromDrag: true })
-  return true
-}
+const FROM_DRAG = { fromDrag: true }
 
 /** 1181 : pose un portail (le plus ancien de l'équipe disparaît au-delà de la limite ; un portail de la case est remplacé). */
 function portalHandler(ctx: EffectContext): void {
@@ -627,8 +622,3 @@ registerEffect([2018, 2019, 2024], 'marks', dispelMarksHandler, false)
 registerEffect(1181, 'marks', portalHandler, false)
 registerEffect(1182, 'marks', usePortalHandler, false)
 registerEffect(1183, 'marks', disablePortalHandler, false)
-
-/** Sort de la marque par id de spell-level (utilitaire pour les scénarios). */
-export function markSpellLevel(engine: Engine, levelId: number) {
-  return (engine.data as Partial<GameDataStore>).spellLevelById?.call(engine.data, levelId)
-}
