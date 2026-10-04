@@ -150,7 +150,7 @@ export function itemEffectStatIndex(effectId: number): number {
 
 /** Signe d'un effet de caractéristique (+1 bonus, −1 malus, 0 si ce n'est pas une caractéristique). */
 export function itemEffectSign(effectId: number): StatSign | 0 {
-  return effectId >= 0 && effectId < MAX_EFFECT_ID ? (EFFECT_SIGN[effectId] as StatSign | 0) : 0
+  return effectId >= 0 && effectId < MAX_EFFECT_ID ? ((EFFECT_SIGN[effectId] ?? 0) as StatSign | 0) : 0
 }
 
 /** Valeur signée d'une ligne : `signedEffectValue(215, 5)` = −5 (% Rés. Terre). 0 si l'effet n'est pas une caractéristique. */

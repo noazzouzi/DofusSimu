@@ -188,6 +188,8 @@ describe('stats/effects — applyItemEffect', () => {
     expect(itemEffectSign(153)).toBe(-1)
     expect(itemEffectSign(100)).toBe(0)
     expect(itemEffectSign(-3)).toBe(0)
+    expect(itemEffectSign(118.5)).toBe(0)
+    expect(itemEffectStat(118.5)).toBeUndefined()
     expect(signedEffectValue(219, 5)).toBe(-5)
     expect(signedEffectValue(753, 20)).toBe(20)
     expect(signedEffectValue(97, 20)).toBe(0)
