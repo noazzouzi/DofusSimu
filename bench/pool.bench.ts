@@ -1,7 +1,7 @@
 /**
  * Banc B6 (docs/design/ai.md §16.6) — débit du pool de workers en mode `fast` sur l'Œil de Vortex complet, graines
  * fixes : 1, 2 et 4 workers. Cible : ≥ 4 combats/s à 4 workers (échec CI < 2). Une itération = un lot de 16 combats
- * (pool déjà démarré : le chargement des données de chaque worker est exclu). Le combat de contrôle (4 monstres de
+ * (pool déjà démarré et préchauffé sur la configuration mesurée : chargement des données et JIT exclus). Le combat de contrôle (4 monstres de
  * vague) et le mode `scripted` sont mesurés en complément.
  *
  *   npx vitest bench bench/pool.bench.ts
@@ -37,8 +37,16 @@ async function poolOf(n: number): Promise<ManagedPool> {
   return p
 }
 
+const warmed = new Set<string>()
+
 async function measure(label: string, n: number, s: FightSpec): Promise<void> {
   const pool = await poolOf(n)
+  // Préchauffage par configuration (JIT des chemins de l'IA et du scénario mesurés) hors mesure : 2 graines par worker.
+  const key = `${n}:${s.mode}:${s.scenarioId}`
+  if (!warmed.has(key)) {
+    warmed.add(key)
+    await runBatch(s, campaignSeeds(0x5eed, 2 * n), pool, { chunk: 1 })
+  }
   const t0 = performance.now()
   await runBatch(s, SEEDS, pool) // paquets adaptatifs (autoChunk)
   const sec = (performance.now() - t0) / 1000

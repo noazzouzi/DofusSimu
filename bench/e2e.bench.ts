@@ -26,9 +26,12 @@ function spec(mode: AIMode): FightSpec {
 // Préchauffage : conversion paresseuse des données (sorts, monstres, carte) hors mesure.
 runOne(DATA, spec('scripted'), 99)
 
-let k = 0
+/** Compteur PAR MODE : chaque mode joue les mêmes graines fixes, dans le même ordre (comparaison à graines égales). */
+const k = new Map<AIMode, number>()
 function fight(mode: AIMode): void {
-  const seed = SEEDS[k++ % SEEDS.length]
+  const i = k.get(mode) ?? 0
+  k.set(mode, i + 1)
+  const seed = SEEDS[i % SEEDS.length]
   const t0 = performance.now()
   const { summary } = runOne(DATA, spec(mode), seed)
   notes.push(`B5 ${mode} graine ${seed} : ${(performance.now() - t0).toFixed(0)} ms, ${summary.rounds} tours, ${summary.nodes} nœuds, ${summary.win ? 'victoire' : 'défaite'}`)
