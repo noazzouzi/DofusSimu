@@ -5,6 +5,7 @@
  * Conventions : heures 1..12 (I..XII) ; un tableau indexé par heure a une case 0 inutilisée ; « en ligne » = même x ou
  * même y (MapPoint). Les valeurs marquées INCERTAIN sont des paramètres du scénario (variantes, §12.1).
  */
+import type { RoleId } from '../../ai/types'
 import type { UncertainParam } from '../types'
 
 // ───────────────────────────── donjon et carte ─────────────────────────────
@@ -362,6 +363,16 @@ export const VORTEX_UNCERTAIN: readonly UncertainParam[] = [
   { key: 'actionDelay', values: [1, 0], weights: [0.6, 0.4] },
   { key: 'glyphTrigger', values: ['enter', 'turnEnd'], weights: [0.9, 0.1] },
 ]
+
+/** Besoins en rôles publiés par le scénario (docs/design/ai.md §9.2, `ScenarioAIModel.roleNeeds`). */
+export const VORTEX_ROLE_NEEDS: Readonly<Partial<Record<RoleId, number>>> = {
+  killer: 2,
+  mpLock: 1,
+  zoneDps: 1,
+  placer: 0.5,
+  healer: 0.5,
+  tank: 0.5,
+}
 
 /** Clé de `fight.scenarioState` où le scénario range ses paramètres et son état (plat). */
 export const VORTEX_STATE_KEY = 'vortex'

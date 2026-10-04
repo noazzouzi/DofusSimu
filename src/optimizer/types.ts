@@ -19,6 +19,13 @@ export interface MemberSpec { name: string; breedId: number; presetId: string; b
 export interface FightSpec { scenarioId: string; team: MemberSpec[]; placement?: number[]; mode: AIMode
   theta: StrategyParams; params?: Partial<ScenarioParams>; variantPolicy: 'default' | 'sampled'; monsterNoise: number }
 
+/**
+ * Résumé d'un combat. `hpLeftPct` : fraction [0, 1] des PV max de début de combat des personnages encore en vie ;
+ * `score` (§15.2) = win ? 1 + 0,1·hpLeftPct − rounds/600 : 0,8·progress ; `eventsHash` : empreinte déterministe du
+ * combat (`fightDigest`, src/optimizer/runner.ts : état final complet), identique que le combat soit enregistré ou non
+ * et quel que soit le nombre de workers (§13.2, §16.5) — les lots ne sont jamais enregistrés, un hash des seuls
+ * événements y vaudrait toujours 0 ; `variant` : clé de la variante INCERTAINE tirée ('default' sinon).
+ */
 export interface FightSummary { seed: number; variant: string; win: boolean; rounds: number; endReason: string
   failReason?: string; deaths: number; hpLeftPct: number; damageTaken: number; progress: number; score: number
   corruptedByRound: number[]; hoursUsed: number; phase2Rounds?: number; vortexHpPct?: number; creativeActions: number

@@ -11,6 +11,7 @@ import { erosion } from '../damage/life'
 import type { DataStore } from '../data/store'
 import type { MapData } from '../data/model'
 import { accumulateSpellMod } from './effects/buffs/spellMods'
+import { bumpRev } from './rev'
 import type {
   Buff,
   DamageKind,
@@ -197,7 +198,7 @@ export class Engine {
     f.states = states
     if (mods || f.spellMods) f.spellMods = mods
     if (disabled || f.disabledStates) f.disabledStates = disabled
-    f.rev = (f.rev ?? 0) + 1 // E4 : caractéristiques/états recalculés
+    bumpRev(f) // E4 : caractéristiques/états recalculés
   }
 
   addBuff(fight: FightState, target: Fighter, buff: Omit<Buff, 'uid'>): Buff {
@@ -381,7 +382,7 @@ export class Engine {
       const carried = fight.fighters[target.carrying]
       carried.carriedBy = undefined
       carried.cell = target.cell
-      carried.rev = (carried.rev ?? 0) + 1 // E4
+      bumpRev(carried) // E4
       target.carrying = undefined
     }
     if (target.carriedBy !== undefined) {

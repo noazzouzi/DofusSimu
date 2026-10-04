@@ -290,6 +290,14 @@ export interface PotentialModel {
 /** Meilleur plan analytique de kill depuis `reach` (§6.7 `canKillNow`). */
 export interface KillEstimate { p: number; apNeeded: number; spells: number[]; castCell: number }
 
+/**
+ * Split léthal (§6.7, `standard`/`deep`) : le lancer rejoué en `rollMode` 'min' et 'max'. `p` = probabilité de kill
+ * (1 si 'min' tue, 0 si 'max' ne tue pas, sinon interpolation) ; `killed` / `survived` = états simulés retenus pour
+ * V(tué) et V(survivant) (null si l'issue est impossible) ; `nodes` = nœuds consommés (à compter dans `NodeBudget`).
+ * Valeur de la feuille = p·V(killed) + (1 − p)·V(survived).
+ */
+export interface LethalSplit { p: number; killed: FightState | null; survived: FightState | null; nodes: number }
+
 /** Compteur de nœuds simulés (§6.8) : le budget est en nœuds, jamais en millisecondes. */
 export interface NodeBudget {
   readonly max: number

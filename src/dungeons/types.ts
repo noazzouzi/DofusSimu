@@ -12,6 +12,8 @@ import type {
   Blackboard,
   Intent,
   Perception,
+  ReferenceTargets,
+  RoleId,
   StrategyParams,
 } from '../ai/types'
 import type { Engine } from '../engine/engine'
@@ -69,6 +71,13 @@ export interface ScenarioAIModel {
   hints?(view: AIView, me: Fighter, bb: Blackboard): CandidateHint[]
   isKeyDecision?(view: AIView, bb: Blackboard): KeyDecisionReason | null
   choosePlacement?(team: Fighter[], perception: Perception, budget: 'analytic' | 'simulated'): number[]
+  /**
+   * Ajout S0 (§9.2) : vecteur de besoins en rôles publié par le scénario (Vortex : killer 2, mpLock 1, zoneDps 1,
+   * placer 0,5, healer 0,5, tank 0,5) ; absent = besoins génériques du `GenericModel`.
+   */
+  roleNeeds?(): Partial<Record<RoleId, number>>
+  /** Ajout S0 (§9.2, §15.4) : cibles de référence (mix pondéré) pour `capabilities` et le DPT des rôles. */
+  referenceTargets?(view: AIView): ReferenceTargets
 }
 export interface CandidateHint { kind: 'glyph' | 'kill' | 'avoidCells' | 'reachCell'; cells?: number[]; targetId?: number; weight: number }
 export type KeyDecisionReason = 'corruptionKill' | 'allyDeathRisk' | 'closeCall' | 'burst' | 'waveArrival' | 'phaseChange'

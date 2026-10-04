@@ -14,6 +14,7 @@
  */
 import type { EffectData } from '../../../data/model'
 import type { Engine } from '../../engine'
+import { bumpRev } from '../../rev'
 import type { Fighter, FightState } from '../../types'
 import {
   cantBeMoved,
@@ -123,7 +124,7 @@ export function throwCarried(engine: Engine, fight: FightState, carrier: Fighter
   }
   if (cell !== carrier.cell && !isFreeCell(engine, fight, cell)) return undefined
   carried.cell = carrier.cell
-  carried.rev = (carried.rev ?? 0) + 1 // E4
+  bumpRev(carried) // E4
   unlink(engine, fight, carrier, carried)
   if (cell !== carried.cell) relocate(engine, fight, carried, cell)
   else {
@@ -147,6 +148,6 @@ export function releaseCarried(engine: Engine, fight: FightState, carried: Fight
     return
   }
   carried.cell = carrier.cell
-  carried.rev = (carried.rev ?? 0) + 1 // E4
+  bumpRev(carried) // E4
   unlink(engine, fight, carrier, carried)
 }

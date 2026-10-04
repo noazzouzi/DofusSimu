@@ -166,9 +166,11 @@ export interface Fighter {
   /** États neutralisés par un buff 952 (toujours présents dans `states`, mais sans leurs drapeaux). */
   disabledStates?: number[]
   /**
-   * (E4, docs/design/ai.md §3.3) Révision : incrémentée par `Engine.recomputeStats` et à chaque changement de case
-   * (marche, poussée, téléportation, portage, mort, résurrection). Clé de cache de l'IA (DPT, menace) : deux valeurs
-   * égales garantissent mêmes caractéristiques, buffs/états et case. Absente = 0 (combattant jamais recalculé).
+   * (E4, docs/design/ai.md §3.3) Révision : valeur neuve, unique dans le processus (src/engine/rev.ts `bumpRev`),
+   * posée par `Engine.recomputeStats` et à chaque changement de case (marche, poussée, téléportation, portage, mort,
+   * résurrection). Clé de cache de l'IA (DPT, menace) : `(id, rev)` égaux garantissent mêmes caractéristiques,
+   * buffs/états et case, y compris entre clones frères. Valeur opaque (dépend de l'historique du processus) : jamais
+   * dans une décision ni un hash d'état. Absente = combattant jamais recalculé.
    */
   rev?: number
 }

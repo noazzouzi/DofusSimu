@@ -14,6 +14,7 @@
  */
 import type { MonsterData } from '../../../data/model'
 import type { Engine } from '../../engine'
+import { bumpRev } from '../../rev'
 import type { Fighter, FightState } from '../../types'
 
 /** Famille du registre (diagnostic de couverture). */
@@ -148,7 +149,7 @@ export function setCell(fight: FightState, f: Fighter, to: number): void {
   f.tags.prevCell = from
   f.tags.lastCell = to
   f.cell = to
-  f.rev = (f.rev ?? 0) + 1 // E4
+  bumpRev(f) // E4
   if (f.carrying !== undefined) {
     const c = fight.fighters[f.carrying]
     if (c !== undefined && c.alive) {
@@ -157,7 +158,7 @@ export function setCell(fight: FightState, f: Fighter, to: number): void {
       c.tags.prevCell = from
       c.tags.lastCell = to
       c.cell = to
-      c.rev = (c.rev ?? 0) + 1 // E4
+      bumpRev(c) // E4
     }
   }
 }
@@ -180,7 +181,7 @@ export function initPositions(fight: FightState): void {
       const carrier = fight.fighters[x.carriedBy]
       if (carrier !== undefined && carrier.alive && x.cell !== carrier.cell) {
         x.cell = carrier.cell
-        x.rev = (x.rev ?? 0) + 1 // E4
+        bumpRev(x) // E4
       }
     }
     if (x.tags.startCell === undefined && x.cell >= 0) x.tags.startCell = x.cell
