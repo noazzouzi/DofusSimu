@@ -2,11 +2,104 @@
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DofusSimu</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="description" content="DofusSimu — visualiseur animé des combats simulés (Dofus)." />
+    <title>DofusSimu · Combats</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 16 16 29 3 16Z' fill='%23c2621c'/%3E%3Cpath d='M16 9 23 16 16 23 9 16Z' fill='%23fff3df'/%3E%3C/svg%3E" />
+    <!--
+      Le CLI peut embarquer un replay dans la page : une balise script de type « application/json »
+      et d'id « replay-data » contenant { events, map?, meta? } (voir src/replay/types.ts).
+    -->
   </head>
   <body>
-    <div id="app"></div>
+    <header class="topbar">
+      <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 2 30 16 16 30 2 16Z" />
+          <path class="inner" d="M16 9 23 16 16 23 9 16Z" />
+        </svg>
+        <div class="brand-text">
+          <strong>DofusSimu</strong>
+          <span>Visualiseur de combats</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <label class="select-wrap" title="Choisir un replay">
+          <span class="sr-only">Replay</span>
+          <select id="replay-select"></select>
+        </label>
+        <button id="open-file" class="btn" type="button" title="Ouvrir un fichier replay (.json)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2h5.5A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5Z" /></svg>
+          <span>Ouvrir</span>
+        </button>
+        <input id="file-input" type="file" accept=".json,application/json" hidden />
+        <button id="theme-toggle" class="btn icon" type="button" title="Thème : automatique" aria-label="Changer de thème"></button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="stage-col" aria-label="Combat">
+        <div class="fight-head" id="fight-head">
+          <div class="fh-row">
+            <h1 id="replay-title">Chargement…</h1>
+            <button class="fh-more" id="fh-more" type="button" aria-expanded="false" aria-controls="replay-desc">Détails</button>
+          </div>
+          <p id="replay-desc"></p>
+          <ul id="team-summary" class="team-summary"></ul>
+        </div>
+
+        <div class="stage" id="stage">
+          <canvas id="map-canvas" aria-label="Carte du combat"></canvas>
+          <button class="stage-btn" id="zoom-btn" type="button"></button>
+          <div class="stage-chips">
+            <span class="chip" id="round-chip">Placement</span>
+            <span class="chip wave" id="wave-chip" hidden></span>
+          </div>
+          <div class="turn-banner" id="turn-banner" aria-live="polite"></div>
+          <div class="big-banner" id="big-banner"></div>
+          <div class="info-strip" id="info-strip"></div>
+          <div class="result" id="result" hidden></div>
+          <div class="drop-hint" id="drop-hint"><span>Déposez un replay JSON ici</span></div>
+        </div>
+
+        <div class="turn-order" id="turn-order" aria-label="Ordre de jeu"></div>
+
+        <div class="controls" id="controls">
+          <div class="scrubber">
+            <div class="scrub-track"><div class="scrub-fill" id="scrub-fill"></div></div>
+            <div class="scrub-markers" id="scrub-markers"></div>
+            <input id="scrub" type="range" min="0" max="0" step="1" value="0" aria-label="Position dans le combat" />
+          </div>
+          <div class="control-row">
+            <div class="btn-group" role="group" aria-label="Lecture">
+              <button class="ctl" id="btn-start" type="button" title="Début du combat (Origine)" aria-label="Début du combat"></button>
+              <button class="ctl" id="btn-prev-turn" type="button" title="Tour précédent (↑ ou Maj+←)" aria-label="Tour précédent"></button>
+              <button class="ctl" id="btn-prev" type="button" title="Événement précédent (←)" aria-label="Événement précédent"></button>
+              <button class="ctl play" id="btn-play" type="button" title="Lecture / pause (Espace)" aria-label="Lecture"></button>
+              <button class="ctl" id="btn-next" type="button" title="Événement suivant (→)" aria-label="Événement suivant"></button>
+              <button class="ctl" id="btn-next-turn" type="button" title="Tour suivant (↓ ou Maj+→)" aria-label="Tour suivant"></button>
+              <button class="ctl" id="btn-end" type="button" title="Fin du combat (Fin)" aria-label="Fin du combat"></button>
+            </div>
+            <div class="speed" id="speed" role="group" aria-label="Vitesse de lecture"></div>
+            <div class="position" id="position" aria-live="off"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side-col">
+        <section class="panel details" id="details" aria-label="Détails du combattant"></section>
+        <section class="panel log-panel" aria-label="Journal de combat">
+          <header class="panel-head">
+            <h2>Journal</h2>
+            <span class="hint">cliquez une ligne pour y aller</span>
+          </header>
+          <ol class="log" id="log"></ol>
+        </section>
+      </aside>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>
