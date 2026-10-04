@@ -8,8 +8,8 @@
  *   presets            liste des presets (classe, rôle, élément, stuff, PA/PM/PV calculés)
  *   tune | stuff | team | optimize | rewind | report   → lots suivants (WP4b), « non implémenté »
  *
- * Scénarios : identifiant du registre (src/dungeons, ex. `vortex`) ou combat de contrôle
- * `control:<carte>:<monstre>[*n][@grade],…` (src/optimizer/runner.ts).
+ * Scénarios : identifiant du registre (src/dungeons : `vortex`, `skirmish`, `dummy`), combat de contrôle
+ * `control:<carte>:<monstre>[*n][@grade],…` ou miroir `mirror[:<carte>]` (src/optimizer/runner.ts).
  * Équipe : `--team iop:killer,cra:feu,enutrof:mpLock,pandawa:placer` (preset exact ou classe:rôle|élément|mot, stuff
  * facultatif après '@' : `iop:killer@unstuffed`) — src/optimizer/team/presets.ts.
  */
@@ -46,7 +46,7 @@ function usage(): string {
   return [
     'Usage : npm run sim -- <commande> [options]',
     '',
-    '  fight <scénario>  [--team T] [--ai scripted|fast|standard|deep] [--policy ai|random] [--seed N]',
+    '  fight <scénario>  [--team T] [--ai scripted|fast|standard|deep] [--policy ai|random] [--seed N] [--placement c1,c2,…]',
     '                    [--stuff default|unstuffed|naked|<stuff>] [--robust] [--replay <fichier>|auto|none] [--replay-dir D] [--json]',
     '  batch <scénario>  [--team T] [--ai M] [--runs N] [--workers W] [--master-seed S] [--robust]',
     '                    [--min-n N --max-n N --half-width H] [--campaign nom] [--cache-version v] [--micro prefix12|phase2|poutch]',
@@ -55,7 +55,8 @@ function usage(): string {
     '  presets           [--class iop] [--stuff S]',
     '',
     `  Équipe par défaut : ${DEFAULT_TEAM}`,
-    '  Scénario : vortex | control:<carte>:<monstre>[*n][@grade],… (combat de contrôle)',
+    '  Scénario : vortex | skirmish | dummy | control:<carte>:<monstre>[*n][@grade],… | mirror[:<carte>]',
+    '  Options communes : --theta θ.json (surcharge), --noise τ (bruit des monstres), --param clé=valeur (répétable par virgules)',
     `  Commandes : ${COMMANDS.join(' | ')}`,
   ].join('\n')
 }
@@ -110,11 +111,42 @@ function thetaOf(a: Args) {
   return loadTheta(file ? (JSON.parse(readFileSync(resolve(file), 'utf8')) as ThetaOverrides) : undefined)
 }
 
+/** Liste d'entiers `1,2,3` (cases de placement). */
+function intList(text: string, flag: string): number[] {
+  const out = text.split(',').map(x => Number(x.trim()))
+  if (!out.every(Number.isInteger)) throw new Error(`--${flag} : liste d'entiers attendue (« ${text} »)`)
+  return out
+}
+
+/**
+ * Paramètres de scénario imposés : `--param clé=valeur,clé2=valeur2` (nombre, booléen, liste `a;b;c` de nombres, ou
+ * texte) — ex. `--param maxRounds=40,arrivalRounds=1;6;11;16;21`.
+ */
+export function parseParams(text: string | undefined): Record<string, number | string | boolean | number[]> | undefined {
+  if (!text) return undefined
+  const out: Record<string, number | string | boolean | number[]> = {}
+  for (const part of text.split(',').map(x => x.trim()).filter(Boolean)) {
+    const eq = part.indexOf('=')
+    if (eq <= 0) throw new Error(`--param : clé=valeur attendu (« ${part} »)`)
+    const k = part.slice(0, eq)
+    const v = part.slice(eq + 1)
+    if (v === 'true' || v === 'false') out[k] = v === 'true'
+    else if (v.includes(';')) out[k] = v.split(';').map(Number)
+    else if (v !== '' && Number.isFinite(Number(v))) out[k] = Number(v)
+    else out[k] = v
+  }
+  return out
+}
+
 function specOf(a: Args, data: DataStore, scenarioId: string, defMode: AIMode): FightSpec {
   const policy = str(a, 'policy') ?? 'ai'
   if (policy !== 'ai' && policy !== 'random') throw new Error(`--policy : ai|random attendu (« ${policy} »)`)
+  const placement = str(a, 'placement')
+  const params = parseParams(str(a, 'param'))
   return {
     scenarioId,
+    placement: placement ? intList(placement, 'placement') : undefined,
+    params,
     team: parseTeam(str(a, 'team') ?? DEFAULT_TEAM, data, { stuff: (str(a, 'stuff') ?? 'default') as StuffChoice }),
     mode: modeOf(a, defMode),
     theta: thetaOf(a),

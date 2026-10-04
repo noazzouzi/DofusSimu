@@ -46,7 +46,7 @@ export function sampleVariant(scenario: DungeonScenario, fightSeed: number): { p
 export { vortexScenario } from './vortex/scenario'
 export { skirmishScenario } from './generic/skirmish'
 export { dummyScenario } from './generic/dummy'
-export { runVortexSmoke, createSmokeTeam, summarizeVortex, setVortexAIModelFactory, basicVortexAIModel } from './vortex/scenario'
+export { runVortexSmoke, createSmokeTeam, summarizeVortex, setVortexAIModelFactory, basicVortexAIModel, vortexReferenceTargets } from './vortex/scenario'
 export { createVortexFight, vortexHooks } from './vortex/setup'
 export { resolveVortexParams, sampleVortexVariant, variantKey, vortexState } from './vortex/params'
 export { forecastHours, starWindows, lineCells, currentHour, deathHours } from './vortex/clock'

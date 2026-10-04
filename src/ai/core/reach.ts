@@ -49,15 +49,28 @@ export interface ReachOptions {
   occupancy?: Int16Array
 }
 
-/** ReachInfo vide (toutes cases non atteintes). */
+/** Octets d'un ReachInfo (un seul tampon : mpLeft, apLeft, cells, prev, viaEvent). */
+const REACH_BYTES = CELL_COUNT * (4 + 4 + 2 + 2 + 1)
+/** Gabarit « vide » (−1 partout sauf `cells` / `viaEvent`) recopié à chaque création. */
+const REACH_TEMPLATE = (() => {
+  const b = new ArrayBuffer(REACH_BYTES)
+  new Float32Array(b, 0, 2 * CELL_COUNT).fill(-1)
+  new Int16Array(b, 8 * CELL_COUNT + 2 * CELL_COUNT, CELL_COUNT).fill(-1)
+  return new Uint8Array(b)
+})()
+
+/** ReachInfo vide (toutes cases non atteintes) : un seul `ArrayBuffer`, initialisé par copie d'un gabarit. */
 export function createReachInfo(): ReachInfo {
+  const bytes = new Uint8Array(REACH_BYTES)
+  bytes.set(REACH_TEMPLATE)
+  const b = bytes.buffer
   return {
-    cells: new Int16Array(CELL_COUNT),
+    mpLeft: new Float32Array(b, 0, CELL_COUNT),
+    apLeft: new Float32Array(b, 4 * CELL_COUNT, CELL_COUNT),
+    cells: new Int16Array(b, 8 * CELL_COUNT, CELL_COUNT),
     count: 0,
-    mpLeft: new Float32Array(CELL_COUNT).fill(-1),
-    apLeft: new Float32Array(CELL_COUNT).fill(-1),
-    prev: new Int16Array(CELL_COUNT).fill(-1),
-    viaEvent: new Uint8Array(CELL_COUNT),
+    prev: new Int16Array(b, 10 * CELL_COUNT, CELL_COUNT),
+    viaEvent: new Uint8Array(b, 12 * CELL_COUNT, CELL_COUNT),
   }
 }
 
@@ -315,8 +328,8 @@ export function cloneReach(r: ReachInfo): ReachInfo {
 
 /**
  * `computeReachFor` mis en cache (résultat partagé : NE PAS le modifier). L'empreinte (2 × 32 bits) ne couvre que ce
- * qui peut changer le résultat : combattants à distance ≤ PM + 1 du départ (blocage ; tacle et drapeau de tacle des
- * ennemis), marques (cases-événements), mobilité du marcheur (`mobilityDigest` : fuite, états, marqueurs), case,
+ * qui peut changer le résultat : carte, combattants à distance ≤ PM + 1 du départ (blocage ; tacle et drapeau de tacle
+ * des ennemis), marques (cases-événements), mobilité du marcheur (`mobilityDigest` : fuite, états, marqueurs), case,
  * PA/PM, priorité.
  */
 export function cachedReach(engine: Engine, s: FightState, f: Fighter, team: TeamId, mp: number, ap: number, occupancy?: Int16Array,
@@ -330,8 +343,9 @@ export function cachedReach(engine: Engine, s: FightState, f: Fighter, team: Tea
   const md = mobilityDigest(f)
   let h = fnvInt(fnvInt(fnvInt(fnvInt(0x811c9dc5, f.id), md), start), mpi * 2 + (priority === 'ap' ? 1 : 0))
   let h2 = fnvInt(fnvInt(fnvInt(fnvInt(0x050c5d1f, f.id), md), start), mpi * 2 + (priority === 'ap' ? 1 : 0))
-  h = fnvInt(h, apq)
-  h2 = fnvInt(h2, apq)
+  // Carte (le cache est partagé par tous les combats du moteur) : obstacles et cases non marchables.
+  h = fnvInt(fnvInt(h, apq), s.map.id)
+  h2 = fnvInt(fnvInt(h2, apq), s.map.id)
   for (const o of s.fighters) {
     if (!o.alive || o.id === f.id || o.carriedBy !== undefined) continue
     const c = believedCell(o, team)

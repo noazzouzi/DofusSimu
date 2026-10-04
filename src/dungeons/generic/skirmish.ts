@@ -16,7 +16,7 @@ import type { Fighter, FightState, ScenarioHooks } from '../../engine/types'
 import type { DungeonScenario, FightSetupOptions, ScenarioParams, ScenarioSummary } from '../types'
 import { genericPlacement } from '../vortex/placement'
 import { castStartingSpell } from '../../engine/effects/summons'
-import { hasStartingSpell, pickFreeCells, rebuildTimeline, type StartingTeamRule } from '../waves'
+import { applyInitialCooldowns, hasStartingSpell, pickFreeCells, rebuildTimeline, type StartingTeamRule } from '../waves'
 
 export const SKIRMISH_SCENARIO_ID = 'skirmish'
 /** « Cour du Bouftou Royal - Première salle » (8 cases rouges, 8 bleues). */
@@ -107,6 +107,7 @@ export function createGenericFight(
     scenarioId: setup.scenarioId,
   })
   if (setup.startingSpells) for (const m of placed) if (hasStartingSpell(engine, m)) castStartingSpell(engine, fight, m)
+  applyInitialCooldowns(fight.fighters)
   if (setup.rule !== 'best') rebuildTimeline(engine, fight, setup.rule)
   return fight
 }

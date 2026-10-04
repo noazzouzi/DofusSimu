@@ -40,7 +40,7 @@ async function poolOf(n: number): Promise<ManagedPool> {
 async function measure(label: string, n: number, s: FightSpec): Promise<void> {
   const pool = await poolOf(n)
   const t0 = performance.now()
-  await runBatch(s, SEEDS, pool, { chunk: 2 })
+  await runBatch(s, SEEDS, pool) // paquets adaptatifs (autoChunk)
   const sec = (performance.now() - t0) / 1000
   rates.push(`${label} : ${(SEEDS.length / sec).toFixed(2)} combats/s`)
 }

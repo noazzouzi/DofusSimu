@@ -56,7 +56,7 @@ export interface ShieldLineX { effectId: number; kind: 'flat' | 'pctLevel' | 'pc
 export interface StatLineX { effectId: number; stat: keyof Stats; sign: 1 | -1; value: number; duration: number
   zone: ZoneSpec; mask: string; sides: MaskSides }
 export interface RemovalLineX { effectId: number; pool: 'ap' | 'mp'; value: number; dodgeable: boolean; steal: boolean
-  duration: number; zone: ZoneSpec; mask: string; sides: MaskSides }
+  duration: number; delay: number; zone: ZoneSpec; mask: string; sides: MaskSides }
 export interface MoveLineX { effectId: number; kind: DisplacementKind; cells: number; zone: ZoneSpec; mask: string; sides: MaskSides
   /** Le déplacement porte sur le lanceur (1041/1042, 4, téléportations du lanceur). */
   onCaster: boolean }
@@ -255,7 +255,7 @@ function scanEffects(engine: Engine, acc: Acc, effects: readonly EffectData[], c
     if (id in REMOVAL) {
       const [pool, dodgeable, steal] = REMOVAL[id]
       const v = prob * meanOf(e)
-      p.removals.push({ effectId: id, pool, value: v, dodgeable, steal, duration: e.duration, zone: e.zone, mask: e.targetMask, sides })
+      p.removals.push({ effectId: id, pool, value: v, dodgeable, steal, duration: e.duration, delay: e.delay, zone: e.zone, mask: e.targetMask, sides })
       if (pool === 'ap') p.apRemoval += v
       else p.mpRemoval += v
       if (dodgeable) p.dodgeable = true

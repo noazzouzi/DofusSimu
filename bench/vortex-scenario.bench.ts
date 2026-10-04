@@ -10,8 +10,10 @@
  * | `vortexHooks.cloneState` (E2) | ≤ 1 µs | part du scénario dans `cloneFight` (`structuredClone` ≈ 7 µs) |
  * | `cloneFight` complet (référence moteur) | ≤ 12 µs | §14.1 — coût du MOTEUR (combattants, buffs), hors WP3a |
  * | placement analytique (11 880 affectations) | ≤ 60 ms | §12.10 (≈ 5 µs par affectation visés) |
- * | combat passif de 30 tours (moteur + règles serveur seules) | ≤ 50 ms | §14.2 « Moteur 0,05 s » par combat ; dominé par
- * |   |   | le ciblage des effets en zone `a1` de 4996/5000 (moteur, voir le rapport WP3a) |
+ * | combat passif de 30 tours (moteur + règles serveur seules) | ≤ 50 ms | §14.2 « Moteur 0,05 s » par combat ; mesuré
+ * |   |   | ≈ 220-300 ms, dont ≈ 50 % dans `target()` (src/engine/effects/core.ts) : les 13 effets en zone `a1` de 4996
+ * |   |   | (chaque début de tour de personnage) et les 12 de 5000 (chaque mort) parcourent les 560 cases avec une recherche
+ * |   |   | linéaire de l'occupant par case — coût MOTEUR, signalé dans le rapport WP3a |
  * | `runVortexSmoke` 30 tours (attaque au plus près, replay enregistré) | ≤ 400 ms | tests de fumée |
  *
  * Échec à ×2 (machines de CI variables) : signalé dans le résumé imprimé, pas d'assertion (vitest bench).
@@ -123,4 +125,4 @@ afterAll(() => {
   })
   measure('runVortexSmoke 30 tours', 400_000, 5, () => runVortexSmoke(3, { data: DATA }))
   console.log(`\nWP3a — mesures (1 cœur) :\n${notes.join('\n')}`)
-})
+}, 300_000)

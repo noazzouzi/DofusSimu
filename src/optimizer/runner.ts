@@ -17,6 +17,9 @@
  * rouges/bleues, aucune règle) si celui-ci n'est pas enregistré. Un scénario enregistré sous le même identifiant
  * l'emporte toujours.
  *
+ * Combats miroirs (§16.5) : `mirror[:<carte>]` — l'équipe contre sa copie, côté et équipe qui commence tirés sur la
+ * graine (`mirrorScenario`).
+ *
  * Non fait ici (hors WP4a ou moteur) : sorts passifs des objets (effet 1175, non appliqués par le moteur), kind 't0'
  * (modèle analytique T0, WP4b).
  */
@@ -24,12 +27,13 @@ import { createControllers, defaultAIConfig } from '../ai'
 import { createRandomPolicy } from '../ai/policies/random'
 import { createGenericModel } from '../ai/team/genericModel'
 import type { AIControllerProvider, StrategyParams } from '../ai/types'
-import { fnv1a32 } from '../core/hash'
+import { fnv1a32, mix32 } from '../core/hash'
 import type { TeamId } from '../core/types'
 import type { DataStore } from '../data/store'
 import { getScenario, listScenarios } from '../dungeons'
 import type { DungeonScenario, FightSetupOptions, MicroId, MicroResult, ScenarioParams, ScenarioSummary } from '../dungeons/types'
 import { createEngine, type Engine } from '../engine'
+import { cloneFighter } from '../engine/engine'
 import { createMonsterFighter, createPlayerFighter } from '../engine/factory'
 import { runFight, type Controller, type ControllerProvider } from '../engine/runner'
 import type { Fighter, FightEvent, FightState } from '../engine/types'
@@ -185,10 +189,83 @@ export function controlScenario(id: string): DungeonScenario {
   return scenario
 }
 
-/** Scénario d'une spécification : registre d'abord, puis combat de contrôle `control:…`. */
+/** Combat miroir (§16.5) : `mirror` ou `mirror:<carte>` — l'équipe de la spécification contre sa propre copie. */
+export const MIRROR_PREFIX = 'mirror'
+/** Carte par défaut des miroirs : Cour du Bouftou Royal, 1re salle (8 cases rouges, 8 bleues). */
+export const MIRROR_DEFAULT_MAP = 121373185
+/** Sel du tirage « côté et équipe qui commence » d'un miroir. */
+const MIRROR_SALT = 0x3171
+
+/** Analyse `mirror[:<carte>]` (carte vide ou 0 ⇒ carte par défaut). */
+export function parseMirrorId(id: string): { mapId: number } | undefined {
+  if (id !== MIRROR_PREFIX && !id.startsWith(`${MIRROR_PREFIX}:`)) return undefined
+  return { mapId: Number(id.slice(MIRROR_PREFIX.length + 1)) || MIRROR_DEFAULT_MAP }
+}
+
+/**
+ * Scénario miroir : l'équipe (équipe 0) contre une copie exacte (équipe 1, mêmes caractéristiques, sorts et preset).
+ * Les initiatives étant égales, la règle du moteur ferait toujours commencer l'équipe 0 : ici l'équipe qui commence et
+ * le côté de départ (cases rouges ou bleues) sont tirés à pile ou face sur la graine du combat (`mix32(graine, sel)`),
+ * de sorte qu'un miroir équitable donne 50 % de victoires à l'équipe 0 (test de contrôle « miroir 1 c 1 », §16.5).
+ */
+export function mirrorScenario(id: string): DungeonScenario {
+  const cached = controlCache.get(id)
+  if (cached) return cached
+  const parsed = parseMirrorId(id)
+  if (!parsed) throw new Error(`Identifiant de combat miroir invalide : « ${id} »`)
+  const scenario: DungeonScenario = {
+    id,
+    mapId: parsed.mapId,
+    defaultParams: { maxRounds: 30 },
+    uncertain: [],
+    hooks: { id },
+    createFight(engine: Engine, team: Fighter[], o: FightSetupOptions): FightState {
+      const map = engine.data.map(parsed.mapId)
+      if (!map) throw new Error(`Carte ${parsed.mapId} absente des données`)
+      const coin = mix32(o.seed, MIRROR_SALT)
+      const red = placementCells({ map }, 1)
+      const blue = placementCells({ map }, 2)
+      const [mine, theirs] = coin & 2 ? [blue, red] : [red, blue]
+      const copies = team.map(f => ({ ...cloneFighter(f), name: `${f.name} (miroir)` }))
+      team.forEach((f, i) => {
+        f.team = 0
+        f.cell = o.placement?.[i] ?? mine[i % Math.max(1, mine.length)]
+      })
+      copies.forEach((f, i) => {
+        f.team = 1
+        f.cell = theirs[i % Math.max(1, theirs.length)]
+      })
+      const fight = engine.createFight({
+        map,
+        fighters: [...team, ...copies],
+        options: { seed: o.seed, rollMode: o.rollMode, record: o.record, maxRounds: Number(o.params.maxRounds ?? 30), rngRekey: o.rngRekey },
+        scenarioId: id,
+      })
+      // Équipe qui commence : pile ou face (alternance des deux équipes, ordre d'initiative du moteur dans chacune).
+      const first: TeamId = coin & 1 ? 1 : 0
+      const byTeam = (t: TeamId) => fight.timeline.filter(fid => fight.fighters[fid].team === t)
+      const [a, b] = first === 0 ? [byTeam(0), byTeam(1)] : [byTeam(1), byTeam(0)]
+      const order: number[] = []
+      for (let i = 0; i < Math.max(a.length, b.length); i++) {
+        if (a[i] !== undefined) order.push(a[i])
+        if (b[i] !== undefined) order.push(b[i])
+      }
+      fight.timeline = order
+      return fight
+    },
+    aiModel: (_params, theta) => createGenericModel(theta),
+    micro: {},
+    summarize: fight => controlSummary(fight, 0),
+  }
+  controlCache.set(id, scenario)
+  return scenario
+}
+
+/** Scénario d'une spécification : registre d'abord, puis combat de contrôle `control:…` ou miroir `mirror[:carte]`. */
 export function resolveScenario(id: string): DungeonScenario {
   if (listScenarios().includes(id)) return getScenario(id)
   if (id.startsWith(CONTROL_PREFIX)) return controlScenario(id)
+  if (parseMirrorId(id)) return mirrorScenario(id)
   return getScenario(id) // erreur explicite (scénarios connus)
 }
 

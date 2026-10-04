@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url'
 export default defineConfig(({ mode }) => ({
   root: 'web',
   base: './',
-  publicDir: false,
+  // web/public : replays écrits par la CLI (`npm run sim`, web/public/replays/*.json + index.json lu par le
+  // visualiseur) ; non copié dans la version « fichier unique ».
+  publicDir: mode === 'single' ? false : 'public',
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   plugins: mode === 'single' ? [viteSingleFile()] : [],
   build: {

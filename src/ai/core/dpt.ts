@@ -20,7 +20,7 @@ import type { TriggerEvent } from '../../engine/effects/core'
 import { buffApplies, DAMAGE_SPECS, resolveElement, unerodedMaxHp } from '../../engine/effects/damage/pipeline'
 import type { Engine } from '../../engine/engine'
 import { matchesTargetMask } from '../../engine/targetMask'
-import type { Fighter, KnownSpell } from '../../engine/types'
+import type { Fighter, FightState, KnownSpell } from '../../engine/types'
 import type { ZoneSpec } from '../../data/model'
 import { compileZone } from '../../map/zones'
 import type { DptTable } from '../types'
@@ -41,6 +41,19 @@ const CALIB_MAX = 2
 
 /** Facteur de calibration d'un combattant : preset (`tags.presetId`), sinon classe, sinon monstre ; borné. */
 export function calibrationOf(f: Fighter, table: CalibrationTable = CALIB): number {
+  const preset = f.tags.presetId
+  if (table === CALIB && typeof preset !== 'string') {
+    // Chemin rapide (appelé à chaque DPT) : mémo par classe / monstre.
+    const k = f.breedId !== undefined ? f.breedId : f.monsterId !== undefined ? -1 - f.monsterId : NaN
+    let v = CALIB_MEMO.get(k)
+    if (v === undefined) CALIB_MEMO.set(k, (v = calibrationRaw(f, table)))
+    return v
+  }
+  return calibrationRaw(f, table)
+}
+const CALIB_MEMO = new Map<number, number>()
+
+function calibrationRaw(f: Fighter, table: CalibrationTable): number {
   const preset = f.tags.presetId
   let v: number | undefined
   if (typeof preset === 'string') v = table.presets[preset]
@@ -538,4 +551,288 @@ export function createDptTable(engine: Engine): DptTableImpl {
   let t = TABLES.get(engine)
   if (!t) TABLES.set(engine, (t = new DptTableImpl(engine)))
   return t
+}
+
+// ───────────────────────────── cadre DPT d'un état ─────────────────────────────
+
+/** Empreinte des relances qui comptent au PROCHAIN tour (> 1). */
+function nextCooldownHash(f: Fighter): number {
+  let h = 0
+  const cds = f.cooldowns
+  for (const k in cds) {
+    const v = cds[k]
+    if (v > 1) h = (h + fnvInt(fnvInt(0x9747b28c, Number(k)), v)) | 0
+  }
+  return h
+}
+
+const ATK = 1
+const DEF = 2
+
+/** Clés « dégâts » de chaque combattant d'un état (par id). */
+class FrameKeys {
+  alive: Uint8Array
+  rev: Float64Array
+  dig: Int32Array
+  cd: Int32Array
+  hp: Float64Array
+  hpDep: Uint8Array
+  constructor(readonly n: number) {
+    this.alive = new Uint8Array(n)
+    this.rev = new Float64Array(n).fill(NaN)
+    this.dig = new Int32Array(n)
+    this.cd = new Int32Array(n)
+    this.hp = new Float64Array(n).fill(NaN)
+    this.hpDep = new Uint8Array(n)
+  }
+  copyFrom(o: FrameKeys): void {
+    this.alive.set(o.alive)
+    this.rev.set(o.rev)
+    this.dig.set(o.dig)
+    this.cd.set(o.cd)
+    this.hp.set(o.hp)
+    this.hpDep.set(o.hpDep)
+  }
+}
+
+/** Mémo des paires (a → d) d'un cadre : meilleur lancer et deux emplacements (PA entiers) du sac à dos. */
+class PairMemo {
+  /** Meilleur lancer (index de sort, −2 = inconnu) et son espérance. */
+  bestI: Int16Array
+  bestM: Float64Array
+  /** Deux emplacements par paire : PA entiers (−1 = vide), espérance et variance non calibrées. */
+  apA: Int8Array
+  meanA: Float64Array
+  varA: Float64Array
+  apB: Int8Array
+  meanB: Float64Array
+  varB: Float64Array
+  constructor(nn: number) {
+    this.bestI = new Int16Array(nn).fill(-2)
+    this.bestM = new Float64Array(nn)
+    this.apA = new Int8Array(nn).fill(-1)
+    this.meanA = new Float64Array(nn)
+    this.varA = new Float64Array(nn)
+    this.apB = new Int8Array(nn).fill(-1)
+    this.meanB = new Float64Array(nn)
+    this.varB = new Float64Array(nn)
+  }
+  copyFrom(o: PairMemo): void {
+    this.bestI.set(o.bestI)
+    this.bestM.set(o.bestM)
+    this.apA.set(o.apA)
+    this.meanA.set(o.meanA)
+    this.varA.set(o.varA)
+    this.apB.set(o.apB)
+    this.meanB.set(o.meanB)
+    this.varB.set(o.varB)
+  }
+  invalidate(k: number): void {
+    this.bestI[k] = -2
+    this.apA[k] = -1
+    this.apB[k] = -1
+  }
+  setBest(k: number, i: number, m: number): void {
+    this.bestI[k] = i
+    this.bestM[k] = m
+  }
+  /** Range (ap, mean, var) en emplacement A (l'ancien A passe en B). */
+  push(k: number, ap: number, mean: number, variance: number): void {
+    this.apB[k] = this.apA[k]
+    this.meanB[k] = this.meanA[k]
+    this.varB[k] = this.varA[k]
+    this.apA[k] = ap
+    this.meanA[k] = mean
+    this.varA[k] = variance
+  }
+}
+
+/**
+ * Cadre DPT d'un état (§6.4 ; banc B2) : clés « dégâts » de chaque combattant et mémo des paires (a → d) au PROCHAIN
+ * tour (meilleur lancer, sac à dos pour deux valeurs de PA). Mêmes résultats que `DptTableImpl` (qui reste le cache de
+ * second niveau), sans hachage par appel.
+ *
+ * Ancre : le cadre garde l'état « racine » d'une recherche (premier état synchronisé, ou un état trop différent de
+ * l'ancre courante). `refresh(s)` compare les clés de `s` à celles de l'ANCRE (même révision E4 ou même empreinte
+ * dégâts, mêmes relances > 1 ; PV pour les sorts « % PV ») et part du mémo de l'ancre, lignes et colonnes des
+ * combattants modifiés invalidées : un enfant qui ne touche qu'un ennemi ne recalcule que les paires de cet ennemi, et
+ * les paires calculées sur un enfant pour des combattants inchangés enrichissent le mémo de l'ancre.
+ * Un cadre par perception ; à n'utiliser qu'avec des combattants de l'état du dernier `refresh`.
+ */
+export class DptFrame {
+  /** État du dernier `refresh`. */
+  s: FightState | null = null
+  /** Capacité (nombre de combattants) des tableaux ; index d'une paire = a·cap + d. */
+  private n = 0
+  private anchorKeys = new FrameKeys(0)
+  private keys = new FrameKeys(0)
+  private anchorMemo = new PairMemo(0)
+  private memo = new PairMemo(0)
+  /**
+   * Écart à l'ancre par combattant : bit 1 (ATK) = ses paires d'ATTAQUANT sont invalides (vie, empreinte, relances,
+   * sorts « % PV ») ; bit 2 (DEF) = ses paires de DÉFENSEUR sont invalides (vie, empreinte).
+   */
+  private diff = new Uint8Array(0)
+  /** Facteur de calibration par combattant. */
+  private calib = new Float64Array(0)
+  /** Résultat partagé de `turnNext` (à lire immédiatement). */
+  readonly out = { mean: 0, variance: 0 }
+  /** Diagnostic : paires réutilisées / recalculées, ré-ancrages. */
+  hits = 0
+  misses = 0
+  anchors = 0
+
+  constructor(readonly table: DptTableImpl) {}
+
+  private alloc(n: number): void {
+    this.n = n
+    this.anchorKeys = new FrameKeys(n)
+    this.keys = new FrameKeys(n)
+    this.anchorMemo = new PairMemo(n * n)
+    this.memo = new PairMemo(n * n)
+    this.diff = new Uint8Array(n)
+    this.calib = new Float64Array(n)
+  }
+
+  /** Clés de l'état `s` ; mémo = celui de l'ancre moins les paires des combattants modifiés (voir l'en-tête). */
+  refresh(s: FightState): this {
+    const fs = s.fighters
+    const n = fs.length
+    // Capacité croissante (une invocation ajoute un combattant : l'ancre reste valable pour les autres).
+    const fresh = n > this.n
+    if (fresh) this.alloc(n + 4)
+    this.s = s
+    const profiles = this.table.profiles
+    const K = this.keys
+    const A = this.anchorKeys
+    let nDiff = 0
+    let hpMoved = false
+    for (let i = 0; i < n; i++) {
+      const f = fs[i]
+      const alive = f.alive ? 1 : 0
+      const rev = f.rev ?? NaN
+      K.alive[i] = alive
+      K.rev[i] = rev
+      K.cd[i] = alive ? nextCooldownHash(f) : 0
+      K.hp[i] = f.hp
+      K.hpDep[i] = alive && hpDependent(profiles.ofFighter(f)) ? 1 : 0
+      if (alive) {
+        // Révision égale ⇒ même contenu (E4) : l'empreinte de l'ancre est reprise sans recalcul.
+        K.dig[i] = rev === A.rev[i] && A.alive[i] ? A.dig[i] : damageDigest(f)
+        this.calib[i] = calibrationOf(f)
+      } else K.dig[i] = 0
+      const sameDef = alive === A.alive[i] && K.dig[i] === A.dig[i]
+      const sameAtk = sameDef && K.cd[i] === A.cd[i] && K.hpDep[i] === A.hpDep[i]
+      this.diff[i] = (sameAtk ? 0 : ATK) | (sameDef ? 0 : DEF)
+      if (!sameDef) nDiff++
+      if (K.hp[i] !== A.hp[i]) hpMoved = true
+    }
+    // Combattants absents de cet état (au-delà de `n`) : vides.
+    for (let i = n; i < this.n; i++) {
+      K.alive[i] = 0
+      K.rev[i] = NaN
+      K.dig[i] = 0
+      K.cd[i] = 0
+      K.hpDep[i] = 0
+      K.hp[i] = NaN
+      this.diff[i] = A.alive[i] ? ATK | DEF : 0
+    }
+    // Nouvelle racine (premier état, ou trop différent de l'ancre) : ré-ancrage, le mémo des inchangés est conservé.
+    if (fresh || nDiff > Math.max(3, n >> 1)) {
+      this.anchors++
+      if (!fresh) {
+        for (let i = 0; i < this.n; i++) if (this.diff[i]) this.invalidateFighter(this.anchorMemo, i, this.diff[i])
+        if (hpMoved) for (let i = 0; i < n; i++) if (K.hpDep[i]) this.invalidateFighter(this.anchorMemo, i, ATK)
+      }
+      A.copyFrom(K)
+      this.diff.fill(0)
+      this.memo.copyFrom(this.anchorMemo)
+      return this
+    }
+    this.memo.copyFrom(this.anchorMemo)
+    for (let i = 0; i < this.n; i++) {
+      // Sorts « % PV » : la ligne de l'attaquant dépend des PV des deux camps (non partagée avec l'ancre).
+      if (hpMoved && K.hpDep[i]) this.diff[i] |= ATK
+      if (this.diff[i]) this.invalidateFighter(this.memo, i, this.diff[i])
+    }
+    return this
+  }
+
+  /** Invalide les paires de `i` comme attaquant (ATK : ligne) et/ou comme défenseur (DEF : colonne). */
+  private invalidateFighter(m: PairMemo, i: number, bits: number): void {
+    const n = this.n
+    if (bits & ATK) for (let j = 0; j < n; j++) m.invalidate(i * n + j)
+    if (bits & DEF) for (let j = 0; j < n; j++) m.invalidate(j * n + i)
+  }
+
+  /** Meilleur lancer unique de `a` sur `d` au prochain tour (index de sort, −1 si aucun) ; espérance dans `bestMean`. */
+  best(a: Fighter, d: Fighter): number {
+    const k = a.id * this.n + d.id
+    const m = this.memo
+    let i = m.bestI[k]
+    if (i === -2) {
+      const r = this.table.bestCast(a, d, 'next')
+      i = r.index
+      m.setBest(k, i, r.mean)
+      if (!(this.diff[a.id] & ATK) && !(this.diff[d.id] & DEF)) this.anchorMemo.setBest(k, i, r.mean)
+    }
+    return i
+  }
+
+  bestMean(a: Fighter, d: Fighter): number {
+    this.best(a, d)
+    return this.memo.bestM[a.id * this.n + d.id]
+  }
+
+  /** Sac à dos du prochain tour de `a` contre `d` avec `ap` PA (non calibré), dans `out`. */
+  turnNext(a: Fighter, d: Fighter, ap: number): { mean: number; variance: number } {
+    const apInt = Math.max(0, Math.min(MAX_AP, Math.floor(ap + 1e-9)))
+    const k = a.id * this.n + d.id
+    const o = this.out
+    const m = this.memo
+    if (m.apA[k] === apInt) {
+      this.hits++
+      o.mean = m.meanA[k]
+      o.variance = m.varA[k]
+      return o
+    }
+    if (m.apB[k] === apInt) {
+      this.hits++
+      o.mean = m.meanB[k]
+      o.variance = m.varB[k]
+      return o
+    }
+    this.misses++
+    const t = this.table.turn(a, d, apInt, 'next')
+    m.push(k, apInt, t.mean, t.variance)
+    if (!(this.diff[a.id] & ATK) && !(this.diff[d.id] & DEF)) this.anchorMemo.push(k, apInt, t.mean, t.variance)
+    o.mean = t.mean
+    o.variance = t.variance
+    return o
+  }
+
+  /** `dpt(a, d, ap)` calibré (PA du prochain tour par défaut). */
+  dpt(a: Fighter, d: Fighter, ap: number = a.stats.ap): number {
+    return this.turnNext(a, d, Math.max(0, ap)).mean * this.calib[a.id]
+  }
+
+  /** Facteur de calibration de `a` (mémo du cadre). */
+  calibration(a: Fighter): number {
+    return this.calib[a.id]
+  }
+
+  /** Clé « dégâts » de `f` dans l'état courant (empreinte ⊕ relances), pour les mémos des modèles. */
+  keyOf(id: number): number {
+    return fnvInt(this.keys.dig[id], this.keys.cd[id])
+  }
+
+  /** Empreinte « défenseur » de `f` (sans les relances). */
+  defKeyOf(id: number): number {
+    return this.keys.dig[id]
+  }
+
+  /** PV de `f` si l'un de ses sorts dépend des PV (« % PV »), 0 sinon (clés des mémos des modèles). */
+  hpOf(id: number): number {
+    return this.keys.hpDep[id] ? Math.round(this.keys.hp[id]) : 0
+  }
 }

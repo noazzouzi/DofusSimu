@@ -57,7 +57,9 @@ export function canCast(
   if (!checkStatesCriterion(lvl.statesCriterion, caster)) return 'state'
   if (engine.stateFlag(caster, 'preventsSpellCast')) return 'state'
   const mapCell = fight.map.cells[cell]
-  if (!mapCell || !mapCell.walkable) return 'cellInvalid'
+  // Une case non marchable n'est ciblable que si une entité y a été posée par script (Auroraire de l'Œil de Vortex
+  // sur les heures I-III / X-XII, src/dungeons/vortex/setup.ts `syncAuroraireCell`) : l'entité reste une cible.
+  if (!mapCell || (!mapCell.walkable && !engine.fighterAt(fight, cell))) return 'cellInvalid'
   const { min, max } = spellRange(caster, lvl)
   const d = distance(from, cell)
   // Portée en « pas » (une diagonale de r cases compte r — map-grammar, isInCastRange).

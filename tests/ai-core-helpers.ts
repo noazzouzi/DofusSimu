@@ -105,10 +105,10 @@ export function pickCells(rng: Rng, map: MapData, n: number, exclude: Set<number
  * placés dans une fenêtre réduite pour que les contacts et portées soient fréquents. Le combat est démarré et avancé
  * jusqu'au tour d'un personnage (renvoyé).
  */
-export function randomScene(seed: number, o: { nPlayers?: number; nMonsters?: number; mapId?: number; breeds?: number[]; spread?: number } = {}):
+export function randomScene(seed: number, o: { nPlayers?: number; nMonsters?: number; mapId?: number; breeds?: number[]; spread?: number; engine?: Engine } = {}):
   { engine: Engine; fight: FightState; me: Fighter } {
   const rng = new Rng(seed)
-  const engine = engineFor()
+  const engine = o.engine ?? engineFor()
   const mapId = o.mapId ?? MAP_IDS[seed % MAP_IDS.length]
   const map = mapOf(mapId)
   const nP = o.nPlayers ?? 3

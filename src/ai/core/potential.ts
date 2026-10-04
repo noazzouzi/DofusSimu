@@ -16,7 +16,7 @@ import { CELL_COUNT, distance } from '../../map/geometry'
 import type { ThetaJson } from '../theta'
 import type { AIView, Blackboard, Perception, PotentialModel, ReachInfo } from '../types'
 import { firstCastCell, LosOracle, levelFor, nextTurnStaticOk } from './castCells'
-import { calibrationOf, createDptTable, type DptTableImpl } from './dpt'
+import { createDptTable, DptFrame, type DptTableImpl } from './dpt'
 import { fnvInt, mobilityDigest, stateSig } from './hash'
 import { killProbability } from './kill'
 import { buildOccupancy, cachedReach } from './reach'
@@ -71,17 +71,32 @@ export class PotentialModelImpl implements PotentialModel {
   private weight = new Float64Array(0)
   private readonly enemies: Fighter[] = []
   private readonly enemyCells: number[] = []
+  private frame: DptFrame
+  private ownFrame: DptFrame | null = null
+  private bbVersion = -1
 
   constructor(readonly view: AIView, readonly side: TeamId, readonly perception?: Perception,
               readonly scenario?: ScenarioAIModel, theta?: ThetaJson, public bb?: Blackboard) {
     this.dpt = (perception?.dpt as DptTableImpl | undefined) ?? createDptTable(view.engine)
     this.w = theta ? { ...DEFAULT_WEIGHTS, ...theta.value } : DEFAULT_WEIGHTS
+    this.frame = (perception as { frame?: DptFrame } | undefined)?.frame ?? (this.ownFrame = new DptFrame(this.dpt))
   }
 
   sync(s: FightState): void {
-    const sig = stateSig(s)
-    if (s === this.s && sig === this.signature) return
+    this.syncSig(s, stateSig(s))
+  }
+
+  /** `sync` avec l'empreinte déjà calculée et, éventuellement, le cadre DPT déjà rafraîchi sur `s` (perception). */
+  syncSig(s: FightState, sig: number, frame?: DptFrame): void {
+    const bbv = this.bb ? this.bb.version : -1
+    if (s === this.s && sig === this.signature && bbv === this.bbVersion) return
     this.signature = sig
+    this.bbVersion = bbv
+    if (frame) this.frame = frame
+    else {
+      this.frame = this.ownFrame ??= new DptFrame(this.dpt)
+      this.frame.refresh(s)
+    }
     this.build(s, sig)
   }
 
@@ -96,10 +111,11 @@ export class PotentialModelImpl implements PotentialModel {
 
   /** Menace propre d'un ennemi (max des DPT sur les alliés), utilisée pour la valeur d'un kill. */
   enemyThreat(e: Fighter): number {
+    const dt = this.frame.s === this.s ? this.frame : this.dpt
     let best = 0
     for (const a of this.s.fighters) {
       if (!a.alive || a.team !== this.side || a.cell < 0) continue
-      const d = this.dpt.dpt(e, a)
+      const d = dt.dpt(e, a)
       if (d > best) best = d
     }
     return best
@@ -215,7 +231,7 @@ export class PotentialModelImpl implements PotentialModel {
     const enemies = this.enemies
     const nE = enemies.length
     const vals = VALS
-    const calib = calibrationOf(a)
+    const calib = this.frame.calibration(a)
     let bestVal = 0
     let bestJ = -1
     for (let j = 0; j < nE; j++) {
@@ -225,13 +241,12 @@ export class PotentialModelImpl implements PotentialModel {
       if (v < 0) continue // invulnérable à son prochain tour
       const e = enemies[j]
       if (this.scenario?.vulnerableAt && !this.scenario.vulnerableAt(s, e, g.roundOffset)) continue
-      const best = this.dpt.bestCast(a, e, 'next')
-      const bi = best.index
+      const bi = this.frame.best(a, e)
       if (bi < 0) continue
       BEST[j] = bi
       const ph = this.pairHit(s, a, g, bi, this.enemyCells[j])
       if (ph.hit <= 0) continue
-      const t = this.dpt.turn(a, e, ph.apAt, 'next')
+      const t = this.frame.turnNext(a, e, ph.apAt)
       const dmg = t.mean * calib * ph.hit
       const variance = t.variance * calib * calib * ph.hit
       const he = hpEff(e)

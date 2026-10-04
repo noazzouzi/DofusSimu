@@ -9,6 +9,7 @@
  *  | carte, cases de départ | `createVortexFight` : carte 143393281, personnages sur les cases rouges (placement fourni ou
  *  |   | `defaultVortexPlacement`), vague 1 = Vortex + (N − 1) monstres sur les cases bleues |
  *  | sorts de départ | Vortexiphan (Auroraire, Marginal, déclencheurs) puis 5002 de chaque monstre (`castStartingSpell`) |
+ *  | délais de relance initiaux | `applyInitialCooldowns` (waves.ts) : `initialCooldown` des sorts, ignoré par le moteur |
  *  | équipe qui commence | `rebuildTimeline(startingTeamRule)` après les sorts de départ (aucun tour n'a commencé) |
  *  | vagues | `spawnVortexWave` au début du tour de jeu `arrivalRounds[w]` (ou plus tôt si `earlySpawnIfCleared`) |
  *  | invulnérabilité d'arrivée | état 56 jusqu'au début du tour `arrivée + arrivalInvulnerableTurns` (waves.ts) |
@@ -19,6 +20,8 @@
  *  |   | retiré si `rezMinusOneMp` est faux, `rezAllPerTurn` via `summonOptions.reviveAllInArea` le temps du tour |
  *  | horloge et joueur mort | variante `deadPlayerAdvancesClock` : l'Auroraire lance 4996 au créneau du mort (clock.ts) |
  *  | glyphes | variante `glyphTrigger = 'turnEnd'` : glyphes 5011 posés convertis en glyphes de fin de tour |
+ *  | Auroraire sur les heures non marchables | `syncAuroraireCell` : après un changement d'heure, replacée sur la case de
+ *  |   | l'heure si elle est non marchable (I, II, III, X, XI, XII) — les données (4 / 1023) ne peuvent pas l'y mettre |
  *  | heure de mort (repli) | `markDeathHour` : si la chaîne des données 5001 → 5000 n'a pas posé l'état d'heure sur le
  *  |   | mort (défaut du moteur : `addState`, effects/buffs/states.ts, refuse une cible mourante — voir
  *  |   | `markDeathHour`), le scénario le pose (même effet que 5000) |
@@ -27,6 +30,7 @@
  * (clé = tableau `spells` du Vortex, partagé par tous les clones du combat ; repli : la carte).
  */
 import { castSubSpell } from '../../engine/effects/core'
+import { relocate } from '../../engine/effects/movement/common'
 import { castStartingSpell, summonOptions } from '../../engine/effects/summons'
 import type { Engine } from '../../engine/engine'
 import { createMonsterFighter } from '../../engine/factory'
@@ -36,6 +40,7 @@ import type { Buff, Fighter, FightState, ScenarioHooks } from '../../engine/type
 import type { FightSetupOptions } from '../types'
 import {
   addArrivalInvulnerability,
+  applyInitialCooldowns,
   expireArrivalInvulnerability,
   hasStartingSpell,
   rebuildTimeline,
@@ -54,6 +59,7 @@ import {
 import {
   AURORAIRE,
   BLUE_START_CELLS,
+  HOUR_CELL,
   HOUR_STATE_BASE,
   MARGINAL,
   RED_START_CELLS,
@@ -167,6 +173,7 @@ export function createVortexFight(engine: Engine, team: Fighter[], o: FightSetup
   for (const m of [vortex, ...monsters.filter(x => x !== vortex)]) {
     if (hasStartingSpell(engine, m) && !castStartingSpell(engine, fight, m)) failures.push(m.id)
   }
+  applyInitialCooldowns(fight.fighters)
   const aur = fight.fighters.find(f => f.alive && f.monsterId === AURORAIRE && f.summonerId === vortex.id)
   if (!aur) engine.log(fight, 'Vortexiphan n’a pas invoqué l’Auroraire : horloge absente.', 'warn')
   shiftUnlock(engine, fight, vortex, p.unlockVortexTurn - ENGINE_UNLOCK_TURN)
@@ -236,13 +243,16 @@ export function corruptedCount(fight: FightState): number {
   return n
 }
 
-/** Fait apparaître la vague `w` (2..5) au tour courant (composition N = `players`). */
-export function spawnVortexWave(engine: Engine, fight: FightState, w: number): Fighter[] {
+/**
+ * Fait apparaître la vague `w` (2..5) au tour courant (composition N = `players`). `roundStart` : appel depuis
+ * `onRoundStart` (un arrivant placé en tête de timeline joue dès ce tour de jeu, `insertNewcomers`).
+ */
+export function spawnVortexWave(engine: Engine, fight: FightState, w: number, o: { roundStart?: boolean } = {}): Fighter[] {
   const vx = vortexState(fight)
   if (!vx || w < 2 || w > WAVE_COUNT) return []
   const specs = waveComposition(vx.players)[w - 1].map(monsterId => ({ monsterId, grade: vx.monsterGrade }))
   const until = vx.arrivalInvulnerableTurns > 0 ? fight.round + vx.arrivalInvulnerableTurns : undefined
-  const res = spawnWave(engine, fight, specs, { team: 1, wave: w, total: WAVE_COUNT, cells: BLUE_SPAWN_ORDER, invulnerableUntilRound: until })
+  const res = spawnWave(engine, fight, specs, { team: 1, wave: w, total: WAVE_COUNT, cells: BLUE_SPAWN_ORDER, invulnerableUntilRound: until, roundStart: o.roundStart })
   // Ordre canonique : chaque arrivant après la racine qui le précède dans la timeline.
   const order = vx.slotOrder.slice()
   for (const f of res.fighters) {
@@ -281,7 +291,7 @@ export function vortexRoundStart(fight: FightState): void {
     const next = vx.wavesSpawned + 1
     const due = fight.round >= vx.arrivalRounds[next - 1]
     const early = vx.earlySpawnIfCleared && allWaveMonstersCorrupted(fight)
-    if (due || early) spawnVortexWave(engine, fight, next)
+    if (due || early) spawnVortexWave(engine, fight, next, { roundStart: true })
   }
 }
 
@@ -314,6 +324,7 @@ function tickDeadPlayers(engine: Engine, fight: FightState, round: number, befor
     if (fight.ended) return
     engine.log(fight, `Créneau de ${fight.fighters[id].name} (mort) : l'horloge avance.`)
     castSubSpell(engine, fight, aur, SPELL.DECALAGE_HORAIRE, 1, aur.cell, false, 0)
+    syncAuroraireCell(engine, fight)
   }
 }
 
@@ -387,8 +398,11 @@ export function vortexCheckEnd(fight: FightState): 0 | 1 | null | undefined {
 const INSTALLED = new WeakSet<Engine>()
 
 /**
- * Installe (une fois par moteur) l'enveloppe du début de tour : autour des déclencheurs TB du Vortex (résurrections,
- * 5008) et après ceux des monstres (glyphes). Même mécanisme que les familles d'effets (`engine.hooks`, chaînés).
+ * Installe (une fois par moteur) les enveloppes des crochets du moteur (même mécanisme que les familles d'effets,
+ * `engine.hooks`, chaînés) :
+ *  - début de tour : autour des déclencheurs TB du Vortex (résurrections, 5008), après ceux des monstres (glyphes) ;
+ *  - début de tour, entrée sur une case (glyphes 5011 à l'entrée), fin de tour (variante `glyphTrigger = 'turnEnd'`) :
+ *    si l'heure a changé, `syncAuroraireCell` (Auroraire sur une case d'heure non marchable, règle serveur).
  */
 export function installVortexEngineHooks(engine: Engine): void {
   if (INSTALLED.has(engine)) return
@@ -400,13 +414,53 @@ export function installVortexEngineHooks(engine: Engine): void {
       prev?.(fight, f)
       return
     }
-    if (f.id === vx.vortexId) {
-      vortexTurnStart(engine, fight, f, vx, prev)
+    const h0 = currentHour(fight)
+    if (f.id === vx.vortexId) vortexTurnStart(engine, fight, f, vx, prev)
+    else {
+      prev?.(fight, f)
+      if (vx.glyphTrigger === 'turnEnd' && isWaveMonster(f)) convertGlyphsToTurnEnd(fight, f)
+    }
+    if (currentHour(fight) !== h0) syncAuroraireCell(engine, fight)
+  }
+  const prevEnd = engine.hooks.onTurnEnd
+  engine.hooks.onTurnEnd = (fight, f) => {
+    if (!vortexState(fight)) {
+      prevEnd?.(fight, f)
       return
     }
-    prev?.(fight, f)
-    if (vx.glyphTrigger === 'turnEnd' && isWaveMonster(f)) convertGlyphsToTurnEnd(fight, f)
+    const h0 = currentHour(fight)
+    prevEnd?.(fight, f)
+    if (currentHour(fight) !== h0) syncAuroraireCell(engine, fight)
   }
+  const prevEnter = engine.hooks.onEnterCell
+  engine.hooks.onEnterCell = (fight, f, cell, opts) => {
+    if (!vortexState(fight)) {
+      prevEnter?.(fight, f, cell, opts)
+      return
+    }
+    const h0 = currentHour(fight)
+    prevEnter?.(fight, f, cell, opts)
+    if (currentHour(fight) !== h0) syncAuroraireCell(engine, fight)
+  }
+}
+
+/**
+ * Règle serveur (vortex.md §2 « l'Auroraire y est placée par script ») : les cases des heures I, II, III, X, XI et XII
+ * (173, 176, 220, 365, 281, 212) sont NON marchables ; les données de Décalage horaire (4996 : échange forcé 1023 avec
+ * l'occupant, sinon téléportation 4) n'y amènent donc pas l'Auroraire — le moteur refuse à juste titre une
+ * téléportation vers une case non marchable (`teleportFighter`, src/engine/effects/movement/teleport.ts) — et elle
+ * resterait sur IX (436) de X à III, ce qui fausserait la croix d'*En temps et en heure*. Après tout changement
+ * d'heure, si la case de l'heure est non marchable (donc jamais occupée), l'Auroraire y est replacée. Rien sur une case
+ * marchable (IV..IX) : les données s'en chargent (échange forcé compris).
+ */
+export function syncAuroraireCell(engine: Engine, fight: FightState): boolean {
+  const aur = auroraireOf(fight)
+  if (!aur || aur.carriedBy !== undefined) return false
+  const h = hourOf(aur)
+  const cell = HOUR_CELL[h]
+  if (!h || !cell || aur.cell === cell || fight.map.cells[cell]?.walkable !== false || engine.fighterAt(fight, cell)) return false
+  relocate(engine, fight, aur, cell)
+  return true
 }
 
 function vortexTurnStart(

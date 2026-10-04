@@ -59,6 +59,8 @@ interface Observed {
   round: number
   fighterId: number
   hour: number
+  /** Case de l'Auroraire au début du créneau. */
+  aurCell?: number
   star?: boolean
   /** Personnage ou Vortex : son créneau DOIT figurer dans la prévision (les arrivants des vagues futures, non). */
   required?: boolean
@@ -80,6 +82,7 @@ function run(s: Setup, rounds: number, act?: (f: Fighter) => void, watch?: Fight
       round: fight.round,
       fighterId: f.id,
       hour: currentHour(fight),
+      aurCell: fight.fighters.find(x => x.alive && x.monsterId === 3833)?.cell,
       star: watch ? watch.states.includes(SAME_HOUR) : undefined,
       required: f.kind === 'player' || f.monsterId === 3835,
     })
@@ -108,14 +111,16 @@ function compare(slots: readonly ClockSlot[], obs: readonly Observed[], opts: { 
   return n
 }
 
-/** Créneau courant : on avance jusqu'au début du tour de `f` (tours intermédiaires passifs). */
-function turnOf(s: Setup, f: Fighter, minRound = 0): void {
+/** Créneau courant : on avance jusqu'au début du tour de `f` (tours intermédiaires passifs, ou `act`). */
+function turnOf(s: Setup, f: Fighter, minRound = 0, act?: (g: Fighter) => void): void {
   const { engine, fight } = s
   for (let i = 0; i < 500; i++) {
     const cur = engine.current(fight)
     if (cur && cur.id === f.id && fight.round >= minRound && fight.round > 0) return
     if (cur && fight.round > 0 && cur.alive) engine.endTurn(fight, cur)
-    if (!engine.nextTurn(fight)) break
+    const n = engine.nextTurn(fight)
+    if (!n) break
+    if (act && !(n.id === f.id && fight.round >= minRound)) act(n)
   }
   throw new Error(`tour de ${f.name} jamais atteint`)
 }
@@ -152,6 +157,10 @@ describe('T-clock : forecastHours contre le moteur réel (30 tours)', () => {
     const obs = run(s, 30)
     expect(obs.length).toBeGreaterThan(200)
     expect(compare(slots, obs)).toBeGreaterThan(200)
+    // L'Auroraire est sur la case de l'heure à chaque créneau joueur, heures non marchables (I-III, X-XII) comprises.
+    const playerObs = obs.filter(o => s.players.some(p => p.id === o.fighterId))
+    for (const o of playerObs) expect(o.aurCell, `tour ${o.round} heure ${o.hour}`).toBe(HOUR_CELL[o.hour])
+    expect(new Set(playerObs.map(o => o.hour)).size).toBe(12)
     // P1 voit I/V/IX, P2 II/VI/X, P3 III/VII/XI, P4 et le Vortex IV/VIII/XII.
     const [p1, p2, p3, p4] = s.players
     const vx = vortexState(s.fight)!
@@ -228,13 +237,13 @@ function triggerGlyphs(s: Setup, me: Fighter, count: number): number {
 }
 
 describe('T-clock : glyphes déclenchées (+1 heure chacune, au milieu du créneau)', () => {
-  for (const count of [1, 2] as const) {
-    it(`${count} glyphe(s) au tour 2 de P2 : prévision avec glyphs = {0: ${count}}`, () => {
-      const s = setup({ initiative: 4000, seed: 3 + count })
+  for (const [count, initiative] of [[1, 4000], [2, 4000], [1, 1000], [2, 1000]] as const) {
+    it(`${count} glyphe(s) au tour 2 de P2, ${initiative === 4000 ? 'k = 4' : 'k = 3'} : prévision avec glyphs = {0: ${count}}`, () => {
+      const s = setup({ initiative, seed: 3 + count })
       const p2 = s.players[1]
       // Tour 1 : les monstres posent leur glyphe puis s'écartent.
       run(s, 1, f => stepAside(s, f))
-      turnOf(s, p2, 2)
+      turnOf(s, p2, 2, f => stepAside(s, f))
       const slots = forecastHours(s.fight, 10, VORTEX_DEFAULT_PARAMS, new Map([[0, count]]))
       const h0 = currentHour(s.fight)
       expect(triggerGlyphs(s, p2, count)).toBe(count)
@@ -260,6 +269,7 @@ describe('T-clock : personnage mort (paramètre deadPlayerAdvancesClock)', () =>
       const slots = forecastHours(s.fight, 12, { ...VORTEX_DEFAULT_PARAMS, ...params })
       const obs = run(s, 12)
       expect(compare(slots, obs)).toBeGreaterThan(60)
+      for (const o of obs) if (s.players.some(p => p.id === o.fighterId)) expect(o.aurCell, `tour ${o.round} heure ${o.hour}`).toBe(HOUR_CELL[o.hour])
       const vx = vortexState(s.fight)!
       const vortexHours = new Set(hoursSeenBy(slots, vx.vortexId))
       if (variant) {
@@ -339,8 +349,8 @@ describe('T-clock : morts, résurrections et réinsertion dans la timeline', () 
 })
 
 describe('T-clock : fenêtres d’étoile = pose réelle de « Même heure » (234)', () => {
-  it('Ikargn tué à l’heure I : étoile exactement pendant les fenêtres prévues, puis corruption', () => {
-    const s = setup({ initiative: 4000, seed: 5 })
+  for (const initiative of [4000, 1000]) it(`Ikargn tué à l’heure I (${initiative === 4000 ? 'k = 4' : 'k = 3'}) : étoile exactement pendant les fenêtres prévues`, () => {
+    const s = setup({ initiative, seed: 5 })
     const [p1] = s.players
     const ika = s.fight.fighters.find(f => f.monsterId === IKARGN)!
     turnOf(s, p1, 1)
@@ -407,6 +417,7 @@ describe('T-clock : combats complets (30 tours, prévision glissante exacte)', (
       let ptr = 0
       let compared = 0
       let invalidations = 0
+      let aurChecked = 0
       const signature = () => `${fight.deaths?.length ?? 0}:${vortexState(fight)!.wavesSpawned}`
       let sig = signature()
       for (let i = 0; i < 5000 && !fight.ended; i++) {
@@ -428,6 +439,11 @@ describe('T-clock : combats complets (30 tours, prévision glissante exacte)', (
           ptr++
         }
         const h0 = currentHour(fight)
+        // Auroraire sur la case de l'heure (échanges forcés et heures non marchables compris) à chaque créneau joueur.
+        if (f.kind === 'player') {
+          aurChecked++
+          expect(fight.fighters.find(x => x.alive && x.monsterId === 3833)?.cell, `graine ${seed} tour ${fight.round} heure ${h0}`).toBe(HOUR_CELL[h0])
+        }
         sig = signature()
         ctrl.playTurn(engine, fight, f)
         if (fight.ended) break
@@ -441,6 +457,7 @@ describe('T-clock : combats complets (30 tours, prévision glissante exacte)', (
       expect(fight.round).toBeGreaterThanOrEqual(30)
       expect(compared).toBeGreaterThan(400)
       expect(invalidations).toBeGreaterThan(5)
+      expect(aurChecked).toBeGreaterThan(60)
     })
   }
 })

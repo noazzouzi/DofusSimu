@@ -215,6 +215,24 @@ describe('modèle stratégique de base du Vortex', () => {
     expect(vortexVulnerableAt(fight, ika, 0)).toBe(true)
   })
 
+  it('cibles de référence : mix pondéré des monstres de vague et du Vortex (grades du scénario, ids négatifs)', () => {
+    const engine = createEngine(data, vortexHooks)
+    const team = createSmokeTeam(data)
+    const fight = createVortexFight(engine, team, { params: VORTEX_DEFAULT_PARAMS, seed: 1, rollMode: 'random', record: false, rngRekey: 'none' })
+    const model = basicVortexAIModel({ ...VORTEX_DEFAULT_PARAMS, monsterGrade: 3 })
+    const view = createView(engine, fight, team[0], 1)
+    const ref = model.referenceTargets!(view)
+    expect(model.referenceTargets!(view)).toBe(ref) // mis en cache
+    expect(ref.targets.map(t => [t.fighter.monsterId, t.weight])).toEqual(VORTEX_TARGET_MIX.map(m => [m.monsterId, m.weight]))
+    for (const t of ref.targets) {
+      expect(t.fighter.id).toBeLessThan(0)
+      expect(t.fighter.grade).toBe(t.fighter.monsterId === VORTEX ? 5 : 3)
+      expect(t.fighter.maxHp).toBeGreaterThan(0)
+      expect(fight.fighters.includes(t.fighter)).toBe(false)
+    }
+    expect(new Set(ref.targets.map(t => t.fighter.id)).size).toBe(ref.targets.length)
+  })
+
   it('basicVortexAIModel : P1 sur la croix de l’heure du Vortex reçoit des dégâts attendus', () => {
     const engine = createEngine(data, vortexHooks)
     const team = createSmokeTeam(data, undefined, { hp: 1_000_000 })

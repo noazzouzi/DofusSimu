@@ -60,9 +60,10 @@ export interface GenerateOptions {
   bb?: Blackboard
 }
 
-const DEFAULT_WEIGHTS: ValueWeights & { incoming: number } = { monsterDamage: 1, summonDamage: 0.5, killKappa: 0.3, killTau: 1, incoming: 0.8 }
+type QuickWeights = ValueWeights & { incoming: number; control?: number; potBefore?: number; potAfter?: number; continuation?: number }
+const DEFAULT_WEIGHTS: QuickWeights = { monsterDamage: 1, summonDamage: 0.5, killKappa: 0.3, killTau: 1, incoming: 0.8 }
 
-function weightsOf(p?: Perception): ValueWeights & { incoming: number } {
+function weightsOf(p?: Perception): QuickWeights {
   return (p as PerceptionX | undefined)?.theta?.value ?? DEFAULT_WEIGHTS
 }
 
@@ -338,6 +339,17 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
   const calib = calibrationOf(me)
   const zone = prof.zone
   const inZone = zone && prof.zoneRadius > 0 ? zoneMembership(zone, c.cell, c.from) : null
+  // w_pot de V : 0,35 si l'allié joue avant l'ennemi le plus menaçant, 0,15 sinon.
+  let topThreatId = -1
+  let topThreat = 0
+  for (const row of threat.enemies) {
+    if (row.active && row.threat > topThreat) {
+      topThreat = row.threat
+      topThreatId = row.e.id
+    }
+  }
+  const potWeight = (f: Fighter): number =>
+    topThreatId < 0 || threat.order.before(f.id, topThreatId) ? (w.potBefore ?? 0.35) : (w.potAfter ?? 0.15)
   let value = 0
   for (const f of s.fighters) {
     if (!f.alive || f.carriedBy !== undefined) continue
@@ -364,17 +376,25 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
     }
     if (enemy) {
       const th = threat.threatOf(f)
+      // Retraits de PA/PM qui couvrent le prochain tour de l'ennemi : Δ incoming recalculé par le modèle de menace
+      // (PM restants ⇒ cases de lancer, PA restants ⇒ DPT, cible prédite) + terme de contrôle, comme V.
+      let dAp = 0
+      let dMp = 0
       for (const r of prof.removals) {
-        if (!r.sides.enemy) continue
+        if (!r.sides.enemy || r.delay > 0 || r.duration < 1) continue
         const pool = r.pool
-        const pts = Math.max(0, f.stats[pool])
+        const pts = Math.max(0, f.stats[pool] - (pool === 'ap' ? dAp : dMp))
         const removed = r.dodgeable
           ? expectedApMpRemoved(pool === 'ap' ? me.stats.apReduction : me.stats.mpReduction, pool === 'ap' ? f.stats.apParry : f.stats.mpParry, pts, pts, Math.round(r.value))
           : Math.min(pts, r.value)
+        if (pool === 'ap') dAp += removed
+        else dMp += removed
+      }
+      if (dAp > 0 || dMp > 0) {
+        value -= w.incoming * threat.removalDelta(f, dAp, dMp)
         const row = threat.rowOf(f)
         const alpha = row && row.hitsFromStart ? 0.15 : 0.6
-        const worth = pool === 'ap' ? th / Math.max(1, f.stats.ap) : (alpha * th) / Math.max(1, f.stats.mp)
-        value += removed * worth
+        value += (w.control ?? 0.15) * (dAp * (th / Math.max(1, f.stats.ap)) + dMp * ((alpha * th) / Math.max(1, f.stats.mp)))
       }
       for (const st of prof.states) {
         if (st.remove || !st.sides.enemy) continue
@@ -415,10 +435,22 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
         value += 0.8 * amount * eff * (f.kind === 'summon' ? 0.4 : 1)
       }
       const pot = potential.potential(f.id)
+      // Même pondération que V : Δpotentiel × w_pot (selon que l'allié joue avant l'ennemi le plus menaçant).
+      const wPot = potWeight(f)
       for (const st of prof.stats) {
         if (st.sign < 0) continue
         if (!(st.sides.ally || (st.sides.self && f.id === me.id))) continue
-        value += buffValue(st.stat, st.value, f, pot, inc)
+        if (st.stat === 'vitality') {
+          // PV gagnés (allyLife) : vitalité ⇒ PV et PV max.
+          value += st.value * (f.kind === 'summon' ? 0.4 : 1)
+          continue
+        }
+        value += wPot * buffValue(st.stat, st.value, f, pot, inc)
+        // PA/PM gagnés tout de suite par le lanceur : suite du tour (terme continuation de V).
+        if (f.id === me.id && (st.stat === 'ap' || st.stat === 'mp')) {
+          const per = pot / Math.max(1, st.stat === 'ap' ? f.stats.ap : 3 * f.stats.mp)
+          value += (w.continuation ?? 0.8) * per * Math.min(st.value, st.stat === 'ap' ? 6 : 3)
+        }
       }
     }
   }
@@ -428,7 +460,7 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
   if (dest !== meCell && dest >= 0 && dest < CELL_COUNT) value -= w.incoming * threat.cellIncomingTeamDelta(me, dest)
   const occupied = s.fighters.some(f => f.alive && f.carriedBy === undefined && (f.id === me.id ? c.from : believedCell(f, view.team)) === c.cell)
   if (prof.summonLines.length && !occupied) {
-    // Même valeur que V : PV de l'invocation × ω (0,4) + un leurre (≈ 100 PVe de menace détournée).
+    // Même valeur que V : PV de l'invocation × ω (0,4) + menace détournée (leurre : `decoyDelta`, π recalculé).
     for (const sl of prof.summonLines) {
       if (sl.revive) {
         const dead = s.fighters.some(f => !f.alive && f.team === me.team && f.kind === 'player')
@@ -438,7 +470,7 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
       const mdata = sl.monsterId > 0 ? view.engine.data.monster(sl.monsterId) : undefined
       const g = mdata?.grades.find(x => x.grade === sl.grade) ?? mdata?.grades[0]
       const hp = g ? g.lifePoints + (g.stats.vitality ?? 0) + Math.floor((me.baseMaxHp * (g.summonerShare?.lifePct ?? 0)) / 100) : 0.3 * me.baseMaxHp
-      value += 0.4 * hp + 100
+      value += 0.4 * hp - w.incoming * threat.decoyDelta(c.cell, hp)
     }
   }
   if (prof.glyph || prof.trap) value += 100

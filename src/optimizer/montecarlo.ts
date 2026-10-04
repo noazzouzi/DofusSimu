@@ -1,8 +1,9 @@
 /**
  * Monte-Carlo d'une configuration (niveau L1, docs/design/ai.md §15.2) — WP4.
  *
- *  - `runBatch(spec, seeds, pool, opts)` : graines réparties en paquets de 8 (`WorkerTask`), résultats rangés dans
- *    l'ordre de `seeds` (indépendant de l'ordonnancement et du nombre de workers) ; cache facultatif (cache.ts) ;
+ *  - `runBatch(spec, seeds, pool, opts)` : graines réparties en paquets (`WorkerTask` ; 8 graines pour un gros lot,
+ *    moins pour un petit lot : `autoChunk`), résultats rangés dans l'ordre de `seeds` (indépendant de
+ *    l'ordonnancement, de la taille des paquets et du nombre de workers) ; cache facultatif (cache.ts) ;
  *  - arrêt séquentiel (`StopRule`) : décidé UNIQUEMENT à des points de contrôle fixes (minN, minN + pas, …) sur les
  *    N premières graines ⇒ même N d'arrêt et même résultat avec 1 ou 4 workers ; les graines calculées en avance
  *    (préchargement pour occuper les workers) au-delà de N sont ignorées du résultat (et gardées dans le cache) ;
@@ -26,7 +27,10 @@ export interface BatchOptions {
   checkEvery?: number
   /** Type de tâche (défaut 'full' ; micro-scénarios 'prefix12' | 'phase2' | 'poutch'). */
   kind?: WorkerTask['kind']
-  /** Taille des paquets (défaut 8). */
+  /**
+   * Taille des paquets ; défaut adaptatif `autoChunk` : 8 graines (§15.2) pour un gros lot, moins pour un petit lot afin
+   * d'occuper tous les workers. N'influe jamais sur les résultats (rangés par graine).
+   */
   chunk?: number
   cache?: FightCache
   /** Progression : graines terminées (cache compris) / graines prévues. */
@@ -47,6 +51,11 @@ export interface BatchRun {
 
 let nextTaskId = 1
 
+/** Taille de paquet adaptative : ≈ 4 paquets par worker pour équilibrer la charge, bornée à [1, 8]. */
+export function autoChunk(seeds: number, workers: number): number {
+  return Math.max(1, Math.min(8, Math.ceil(seeds / (4 * Math.max(1, workers)))))
+}
+
 /** Identifiants de tâches uniques dans le processus (annulation, appariement des résultats). */
 export function allocTaskId(): number {
   return nextTaskId++
@@ -58,7 +67,7 @@ async function playSeeds(
   seeds: readonly number[],
   pool: FightExecutor,
   kind: WorkerTask['kind'],
-  chunk: number,
+  chunk: number | undefined,
   into: Map<number, FightSummary>,
   cache: FightCache | undefined,
   onDone: () => void,
@@ -79,7 +88,8 @@ async function playSeeds(
     }
   }
   if (!todo.length) return { played: 0, hits }
-  const tasks: WorkerTask[] = chunkSeeds(todo, chunk).map(part => ({ taskId: allocTaskId(), spec, seeds: part, kind, record: false }))
+  const size = chunk ?? autoChunk(todo.length, pool.size)
+  const tasks: WorkerTask[] = chunkSeeds(todo, size).map(part => ({ taskId: allocTaskId(), spec, seeds: part, kind, record: false }))
   for await (const r of pool.run(tasks)) {
     for (const s of r.summaries) {
       into.set(s.seed, s)
@@ -102,7 +112,7 @@ export function checkpoints(rule: StopRule, total: number, every = 16): number[]
 /** Lot Monte-Carlo d'une configuration (voir l'en-tête). */
 export async function runBatch(spec: FightSpec, seeds: readonly number[], pool: FightExecutor, opts: BatchOptions = {}): Promise<BatchRun> {
   const kind = opts.kind ?? 'full'
-  const chunk = opts.chunk ?? 8
+  const chunk = opts.chunk
   const results = new Map<number, FightSummary>()
   let done = 0
   let computed = 0
@@ -121,7 +131,7 @@ export async function runBatch(spec: FightSpec, seeds: readonly number[], pool: 
   } else {
     const cps = checkpoints(opts.stop, seeds.length, opts.checkEvery)
     // Préchargement : de quoi occuper tous les workers au-delà du point de contrôle (n'influe pas sur la décision).
-    const prefetch = Math.max(0, pool.size * chunk)
+    const prefetch = Math.max(0, pool.size * (chunk ?? 8))
     let submitted = 0
     n = cps[cps.length - 1]
     for (const cp of cps) {
@@ -166,12 +176,12 @@ export async function compareConfigs(
   opts: Omit<BatchOptions, 'stop' | 'onProgress'> = {},
 ): Promise<CompareRun> {
   const kind = opts.kind ?? 'full'
-  const chunk = opts.chunk ?? 8
+  const chunk = opts.chunk
   const ra = new Map<number, FightSummary>()
   const rb = new Map<number, FightSummary>()
-  let computed = 0
+  const count = { a: { played: 0, hits: 0 }, b: { played: 0, hits: 0 } }
   const cps = checkpoints(rule, seeds.length, opts.checkEvery)
-  const prefetch = Math.max(0, Math.ceil((pool.size * chunk) / 2))
+  const prefetch = Math.max(0, Math.ceil((pool.size * (chunk ?? 8)) / 2))
   let submitted = 0
   let n = cps[cps.length - 1]
   for (const cp of cps) {
@@ -182,7 +192,10 @@ export async function compareConfigs(
         playSeeds(a, part, pool, kind, chunk, ra, opts.cache, () => {}),
         playSeeds(b, part, pool, kind, chunk, rb, opts.cache, () => {}),
       ])
-      computed += ca.played + cb.played
+      count.a.played += ca.played
+      count.a.hits += ca.hits
+      count.b.played += cb.played
+      count.b.hits += cb.hits
       submitted = upto
     }
     const p = pairedDiff(seeds.slice(0, cp).map(s => ra.get(s)!), seeds.slice(0, cp).map(s => rb.get(s)!))
@@ -193,10 +206,9 @@ export async function compareConfigs(
   }
   const sa = seeds.slice(0, n).map(s => ra.get(s)!)
   const sb = seeds.slice(0, n).map(s => rb.get(s)!)
-  const half = Math.round(computed / 2)
   return {
-    a: { summaries: sa, result: summarizeBatch(sa), n, computed: half, cached: 0 },
-    b: { summaries: sb, result: summarizeBatch(sb), n, computed: computed - half, cached: 0 },
+    a: { summaries: sa, result: summarizeBatch(sa), n, computed: count.a.played, cached: count.a.hits },
+    b: { summaries: sb, result: summarizeBatch(sb), n, computed: count.b.played, cached: count.b.hits },
     paired: pairedDiff(sa, sb),
     n,
   }

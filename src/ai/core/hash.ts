@@ -195,8 +195,23 @@ function modsInto(h: number, f: Fighter): number {
   return h
 }
 
+/** Empreinte de la liste des sorts (ids, grades, armes), mémoïsée par tableau `f.spells`. */
+const SPELLS_MEMO = new WeakMap<Fighter['spells'], number>()
+function spellsDigest(f: Fighter): number {
+  let d = SPELLS_MEMO.get(f.spells)
+  if (d === undefined) {
+    d = 0x2545f491
+    for (const ks of f.spells) d = fnvInt(fnvInt(fnvInt(d, ks.spellId), ks.level.grade), ks.isWeapon ? 1 : 0)
+    SPELLS_MEMO.set(f.spells, d)
+  }
+  return d
+}
+
 function computeDamageDigest(f: Fighter): number {
   let h = fnvInt(fnvInt(fnvInt(0x811c9dc5, f.id), f.level), f.team)
+  // Sorts connus : deux combattants de même id et mêmes caractéristiques (combats différents d'un même moteur, classes
+  // différentes) ne doivent pas partager les caches DPT indexés par sort.
+  h = fnvInt(fnvInt(fnvInt(h, spellsDigest(f)), f.breedId ?? -1), f.monsterId ?? -1)
   h = fnvStr(h, f.kind)
   h = statsInto(h, f)
   for (const s of f.states) h = fnvInt(h, s)
@@ -217,8 +232,8 @@ const MOB_MEMO = new Map<number, number>()
 const MEMO_MAX = 200000
 
 /**
- * Empreinte « dégâts » d'un combattant (clés du DPT) : niveau, camp, nature, caractéristiques, états, modificateurs de
- * sort et buffs lus côté cible (1163, 265, 105). Mémoïsée par révision (E4) : un buff de PM ou un déplacement change
+ * Empreinte « dégâts » d'un combattant (clés du DPT) : niveau, camp, nature, classe/monstre, sorts connus,
+ * caractéristiques, états, modificateurs de sort et buffs lus côté cible (1163, 265, 105). Mémoïsée par révision (E4) : un buff de PM ou un déplacement change
  * la révision mais pas cette empreinte, et le DPT reste en cache. Les PV n'y entrent pas (sorts « % PV » non cachés).
  */
 export function damageDigest(f: Fighter): number {

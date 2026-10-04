@@ -57,41 +57,53 @@ export function inverseRange(g: CastGeom, target: number): Int16Array {
 
 // ───────────────────────────── ligne de vue ─────────────────────────────
 
+/** Cases opaques d'une carte (1 = bloque la ligne de vue), calculées une fois par carte. */
+const OPAQUE = new WeakMap<object, Uint8Array>()
+function opaqueOf(s: FightState): Uint8Array {
+  let op = OPAQUE.get(s.map)
+  if (!op) {
+    op = new Uint8Array(CELL_COUNT)
+    const cells = s.map.cells
+    for (let c = 0; c < CELL_COUNT; c++) {
+      const mc = cells[c]
+      op[c] = !mc || !mc.los ? 1 : 0
+    }
+    OPAQUE.set(s.map, op)
+  }
+  return op
+}
+
 /**
  * Ligne de vue selon `canCast` pour un lanceur sur un état figé (positions vues par `team`) : cases intermédiaires
- * transparentes et inoccupées (le lanceur ne bloque jamais : il aura quitté sa case), case cible transparente. Carte
- * des cases bloquantes construite une fois (560 octets) puis lignes précalculées du client (`losLine`) : aucune
- * allocation par requête. Une instance ne doit plus servir après une modification des positions.
+ * transparentes et inoccupées (le lanceur ne bloque jamais : il aura quitté sa case), case cible transparente. Cases
+ * opaques de la carte (calculées une fois par carte) + occupation, lignes précalculées du client (`losLine`) :
+ * construction en O(1), aucune allocation par requête. Une instance ne doit plus servir après une modification des
+ * positions (l'occupation `occ` est lue, pas copiée).
  */
 export class LosOracle {
   readonly occ: Int16Array
-  /** 1 = case bloquante (opaque ou occupée par un autre que le lanceur). */
-  private readonly blocked = new Uint8Array(CELL_COUNT)
-  /** 1 = case opaque (test de la case cible). */
-  private readonly opaque = new Uint8Array(CELL_COUNT)
+  /** 1 = case opaque. */
+  private readonly opaque: Uint8Array
 
   constructor(readonly s: FightState, team: TeamId, readonly casterId: number, occ?: Int16Array) {
     this.occ = occ ?? buildOccupancy(s, team)
-    const cells = s.map.cells
-    const o = this.occ
-    const bl = this.blocked
-    const op = this.opaque
-    for (let c = 0; c < CELL_COUNT; c++) {
-      const mc = cells[c]
-      const opq = !mc || !mc.los
-      op[c] = opq ? 1 : 0
-      const id = o[c]
-      bl[c] = opq || (id >= 0 && id !== casterId) ? 1 : 0
-    }
+    this.opaque = opaqueOf(s)
   }
 
   los(from: number, to: number): boolean {
-    if (from === to) return this.opaque[to] === 0
+    const op = this.opaque
+    if (from === to) return op[to] === 0
     const line = losLine(from, to)
     const end = line.length - 1
-    const bl = this.blocked
-    for (let i = 0; i < end; i++) if (bl[line[i]]) return false
-    return end >= 0 && this.opaque[to] === 0
+    const o = this.occ
+    const me = this.casterId
+    for (let i = 0; i < end; i++) {
+      const c = line[i]
+      if (op[c]) return false
+      const id = o[c]
+      if (id >= 0 && id !== me) return false
+    }
+    return end >= 0 && op[to] === 0
   }
 }
 

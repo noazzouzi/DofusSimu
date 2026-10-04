@@ -76,8 +76,11 @@ function roleUtility(theta: ThetaJson, role: RoleId | undefined): number {
   return u[role] ?? 0
 }
 
+/** Source de DPT : table (`DptTableImpl`) ou cadre de l'état `ref` (`DptFrame`). */
+export interface DptSource { dpt(a: Fighter, d: Fighter): number }
+
 /** Meilleur DPT de `a` contre les ennemis vivants de `ref` (`dpt_a` du terme allyDeath). */
-export function bestDpt(dpt: DptTableImpl, a: Fighter, ref: FightState, side: TeamId): number {
+export function bestDpt(dpt: DptSource, a: Fighter, ref: FightState, side: TeamId): number {
   let best = 0
   for (const e of ref.fighters) {
     if (!e.alive || e.team === side || isStaticFighter(e)) continue
@@ -88,7 +91,7 @@ export function bestDpt(dpt: DptTableImpl, a: Fighter, ref: FightState, side: Te
 }
 
 /** Menace propre d'un ennemi : max des DPT sur les alliés vivants de `ref`. */
-export function enemyThreatIn(dpt: DptTableImpl, e: Fighter, ref: FightState, side: TeamId): number {
+export function enemyThreatIn(dpt: DptSource, e: Fighter, ref: FightState, side: TeamId): number {
   let best = 0
   for (const a of ref.fighters) {
     if (!a.alive || a.team !== side || a.cell < 0) continue
@@ -211,6 +214,8 @@ export function valueOf(view: AIView, s: FightState, perception: Perception, opt
   const threat = p.threat
   const potential = p.potential
   const order = threat.order
+  // Paires (a → d) de l'état courant : cadre DPT de la perception (mémo sans hachage).
+  const cur: DptSource = p.frame && p.frame.s === s ? p.frame : dpt
   const w: ValueWeights = tv
   const out: EvalBreakdown = { ...ZERO }
 
@@ -239,7 +244,7 @@ export function valueOf(view: AIView, s: FightState, perception: Perception, opt
           const wInc = role === 'tank' ? tv.incomingTank : tv.incoming
           const risk = threat.deathRisk(f.id)
           const deathCost = summon ? omega * f.baseMaxHp
-            : f.baseMaxHp + tv.deathPotMult * bestDpt(dpt, f, s, side) + roleUtility(theta, role) + (scenario?.allyDeathExtra?.(s, f) ?? 0)
+            : f.baseMaxHp + tv.deathPotMult * bestDpt(cur, f, s, side) + roleUtility(theta, role) + (scenario?.allyDeathExtra?.(s, f) ?? 0)
           out.incoming -= wInc * omega * (Math.min(inc, hpEff(f)) + risk * deathCost)
         }
         if (f.buffs.length) out.pendingDot -= tv.dot * omega * pendingDotOn(s, f, tv.dotDecay)

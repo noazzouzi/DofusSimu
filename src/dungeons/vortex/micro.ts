@@ -168,6 +168,8 @@ export function createPhase2Fight(engine: Engine, team: Fighter[], o: FightSetup
       dispellable: false, stateId: HOUR_STATE_BASE + h, kind: 'stat', label: `Heure de mort : ${ROMAN[h]}`,
     })
   })
+  // Combat « avancé » (≈ tour 26) : les délais de relance initiaux (Heurage, En temps et en heure…) sont échus.
+  for (const f of fight.fighters) f.cooldowns = {}
   // Plus de vague ni de Marginal : *Action !* (données) déverrouille le Vortex.
   for (const b of vortex.buffs.slice()) if (b.stateId === MARGINAL) engine.removeBuff(fight, vortex, b.uid)
   patchVortexState(fight, { wavesSpawned: WAVE_COUNT, actionRound: 1, allCorruptSince: 1 })

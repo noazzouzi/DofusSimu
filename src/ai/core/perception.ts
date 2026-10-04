@@ -7,7 +7,8 @@ import type { ScenarioAIModel } from '../../dungeons/types'
 import type { FightState } from '../../engine/types'
 import { defaultTheta, type ThetaJson } from '../theta'
 import type { AIConfig, AIView, Blackboard, Perception } from '../types'
-import { createDptTable, type DptTableImpl } from './dpt'
+import { createDptTable, DptFrame, type DptTableImpl } from './dpt'
+import { stateSig } from './hash'
 import { PotentialModelImpl } from './potential'
 import { createSpellProfileIndex, type SpellProfileIndexX } from './spellProfile'
 import { ThreatModelImpl } from './threat'
@@ -15,6 +16,8 @@ import { ThreatModelImpl } from './threat'
 /** Perception enrichie (implémentation du socle). */
 export interface PerceptionX extends Perception {
   dpt: DptTableImpl
+  /** Cadre DPT de l'état synchronisé (mémo des paires partagé par la menace, le potentiel et V). */
+  frame: DptFrame
   profiles: SpellProfileIndexX
   threat: ThreatModelImpl
   potential: PotentialModelImpl
@@ -36,8 +39,12 @@ export function createPerception(view: AIView, cfg?: Pick<AIConfig, 'theta'>, sc
   const theta = cfg?.theta ?? (cachedTheta ??= defaultTheta())
   const side = opts.side ?? view.team
   let current: FightState = view.fight
+  let sig = 0
+  let bbVersion = -2
+  const dpt = createDptTable(view.engine)
   const p: PerceptionX = {
-    dpt: createDptTable(view.engine),
+    dpt,
+    frame: new DptFrame(dpt),
     profiles: createSpellProfileIndex(view.engine),
     threat: undefined as unknown as ThreatModelImpl,
     potential: undefined as unknown as PotentialModelImpl,
@@ -48,10 +55,16 @@ export function createPerception(view: AIView, cfg?: Pick<AIConfig, 'theta'>, sc
     bb: opts.bb,
     state: () => current,
     sync(s: FightState) {
+      const sg = stateSig(s)
+      const bbv = p.bb ? p.bb.version : -1
+      if (s === current && sg === sig && bbv === bbVersion && p.frame.s === s && p.threat.s === s && p.potential.s === s) return
       current = s
+      sig = sg
+      bbVersion = bbv
+      p.frame.refresh(s)
       p.potential.bb = p.bb
-      p.potential.sync(s)
-      p.threat.sync(s)
+      p.potential.syncSig(s, sg, p.frame)
+      p.threat.syncSig(s, sg, p.frame)
     },
   }
   p.potential = new PotentialModelImpl(view, side, p, scenario, theta, opts.bb)

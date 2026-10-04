@@ -17,9 +17,9 @@ import type { UncertainParam } from '../src/dungeons/types'
 import { canCast, createEngine } from '../src/engine'
 import { distance } from '../src/map/geometry'
 import { MemoryFightCache, JsonlFightCache, cacheKey, canonicalJson } from '../src/optimizer/cache'
-import { checkpoints, compareConfigs, notableSeeds, runBatch } from '../src/optimizer/montecarlo'
+import { autoChunk, checkpoints, compareConfigs, notableSeeds, runBatch } from '../src/optimizer/montecarlo'
 import { createLocalPool } from '../src/optimizer/pool/pool'
-import { buildTeam, controlScenario, fightDigest, fightParams, parseControlId, resolveScenario, runMicro, runOne, runTask, toReplay } from '../src/optimizer/runner'
+import { buildTeam, controlScenario, fightDigest, fightParams, parseControlId, parseMirrorId, resolveScenario, runMicro, runOne, runTask, toReplay } from '../src/optimizer/runner'
 import { campaignSeed, campaignSeeds, chunkSeeds, sampleVariant, variantKeyOf, weightedIndex } from '../src/optimizer/seeds'
 import {
   batchShouldStop,
@@ -37,7 +37,7 @@ import { PRESETS, getPreset, parseTeam, presetMember } from '../src/optimizer/te
 import { DAMAGE_SPECS } from '../src/engine/effects/damage/pipeline'
 import type { FightSpec, FightSummary } from '../src/optimizer/types'
 import { parseReplay } from '../src/replay/validate'
-import { fighterTable, parseArgs, writeReplay } from '../src/cli/simulate'
+import { fighterTable, parseArgs, parseParams, writeReplay } from '../src/cli/simulate'
 
 const DATA = loadDataStore('data')
 /** Combat de contrôle : 4 monstres de vague du Vortex (grade 5) sur la vraie salle, sans règles serveur. */
@@ -198,6 +198,8 @@ describe('stats (§15.2) : Wilson, agrégats, comparaisons appariées', () => {
     expect(batchShouldStop(summarizeBatch(a), { minN: 32, maxN: 40, halfWidth: 0 })).toBe(true)
     expect(checkpoints({ minN: 32, maxN: 100, halfWidth: 0 }, 1000, 16)).toEqual([32, 48, 64, 80, 96, 100])
     expect(checkpoints({ minN: 32, maxN: 100, halfWidth: 0 }, 20, 16)).toEqual([20])
+    // Paquets adaptatifs : 8 graines pour un gros lot (§15.2), moins pour occuper tous les workers.
+    expect([autoChunk(1000, 4), autoChunk(16, 4), autoChunk(16, 1), autoChunk(0, 4), autoChunk(40, 4)]).toEqual([8, 1, 4, 1, 3])
   })
 })
 
@@ -266,6 +268,11 @@ describe('runner : combat complet sur données réelles', () => {
     const table = fighterTable(res.fight).split('\n')
     expect(table).toHaveLength(1 + TEAM.length + res.fight.fighters.filter(f => f.team === 0 && f.kind === 'summon' && (res.fight.metrics[f.id]?.damageDealt || res.fight.metrics[f.id]?.healingDone)).length)
     expect(table[1]).toMatch(/^Iop \(killer\)/)
+    expect(parseParams('maxRounds=40,arrivalRounds=1;6;11,wave1Invulnerable=true,glyphTrigger=turnEnd')).toEqual({
+      maxRounds: 40, arrivalRounds: [1, 6, 11], wave1Invulnerable: true, glyphTrigger: 'turnEnd',
+    })
+    expect(parseParams(undefined)).toBeUndefined()
+    expect(() => parseParams('maxRounds')).toThrow(/clé=valeur/)
     expect(parseArgs(['vortex', '--ai', 'fast', '--runs=10', '--robust', '--team', 'iop:killer']).flags).toEqual(
       new Map<string, string | true>([['ai', 'fast'], ['runs', '10'], ['robust', true], ['team', 'iop:killer']]),
     )
@@ -300,6 +307,56 @@ describe('runner : combat complet sur données réelles', () => {
     const out = runTask(DATA, { taskId: 1, spec: spec(), seeds: [4, 2], kind: 'full', record: false })
     expect(out.map(s => s.seed)).toEqual([4, 2])
     expect(() => runTask(DATA, { taskId: 2, spec: spec(), seeds: [1], kind: 't0', record: false })).toThrow(/T0/)
+  })
+})
+
+describe('combats de contrôle (§16.5) sur données réelles', () => {
+  it('4 personnages équipés contre 4 Bouftous (Cour du Bouftou Royal) : 100 % de victoires en ≤ 3 tours (scripted, fast)', () => {
+    for (const mode of ['scripted', 'fast'] as const) {
+      const s = spec({ scenarioId: 'skirmish', mode })
+      const out = campaignSeeds(16, 16).map(seed => runOne(DATA, s, seed).summary)
+      expect(out.filter(x => x.win).length, mode).toBe(16)
+      expect(Math.max(...out.map(x => x.rounds)), mode).toBeLessThanOrEqual(3)
+      expect(out.every(x => x.deaths === 0), mode).toBe(true)
+    }
+  })
+
+  it('miroir 1 c 1 (Iop contre sa copie) : 50 % ± 8 sur 400 graines ; côté et équipe qui commence tirés sur la graine', () => {
+    expect(parseMirrorId('mirror')).toEqual({ mapId: 121373185 })
+    expect(parseMirrorId('mirror:143393281')).toEqual({ mapId: 143393281 })
+    expect(parseMirrorId('mirrors')).toBeUndefined()
+    const s = spec({ scenarioId: 'mirror', team: parseTeam('iop:killer', DATA) })
+    // Mise en place : copie exacte (caractéristiques, PV, sorts), équipes opposées, premier joueur tiré.
+    const sc = resolveScenario('mirror')
+    const starters = new Set<number>()
+    for (const seed of campaignSeeds(4, 16)) {
+      const engine = createEngine(DATA, sc.hooks)
+      const fight = sc.createFight(engine, buildTeam(DATA, s.team), { params: sc.defaultParams, seed, rollMode: 'random', record: false, rngRekey: 'perTurn' })
+      const [a, b] = fight.fighters
+      expect([a.team, b.team]).toEqual([0, 1])
+      expect(b.maxHp).toBe(a.maxHp)
+      expect(b.stats).toEqual(a.stats)
+      expect(b.spells.map(x => x.spellId)).toEqual(a.spells.map(x => x.spellId))
+      expect(b.tags.presetId).toBe(a.tags.presetId)
+      starters.add(fight.fighters[fight.timeline[0]].team)
+    }
+    expect([...starters].sort()).toEqual([0, 1])
+    const out = campaignSeeds(5, 400).map(seed => runOne(DATA, s, seed).summary)
+    const rate = out.filter(x => x.win).length / out.length
+    console.info(`[miroir 1 c 1] équipe 0 : ${(100 * rate).toFixed(1)} % sur ${out.length} graines (IC95 ${wilson(out.filter(x => x.win).length, out.length).map(v => (100 * v).toFixed(1)).join('-')} %)`)
+    expect(Math.abs(rate - 0.5)).toBeLessThanOrEqual(0.08)
+  })
+
+  it('4 personnages nus contre l\'Œil de Vortex : ≈ 0 % (aucune victoire sur 8 graines, variantes tirées)', () => {
+    const naked = parseTeam('iop:killer,cra:feu,enutrof:mpLock,eniripsa:healer', DATA, { stuff: 'naked' })
+    const s = spec({ scenarioId: 'vortex', team: naked, variantPolicy: 'sampled' })
+    const out = campaignSeeds(17, 8).map(seed => runOne(DATA, s, seed).summary)
+    expect(out.filter(x => x.win)).toEqual([])
+    for (const x of out) {
+      expect(x.deaths).toBe(4)
+      expect(x.score).toBeCloseTo(0.8 * x.progress, 10)
+      expect(x.failReason ?? x.endReason).toBeTruthy()
+    }
   })
 })
 
@@ -379,6 +436,39 @@ describe('politiques `scripted` et `random`', () => {
     expect(misses.length / damageCasts).toBeLessThan(0.1)
   })
 
+  it('honnêteté (§13.2, §16.5) : ni `scripted` ni `random` ne lisent `fight.events` (Proxy)', () => {
+    for (const policy of ['scripted', 'random'] as const) {
+      const sc = controlScenario(CONTROL)
+      const engine = createEngine(DATA, sc.hooks)
+      // Non enregistré : le moteur ne touche jamais `fight.events` ; toute lecture pendant un tour d'allié vient de la politique.
+      const fight = sc.createFight(engine, buildTeam(DATA, TEAM), { params: sc.defaultParams, seed: 21, rollMode: 'random', record: false, rngRekey: 'perTurn' })
+      const reads: string[] = []
+      let guard = false
+      fight.events = new Proxy(fight.events, {
+        get(t, p, r) {
+          if (guard) reads.push(String(p))
+          return Reflect.get(t, p, r)
+        },
+      })
+      const cfg = defaultAIConfig('scripted', 21, loadTheta())
+      let allyTurns = 0
+      for (let i = 0; i < 40 && !fight.ended; i++) {
+        const f = engine.nextTurn(fight)
+        if (!f) break
+        if (f.team === 0 && f.kind === 'player') {
+          guard = true
+          if (policy === 'scripted') playScriptedTurn(engine, fight, f, cfg.seed)
+          else playRandomTurn(engine, fight, f, cfg.seed)
+          guard = false
+          allyTurns++
+        }
+        if (!fight.ended && f.alive) engine.endTurn(fight, f)
+      }
+      expect(allyTurns, policy).toBeGreaterThan(4)
+      expect(reads, policy).toEqual([])
+    }
+  })
+
   it('random : légal, déterministe par graine IA', () => {
     const run = (seed: number) => {
       const sc = controlScenario(CONTROL)
@@ -425,6 +515,14 @@ describe('Monte-Carlo (L1) et cache', () => {
     expect(cmp.a.summaries.map(s => s.seed)).toEqual(cmp.b.summaries.map(s => s.seed))
     expect(cmp.paired.n).toBe(cmp.n)
     expect(cmp.paired.scoreDiff).toBeGreaterThan(0) // scripted > random
+    // Comptes par configuration (préchargement compris) ; cache : rien n'est rejoué.
+    expect(cmp.a.computed).toBeGreaterThanOrEqual(cmp.n)
+    expect(cmp.b.computed).toBe(cmp.a.computed)
+    const cache = new MemoryFightCache()
+    const rule = { minN: 4, maxN: 4, halfWidth: 0 }
+    await compareConfigs(spec({ playerPolicy: 'random' }), spec(), seeds.slice(0, 4), pool, rule, { cache })
+    const again = await compareConfigs(spec({ playerPolicy: 'random' }), spec(), seeds.slice(0, 4), pool, rule, { cache })
+    expect([again.a.computed, again.b.computed, again.a.cached, again.b.cached]).toEqual([0, 0, 4, 4])
   })
 
   it('cache JSONL : reprise de campagne, autre version ignorée, clés canoniques', () => {

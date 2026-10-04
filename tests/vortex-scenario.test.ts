@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { loadDataStore } from '../src/data/node'
 import { getScenario, listScenarios, sampleVariant } from '../src/dungeons'
-import { currentHour, deathHours, hourBit, isWaveMonster } from '../src/dungeons/vortex/clock'
+import { currentHour, deathHours, hourBit, isWaveMonster, lineCells, onHourLine } from '../src/dungeons/vortex/clock'
 import {
   ARRIVAL_ROUNDS_ALT,
   AURORAIRE,
@@ -15,6 +15,7 @@ import {
   BRABUZAR,
   BUBOXOR,
   HARPILLE,
+  HOUR_CELL,
   IKARGN,
   MEJAIRE,
   RED_START_CELLS,
@@ -25,9 +26,10 @@ import {
 } from '../src/dungeons/vortex/constants'
 import { DEFAULT_VARIANT, resolveVortexParams, sampleVortexVariant, validateVortexParams, variantKey, vortexState } from '../src/dungeons/vortex/params'
 import { estimateK, rankVortexPlacements } from '../src/dungeons/vortex/placement'
-import { createSmokeTeam, SMOKE_BREEDS, summarizeVortex, vortexScenario } from '../src/dungeons/vortex/scenario'
+import { createSmokeTeam, playerDeathsBy, SMOKE_BREEDS, summarizeVortex, vortexScenario } from '../src/dungeons/vortex/scenario'
 import { createVortexFight, vortexHooks } from '../src/dungeons/vortex/setup'
 import { createEngine } from '../src/engine'
+import { canCast, castSpell } from '../src/engine/cast'
 import { castStartingSpell } from '../src/engine/effects/summons'
 import { createMonsterFighter } from '../src/engine/factory'
 import type { Engine } from '../src/engine/engine'
@@ -444,6 +446,80 @@ describe('fin de combat et résumé', () => {
     expect(sum.progress).toBeCloseTo(0.45 / 19, 6)
     expect(sum.hoursUsed).toBe(1)
     expect(sum.extra?.totalMonsters).toBe(19)
+  })
+})
+
+describe('délais de relance initiaux (initialCooldown, ignoré par le moteur)', () => {
+  it('En temps et en heure (1) : pas au 1er tour du Vortex ; Heurage (3) : pas avant son 4e tour', () => {
+    const s = setup({ seed: 2 })
+    const vortex = vortexOf(s)
+    const aur = s.fight.fighters.find(f => f.monsterId === AURORAIRE)!
+    const spell = (id: number) => vortex.spells.find(x => x.spellId === id)!
+    const seen: Record<number, (string | null)[]> = { 5062: [], 5066: [] }
+    for (let turn = 1; turn <= 5; turn++) {
+      turnOf(s, vortex, turn)
+      seen[5062].push(canCast(s.engine, s.fight, vortex, spell(5062), aur.cell))
+      seen[5066].push(canCast(s.engine, s.fight, vortex, spell(5066), vortex.cell))
+      s.engine.endTurn(s.fight, vortex)
+    }
+    expect(seen[5062]).toEqual(['cooldown', null, null, null, null])
+    expect(seen[5066]).toEqual(['cooldown', 'cooldown', 'cooldown', null, null])
+  })
+
+  it('arrivants : délais posés à l’arrivée (Ikargn de la vague 4 : Attraction ailée 5015, délai 1)', () => {
+    const s = setup({ seed: 2 })
+    // Vague 1 (début de combat) : l'Ikargn ne peut pas lancer Attraction ailée à son 1er tour.
+    const ika1 = s.fight.fighters.find(f => f.monsterId === IKARGN)!
+    expect(ika1.cooldowns[5015]).toBe(2)
+    toRound(s, 17)
+    const ika4 = s.fight.fighters.find(f => isWaveMonster(f) && f.wave === 4 && f.monsterId === IKARGN)!
+    expect(ika4.cooldowns[5015]).toBe(2)
+    turnOf(s, ika4, 17)
+    expect(canCast(s.engine, s.fight, ika4, ika4.spells.find(x => x.spellId === 5015)!, s.players[0].cell)).toBe('cooldown')
+  })
+})
+
+describe('En temps et en heure (5062 → 5061 lancé par l’Auroraire)', () => {
+  it('frappe la croix de l’heure courante (500 Terre de base + 50 % de l’érosion), pas les cases hors ligne ; défaite classée « croix »', () => {
+    const s = setup({ seed: 4 })
+    const vortex = vortexOf(s)
+    turnOf(s, vortex, 2)
+    const aur = s.fight.fighters.find(f => f.monsterId === AURORAIRE)!
+    const h = currentHour(s.fight)
+    const line = Array.from(lineCells(h)).filter(c => s.engine.isCellFree(s.fight, c))
+    const [p1, p2, p3, p4] = s.players
+    p1.cell = line[0]
+    p2.cell = line[line.length - 1]
+    for (const p of [p3, p4]) expect(onHourLine(h, p.cell)).toBe(false)
+    const hp0 = s.players.map(p => p.hp)
+    expect(castSpell(s.engine, s.fight, vortex, 5062, aur.cell).ok).toBe(true)
+    const lost = s.players.map((p, i) => hp0[i] - p.hp)
+    // 500 Terre (20 % de résistance Terre des personnages de fumée) = 400, puis Terre = 50 % des PV érodés (+20 %).
+    expect(lost[0]).toBeGreaterThanOrEqual(400)
+    expect(lost[1]).toBe(lost[0])
+    expect(lost[2]).toBe(0)
+    expect(lost[3]).toBe(0)
+    expect(p1.buffs.some(b => b.spellId === 5061)).toBe(true)
+    // Le tour suivant du Vortex : les quatre personnages sur la croix, à 1 PV ⇒ tués par l'Auroraire.
+    s.engine.endTurn(s.fight, vortex)
+    turnOf(s, vortex, 3)
+    const h3 = currentHour(s.fight)
+    // XII (k = 4) : case de l'heure NON marchable (212) — l'Auroraire y est posée par le scénario et reste ciblable.
+    expect(h3).toBe(12)
+    expect(aur.cell).toBe(HOUR_CELL[12])
+    expect(s.fight.map.cells[aur.cell].walkable).toBe(false)
+    const free = Array.from(lineCells(h3)).filter(c => s.engine.isCellFree(s.fight, c))
+    s.players.forEach((p, i) => {
+      p.cell = free[i]
+      p.hp = 1
+    })
+    expect(castSpell(s.engine, s.fight, vortex, 5062, aur.cell).ok).toBe(true)
+    expect(s.fight.ended).toBe(true)
+    expect(s.fight.winner).toBe(1)
+    const sum = summarizeVortex(s.fight)
+    expect(sum.failReason).toBe('mort sur la croix de l’Auroraire')
+    expect(sum.extra?.playerDeathsByAuroraire).toBe(4)
+    expect(playerDeathsBy(s.fight, AURORAIRE)).toBe(4)
   })
 })
 

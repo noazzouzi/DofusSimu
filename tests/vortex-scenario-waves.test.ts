@@ -196,6 +196,38 @@ describe('invulnérabilité d’arrivée (générique)', () => {
     expect(n.states).not.toContain(56)
   })
 
+  it('arrivant plus rapide que tous, au début du tour de jeu (roundStart) : il joue dès le tour de son arrivée', () => {
+    // Escarmouche (Bouftous grade 1, monstres en tête) ; au tour 2, un Ikargn grade 5 (initiative 3400) arrive en tête.
+    for (const roundStart of [true, false]) {
+      const sc = getScenario('skirmish')
+      let engine!: Engine
+      let arrived: Fighter | undefined
+      const hooks = {
+        id: 'skirmish',
+        onRoundStart: (fight: FightState) => {
+          if (fight.round !== 2) return
+          arrived = spawnWave(engine, fight, [{ monsterId: IKARGN, grade: 5 }], { wave: 2, total: 2, cells: [300, 301, 302], roundStart }).fighters[0]
+        },
+      }
+      engine = createEngine(data, hooks)
+      const team = createSmokeTeam(data, undefined, { initiative: 10, hp: 1_000_000 })
+      const fight = sc.createFight(engine, team, { params: { monsterGrades: [1] }, seed: 1, rollMode: 'random', record: false, rngRekey: 'none' })
+      expect(fight.fighters[fight.timeline[0]].team).toBe(1)
+      const firstOfRound2: number[] = []
+      for (let i = 0; i < 40 && fight.round <= 2 && !fight.ended; i++) {
+        const f = engine.nextTurn(fight)
+        if (!f) break
+        if (fight.round === 2 && !firstOfRound2.length) firstOfRound2.push(f.id)
+        engine.endTurn(fight, f)
+      }
+      expect(arrived).toBeDefined()
+      expect(fight.timeline[0]).toBe(arrived!.id)
+      // Sans `roundStart`, l'arrivant placé en tête ne jouerait qu'au tour suivant (ancien comportement).
+      if (roundStart) expect(firstOfRound2[0]).toBe(arrived!.id)
+      else expect(firstOfRound2[0]).not.toBe(arrived!.id)
+    }
+  })
+
   it('spawnWave générique (hors Vortex) : événement wave avant les arrivants, monstres sans case libre ignorés', () => {
     const sc = getScenario('skirmish')
     const engine = createEngine(data, sc.hooks)

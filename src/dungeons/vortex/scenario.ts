@@ -8,20 +8,22 @@
  *    rôles, décisions clés « arrivée de vague / changement de phase ». Le modèle complet (HourPlanner, pricers, burst,
  *    placement simulé ; model.ts, WP3b) s'enregistre par `setVortexAIModelFactory` sans modifier ce fichier.
  */
-import type { AIMode, AIView, Blackboard, PhaseId, Perception, StrategyParams } from '../../ai/types'
+import type { AIMode, AIView, Blackboard, PhaseId, Perception, ReferenceTargets, StrategyParams } from '../../ai/types'
 import { emptyStats, type Stats } from '../../core/types'
 import type { DataStore } from '../../data/store'
 import { createEngine } from '../../engine'
 import type { Engine } from '../../engine/engine'
-import { createPlayerFighter } from '../../engine/factory'
+import { createMonsterFighter, createPlayerFighter } from '../../engine/factory'
 import { runFight } from '../../engine/runner'
 import type { Fighter, FightState } from '../../engine/types'
 import type { Replay } from '../../replay/types'
 import { passTurnController, scriptedVortexController, uniformProvider } from '../generic/controllers'
+import { VORTEX_TARGET_MIX } from '../generic/dummy'
 import type { DungeonScenario, KeyDecisionReason, ScenarioAIModel, ScenarioParams, ScenarioSummary } from '../types'
 import { arrivalInvulnerableUntil } from '../waves'
 import { forecastHours, hourCount, isCorrupted, isWaveMonster, lineCells, nextVortexSlot } from './clock'
 import {
+  AURORAIRE,
   INVULNERABLE,
   MARGINAL,
   VORTEX,
@@ -83,6 +85,23 @@ export function vortexVulnerableAt(s: FightState, e: Fighter, roundOffset: numbe
   return true
 }
 
+/**
+ * Cibles de référence du Vortex (§9.2, §15.4) : mix pondéré des monstres de vague (Ikargn 3, Méjaire 4, Harpille 4,
+ * Buboxor 3, Brabuzar 5) et du Vortex (0,3 × 19), aux grades du scénario. Combattants « modèles » hors combat (ids
+ * négatifs −100 − rang, case −1, `tags.referenceTarget`) : caractéristiques de grade sans buff (ni heure, ni Marginal),
+ * stables pendant tout le combat ⇒ capacités et rôles comparables d'un tour à l'autre.
+ */
+export function vortexReferenceTargets(data: DataStore, p: Pick<VortexParams, 'monsterGrade' | 'bossGrade'>): ReferenceTargets {
+  return {
+    targets: VORTEX_TARGET_MIX.map(({ monsterId, weight }, i) => {
+      const fighter = createMonsterFighter(data, { monsterId, grade: monsterId === VORTEX ? p.bossGrade : p.monsterGrade, team: 1 })
+      fighter.id = -100 - i
+      fighter.tags.referenceTarget = true
+      return { fighter, weight }
+    }),
+  }
+}
+
 type ModelFactory = (params: ScenarioParams, theta: StrategyParams) => ScenarioAIModel
 let modelFactory: ModelFactory | undefined
 
@@ -94,7 +113,8 @@ export function setVortexAIModelFactory(f: ModelFactory | undefined): void {
 /**
  * Modèle de base : publie la phase et les besoins en rôles ; `extraIncoming` = dégâts attendus d'*En temps et en heure*
  * sur une case de la croix de l'Auroraire au prochain créneau du Vortex (à partir de son 2e tour), pour un allié qui
- * ne rejoue pas avant ; `vulnerableAt` (§6.6) ; décisions clés : arrivée de vague, changement de phase.
+ * ne rejoue pas avant ; `vulnerableAt` (§6.6) ; décisions clés : arrivée de vague, changement de phase ; cibles de
+ * référence (`vortexReferenceTargets`).
  */
 export function basicVortexAIModel(params: ScenarioParams, _theta?: StrategyParams): ScenarioAIModel {
   const p = resolveVortexParams(params)
@@ -104,6 +124,7 @@ export function basicVortexAIModel(params: ScenarioParams, _theta?: StrategyPara
   let lastPhase: PhaseId | undefined
   let lastWaves = 0
   let keyReason: KeyDecisionReason | null = null
+  let refTargets: ReferenceTargets | undefined
   return {
     id: VORTEX_SCENARIO_ID,
     update(view: AIView, bb: Blackboard, _perception: Perception, _mode: AIMode) {
@@ -140,18 +161,47 @@ export function basicVortexAIModel(params: ScenarioParams, _theta?: StrategyPara
     vulnerableAt: vortexVulnerableAt,
     isKeyDecision: () => keyReason,
     roleNeeds: () => ({ ...VORTEX_ROLE_NEEDS }),
+    referenceTargets: (view: AIView) => (refTargets ??= vortexReferenceTargets(view.engine.data, p)),
   }
 }
 
 // ───────────────────────────── résumé ─────────────────────────────
 
-/** Classement de l'échec (§15.2) depuis l'état final. */
+/**
+ * Morts de personnages dont le tueur est un monstre `monsterId` (registre `fight.deaths`, information publique ; la
+ * croix d'*En temps et en heure* est frappée par l'Auroraire elle-même, 5061).
+ */
+export function playerDeathsBy(fight: FightState, monsterId: number): number {
+  let n = 0
+  for (const d of fight.deaths ?? []) {
+    const victim = fight.fighters[d.fighter]
+    const killer = d.killer !== undefined ? fight.fighters[d.killer] : undefined
+    if (victim?.kind === 'player' && killer?.monsterId === monsterId) n++
+  }
+  return n
+}
+
+/** Tueur de la PREMIÈRE mort de personnage (cause « racine » d'une défaite), undefined sans mort ou sans tueur. */
+export function firstPlayerDeathKiller(fight: FightState): Fighter | undefined {
+  for (const d of fight.deaths ?? []) {
+    if (fight.fighters[d.fighter]?.kind !== 'player') continue
+    return d.killer !== undefined ? fight.fighters[d.killer] : undefined
+  }
+  return undefined
+}
+
+/**
+ * Classement de l'échec (§15.2) depuis l'état final : limite de tours ; burst raté (après *Action !*) ; mort sur la
+ * croix de l'Auroraire (première mort de personnage due à *En temps et en heure*) ; vague non corrompue au
+ * déverrouillage ; submersion (plus de 2N monstres non corrompus vivants) ; défaite sinon.
+ */
 export function vortexFailReason(fight: FightState): string | undefined {
   if (fight.ended && fight.winner === 0) return undefined
   const vx = vortexState(fight)
   if (!fight.ended || fight.winner === null) return 'limite de tours'
   if (!vx) return 'défaite'
   if (vx.actionRound > 0) return 'burst raté'
+  if (firstPlayerDeathKiller(fight)?.monsterId === AURORAIRE) return 'mort sur la croix de l’Auroraire'
   if (fight.round >= vx.unlockVortexTurn) return 'vague non corrompue au déverrouillage'
   const aliveMonsters = fight.fighters.filter(f => isWaveMonster(f) && f.alive && !isCorrupted(f)).length
   if (aliveMonsters > 2 * vx.players) return 'submersion'
@@ -200,6 +250,7 @@ export function summarizeVortex(fight: FightState): ScenarioSummary {
       actionRound: vx?.actionRound ?? 0,
       vortexTurns: vx?.vortexTurns ?? 0,
       playersAlive: alive,
+      playerDeathsByAuroraire: playerDeathsBy(fight, AURORAIRE),
       hoursUsedMask: snap.hoursUsedMask,
       unknownEffects: fight.unknownEffects ?? 0,
       startingSpellFailures: vx?.startingSpellFailures.length ?? 0,

@@ -12,6 +12,7 @@
  *    posé par un buff du scénario et retiré au début du tour de jeu `untilRound` (« invulnérable 1 tour » = pendant le
  *    tour de jeu de l'arrivée). Passer par l'état (et non par `canBeDamaged`) garde les règles des données qui le lisent
  *    (pas de glyphe sous un monstre invulnérable, poussée des alliés invulnérables par 5012, IA).
+ *  - Délais de relance initiaux (`applyInitialCooldowns`) : `initialCooldown` des sorts, ignoré par le moteur.
  *  - Choix de cases libres (`pickFreeCells`) : cases candidates dans l'ordre, puis cases marchables libres les plus
  *    proches (parcours en largeur depuis les candidates) si elles sont toutes prises.
  *
@@ -98,10 +99,12 @@ export function rebuildTimeline(engine: Engine, fight: FightState, rule: Startin
  * Insère des combattants (racines, déjà ajoutés à `fight.fighters`) dans la timeline sans changer l'ordre des présents :
  * chaque arrivant passe juste avant le premier coéquipier (racine) d'initiative strictement inférieure, sinon après le
  * dernier coéquipier de la timeline et ses invocations ; à défaut de coéquipier, en fin de timeline. Les arrivants
- * de même initiative gardent leur ordre. `turnIndex` suit le combattant courant.
+ * de même initiative gardent leur ordre. `turnIndex` suit le combattant courant, sauf `roundStart` (appel depuis
+ * `onRoundStart`, aucun tour commencé dans ce tour de jeu) : `turnIndex` reste 0 pour qu'un arrivant inséré en tête de
+ * timeline joue dès le tour de son arrivée.
  */
-export function insertNewcomers(fight: FightState, newcomers: readonly Fighter[]): void {
-  const current = fight.turnIndex >= 0 ? fight.timeline[fight.turnIndex] : undefined
+export function insertNewcomers(fight: FightState, newcomers: readonly Fighter[], o: { roundStart?: boolean } = {}): void {
+  const current = !o.roundStart && fight.turnIndex >= 0 ? fight.timeline[fight.turnIndex] : undefined
   const tl = fight.timeline.slice()
   for (const n of newcomers) {
     if (tl.includes(n.id)) continue
@@ -128,7 +131,8 @@ export function insertNewcomers(fight: FightState, newcomers: readonly Fighter[]
     tl.splice(at, 0, n.id)
   }
   fight.timeline = tl
-  if (current !== undefined) fight.turnIndex = Math.max(0, tl.indexOf(current))
+  if (o.roundStart) fight.turnIndex = 0
+  else if (current !== undefined) fight.turnIndex = Math.max(0, tl.indexOf(current))
 }
 
 /**
@@ -175,6 +179,24 @@ export function pickFreeCells(
     }
   }
   return out
+}
+
+// ───────────────────────────── délais de relance initiaux ─────────────────────────────
+
+/**
+ * Délai de relance initial des sorts (`SpellLevelData.initialCooldown`, ex. *En temps et en heure* 5062 : 1 ⇒ pas au
+ * 1er tour du Vortex ; *Heurage* 5066 : 3 ⇒ pas avant son 4e tour). Le moteur ne l'applique pas (rapport WP3a) : les
+ * scénarios le posent à l'entrée en combat (début de combat, arrivée de vague), AVANT le premier tour du combattant.
+ * Les relances sont décomptées au début de chacun de ses tours (`Engine.startTurn`) : un délai N posé hors de son tour
+ * vaut N + 1 (même convention que effects/buffs/modifiers.ts). Idempotent (maximum avec la relance existante).
+ */
+export function applyInitialCooldowns(fighters: readonly Fighter[]): void {
+  for (const f of fighters) {
+    for (const s of f.spells) {
+      const n = s.level.initialCooldown
+      if (n > 0) f.cooldowns[s.spellId] = Math.max(f.cooldowns[s.spellId] ?? 0, n + 1)
+    }
+  }
 }
 
 // ───────────────────────────── invulnérabilité d'arrivée ─────────────────────────────
@@ -261,6 +283,8 @@ export interface SpawnWaveOptions {
   invulnerableUntilRound?: number
   /** Lancer le sort de départ des arrivants (défaut : vrai). */
   startingSpell?: boolean
+  /** Appel depuis `onRoundStart` (aucun tour commencé) : voir `insertNewcomers`. */
+  roundStart?: boolean
 }
 
 export interface SpawnWaveResult {
@@ -293,7 +317,7 @@ export function spawnWave(engine: Engine, fight: FightState, specs: readonly Wav
     engine.addFighter(fight, f)
     created.push(f)
   })
-  insertNewcomers(fight, created)
+  insertNewcomers(fight, created, { roundStart: o.roundStart })
   engine.emit(fight, { t: 'wave', index: o.wave, total: o.total, fighters: created.map(snapshot) })
   if (skipped.length) engine.log(fight, `Vague ${o.wave} : ${skipped.length} monstre(s) sans case libre.`, 'warn')
   const failures: number[] = []
@@ -301,6 +325,7 @@ export function spawnWave(engine: Engine, fight: FightState, specs: readonly Wav
     if (o.invulnerableUntilRound !== undefined) addArrivalInvulnerability(engine, fight, f, o.invulnerableUntilRound)
     if (o.startingSpell !== false && !fight.ended && hasStartingSpell(engine, f) && !castStartingSpell(engine, fight, f)) failures.push(f.id)
   }
+  applyInitialCooldowns(created)
   return { fighters: created, skipped, startingSpellFailures: failures }
 }
 
