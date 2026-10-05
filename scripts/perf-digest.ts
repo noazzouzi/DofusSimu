@@ -6,7 +6,7 @@
  * événements du replay (logs et annotations compris), hash hors log/aiNote, nombre d'événements, tours, nœuds.
  * `--turns N` : s'arrête après N tours de combattants (mode standard : quelques tours seulement).
  * `--norecord` : même combat sans enregistrement (l'empreinte d'état doit être identique).
- * `--deepclone` : `Engine.cloneFight` ramené à l'ancienne sémantique (combattants copiés en profondeur, métriques
+ * `--deepclone` : `Engine.cloneFight` et `cloneFightForSim` ramenés à l'ancienne sémantique (combattants copiés en profondeur, métriques
  * copiées) — référence du partage copie-sur-écriture (src/engine/cow.ts) : sorties identiques avec et sans, sur le
  * même arbre (aucune autre différence de code nécessaire, contrairement à une comparaison entre deux commits).
  *
@@ -49,16 +49,19 @@ const seeds = seedsOf(arg('seeds', '1-10'))
 const data = loadDataStore('data')
 
 if (process.argv.includes('--deepclone')) {
-  const shared = Engine.prototype.cloneFight
-  Engine.prototype.cloneFight = function (this: Engine, fight: FightState, rec = false): FightState {
-    const c = shared.call(this, fight, rec)
-    c.fighters = c.fighters.map(cloneFighter)
-    const m: Record<number, FighterMetrics> = {}
-    for (const k in c.metrics) m[k] = { ...c.metrics[k] }
-    c.metrics = m
-    return c
+  // `cloneFight` ET `cloneFightForSim` (clones de l'IA, caractéristiques/états partagés) ramenés à la copie profonde.
+  for (const name of ['cloneFight', 'cloneFightForSim'] as const) {
+    const shared = Engine.prototype[name]
+    Engine.prototype[name] = function (this: Engine, fight: FightState, rec = false): FightState {
+      const c = shared.call(this, fight, rec)
+      c.fighters = c.fighters.map(cloneFighter)
+      const m: Record<number, FighterMetrics> = {}
+      for (const k in c.metrics) m[k] = { ...c.metrics[k] }
+      c.metrics = m
+      return c
+    }
   }
-  process.stderr.write('cloneFight : copie profonde (--deepclone)\n')
+  process.stderr.write('cloneFight / cloneFightForSim : copie profonde (--deepclone)\n')
 }
 const spec: FightSpec = { scenarioId, team: parseTeam(arg('team', META), data), mode, theta: loadTheta(), variantPolicy: 'default', monsterNoise: 0 }
 

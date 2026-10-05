@@ -85,13 +85,31 @@ export class Engine {
   /**
    * Copie de l'état mutable (la carte et les données de sorts restent partagées). Buffs, relances et compteurs de
    * lancers des combattants sont partagés en copie-sur-écriture (src/engine/cow.ts) : copiés à la première
-   * modification, dans le clone comme dans le parent.
+   * modification, dans le clone comme dans le parent. Caractéristiques (`stats`) et états (`states`) : copies privées
+   * (un appelant peut les modifier en place sur le clone) ; voir `cloneFightForSim` pour les clones de l'IA.
    */
   cloneFight(fight: FightState, record = false): FightState {
     newShareEpoch()
+    // Appel monomorphe (`map` propre à chaque variante) : la copie du combattant reste incorporable par le compilateur.
+    return this.cloneFightWith(fight, record, fight.fighters.map(cloneFighterShared))
+  }
+
+  /**
+   * `cloneFight` des simulations de l'IA (src/ai/core/sim.ts `simClone`) : caractéristiques et états des combattants
+   * PARTAGÉS avec le parent en plus des buffs/relances/compteurs — le moteur ne fait que les REMPLACER
+   * (`recomputeStats`), et l'IA ne les modifie jamais en place (vérifié en les gelant : 10 combats Vortex + suite).
+   * Un appelant qui modifie `stats` / `states` en place sur le clone doit utiliser `cloneFight`.
+   */
+  cloneFightForSim(fight: FightState, record = false): FightState {
+    newShareEpoch()
+    return this.cloneFightWith(fight, record, fight.fighters.map(cloneFighterSim))
+  }
+
+  /** Reste de la copie (après `newShareEpoch` et la copie des combattants). */
+  private cloneFightWith(fight: FightState, record: boolean, fighters: Fighter[]): FightState {
     const c: FightState = {
       ...fight,
-      fighters: fight.fighters.map(cloneFighterShared),
+      fighters,
       timeline: fight.timeline.slice(),
       glyphs: fight.glyphs.map(g => ({ ...g, cells: g.cells })),
       traps: fight.traps.map(t => ({ ...t, cells: t.cells })),
@@ -754,10 +772,17 @@ export function cloneFighter(f: Fighter): Fighter {
 
 /**
  * Copie d'un combattant pour `cloneFight` : buffs, relances et compteurs de lancers PARTAGÉS en copie-sur-écriture
- * (src/engine/cow.ts) ; caractéristiques (`stats`) et états (`states`) partagés tels quels (objets REMPLACÉS par
- * `recomputeStats`, jamais modifiés en place) ; le reste comme `cloneFighter`.
+ * (src/engine/cow.ts) ; le reste comme `cloneFighter`.
  */
 function cloneFighterShared(f: Fighter): Fighter {
+  return cloneFighterWith(f, f.buffs, f.cooldowns, f.castsThisTurn, f.castsOnTarget, { ...f.stats }, f.states.slice())
+}
+
+/**
+ * Copie d'un combattant pour `cloneFightForSim` : comme `cloneFighterShared`, caractéristiques (`stats`) et états
+ * (`states`) partagés tels quels (objets REMPLACÉS par `recomputeStats`, jamais modifiés en place par le moteur ni l'IA).
+ */
+function cloneFighterSim(f: Fighter): Fighter {
   return cloneFighterWith(f, f.buffs, f.cooldowns, f.castsThisTurn, f.castsOnTarget, f.stats, f.states)
 }
 

@@ -130,7 +130,8 @@ export interface Fighter {
   baseStats: Stats
   /**
    * Caractéristiques effectives = baseStats + somme des statDelta des buffs. Objet REMPLACÉ par
-   * `Engine.recomputeStats`, jamais modifié en place : partagé entre clones de combat (`Engine.cloneFight`).
+   * `Engine.recomputeStats`, jamais modifié en place par le moteur ni l'IA : partagé entre un état et ses clones de
+   * simulation (`Engine.cloneFightForSim`, `simClone`) ; `Engine.cloneFight` en fait une copie privée.
    */
   stats: Stats
   hp: number
@@ -144,7 +145,7 @@ export interface Fighter {
   mp: number
   cell: number
   alive: boolean
-  /** États actifs : tableau REMPLACÉ par `Engine.recomputeStats`, jamais modifié en place (partagé entre clones). */
+  /** États actifs : tableau REMPLACÉ par `Engine.recomputeStats` (partagé comme `stats` par `cloneFightForSim`). */
   states: number[]
   /**
    * Buffs actifs. Tableau ET objets partagés entre clones de combat (`Engine.cloneFight`) en copie-sur-écriture : le

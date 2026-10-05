@@ -1,7 +1,8 @@
 /**
  * Régressions du 2e tour d'optimisation (performances) — chaque optimisation comparée à une implémentation de
  * RÉFÉRENCE (ancienne version, sans cache ni raccourci) :
- *  - `cloneFight` partage `stats` / `states` (objets remplacés, jamais modifiés en place) : parent intact ;
+ *  - `cloneFightForSim` (clones de l'IA) partage `stats` / `states` (objets remplacés, jamais modifiés en place) :
+ *    parent intact ; `cloneFight` en garde des copies privées (appelants qui les modifient en place) ;
  *  - `computeReachFor` (ratios de fuite précalculés par tacleur, table de marchabilité) ≡ ancienne recherche, tacles
  *    négatifs et tacleur supplémentaire compris ;
  *  - `inverseRange` (borne de balayage serrée hors diagonale, cache indexé) ≡ balayage exhaustif ;
@@ -33,12 +34,25 @@ import { randomScene } from './ai-core-helpers'
 
 // ───────────────────────────── cloneFight : stats / états partagés ─────────────────────────────
 
-describe('cloneFight : caractéristiques et états partagés (remplacés, jamais modifiés en place)', () => {
-  it('le clone partage les objets ; ses modifications (buffs, états) ne touchent jamais le parent', () => {
+describe('cloneFightForSim : caractéristiques et états partagés (remplacés, jamais modifiés en place)', () => {
+  it('cloneFight garde des copies privées : une modification EN PLACE du clone ne touche pas le parent (M-R20)', () => {
+    const { engine, fight } = randomScene(3, { nPlayers: 2, nMonsters: 2 })
+    const f0 = fight.fighters[0]
+    const crit0 = f0.stats.critical
+    const c = engine.cloneFight(fight, false)
+    expect(c.fighters[0].stats).not.toBe(f0.stats)
+    expect(c.fighters[0].states).not.toBe(f0.states)
+    c.fighters[0].stats.critical = 1000
+    c.fighters[0].states.push(9999)
+    expect(f0.stats.critical).toBe(crit0)
+    expect(f0.states.includes(9999)).toBe(false)
+  })
+
+  it('le clone de simulation partage les objets ; ses modifications (buffs, états) ne touchent jamais le parent', () => {
     for (let seed = 1; seed <= 6; seed++) {
       const { engine, fight, me } = randomScene(seed, { nPlayers: 3, nMonsters: 4 })
       const before = fight.fighters.map(f => ({ stats: f.stats, states: f.states, json: JSON.stringify([f.stats, f.states]) }))
-      const c = engine.cloneFight(fight, false)
+      const c = engine.cloneFightForSim(fight, false)
       c.fighters.forEach((f, i) => {
         expect(f.stats).toBe(fight.fighters[i].stats)
         expect(f.states).toBe(fight.fighters[i].states)

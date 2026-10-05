@@ -25,9 +25,10 @@
  * Métriques (`FightState.metrics`) : la table est copiée par `cloneFight`, les objets par combattant sont partagés et
  * REMPLACÉS à chaque écriture (`addMetric`).
  *
- * Caractéristiques et états (`Fighter.stats`, `Fighter.states`) : partagés tels quels par `cloneFight`, REMPLACÉS par
- * `Engine.recomputeStats`, jamais modifiés en place (vérifié en gelant ces objets sur 10 combats Vortex et toute la
- * suite : seuls des tests les modifient en place, sur des combattants non clonés). Les empreintes des relances et
+ * Caractéristiques et états (`Fighter.stats`, `Fighter.states`) : copiés par `cloneFight` (des appelants, dont des
+ * tests, les modifient en place sur un clone), partagés tels quels par `cloneFightForSim` (clones de l'IA,
+ * `simClone`) : le moteur ne fait que les REMPLACER (`recomputeStats`) et l'IA ne les modifie jamais en place (vérifié
+ * en gelant ces objets sur 10 combats Vortex et toute la suite). Les empreintes des relances et
  * lancers du tour sont mémoïsées par identité (src/ai/core/hash.ts) : ces enregistrements ne doivent jamais être
  * modifiés en place une fois le combat lancé.
  */

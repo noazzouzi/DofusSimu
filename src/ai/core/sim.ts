@@ -26,7 +26,8 @@ export { canPlay } from './timeline'
  * exactement les dés réels des tours futurs.
  */
 export function simClone(view: AIView, parent: FightState, salt: number, rollMode: RollMode = 'average'): FightState {
-  const c = view.engine.cloneFight(parent, false)
+  // Caractéristiques et états partagés avec le parent (`Engine.cloneFightForSim`) : ne jamais les modifier en place.
+  const c = view.engine.cloneFightForSim(parent, false)
   c.options.rollMode = rollMode
   c.rngState = cloneRngState(view.seed, salt)
   c.options.seed = c.rngState
