@@ -40,6 +40,7 @@ import { hitsTarget, profileOf } from './cands'
 import { evalLeaf, hourOf, rootInfo } from './evaluate'
 import { finalize } from './finalMove'
 import { generate, selectForSim } from './generate'
+import { glyphClock } from '../tactics/glyphClock'
 import type { FinalLeaf, SearchNode, SearchPlan, StepDigest, TacticalContext } from './node'
 import { subBudget, teamRollout } from './rollout'
 
@@ -377,6 +378,38 @@ function killLine(ctx: TacticalContext, root: SearchNode, target: number, b: Tur
   return last
 }
 
+/**
+ * Ligne de kill PAR UNE GLYPHE (réglage, tour 4) : l'étoile d'un monstre peut n'apparaître qu'après une glyphe (+1 heure,
+ * tactique `glyphClock`) ; la ligne directe tue alors à la mauvaise heure (ou pas du tout) et le faisceau de largeur 3
+ * écarte la séquence « glyphe puis kill », dont le premier pas (un déplacement) vaut peu. Depuis la meilleure proposition
+ * `glyphClock` de la racine (≤ 2 simulées), la ligne de kill continue sur la cible ; sa feuille est finalisée et
+ * comparée aux autres plans comme la ligne directe (puzzle P6 en `fast`).
+ */
+function glyphKillLine(ctx: TacticalContext, root: SearchNode, target: number, b: TurnBudget, seen: Map<bigint, number>, leaves: SearchNode[]): SearchNode | undefined {
+  if (ctx.offensiveOnly || ctx.disabledTactics?.has('glyphClock') || ctx.nodes.exhausted()) return undefined
+  if (ctx.tactics && !ctx.tactics.some(t => t.id === 'glyphClock')) return undefined
+  if (glyphClock.relevance(ctx, root) <= 0) return undefined
+  // Propositions « glyphe d'abord » (chemin seul, ou chemin puis lancer) : appel direct de la tactique, hors du plafond
+  // θ.tactics.maxPerNode partagé avec les autres tactiques (qui ne laissait souvent que « kill puis glyphe »).
+  const first = (m: MacroAction): MacroAction => (m.seq && m.seq.length ? m.seq[0] : m)
+  const props = glyphClock.propose(ctx, root, 6).filter(m => !!first(m).path && !first(m).cast)
+  if (!props.length) return undefined
+  const salt = simSalt(root.hash, 0)
+  let best: SearchNode | undefined
+  for (const m of props.slice(0, 3)) {
+    if (ctx.nodes.exhausted()) break
+    const child = expand(ctx, root, { ...m, tactic: 'glyphClock' }, salt)
+    if (!child) continue
+    ctx.trace?.({ t: 'expand', depth: 0, key: 'gkl:' + m.key, v: child.v, tactic: 'glyphClock', cat: m.cat, mandatory: true, b: child.breakdown })
+    if (!best || child.v > best.v) best = child
+  }
+  if (!best) return undefined
+  const prev = seen.get(best.hash)
+  if (prev === undefined || prev < best.v) seen.set(best.hash, best.v)
+  leaves.push(best)
+  return killLine(ctx, best, target, b, seen, leaves) ?? best
+}
+
 /** Meilleur plan du tour pour `ctx.view.me` (§8.2). */
 export function searchTurn(ctx: TacticalContext): SearchPlan {
   const mode = ctx.mode ?? ctx.cfg.mode
@@ -397,6 +430,7 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   // feuille finale est toujours finalisée. Absente en `standard` (largeur 6 : mesurée neutre au tour 2).
   const killTarget = b.width <= 3 && !ctx.nested ? killLineTarget(ctx) : undefined
   const killLeaf = killTarget !== undefined ? killLine(bctx, rootNode, killTarget, b, seen, leaves) : undefined
+  const glyphLeaf = killTarget !== undefined ? glyphKillLine(bctx, rootNode, killTarget, b, seen, leaves) : undefined
   for (let depth = 0; depth < b.maxDepth && beam.length && !bctx.nodes.exhausted(); depth++) {
     const children: SearchNode[] = []
     for (const node of beam) {
@@ -430,6 +464,7 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   const settled = leaves.slice().sort((a, b) => cont(b) - cont(a) || keyOf(a).localeCompare(keyOf(b)))
   for (const n of settled.slice(0, Math.max(1, Math.ceil(nFinals / 2)))) if (!ranked.includes(n)) ranked.push(n)
   if (killLeaf && !ranked.includes(killLeaf)) ranked.push(killLeaf)
+  if (glyphLeaf && !ranked.includes(glyphLeaf)) ranked.push(glyphLeaf)
   const finals = ranked.map(n => finalize(ctx, n))
   finals.sort(finalOrder)
   let pool = finals

@@ -166,8 +166,13 @@ interface ThreatParams {
   hitNextTurn: number
   pacifistFactor: number
   deathSigmaFrac: number
+  /**
+   * v(a) d'une invocation dans le score de ciblage (θ.monster.summonValue, comme le MonsterBrain, §11.4) ; une
+   * invocation statique vaut 0.
+   */
+  summonValue: number
 }
-const DEFAULT_PARAMS: ThreatParams = { tauFrac: 0.25, zoneFactor: 0.6, laterEnemyWeight: 0.8, hitWeak: 0.6, hitNextTurn: 0.25, pacifistFactor: 0.9, deathSigmaFrac: 0.25 }
+const DEFAULT_PARAMS: ThreatParams = { tauFrac: 0.25, zoneFactor: 0.6, laterEnemyWeight: 0.8, hitWeak: 0.6, hitNextTurn: 0.25, pacifistFactor: 0.9, deathSigmaFrac: 0.25, summonValue: 0.5 }
 
 /** Hash de l'ordre des prochains tours (combattants et tours passés). */
 export function orderKey(order: SlotOrder): number {
@@ -247,7 +252,7 @@ export class ThreatModelImpl implements ThreatModel {
   constructor(readonly view: AIView, readonly side: TeamId, readonly perception: Perception | undefined,
               readonly scenario?: ScenarioAIModel, theta?: StrategyParams) {
     this.dpt = (perception?.dpt as DptTableImpl | undefined) ?? createDptTable(view.engine)
-    this.params = theta ? { ...DEFAULT_PARAMS, ...theta.threat } : DEFAULT_PARAMS
+    this.params = theta ? { ...DEFAULT_PARAMS, ...theta.threat, summonValue: theta.monster?.summonValue ?? DEFAULT_PARAMS.summonValue } : DEFAULT_PARAMS
     this.frame = (perception as { frame?: DptFrame } | undefined)?.frame ?? (this.ownFrame = new DptFrame(this.dpt))
   }
 
@@ -550,7 +555,7 @@ export class ThreatModelImpl implements ThreatModel {
       row.dmg[i] = dmg
       const he = hpEff(a)
       if (dmg >= he && dmg > 0) row.lethal = true
-      row.score[i] = scoreOf(dmg, a, dmg >= he && dmg > 0 ? frame.dpt(a, e) : 0)
+      row.score[i] = scoreOf(dmg, a, dmg >= he && dmg > 0 ? frame.dpt(a, e) : 0, this.params.summonValue)
     }
     row.amp = this.ampOf(e, g)
     this.finishRow(row)
@@ -745,7 +750,7 @@ export class ThreatModelImpl implements ThreatModel {
       const dt = this.frame.s === s ? this.frame : this.dpt
       let dmg = dt.dpt(e, f, apAt) * hit
       if (row.pacifist && hit > 0 && this.perception?.potential) dmg += P.pacifistFactor * this.perception.potential.potential(f.id) * Math.min(1, hit)
-      for (let i = 0; i < nA; i++) scores[i] = i === ai ? scoreOf(dmg, f, dmg >= hpEff(f) && dmg > 0 ? dt.dpt(f, e) : 0) : row.score[i]
+      for (let i = 0; i < nA; i++) scores[i] = i === ai ? scoreOf(dmg, f, dmg >= hpEff(f) && dmg > 0 ? dt.dpt(f, e) : 0, this.params.summonValue) : row.score[i]
       let max = 0
       for (let i = 0; i < nA; i++) if (scores[i] > max) max = scores[i]
       if (max <= 0) pi.fill(0, 0, nA)
@@ -870,7 +875,7 @@ export class ThreatModelImpl implements ThreatModel {
         const hitM = hm.hit
         const dm = hitM > 0 ? dt.dpt(e, a, hm.apAt) * hitM : 0
         baseDmg[i] = Math.max(0, row.dmg[i] + dm - d0 + pacUnit * (Math.min(1, hitM) - Math.min(1, hit0)))
-        baseScores[i] = scoreOf(baseDmg[i], a, baseDmg[i] >= he && baseDmg[i] > 0 ? dt.dpt(a, e) : 0)
+        baseScores[i] = scoreOf(baseDmg[i], a, baseDmg[i] >= he && baseDmg[i] > 0 ? dt.dpt(a, e) : 0, this.params.summonValue)
         moved = true
       }
       const h1 = this.hitWithin(row, bi, tc, mpHi, dAp)
@@ -878,7 +883,7 @@ export class ThreatModelImpl implements ThreatModel {
       const pac = pacUnit * (Math.min(1, h1.hit) - Math.min(1, hit0))
       if (d1 === d0 && pac === 0 && tc === a.cell) continue
       dmg2[i] = Math.max(0, row.dmg[i] + d1 - d0 + pac)
-      scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
+      scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0, this.params.summonValue)
     }
     // Retirer des PA/PM n'ajoute pas de dégâts (le lissage π peut produire un écart positif minime : écrêté).
     const r = Math.min(0, moved
@@ -943,7 +948,7 @@ export class ThreatModelImpl implements ThreatModel {
         if (after === before && pac === 0) continue
         dmg2[i] = Math.max(0, row.dmg[i] + after - before + pac)
         const he = hpEff(a)
-        scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
+        scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0, this.params.summonValue)
       }
       // (2) Leurre : cible concurrente.
       let dmgC = 0
@@ -954,7 +959,7 @@ export class ThreatModelImpl implements ThreatModel {
         const pr = this.dpt.profiles.ofFighter(e)[row.best[t]]
         if (nextTurnStaticOk(engine, e, ks, lvl, row.ap) && hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, cell, reach, los, true, pr) >= 0) dmgC = row.full[t]
       }
-      scores[nA] = Math.min(dmgC, hp) + (dmgC >= hp && dmgC > 0 ? 0.5 * hp : 0)
+      scores[nA] = this.params.summonValue * Math.min(dmgC, hp) + (dmgC >= hp && dmgC > 0 ? 0.5 * hp : 0)
       let max = 0
       for (let i = 0; i <= nA; i++) if (scores[i] > max) max = scores[i]
       if (max <= 0) pi.fill(0, 0, nA + 1)
@@ -1052,7 +1057,7 @@ export class ThreatModelImpl implements ThreatModel {
       if (after === before && pac === 0) continue
       dmg2[i] = Math.max(0, row.dmg[i] + after - before + pac)
       const he = hpEff(a)
-      scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
+      scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0, this.params.summonValue)
     }
     const r = this.reaggregate(row, scores, dmg2, pi, nA)
     this.deltaMemo.set(key, r)
@@ -1117,9 +1122,16 @@ function piOf(scores: ArrayLike<number>, n: number, tau: number, out: Float64Arr
   if (sum > 0 && sum !== 1) for (let i = 0; i < n; i++) out[i] /= sum
 }
 
-function scoreOf(dmg: number, a: Fighter, threatA: number): number {
+/**
+ * Score de ciblage d'un allié (imite le terme dégâts + mort du MonsterBrain, §11.4) : v(a)·min(dmg, PVe) + [mort]·(0,5·PVmax
+ * + menace), v(a) = 1 pour un personnage, `summonValue` pour une invocation, 0 pour une invocation statique (Balise…). Sans
+ * v(a), les invocations captaient l'essentiel de π : la menace prévue d'un Brabuzar sur un personnage valait ≈ 1/10 des
+ * dégâts réellement subis (réglage, tour 4).
+ */
+function scoreOf(dmg: number, a: Fighter, threatA: number, summonValue: number): number {
   const he = hpEff(a)
-  let sc = Math.min(dmg, he)
+  const v = isStaticFighter(a) ? 0 : a.kind === 'summon' || a.summonerId !== undefined ? summonValue : 1
+  let sc = v * Math.min(dmg, he)
   if (dmg >= he && dmg > 0) sc += 0.5 * a.maxHp + threatA
   return sc
 }
