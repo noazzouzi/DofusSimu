@@ -33,7 +33,7 @@
     "deathSigmaFrac": 0.25
   },
   "tactical": {
-    "fast": { "width": 1, "topK": 6, "depth": 8, "rollouts": 0, "nodes": 40 },
+    "fast": { "width": 3, "topK": 6, "depth": 8, "rollouts": 0, "nodes": 120 },
     "standard": { "width": 6, "topK": 12, "depth": 6, "rollouts": 3, "nodes": 1500, "keyBoost": 2, "maxKeys": 12 },
     "deep": { "width": 12, "topK": 20, "depth": 8, "rollouts": 6, "nodes": 15000, "mcts": 1500, "maxKeys": 30 },
     "beta": 0.25,

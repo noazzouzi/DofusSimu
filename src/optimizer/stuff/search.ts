@@ -10,9 +10,14 @@
  *     PA/PM/PO ») sur la forme fermée du proxy (`surrogate`) ; forgemagie re-planifiée à chaque évaluation
  *     (`exos.ts`) ; tout build invalide (conditions, doublons, prysmaradites…) vaut −∞ ;
  *  4. re-notation EXACTE (`ProxyContext.exact`, caractéristiques recalculées par `computeBuildStats`) des `topExact`
- *     (50) meilleurs builds distincts, puis des répartitions de points (`points.ts`) sur les meilleurs ;
+ *     (50) meilleurs builds distincts, forgemagie RE-PLANIFIÉE aux poids locaux de chaque candidat
+ *     (`ProxyContext.statWeightsAt` : l'arbitrage « Rata Vi » / « Ta Do Per So » / « Ta Ré Per » dépend du build, pas
+ *     seulement du stuff de départ), puis des répartitions de points (`points.ts`) sur les meilleurs ;
  *  5. front de Pareto (DPT, EHP, UTIL) : `diversity` (5) builds diversifiés pour la validation par combats (L3 point 7,
  *     `validateStuffs`).
+ * Objets imposés (`fixed`, ex. les Dofus à sort passif du stuff de départ — passifs lancés par le moteur mais non
+ * modélisés par le proxy) : posés à une position verrouillée dans toutes les graines et jamais déplacés ; objets
+ * interdits (`exclude`) : retirés des viviers et des graines.
  * Déterministe : `Rng` graine, départages par logJ puis clé ; aucun `Math.random`/`Date.now` dans une décision
  * (`performance.now` ne sert qu'au temps rapporté).
  */
@@ -57,6 +62,15 @@ export interface StuffSearchOptions {
   /** Essayer les répartitions de points (défaut vrai). */
   points?: boolean
   proxy?: ProxyOptions
+  /**
+   * Objets imposés (ids) : posés à une position verrouillée (première position libre de leur emplacement, dans l'ordre
+   * donné) dans toutes les graines et jamais retirés. Erreur si un objet est inconnu ou si son emplacement est plein.
+   */
+  fixed?: readonly number[]
+  /** Objets interdits (ids) : retirés des viviers, des blocs de panoplie et des graines. */
+  exclude?: readonly number[]
+  /** Re-planifier la forgemagie aux poids locaux des meilleurs candidats (défaut vrai). */
+  replanForge?: boolean
   /** Températures du recuit (unités de logJ). */
   t0?: number
   t1?: number
@@ -136,6 +150,34 @@ function stateFromItems(data: GameDataStore, items: readonly EquippedItem[]): St
   return { ids, hosts: new Int8Array(EXO_STATS.length).fill(-1) }
 }
 
+/** Positions verrouillées (id imposé par position, 0 = libre) — voir `StuffSearchOptions.fixed`. */
+function lockPositions(data: GameDataStore, fixed: readonly number[]): Int32Array {
+  const locks = new Int32Array(N_POS)
+  for (const id of fixed) {
+    const it = data.item(id)
+    if (!it) throw new Error(`Objet imposé inconnu : ${id}`)
+    if (locks.includes(id)) continue
+    const pos = POSITIONS_OF[it.slot]?.find(p => locks[p] === 0)
+    if (pos === undefined) throw new Error(`Objet imposé ${it.name} (${id}) : plus de place en « ${it.slot} »`)
+    locks[pos] = id
+  }
+  return locks
+}
+
+/** Pose les objets imposés à leur position (doublons ailleurs retirés) et retire les objets interdits. */
+function applyLocks(s: State, locks: Int32Array, excluded: ReadonlySet<number>): State {
+  for (let p = 0; p < N_POS; p++) {
+    const id = locks[p]
+    if (!id) {
+      if (excluded.size && excluded.has(s.ids[p])) s.ids[p] = 0
+      continue
+    }
+    for (let q = 0; q < N_POS; q++) if (q !== p && s.ids[q] === id) s.ids[q] = 0
+    s.ids[p] = id
+  }
+  return s
+}
+
 // ───────────────────────────── évaluateur ─────────────────────────────
 
 interface Evaluated {
@@ -208,7 +250,12 @@ class Evaluator {
     return out
   }
 
-  private compute(s: State, points?: CharacterBuild['characteristicPoints']): Evaluated {
+  /** Évaluation avec un autre planificateur de forgemagie (re-planification aux poids locaux ; non mémorisée). */
+  evaluateWith(s: State, planner: ForgePlanner, points?: CharacterBuild['characteristicPoints']): Evaluated {
+    return this.compute(s, points, planner)
+  }
+
+  private compute(s: State, points?: CharacterBuild['characteristicPoints'], planner: ForgePlanner = this.forge): Evaluated {
     const bare = this.build(s, null, points)
     const r0 = computeBuildStats(bare, this.data)
     let forge: ForgePlan | null = null
@@ -229,7 +276,7 @@ class Evaluator {
         if (r0.wasted.mp) planStats.mp = Number.MAX_SAFE_INTEGER
         if (r0.wasted.range) planStats.range = Number.MAX_SAFE_INTEGER
       }
-      forge = this.forge.plan(items, planStats, hosts)
+      forge = planner.plan(items, planStats, hosts)
       if (forge.lines.some(l => l.length)) {
         build = this.build(s, forge, points)
         if (!r0.valid || items.some(it => it !== null && carriesStatCap(this.data, it, this.capCache))) {
@@ -285,19 +332,20 @@ class Evaluator {
 
 // ───────────────────────────── recherche ─────────────────────────────
 
-function coordinateAscent(ev: Evaluator, pools: StuffPools, start: State, sweeps: number): Evaluated {
+function coordinateAscent(ev: Evaluator, pools: StuffPools, start: State, sweeps: number, locks?: Int32Array): Evaluated {
   const s = cloneState(start)
   let cur = ev.evaluate(s)
   for (let sweep = 0; sweep < sweeps; sweep++) {
     let improved = false
     for (let pos = 0; pos < N_POS; pos++) {
+      if (locks?.[pos]) continue
       const slot = STUFF_POSITIONS[pos]
       const keep = s.ids[pos]
       let bestId = keep
       let best = cur
       const candidates = [0, ...pools.bySlot[slot].map(p => p.item.id)]
       for (const id of candidates) {
-        if (id === keep) continue
+        if (id === keep || (locks && id && locks.includes(id))) continue
         s.ids[pos] = id
         const e = ev.evaluate(s)
         if (e.logJ > best.logJ + 1e-12) {
@@ -316,7 +364,7 @@ function coordinateAscent(ev: Evaluator, pools: StuffPools, start: State, sweeps
   return cur
 }
 
-function annealing(ev: Evaluator, pools: StuffPools, start: Evaluated, iterations: number, seed: number, t0: number, t1: number): Evaluated {
+function annealing(ev: Evaluator, pools: StuffPools, start: Evaluated, iterations: number, seed: number, t0: number, t1: number, locks?: Int32Array, excluded: ReadonlySet<number> = new Set()): Evaluated {
   const rng = new Rng(seed)
   let cur = start
   let best = start
@@ -365,6 +413,7 @@ function annealing(ev: Evaluator, pools: StuffPools, start: Evaluated, iteration
       const k = rng.int(0, EXO_STATS.length - 1)
       s.hosts[k] = rng.chance(0.2) ? -1 : rng.int(0, N_POS - 1)
     }
+    if (locks) applyLocks(s, locks, excluded)
     const e = ev.evaluate(s)
     const delta = e.logJ - cur.logJ
     if (e.logJ > -Infinity && (delta >= 0 || rng.next() < detExp(delta / T))) {
@@ -437,15 +486,22 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
   const variants = member.variants.length ? member.variants : (member.build.spellVariants ?? [])
   const ctx = createProxyContext(data, { breedId: member.breedId, level: member.build.level, variants, role, presetId: member.presetId, element, name: member.name }, ref, opts.proxy)
   const startItems = member.build.items.map(i => i.itemId)
+  const excluded = new Set<number>(opts.exclude ?? [])
+  const fixed = (opts.fixed ?? []).filter(id => !excluded.has(id))
+  const locks = fixed.length || excluded.size ? lockPositions(data, fixed) : undefined
   const pools = buildPools(data, ctx, {
     level: member.build.level,
     minLevel: opts.minLevel,
     perSlot: opts.perSlot,
     dofusPool: opts.dofusPool,
     passivePolicy: opts.passivePolicy,
-    include: startItems,
+    include: [...startItems, ...fixed].filter(id => !excluded.has(id)),
     reference: member.build,
   })
+  if (excluded.size) {
+    for (const slot of Object.keys(pools.bySlot) as EquipmentSlot[]) pools.bySlot[slot] = pools.bySlot[slot].filter(p => !excluded.has(p.item.id))
+    pools.setBlocks = pools.setBlocks.filter(b => !b.items.some(id => excluded.has(id)))
+  }
   const profile = opts.profile ?? 'thlOptimized'
   const topExact = opts.topExact ?? 50
   const ev = new Evaluator(data, ctx, { ...member.build, spellVariants: variants.slice() }, profile, topExact)
@@ -454,14 +510,15 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
   const seeds: State[] = [stateFromItems(data, member.build.items)]
   for (const id of Object.keys(STUFFS).sort()) seeds.push(stateFromItems(data, STUFFS[id].items))
   seeds.push(greedyState(pools))
+  if (locks) for (const seed of seeds) applyLocks(seed, locks, excluded)
   let best: Evaluated | undefined
   for (const seed of seeds) {
-    const e = coordinateAscent(ev, pools, seed, opts.sweeps ?? 6)
+    const e = coordinateAscent(ev, pools, seed, opts.sweeps ?? 6, locks)
     if (!best || e.logJ > best.logJ + 1e-12) best = e
   }
   if (best && (opts.iterations ?? 20_000) > 0) {
-    best = annealing(ev, pools, best, opts.iterations ?? 20_000, opts.seed ?? 1, opts.t0 ?? 0.05, opts.t1 ?? 0.0005)
-    best = coordinateAscent(ev, pools, best.state, 2)
+    best = annealing(ev, pools, best, opts.iterations ?? 20_000, opts.seed ?? 1, opts.t0 ?? 0.05, opts.t1 ?? 0.0005, locks, excluded)
+    best = coordinateAscent(ev, pools, best.state, 2, locks)
   }
 
   // Re-notation exacte des meilleurs builds distincts.
@@ -487,28 +544,50 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
   const top = [...ev.hall.values()].sort((a, b) => b.logJ - a.logJ || (canonicalKey(a.state) < canonicalKey(b.state) ? -1 : 1)).slice(0, topExact)
   const isCand = (c: StuffCandidate | undefined): c is StuffCandidate => c !== undefined
   let cands = top.map(e => toCandidate(e, 'start')).filter(isCand)
+  // Forgemagie re-planifiée aux poids locaux (voir l'en-tête, point 4) : un planificateur par build évalué.
+  const replan = (opts.replanForge ?? true) && profile === 'thlOptimized'
+  const localPlanner = (e: Evaluated): ForgePlanner | undefined =>
+    replan && e.stats && e.maxHp !== undefined ? new ForgePlanner({ profile, weights: ctx.statWeightsAt(e.stats, e.maxHp), rangeCap: 6 }) : undefined
+  if (replan) {
+    for (const e of top.slice(0, 10)) {
+      const planner = localPlanner(e)
+      if (!planner) continue
+      const r = ev.evaluateWith(e.state, planner)
+      const cand = r.logJ > -Infinity ? toCandidate(r, 'start') : undefined
+      if (cand) cands.push(cand)
+    }
+  }
 
-  // Répartitions de points sur les 5 meilleurs (notées exactement).
+  // Répartitions de points sur les 5 meilleurs (notées exactement ; forgemagie du recuit et re-planifiée).
   if (opts.points ?? true) {
     const breed = data.breed(member.breedId)
     const presetPts = preset ? presetPoints(preset, data, member.build.level) : undefined
     const options: PointsOption[] = pointsOptions(breed, member.build.level, primary, role, presetPts)
     const sorted = cands.slice().sort((a, b) => b.score.logJ - a.score.logJ)
-    for (const c of sorted.slice(0, 5)) {
+    const done = new Set<string>()
+    for (const c of sorted) {
+      if (done.size >= 5) break
+      if (done.has(c.key)) continue
+      done.add(c.key)
       const state = top.find(e => `${canonicalKey(e.state)}|start` === c.key)!.state
       for (const o of options) {
         const e = ev.evaluate(state, o.points)
         if (e.logJ === -Infinity) continue
         const cand = toCandidate(e, o.id)
         if (cand) cands.push(cand)
+        const planner = localPlanner(e)
+        const r = planner ? ev.evaluateWith(state, planner, o.points) : undefined
+        const cand2 = r && r.logJ > -Infinity ? toCandidate(r, o.id) : undefined
+        if (cand2) cands.push(cand2)
       }
     }
   }
   cands.sort((a, b) => b.score.logJ - a.score.logJ || (a.key < b.key ? -1 : 1))
-  // Doublons (même stuff et mêmes points) : garder le premier.
+  // Doublons (même stuff, même forgemagie et mêmes points) : garder le premier.
   const seen = new Set<string>()
   cands = cands.filter(c => {
-    const k = `${c.key.split('|')[0]}|${JSON.stringify(c.build.characteristicPoints)}`
+    const forge = c.build.items.map(i => (i.exos ?? []).map(l => `${l.stat}${l.value}${l.kind ?? ''}`).join('+')).join(';')
+    const k = `${c.key.split('|')[0]}|${forge}|${JSON.stringify(c.build.characteristicPoints)}`
     if (seen.has(k)) return false
     seen.add(k)
     return true

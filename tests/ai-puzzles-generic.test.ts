@@ -205,11 +205,13 @@ describe('puzzles tactiques génériques (standard)', () => {
 
 describe('ablations des tactiques (§16.4)', () => {
   const byId = (id: string): Puzzle => PUZZLES.find(p => p.id === id)!
-  it('P3 sans stateChain (fast) : le plan trouvé vaut moins ; en standard, le faisceau le retrouve seul (pas moins)', () => {
+  it('P3 sans stateChain (fast) : la tactique est jouée ; sans elle, le faisceau (largeur 3 en fast, 6 en standard) retrouve seul la séquence (pas moins)', () => {
     const on = decide(byId('P3').build(), 'fast')
     const off = decide(byId('P3').build(), 'fast', { disabledTactics: new Set(['stateChain']) })
     expect(on.plan.actions.some(a => a.tactic === 'stateChain')).toBe(true)
-    expect(off.plan.value).toBeLessThan(on.plan.value)
+    // Réglage du tour 3 : `fast` passe d'un faisceau de largeur 1 à 3 ; il compose alors la séquence sans la tactique
+    // (avant : plan strictement moins bon sans elle).
+    expect(off.plan.value).toBeLessThanOrEqual(on.plan.value + 1e-6)
     // Largeur 6 : la Balise Tactique (puissance +40 par ennemi en vue) puis l'Explosive est trouvée sans la tactique.
     const onS = decide(byId('P3').build(), 'standard')
     const offS = decide(byId('P3').build(), 'standard', { disabledTactics: new Set(['stateChain']) })

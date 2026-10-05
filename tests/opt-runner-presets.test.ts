@@ -77,8 +77,11 @@ describe('presets : builds valides (computeBuildStats)', () => {
       expect(r.stats.ap, p.id).toBeGreaterThanOrEqual(11)
       expect(r.stats.ap, p.id).toBeLessThanOrEqual(12)
       expect(r.stats.mp, p.id).toBe(6)
-      expect(r.stats.range, p.id).toBeGreaterThanOrEqual(3)
       expect(r.maxHp, p.id).toBeGreaterThan(3500)
+      // Presets dérivés (stuffs « build complet » optimisés, ex. *_vortex) : un Iop au contact peut viser 2 PO, un
+      // build de survie descendre à 200 points de base dans l'élément — contrôlés par tests/opt-stuff-vortex.test.ts.
+      if (p.extends) continue
+      expect(r.stats.range, p.id).toBeGreaterThanOrEqual(3)
       const primary = r.stats[p.points.primary as 'strength']
       expect(primary, p.id).toBeGreaterThan(p.stuff === 'tank' ? 300 : 500)
       if (p.stuff === 'tank') expect(r.maxHp, p.id).toBeGreaterThan(5000)

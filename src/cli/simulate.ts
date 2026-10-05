@@ -56,6 +56,9 @@ function usage(): string {
     '  presets           [--class iop] [--stuff S]',
     '',
     `  Équipe par défaut : ${DEFAULT_TEAM}`,
+    '  Équipe (--team) : membres séparés par des virgules, chacun <preset> ou <classe>[:rôle|élément], stuff facultatif',
+    '    après « @ » (par membre, prioritaire sur --stuff) : cra_feu_zone@vortex_cra_feu,iop:killer@unstuffed ; les presets',
+    '    dérivés (« extends », ex. cra_feu_vortex) sont des alias <base>@<stuff> (même IA, stuff et points du stuff)',
     '  Scénario : vortex | skirmish | dummy | control:<carte>:<monstre>[*n][@grade],… | mirror[:<carte>]',
     '  Options communes : --theta θ.json (surcharge), --noise τ (bruit des monstres), --param clé=valeur (répétable par virgules)',
     `  Commandes : ${COMMANDS.join(' | ')}`,
@@ -430,7 +433,8 @@ function cmdPresets(a: Args, data: DataStore): number {
     const s = r.stats
     console.log(
       `${p.id.padEnd(28)} ${p.className.padEnd(11)} ${p.role.padEnd(8)} ${p.element.padEnd(6)} ${(stuff === 'default' ? p.stuff : stuff).padEnd(9)} ` +
-        `${r.valid ? 'OK ' : 'ERR'} ${s.ap} PA ${s.mp} PM ${s.range} PO ${r.maxHp} PV  rotation ${p.rotation.length} sorts`,
+        `${r.valid ? 'OK ' : 'ERR'} ${s.ap} PA ${s.mp} PM ${s.range} PO ${r.maxHp} PV  rotation ${p.rotation.length} sorts` +
+        (p.extends ? `  (≡ ${p.extends}@${p.stuff})` : ''),
     )
     if (!r.valid) for (const w of r.warnings) console.log(`    ${w}`)
   }

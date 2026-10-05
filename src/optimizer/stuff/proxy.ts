@@ -11,7 +11,9 @@
  *    % résistances mêlée/distance et sorts) : la pondération des éléments reçus vient des sorts réels des monstres ;
  *    mix des monstres QUI FRAPPENT distinct du mix des cibles (`ProxyOptions.incoming`, ex. `VORTEX_INCOMING_MIX` de
  *    vortex.ts : poids d'exposition mesurés en combat — le Vortex, invulnérable et presque passif en phase 1, ne pèse
- *    pas dans les dégâts reçus) ; défaut : le mix des cibles ;
+ *    pas dans les dégâts reçus) ; défaut : le mix des cibles ; dommages de POUSSÉE reçus (collisions, non boostables :
+ *    src/damage/push.ts, ∝ max(0, niveau/2 + DoPou + 32 − RePou)) en option (`ProxyOptions.incomingPush`) : une part
+ *    `share` des dégâts reçus sans défense, réduite par la Résistance Poussée du personnage ;
  *  - UTIL : retrait PM/PA espéré (fraction des PM/PA de la cible de référence, `expectedApMpRemoved`), soins par tour
  *    (/1 500), tacle (tank), poussée (placeur), invocations ;
  *  - exposants (a, b, c) par rôle : killer/zoneDps 0,7/0,3/0 ; tank 0,2/0,8/0,2 ; mpLock/apLock 0,3/0,4/1 ; healer
@@ -25,8 +27,10 @@
  *  - `surrogate(stats)` : forme fermée (≈ 1-2 µs) des mêmes formules DoMath sans troncatures, rotations figées par PA
  *    (sac à dos calculé une fois au build de référence pour chaque nombre de PA, contre une cible SYNTHÉTIQUE aux
  *    résistances moyennes du mix) ; utilisée par la recherche locale et le recuit (corrélation vérifiée par
- *    tests/opt-stuff.test.ts). Les sorts passifs des objets (effet 1175) ne sont pas simulés par le moteur : ils sont
- *    ignorés ici aussi (cohérence avec les combats).
+ *    tests/opt-stuff.test.ts). Les sorts passifs des objets (effet 1175 : Dofus Ocre, Vulbis, Turquoise, Abyssal…)
+ *    SONT lancés par le moteur en combat (src/engine/index.ts, `installEquipmentPassives`) mais ne sont PAS modélisés
+ *    ici (valeur nulle pour le proxy) : seuls les combats les mesurent — option `fixed` de la recherche (search.ts)
+ *    pour garder les Dofus à passif du stuff de départ, puis validation appariée par combats.
  */
 import { critChance } from '../../damage/crit'
 import { expectedApMpRemoved } from '../../damage/apmp'
@@ -90,6 +94,16 @@ export interface ProxyTarget {
   grade?: number
 }
 
+/**
+ * Dommages de poussée reçus (voir l'en-tête) : `share` × dégâts reçus par tour SANS défense (inc0, mêmes unités) à
+ * Résistance Poussée nulle, multipliés par max(0, `bonus` − RePou) / `bonus` (`bonus` = niveau/2 + DoPou + 32 du
+ * pousseur, formule de src/damage/push.ts).
+ */
+export interface ProxyPushModel {
+  share: number
+  bonus: number
+}
+
 export interface ProxyOptions {
   /** Mix de cibles (défaut : mix du Vortex, `VORTEX_TARGET_MIX`). */
   targets?: readonly ProxyTarget[]
@@ -98,6 +112,8 @@ export interface ProxyOptions {
    * pas le nombre de monstres (ex. `VORTEX_INCOMING_MIX`, calibré sur les dégâts subis en combat).
    */
   incoming?: readonly ProxyTarget[]
+  /** Dommages de poussée reçus (défaut : aucun). */
+  incomingPush?: ProxyPushModel
   /** Grade des cibles sans grade explicite (défaut 5). */
   grade?: number
   exponents?: Partial<ProxyExponents>
@@ -280,6 +296,7 @@ export class ProxyContext {
   readonly apTarget: number
   readonly mpTarget: number
   readonly initiativeWeight: number
+  readonly push?: ProxyPushModel
   /** Cibles réelles du mix et leurs poids. */
   readonly targets: Fighter[]
   readonly weights: number[]
@@ -318,6 +335,7 @@ export class ProxyContext {
     this.apTarget = opts.apTarget ?? 12
     this.mpTarget = opts.mpTarget ?? 6
     this.initiativeWeight = opts.initiativeWeight ?? 0
+    if (opts.incomingPush && opts.incomingPush.share > 0 && opts.incomingPush.bonus > 0) this.push = { ...opts.incomingPush }
     const mix: readonly ProxyTarget[] = opts.targets ?? VORTEX_TARGET_MIX
     const grade = opts.grade ?? 5
     this.targets = mix.map((t, i) => {
@@ -634,8 +652,16 @@ export class ProxyContext {
     return this.dptTable.turn(m, this.fighter, Math.max(0, ap ?? m.stats.ap), 'next').mean
   }
 
-  private score(dpt: number, incoming: number, inc0: number, s: Stats, maxHp: number): ProxyScore {
+  /** Dommages de poussée reçus par tour (0 sans modèle de poussée) pour des dégâts sans défense `inc0`. */
+  pushIncoming(s: Stats, inc0: number): number {
+    const p = this.push
+    return p ? (p.share * inc0 * Math.max(0, p.bonus - s.pushRes)) / p.bonus : 0
+  }
+
+  private score(dpt: number, incomingElem: number, inc0Elem: number, s: Stats, maxHp: number): ProxyScore {
     const { a, b, c } = this.exponents
+    const incoming = incomingElem + this.pushIncoming(s, inc0Elem)
+    const inc0 = this.push ? inc0Elem * (1 + this.push.share) : inc0Elem
     const ehp = maxHp * (incoming > 1e-6 ? Math.min(20, inc0 / incoming) : 20)
     const util = c > 0 ? this.utility(s) : 0
     let penalty = 1
@@ -719,18 +745,27 @@ export class ProxyContext {
    * transcendances et aux exos.
    */
   statWeights(): Partial<Record<StatKey, number>> {
-    if (this.weightsCache) return this.weightsCache
+    if (!this.weightsCache) this.weightsCache = this.statWeightsAt(this.refStats, this.refMaxHp)
+    return this.weightsCache
+  }
+
+  /**
+   * Poids marginaux ∂logJ̃/∂carac en un build quelconque (mêmes différences finies que `statWeights`, sans cache) :
+   * re-planification de la forgemagie autour d'un candidat (les rendements décroissants de la Vitalité, des
+   * résistances plafonnées à 50 % ou des dommages changent l'arbitrage « Rata Vi » / « Ta Do Per So »).
+   */
+  statWeightsAt(stats: Stats, maxHp: number): Partial<Record<StatKey, number>> {
     // Les évaluations des différences finies ne comptent pas dans les statistiques de recherche.
     const calls = this.surrogateCalls
-    const base = this.surrogate(this.refStats, this.refMaxHp).logJ
+    const base = this.surrogate(stats, maxHp).logJ
     const out: Partial<Record<StatKey, number>> = {}
     for (const k of Object.keys(RUNE_WEIGHT_PER_POINT) as StatKey[]) {
       const rw = RUNE_WEIGHT_PER_POINT[k]!
       const step = k === 'ap' || k === 'mp' || k === 'range' || k === 'summons' ? 1 : Math.max(1, Math.round(10 / rw))
-      const s = copyStats(this.refStats)
-      let hp = this.refMaxHp
+      const s = copyStats(stats)
+      let hp = maxHp
       if (k === 'ap' || k === 'mp' || k === 'range') {
-        // PA/PM/PO : valeur d'un point SOUS le plafond (le build de référence peut être plafonné).
+        // PA/PM/PO : valeur d'un point SOUS le plafond (le build peut être plafonné).
         s[k] = Math.min(s[k], (k === 'ap' ? this.apTarget : k === 'mp' ? this.mpTarget : 6) - 1)
         const lo = this.surrogate(s, hp).logJ
         s[k] += 1
@@ -742,7 +777,6 @@ export class ProxyContext {
       out[k] = (this.surrogate(s, hp).logJ - base) / step
     }
     this.surrogateCalls = calls
-    this.weightsCache = out
     return out
   }
 }

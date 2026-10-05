@@ -519,3 +519,221 @@ Moyennes (n = 96) : avant 14,22 tours, corrompus 1,16 / 2,10 / 2,22 (t7 / t12 / 
   tests/engine-summon-owned.test.ts` : 333 réussis, 1 ignoré (ablations, opt-in), dont combats de contrôle
   (`ai-team-control`) 5 / 5, puzzles Vortex 17 / 17, `ai-monster-fidelity` 13 / 13 (M-R20 passe). Aucune infidélité
   du moteur trouvée.
+
+---
+
+## Tour 3
+
+### Protocole
+
+- Référence « avant » : tag git `base-tuning-r3` (commit 984037e). Harnais `.cache/tuning/r3/` (hors dépôt) :
+  `mktree.sh` (arbre figé = `git archive base-tuning-r3` ; les variantes ne remplacent que les fichiers réglables),
+  `run.mts` (un combat par graine : victoire, tours, corrompus cumulés par tour via l'état 6611, morts, dégâts subis par
+  source, PA inutilisés, empreinte SHA-1 des événements), `batch.sh` / `queue.sh` (**2 processus**), `pair.cjs`
+  (Δ apparié ± IC 95 %, graines meilleures / moins bonnes).
+- Lot : 32 graines `fast` par `masterSeed` ; un changement est jugé sur `masterSeed` 1 + 2 (n = 64) puis **validé sur
+  des graines inédites** (`masterSeed` 3 + 4, n = 64) avant d'être gardé (leçon du tour 2 : les graines du réglage
+  surestiment le gain).
+
+### Mesure de référence (`base-tuning-r3`, `fast`, n = 128, `masterSeed` 1-4)
+
+| Métrique | Valeur |
+|---|---|
+| Victoires | 0 / 128 |
+| Tours survécus | 14,63 (ms 1-4 : 14,31 / 14,88 / 14,84 / 14,47) |
+| Corrompus au tour 7 / 12 / 17 / total | 1,35 / 2,46 / 2,64 / 2,66 |
+| Premier mort (tour) | 10,0 |
+| Dégâts subis / infligés aux monstres de vague | 32 700 / 52 900 |
+| Kills de monstres de vague | 9,7 |
+| PA inutilisés par tour de personnage | 2,72 |
+| Causes d'échec | submersion 68, défaite 59, croix 1 |
+
+Dégâts subis par source (moyenne par combat) : poison des Harpilles 6 000, Superfidie 4 600, Tirs optiques 4 600,
+Neutralisation (Brabuzar) 3 500, Feinterception (Buboxor) 2 600, poussées du Brabuzar 2 000, Cercle de feu 2 000,
+Hoxor 1 900, Rayonirique 1 800, Plumière 1 500.
+
+### Expériences (appariées, `fast`, 32 graines par `masterSeed` ; référence = `base-tuning-r3` sauf mention)
+
+Essais lancés avant le redémarrage du conteneur (10 h 27), résultats relus après coup :
+
+| Essai | Changement | `masterSeed` | Tours | Corr. t7 / t12 / total | Δ apparié (corr. total ; tours) | Verdict |
+|---|---|---|---|---|---|---|
+| B0 | référence | 1-4 | 14,63 | 1,35 / 2,46 / 2,66 | — | — |
+| PAC | sous Pacifiste : sorts « dégâts seulement » retirés des candidats, pas de ligne de kill (`generate.ts`, `turnSearch.ts`) | 1, 2 | 14,66 / 14,25 | 1,25 / 2,31 / 2,38 ; 1,25 / 2,41 / 2,50 | −0,25 ± 0,35 ; −0,19 ± 0,31 ; tours +0,34 / −0,63, premier mort −1,19 ± 0,77 (ms 2) | rejeté |
+| N80 | `fast` 80 nœuds (largeur 1) | 1 | 14,69 | 1,53 / 2,56 / 2,63 | 0,00 ± 0,63 ; +0,38 ± 1,62 | neutre |
+| NR | Enutrof : Pelle de Fortune au lieu de Retraite Anticipée (variante de sort) | 1 | 13,69 | 1,31 / 2,25 / 2,44 | −0,19 ± 0,44 ; −0,63 ± 1,09 | rejeté (Retraite utile) |
+| W2 | `fast` largeur 2, 80 nœuds, ligne de kill gardée (largeur ≤ 2) | 1-4 (n = 128) | 15,29 | 1,38 / 2,51 / 2,83 | +0,17 ± 0,28 ; +0,66 ± 0,60 | faible |
+| W2n60 | largeur 2, 60 nœuds | 1, 2 | 14,94 / 14,72 | 1,38 / 2,63 / 2,81 ; 1,50 / 2,47 / 2,69 | +0,19 / 0,00 ; +0,63 / −0,16 | neutre |
+| **W3** | **`fast` largeur 3, 120 nœuds, ligne de kill gardée (largeur ≤ 3)** | 1-4 (n = 128) | **15,96** | **1,78 / 2,73 / 3,09** | **+0,44 ± 0,25 (+63 / −29) ; +1,34 ± 0,56 (+84 / −33)** ; t7 **+0,43 ± 0,16**, t12 +0,27 ± 0,19, premier mort **+0,94 ± 0,56** | **gardé** |
+
+W3 par jeu de graines (corr. total ; tours) : ms 1 +0,31 ; +1,56 — ms 2 +0,56 ; +1,38 — ms 3 +0,44 ; +0,97 — ms 4
++0,44 ; +1,44 : positif sur les quatre jeux. Mécanisme : dégâts infligés aux monstres de vague +12 400 ± 3 100 par
+combat (+23 %), kills +2,6, PA inutilisés par tour 2,72 → 1,45 ; dégâts subis +1 400 (tours en plus). Coût : ≈ 1,6 ×
+le temps d'un combat `fast` (4,7-5,4 s → 7,7-8,2 s, machine partagée).
+
+**Validation de W3 sur graines inédites** (`masterSeed` 5 + 6, n = 64, jamais utilisées pendant le réglage) :
+corrompus +0,50 ± 0,30 (+31 / −9 ; t7 +0,19 ± 0,24, t12 +0,31 ± 0,26, t17 +0,50 ± 0,30), tours **+1,55 ± 0,72**
+(+39 / −17), premier mort +0,80 ± 0,73, kills +2,9. Cumul `masterSeed` 1-6 (n = 192) : corrompus **+0,46 ± 0,19**
+(t7 +0,35 ± 0,13, t12 +0,28 ± 0,15), tours **+1,41 ± 0,44**, premier mort **+0,89 ± 0,44**. Coût mesuré sur des lots
+consécutifs (même charge) : 328 → 666 ms par tour de jeu (≈ 2 ×), 4,8 → 10,8 s par combat (combats plus longs).
+L'arbre « dépôt » (fichiers réglables du dépôt sur `base-tuning-r3`) reproduit W3 événement par événement (2 graines).
+
+**W3 appliqué au dépôt** : `data/ai/theta-default.json` (`tactical.fast` : largeur 1 → 3, nœuds 40 → 120),
+`src/ai/tactical/turnSearch.ts` (ligne de kill pour un faisceau de largeur ≤ 3, donc toujours en `fast`, jamais en
+`standard`), `src/ai/tactical/rollout.ts` (le tour imbriqué d'un allié dans les rollouts `standard`/`deep` garde la
+largeur 1 : comportement de `standard` inchangé, seules les invocations et le plan `fast` du mode `deep` héritent de la
+largeur 3). Tests mis à jour : `tests/ai-contracts.test.ts` (budgets `fast`), `tests/ai-team-core.test.ts` (plafond de
+nœuds lu dans θ), `tests/ai-puzzles-generic.test.ts` (ablation P3 : en largeur 3, le faisceau compose seul la séquence
+de `stateChain` ; le plan reste au moins aussi bon). Largeur 4 (160 nœuds, ms 1) : corrompus +0,06 ± 0,48 contre W3
+mais t7 −0,47 ± 0,36, tours −0,59, pour 1,6 × le temps de W3 : rejeté.
+
+### Diagnostics sur W3 (replays `masterSeed` 1)
+
+- **Fenêtres d'étoile** : 96 converties sur 227 (42 %). Échecs : **tueur sous Pacifiste 47** (Iop 21, Enutrof 15),
+  à portée sans kill 43, loin 37, mort 4. Pacifiste devient la première cause.
+- **Méjaire** : menace intrinsèque du modèle (dégâts seuls, `teamTurnDamage` × 0,75) = 599, la plus faible des cinq
+  monstres (Ikargn 1 218, Buboxor 1 022, Harpille 944, Brabuzar 893) alors que Rayonirique (2 ×/tour) annule le tour
+  d'un personnage : le planificateur la marque et la corrompt en dernier.
+- **Ressuscités** : la perception ne voit pas les monstres morts ; ils ressuscitent autour du Vortex et jouent juste
+  après lui (réinsérés après le Vortex dans la timeline), donc avant le prochain tour de presque tous les personnages.
+  Exemple (graine 1212895563, tour 6-7) : l'Iop marque la Méjaire à II (contrat « corrompt à VI au tour 7 »), finit
+  son tour au contact ; la Méjaire ressuscite au tour du Vortex, pose Pacifiste sur l'Iop (et l'Eniripsa) juste avant
+  son tour : étoile perdue. Dégâts des monstres ressuscités dans le même tour : 1 765 par combat (5 %), 38 Pacifiste
+  sur 228 (17 %).
+- **Oracle de kill** : la calibration en ligne (`KillOracle.observe`) compare les dégâts de TOUT le tour à ceux de
+  l'étape racine du plan (souvent une étape « dégâts » partielle) : elle reste ≈ 1,0 (sonde, graine 2069979692), alors
+  que les dégâts réalisés valent 45-75 % du DPT analytique. Exemple : Iop, Harpille étoilée à 1 517 PV, contrat
+  « corrompt (100 %) » ; dégâts réalisés 485.
+- **Survie** : premier mort = Eniripsa dans 19 combats sur 32 (Crâ 9) ; fins de tour à 2,9 cases du monstre le plus
+  proche en vague 2 (85 % à ≤ 4).
+- **Vague 2** : 2,19 monstres marqués sur 4 (1,16 avant W3), tour moyen 11,2, mais 0,34 corrompu : l'étoile arrive
+  ≈ 3 tours après le marquage, quand l'équipe meurt.
+- **Corruption par monstre** (ms 1, base → W3) : vague 1 Harpille 78 → 88 % (tour 7,0), Ikargn 84 → 94 % (5,6),
+  Méjaire 66 → 78 % (8,6, toujours la dernière) ; vague 2 Brabuzar 13 → 16 %, Buboxor 9 → 16 %, **Harpilles 6 → 2 %**
+  (2 par vague 2, résistance Feu 43 % contre un Crâ et une Eniripsa Feu ; à distance, premières sources de dégâts
+  subis : poison + Superfidie + Tirs optiques ≈ 15 000 par combat) ; vague 3 : 0 %.
+- Menace réalisée par tour de monstre (dégâts subis / tours joués, ms 1) : Buboxor 653, Harpille 522, Brabuzar 474,
+  Ikargn 407, Méjaire 200 (+ Pacifiste).
+
+### Expériences sur W3 (référence W3 ; `masterSeed` 1, puis 2 si prometteur)
+
+| Essai | Changement | n | Corr. t7 / t12 / total (Δ) | Tours (Δ) | Premier mort (Δ) | Verdict |
+|---|---|---|---|---|---|---|
+| DOT | risque de mort : le prochain tick des poisons (TB/TE) s'ajoute à l'incoming (`threat.ts` ; `pendingDotOn` déplacé dans `dpt.ts`) | 64 | −0,08 ± 0,09 / +0,03 ± 0,18 / +0,11 ± 0,24 | +0,16 ± 0,55 | +0,42 ± 0,43 | neutre |
+| MDR | risque de mort : variance de Bernoulli (choix de cible de chaque ennemi) au lieu de σ = 0,25·inc (patch préparé avant le redémarrage) | 32 | −0,31 ± 0,28 / 0,00 ± 0,29 / −0,03 ± 0,37 | 0,00 ± 0,99 | −0,16 ± 1,01 | rejeté |
+| MJ | menace intrinsèque d'un poseur de Pacifiste (+ 0,5 × DPT du meilleur personnage sur lui) : planificateur (exposition, prix) | 64 | −0,02 ± 0,20 / +0,05 ± 0,24 / −0,03 ± 0,35 | −0,02 ± 0,83 | +0,11 ± 0,83 | rejeté (ms 1 +0,22, ms 2 −0,28) |
+| MJC | terme `control` : retrait PA/PM sur un poseur de Pacifiste valorisé avec la même part (`value.ts`) | 32 | −0,13 ± 0,19 / +0,06 ± 0,21 / −0,03 ± 0,33 | −0,19 ± 0,73 | −0,16 ± 0,81 | rejeté (10 combats identiques) |
+| ORC | oracle de kill calibré sur les dégâts RÉALISÉS (prévision = meilleur DPT analytique sur un monstre présent ; a priori 0,6, borne basse 0,2) (`planner.ts`, `model.ts`) | 64 | −0,14 ± 0,26 / +0,03 ± 0,25 / +0,05 ± 0,38 | −0,28 ± 0,77 | +0,08 ± 0,87 | rejeté (calibration ≈ 0,45-0,75 au lieu de ≈ 1,0, sans effet mesurable) |
+| HEAL | θ `roleUtility.healer` 2 000 → 4 000 | 32 | 0 / −0,03 / 0 | −0,06 | −0,06 | sans effet (30 combats identiques) |
+| RETW | *Retraite Anticipée* (−100 PM à TOUS, alliés compris) seulement au tour d'arrivée d'une vague (`generate.ts`) | 32 | 0,00 ± 0,23 / +0,16 ± 0,23 / −0,03 ± 0,32 | **−0,88 ± 0,77** (+6 / −18) | +0,28 ± 0,72 | rejeté : la Retraite hors arrivée de vague aide à survivre |
+| REZ | menace des monstres morts que le prochain tour du Vortex ressuscite (`extraIncoming`, `model.ts`, poids 0,5 ; dégâts + 0,5 × Pacifiste) | 128 | **−0,21 ± 0,17** / +0,08 ± 0,18 / +0,23 ± 0,28 (+52 / −39) | +0,41 ± 0,58 | +0,20 ± 0,57 | **rejeté** : ms 1 +0,84 ± 0,60, puis ms 2 / 3 / 4 +0,03 / +0,09 / −0,06 ; corruption au tour 7 dégradée (l'équipe s'écarte des zombies) |
+| REZP | REZ limité aux poseurs de Pacifiste (Méjaire : part Pacifiste seule, sans les dégâts) | 64 | −0,11 ± 0,15 / +0,09 ± 0,20 / +0,16 ± 0,32 | +0,11 ± 0,72 | +0,27 ± 0,70 | neutre, rejeté |
+| REZ1 | REZ, poids 1,0 | 32 | −0,41 ± 0,37 / −0,16 ± 0,34 / −0,34 ± 0,45 | −0,75 ± 0,88 | −0,19 ± 1,04 | rejeté (trop fort : l'équipe fuit les zombies) |
+| REZ+DOT | REZ (0,5) + DOT | 32 | −0,13 ± 0,39 / +0,38 ± 0,40 / +0,47 ± 0,65 | +0,31 ± 1,15 | +0,22 ± 1,32 | voir REZ |
+| FKEY | `fast` : décision clé connue avant la recherche (contrat de corruption au créneau courant, risque de mort ≥ 0,3, fenêtre de kill d'équipe, arrivée de vague) ⇒ 2 × les nœuds du tour (≤ 20 par combat ; `controller.ts`) | 64 | **−0,28 ± 0,23** / −0,13 ± 0,27 / −0,14 ± 0,37 | −0,55 ± 0,85 | −0,53 ± 0,84 | rejeté (ms 1 +0,28, ms 2 −0,56) : plus de nœuds n'aide pas (cf. largeur 4) |
+
+### W3 avec les stuffs Vortex de la campagne CP5 (presets `*_vortex`, ajoutés par l'autre agent)
+
+Arbres figés `base` / `w3` + `data/ai/presets.json` et `src/optimizer/` du dépôt (stuffs seulement ; l'IA reste celle
+de l'arbre), équipe `cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex,eniripsa_soin_vortex`, `fast`,
+`masterSeed` 1, n = 32, appariés.
+
+| Bras | Victoires | Tours | Corr. t7 / t12 / t17 / total | Premier mort | Kills |
+|---|---|---|---|---|---|
+| Équipe méta, stuffs des presets, IA `base-tuning-r3` | 0 | 14,31 | 1,34 / 2,34 / 2,59 / 2,63 | 9,8 | 9,7 |
+| Stuffs `*_vortex`, IA `base-tuning-r3` | 0 | 20,28 | 1,75 / 3,06 / 3,97 / 4,25 | 12,7 | 16,0 |
+| **Stuffs `*_vortex`, IA W3** | 0 | **22,03** | **1,91 / 3,53 / 4,94 / 5,25** | **16,3** | 20,6 |
+
+W3 sur l'équipe stuffée : corrompus **+1,00 ± 0,69** (+20 / −6), t12 +0,47 ± 0,37, t17 **+0,97 ± 0,52**, tours
++1,75 ± 1,28, premier mort **+3,59 ± 1,39** : le gain de l'IA est plus grand avec une équipe plus solide (elle vit
+assez longtemps pour corrompre la vague 2). Stuffs + W3 contre le départ du tour : 2,63 → 5,25 corrompus,
+14,3 → 22,0 tours, premier mort 9,8 → 16,3 ; toujours 0 victoire.
+
+### Bilan des priorités du tour
+
+(a) calibration de la menace : DOT neutre (+0,11 ± 0,24), MDR rejeté ; (b) Méjaires : MJ, MJC, REZP neutres, PAC
+rejeté ; (c) arrivée des vagues : *Retraite Anticipée* réservée aux arrivées de vague (RETW) −0,9 tour, sans elle
+(NR) −0,6 tour : la Retraite actuelle est déjà utile ; (d) oracle sur dégâts réalisés (ORC) neutre ; (e) suite de la
+ligne de kill : non retravaillée — avec W3, les PA restants aux tours avec kill passent de 1,77 à 0,97 (le faisceau
+de largeur 3 trouve des plans complets) ; (f) **largeur 2-3 en `fast` avec la ligne de kill : gardé (W3)**.
+
+### Changements gardés (tour 3)
+
+1. **`fast` en largeur 3** (`data/ai/theta-default.json` : `tactical.fast` largeur 1 → 3, nœuds 40 → 120) ; la ligne
+   de kill du tour 2 reste active en `fast` (`src/ai/tactical/turnSearch.ts` : faisceau de largeur ≤ 3) et absente en
+   `standard` ; `src/ai/tactical/rollout.ts` : le tour imbriqué d'un allié dans les rollouts `standard`/`deep` garde
+   la largeur 1 (`standard` inchangé à l'exception des invocations, qui jouent en `fast`).
+2. Tests ajustés : `tests/ai-contracts.test.ts`, `tests/ai-team-core.test.ts`, `tests/ai-puzzles-generic.test.ts`
+   (voir plus haut).
+
+Aucun autre changement n'est gardé : DOT, MDR, MJ, MJC, REZ (et REZP, REZ1, REZ+DOT), ORC, HEAL, RETW, FKEY, largeur 4
+n'existent que dans les arbres d'expérience (`.cache/tuning/r3/trees`, correctifs `patches/*.py`).
+
+### Mesure finale du tour 3
+
+Code du dépôt (W3) contre `base-tuning-r3`, même moteur, `fast`, apparié. Graines inédites : `masterSeed` 5 + 6
+(n = 64) ; cumul `masterSeed` 1-6 (n = 192).
+
+| Métrique | Avant | Après | Δ apparié, inédites (n = 64) | Δ apparié, cumul (n = 192) |
+|---|---|---|---|---|
+| Victoires | 0 / 192 | 0 / 192 | — | — |
+| Tours survécus | 14,52 | **15,92** | +1,55 ± 0,72 (+39 / −17) | **+1,41 ± 0,44** (+123 / −50) |
+| Corrompus au tour 7 | 1,41 | **1,76** | +0,19 ± 0,24 | **+0,35 ± 0,13** |
+| Corrompus au tour 12 | 2,42 | **2,70** | +0,31 ± 0,26 | **+0,28 ± 0,15** |
+| Corrompus au tour 17 / total | 2,59 / 2,60 | **3,04 / 3,06** | +0,50 ± 0,30 (+31 / −9) | **+0,46 ± 0,19** (+94 / −38) |
+| Premier mort (tour) | 10,0 | **10,9** | +0,80 ± 0,73 | **+0,89 ± 0,44** |
+| Dégâts infligés aux monstres de vague | 52 700 | 64 300 | +10 100 ± 4 000 | +11 600 ± 2 500 |
+| Kills de monstres de vague | 9,6 | 12,3 | +2,9 ± 1,0 | +2,7 ± 0,6 |
+| PA inutilisés par tour de personnage | 2,72 | 1,43 | −1,31 ± 0,10 | −1,29 ± 0,07 |
+| Temps par tour de jeu (lots consécutifs) | 328 ms | 666 ms | ≈ 2 × | |
+
+Avec les stuffs `*_vortex` (n = 32, ms 1) : 4,25 → **5,25** corrompus (+1,00 ± 0,69), 20,3 → 22,0 tours, premier mort
+12,7 → 16,3 (voir le tableau précédent).
+
+### Modes d'échec restants
+
+1. **Vague 2** : Harpilles corrompues à 2 % (2 par vague 2, résistance Feu 43 % face au Crâ et à l'Eniripsa Feu, à
+   distance, principales sources de dégâts subis : ≈ 15 000 par combat avec le poison) ; Buboxor et Brabuzar 16 %.
+   2,2 monstres sur 4 marqués (tour 11,2) mais l'étoile arrive 3 tours plus tard, quand l'équipe meurt.
+2. **Pacifiste** : première cause des étoiles manquées (47 sur 227 avec W3 ; Iop 21, Enutrof 15). Mécanisme typique :
+   la Méjaire marquée ressuscite juste après le Vortex et pose Pacifiste sur son futur tueur avant son tour. Les trois
+   corrections essayées (menace intrinsèque, retrait de PM valorisé, menace des ressuscités) sont neutres ou
+   instables ; la Méjaire de la vague 1 reste la dernière corrompue (78 %, tour 8,6).
+3. **Survie** : premier mort au tour ≈ 11, l'Eniripsa dans 19 combats sur 32 (fins de tour à 2,9 cases du monstre le
+   plus proche en vague 2) ; θ `roleUtility.healer` n'y change rien (30 combats identiques sur 32).
+4. **Étoiles « à portée sans kill »** (43 sur 227) : l'oracle du planificateur reste analytique (calibration en ligne
+   ≈ 1,0 car elle compare des grandeurs différentes) ; le remplacer par une calibration sur dégâts réalisés (ORC) ne
+   change pas le résultat.
+5. **Coût** : `fast` coûte ≈ 2 × plus cher par tour de jeu (campagnes de l'optimiseur plus lentes).
+
+### Ce qui bloque la victoire (preuves)
+
+- **Le moteur** : aucune infidélité trouvée ce tour. *Retraite Anticipée* retire bien 100 PM aux alliés aussi (masque
+  `A,g`, zone C63 ; description du sort : « Pesanteur sur tout le monde sauf le lanceur ») : fidèle, et utile malgré
+  tout (RETW, NR).
+- **La recherche tactique** était un verrou majeur et peu coûteux à lever : un faisceau de largeur 3 vaut +0,46
+  corrompu et +1,4 tour (n = 192), autant que les gains cumulés des tours 1-2 de corrections du modèle ; plus de nœuds
+  sans largeur (N80, FKEY) ou une largeur 4 n'apportent rien.
+- **Le stuff** est le second verrou : les stuffs `*_vortex` valent +1,6 corrompu et +6 tours avec l'IA de départ ; IA
+  et stuff se renforcent (W3 vaut +1,0 corrompu avec ces stuffs contre +0,46 sans).
+- **Rythme** : même stuffée et avec W3, l'équipe corrompt 5,25 monstres sur 19 en 22 tours ; la victoire exige les 19
+  avant le ~26ᵉ tour du Vortex, puis le burst. La vague 2 (deux Harpilles résistantes au Feu) et la vague 3 (deux
+  Méjaires) ne sont pas tenues : il faut ≈ 2 × plus de dégâts utiles par tour (équipe ou composition : élément Feu
+  doublé face aux Harpilles) ET une gestion des Méjaires (retrait de PM ciblé, placement hors des lignes) que les
+  heuristiques de valeur actuelles ne produisent pas.
+
+### Pistes pour le tour 4
+
+- **Équipe** : mesurer W3 sur les stuffs `*_vortex` à plus grande échelle (n ≥ 64) et une composition sans double Feu
+  (Harpilles : Feu 43 %, faibles Neutre) ; le gain de l'IA y est double.
+- **Coût de `fast`** : largeur 3 avec 80-90 nœuds (W2n60 était neutre, N80 aussi : chercher le minimum qui garde le
+  gain) pour les campagnes de l'optimiseur.
+- **Méjaire / Pacifiste** : séquence d'équipe explicite au tour qui précède une étoile de Méjaire (Enutrof : retrait de
+  PM « juste assez » sur la Méjaire ressuscitée ; tueur hors des lignes 1-3 + PM) via une intention du planificateur
+  (et non une pente de valeur, neutre trois fois).
+- **Vague 2** : pré-dégâts coordonnés sur une Harpille par les personnages non Feu (Iop, Enutrof), mesurés avec un
+  oracle « dégâts réalisés par paire élément × monstre ».
+- **Ressuscités** : modèle de menace plus fin que REZ (case de résurrection réelle de la zone C63,3, ligne de vue,
+  exemption du tueur prévu quand le ressuscité n'est pas un poseur de Pacifiste) ; REZ global était instable.
+
+(Suite en cours : `standard` et diagnostic « équipe ×2 / ×0,5 » avec W3.)

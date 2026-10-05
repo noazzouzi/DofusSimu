@@ -393,8 +393,9 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   const rolloutsWanted = ctx.nested || ctx.noRollouts ? 0 : b.rollouts
   const reserve = Math.min(Math.floor(ctx.nodes.remaining() / 3), b.endCells * Math.min(nFinals + 1, 5) + rolloutsWanted * 14)
   const bctx: TacticalContext = { ...ctx, nodes: subBudget(ctx.nodes, ctx.nodes.remaining() - reserve) }
-  // Ligne de kill (fast) : explorée d'abord, sa feuille finale est toujours finalisée.
-  const killTarget = b.width <= 1 && !ctx.nested ? killLineTarget(ctx) : undefined
+  // Ligne de kill (fast, faisceau de largeur ≤ 3 ; réglage tour 3 : `fast` passe en largeur 3) : explorée d'abord, sa
+  // feuille finale est toujours finalisée. Absente en `standard` (largeur 6 : mesurée neutre au tour 2).
+  const killTarget = b.width <= 3 && !ctx.nested ? killLineTarget(ctx) : undefined
   const killLeaf = killTarget !== undefined ? killLine(bctx, rootNode, killTarget, b, seen, leaves) : undefined
   for (let depth = 0; depth < b.maxDepth && beam.length && !bctx.nodes.exhausted(); depth++) {
     const children: SearchNode[] = []

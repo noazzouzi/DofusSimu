@@ -59,7 +59,7 @@ describe('θ (annexe A) : data/ai/theta-default.json et loadTheta', () => {
     expect(t.value.incoming).toBe(0.5)
     expect(t.value.roleUtility).toEqual({ healer: 3000, mpLock: 1500, apLock: 1500, placer: 1000 })
     expect(t.value.control).toBe(0.15)
-    expect(t.tactical.fast).toEqual({ width: 1, topK: 6, depth: 8, rollouts: 0, nodes: 60 })
+    expect(t.tactical.fast).toEqual({ width: 3, topK: 6, depth: 8, rollouts: 0, nodes: 60 })
     expect(loadTheta().value.incoming).toBe(0.8)
     expect(defaultTheta()).not.toBe(defaultTheta())
   })
@@ -136,7 +136,8 @@ describe('socle (référence S0) et configuration', () => {
     const theta = loadTheta()
     const modes: AIMode[] = ['scripted', 'fast', 'standard', 'deep']
     const b = Object.fromEntries(modes.map(m => [m, budgetFor(m, theta)]))
-    expect(b.fast).toMatchObject({ maxNodes: 40, width: 1, topK: 6, maxDepth: 8, rollouts: 0 })
+    // Réglage du tour 3 (docs/tuning-log.md) : `fast` en largeur 3, 120 nœuds (avant : largeur 1, 40 nœuds).
+    expect(b.fast).toMatchObject({ maxNodes: 120, width: 3, topK: 6, maxDepth: 8, rollouts: 0 })
     expect(b.standard).toMatchObject({ maxNodes: 1500, width: 6, topK: 12, maxDepth: 6, rollouts: 3, keyDecisionBoost: 2, maxKeyDecisions: 12 })
     expect(b.deep).toMatchObject({ maxNodes: 15000, width: 12, topK: 20, mctsIterations: 1500, maxKeyDecisions: 30 })
     expect(b.scripted.maxNodes).toBe(0)

@@ -11,9 +11,9 @@
  *  - panoplies gardées à part (« la dominance ne voit pas les bonus ») : blocs de panoplie (objets d'une même panoplie
  *    dans des emplacements distincts) classés par valeur avec leur meilleur palier de bonus ; leurs objets rejoignent
  *    les viviers ;
- *  - sorts passifs (effet 1175, Dofus, prysmaradites, légendaires) : NON simulés par le moteur ⇒ ignorés (politique
- *    'ignore', défaut : seules les lignes de caractéristiques comptent, objet marqué `passive`) ou objets exclus
- *    ('exclude').
+ *  - sorts passifs (effet 1175, Dofus, prysmaradites, légendaires) : lancés par le moteur en combat mais NON modélisés
+ *    par le proxy ⇒ ignorés (politique 'ignore', défaut : seules les lignes de caractéristiques comptent, objet marqué
+ *    `passive`) ou objets exclus ('exclude') ; pour garder un passif, imposer l'objet (`StuffSearchOptions.fixed`).
  */
 import type { StatKey } from '../../core/types'
 import type { EquipmentSlot, ItemData } from '../../data/model'

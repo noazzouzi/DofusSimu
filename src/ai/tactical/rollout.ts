@@ -136,7 +136,9 @@ export function teamRollout(ctx: TacticalContext, f: FinalLeaf): number | undefi
   const plan = searchTurn({
     view,
     cfg: ctx.cfg,
-    budget: { ...fastBudget(ctx.cfg, nodes.max), maxDepth: 3 },
+    // Largeur 1 : le tour imbriqué de l'allié garde le faisceau glouton d'origine (θ `fast` est passé en largeur 3 au
+    // réglage du tour 3 ; ces rollouts ne servent qu'en `standard`/`deep`, non re-mesurés).
+    budget: { ...fastBudget(ctx.cfg, nodes.max), maxDepth: 3, width: 1 },
     nodes,
     perception: ctx.perception,
     bb: ctx.bb,

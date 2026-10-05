@@ -1,0 +1,9079 @@
+{
+ "generated": "2026-10-05T11:19:26.740Z",
+ "scenario": "vortex",
+ "ai": "fast",
+ "snapshot": "Tous les combats de ce rapport tournent dans l'instantané figé `.cache/stuff/snap-1` (src/ et data/ai/ du tag `base-stuff-cp5`, e75cfd1, + l'optimiseur de stuff) : seuls les stuffs varient entre les bras.",
+ "team": "cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex,eniripsa_soin_vortex",
+ "comparisons": [
+  {
+   "label": "Recommandé — équilibré (`*_vortex`)",
+   "baseLabel": "Référence : stuffs des presets (n = 64, graines m21 + m22)",
+   "base": [
+    "out/snap-1/base.m21.jsonl",
+    "out/snap-1/base.m22.jsonl"
+   ],
+   "arm": [
+    "out/snap-1/bal.m21.jsonl",
+    "out/snap-1/bal.m22.jsonl"
+   ],
+   "n": 64,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.056626022971156334
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.421875,
+     "arm": 1.6875,
+     "diff": 0.265625,
+     "ci": 0.2870546822906744,
+     "plus": 21,
+     "minus": 15
+    },
+    "corr12": {
+     "base": 2.328125,
+     "arm": 3.15625,
+     "diff": 0.828125,
+     "ci": 0.2745426278629402,
+     "plus": 37,
+     "minus": 7
+    },
+    "corr17": {
+     "base": 2.46875,
+     "arm": 4.171875,
+     "diff": 1.703125,
+     "ci": 0.42699292742321204,
+     "plus": 47,
+     "minus": 6
+    },
+    "corrTotal": {
+     "base": 2.484375,
+     "arm": 4.328125,
+     "diff": 1.84375,
+     "ci": 0.47261701226022085,
+     "plus": 46,
+     "minus": 6
+    },
+    "rounds": {
+     "base": 14.453125,
+     "arm": 20.515625,
+     "diff": 6.0625,
+     "ci": 0.8574999999999999,
+     "plus": 62,
+     "minus": 1
+    },
+    "firstDeath": {
+     "base": 10.046875,
+     "arm": 13.515625,
+     "diff": 3.46875,
+     "ci": 1.045815155884527,
+     "plus": 48,
+     "minus": 10
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 32500.65625,
+     "arm": 46276.453125,
+     "diff": 13775.796875,
+     "ci": 1934.7958915658733,
+     "plus": 61,
+     "minus": 3
+    },
+    "dealtWave": {
+     "base": 53169.15625,
+     "arm": 82646.65625,
+     "diff": 29477.5,
+     "ci": 4726.718501507621,
+     "plus": 60,
+     "minus": 4
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Offensif, Dofus à passif gardés (`*_vortex_off`)",
+   "baseLabel": "Référence : stuffs des presets (n = 64, graines m21 + m22)",
+   "base": [
+    "out/snap-1/base.m21.jsonl",
+    "out/snap-1/base.m22.jsonl"
+   ],
+   "arm": [
+    "out/snap-1/v2offk.m21.jsonl",
+    "out/snap-1/v2offk.m22.jsonl"
+   ],
+   "n": 64,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.056626022971156334
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.421875,
+     "arm": 2,
+     "diff": 0.578125,
+     "ci": 0.2822430769990451,
+     "plus": 34,
+     "minus": 11
+    },
+    "corr12": {
+     "base": 2.328125,
+     "arm": 3.21875,
+     "diff": 0.890625,
+     "ci": 0.23956204615575757,
+     "plus": 40,
+     "minus": 4
+    },
+    "corr17": {
+     "base": 2.46875,
+     "arm": 4.328125,
+     "diff": 1.859375,
+     "ci": 0.37770833333333337,
+     "plus": 52,
+     "minus": 3
+    },
+    "corrTotal": {
+     "base": 2.484375,
+     "arm": 4.453125,
+     "diff": 1.96875,
+     "ci": 0.4070918627560888,
+     "plus": 51,
+     "minus": 3
+    },
+    "rounds": {
+     "base": 14.453125,
+     "arm": 18.328125,
+     "diff": 3.875,
+     "ci": 0.7802723883362783,
+     "plus": 56,
+     "minus": 6
+    },
+    "firstDeath": {
+     "base": 10.046875,
+     "arm": 12.5,
+     "diff": 2.453125,
+     "ci": 0.723805079702248,
+     "plus": 49,
+     "minus": 9
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 32500.65625,
+     "arm": 40091.6875,
+     "diff": 7591.03125,
+     "ci": 1718.4944703856359,
+     "plus": 56,
+     "minus": 8
+    },
+    "dealtWave": {
+     "base": 53169.15625,
+     "arm": 80022.984375,
+     "diff": 26853.828125,
+     "ci": 4902.217709580395,
+     "plus": 58,
+     "minus": 6
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Offensif, Dofus libres (proxy R2)",
+   "baseLabel": "Référence : stuffs des presets (n = 64, graines m21 + m22)",
+   "base": [
+    "out/snap-1/base.m21.jsonl",
+    "out/snap-1/base.m22.jsonl"
+   ],
+   "arm": [
+    "out/snap-1/v2off.m21.jsonl",
+    "out/snap-1/v2off.m22.jsonl"
+   ],
+   "n": 64,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.056626022971156334
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.421875,
+     "arm": 2.15625,
+     "diff": 0.734375,
+     "ci": 0.21931801254114994,
+     "plus": 39,
+     "minus": 5
+    },
+    "corr12": {
+     "base": 2.328125,
+     "arm": 3.265625,
+     "diff": 0.9375,
+     "ci": 0.29242401672153323,
+     "plus": 40,
+     "minus": 6
+    },
+    "corr17": {
+     "base": 2.46875,
+     "arm": 4.265625,
+     "diff": 1.796875,
+     "ci": 0.4258757827015604,
+     "plus": 49,
+     "minus": 5
+    },
+    "corrTotal": {
+     "base": 2.484375,
+     "arm": 4.4375,
+     "diff": 1.953125,
+     "ci": 0.46696051946188244,
+     "plus": 48,
+     "minus": 5
+    },
+    "rounds": {
+     "base": 14.453125,
+     "arm": 18.0625,
+     "diff": 3.609375,
+     "ci": 0.8834864499762668,
+     "plus": 54,
+     "minus": 6
+    },
+    "firstDeath": {
+     "base": 10.046875,
+     "arm": 12.5,
+     "diff": 2.453125,
+     "ci": 0.8429936167298198,
+     "plus": 44,
+     "minus": 10
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 32500.65625,
+     "arm": 39557.671875,
+     "diff": 7057.015625,
+     "ci": 1725.6809378664611,
+     "plus": 55,
+     "minus": 9
+    },
+    "dealtWave": {
+     "base": 53169.15625,
+     "arm": 79988.5625,
+     "diff": 26819.40625,
+     "ci": 5309.43752282592,
+     "plus": 59,
+     "minus": 5
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Équilibré vs offensif (`*_vortex` − `*_vortex_off`)",
+   "baseLabel": "Offensif `*_vortex_off` (n = 64), référence de la ligne suivante",
+   "base": [
+    "out/snap-1/v2offk.m21.jsonl",
+    "out/snap-1/v2offk.m22.jsonl"
+   ],
+   "arm": [
+    "out/snap-1/bal.m21.jsonl",
+    "out/snap-1/bal.m22.jsonl"
+   ],
+   "n": 64,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.056626022971156334
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 2,
+     "arm": 1.6875,
+     "diff": -0.3125,
+     "ci": 0.3204088100467207,
+     "plus": 17,
+     "minus": 31
+    },
+    "corr12": {
+     "base": 3.21875,
+     "arm": 3.15625,
+     "diff": -0.0625,
+     "ci": 0.24255726700673755,
+     "plus": 19,
+     "minus": 22
+    },
+    "corr17": {
+     "base": 4.328125,
+     "arm": 4.171875,
+     "diff": -0.15625,
+     "ci": 0.4477724574056684,
+     "plus": 22,
+     "minus": 29
+    },
+    "corrTotal": {
+     "base": 4.453125,
+     "arm": 4.328125,
+     "diff": -0.125,
+     "ci": 0.4929080373998108,
+     "plus": 22,
+     "minus": 27
+    },
+    "rounds": {
+     "base": 18.328125,
+     "arm": 20.515625,
+     "diff": 2.1875,
+     "ci": 0.8094892937319595,
+     "plus": 40,
+     "minus": 14
+    },
+    "firstDeath": {
+     "base": 12.5,
+     "arm": 13.515625,
+     "diff": 1.015625,
+     "ci": 1.0389813930333134,
+     "plus": 37,
+     "minus": 21
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 40091.6875,
+     "arm": 46276.453125,
+     "diff": 6184.765625,
+     "ci": 2389.5823104520573,
+     "plus": 44,
+     "minus": 20
+    },
+    "dealtWave": {
+     "base": 80022.984375,
+     "arm": 82646.65625,
+     "diff": 2623.671875,
+     "ci": 4870.022952329987,
+     "plus": 37,
+     "minus": 27
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Défensif (`*_vortex_def`, proxy R2)",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/v2def.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 0.90625,
+     "diff": -0.5,
+     "ci": 0.37338037338056,
+     "plus": 5,
+     "minus": 16
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.3125,
+     "diff": 0,
+     "ci": 0.3836118670168182,
+     "plus": 10,
+     "minus": 13
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 2.75,
+     "diff": 0.3125,
+     "ci": 0.4774915554058218,
+     "plus": 14,
+     "minus": 12
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 2.96875,
+     "diff": 0.53125,
+     "ci": 0.5205378247698518,
+     "plus": 15,
+     "minus": 10
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 22.46875,
+     "diff": 8.40625,
+     "ci": 0.9472853563583506,
+     "plus": 32,
+     "minus": 0
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 18.28125,
+     "diff": 8.71875,
+     "ci": 0.9690096946400749,
+     "plus": 32,
+     "minus": 0
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 53083.28125,
+     "diff": 21158.4375,
+     "ci": 2710.336520699096,
+     "plus": 32,
+     "minus": 0
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 89206.03125,
+     "diff": 36950.25,
+     "ci": 6894.819919410278,
+     "plus": 31,
+     "minus": 1
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Crâ seul en `vortex_cra_feu`",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/pmCraBal.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.3125,
+     "diff": -0.09375,
+     "ci": 0.44318444196155415,
+     "plus": 9,
+     "minus": 13
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.46875,
+     "diff": 0.15625,
+     "ci": 0.3946521922181361,
+     "plus": 12,
+     "minus": 8
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 2.5625,
+     "diff": 0.125,
+     "ci": 0.4636035222110069,
+     "plus": 12,
+     "minus": 12
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 2.5625,
+     "diff": 0.125,
+     "ci": 0.4636035222110069,
+     "plus": 12,
+     "minus": 12
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 14.6875,
+     "diff": 0.625,
+     "ci": 1.040377955515485,
+     "plus": 17,
+     "minus": 13
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 9.71875,
+     "diff": 0.15625,
+     "ci": 1.2261355623823613,
+     "plus": 15,
+     "minus": 13
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 31798.90625,
+     "diff": -125.9375,
+     "ci": 2430.534597987843,
+     "plus": 17,
+     "minus": 15
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 53000.8125,
+     "diff": 745.03125,
+     "ci": 6463.1313614604405,
+     "plus": 15,
+     "minus": 17
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Enutrof seul en `vortex_enutrof_eau`",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/pmEnuBal.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.75,
+     "diff": 0.34375,
+     "ci": 0.45397566147281215,
+     "plus": 14,
+     "minus": 10
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.90625,
+     "diff": 0.59375,
+     "ci": 0.3504759868217931,
+     "plus": 15,
+     "minus": 4
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 3.375,
+     "diff": 0.9375,
+     "ci": 0.5348709144843177,
+     "plus": 19,
+     "minus": 6
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 3.375,
+     "diff": 0.9375,
+     "ci": 0.5348709144843177,
+     "plus": 19,
+     "minus": 6
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 15.96875,
+     "diff": 1.90625,
+     "ci": 0.9655064847930432,
+     "plus": 25,
+     "minus": 7
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 10.6875,
+     "diff": 1.125,
+     "ci": 0.9670719858451342,
+     "plus": 19,
+     "minus": 9
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 33129.3125,
+     "diff": 1204.46875,
+     "ci": 2011.256447299744,
+     "plus": 20,
+     "minus": 12
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 62779.71875,
+     "diff": 10523.9375,
+     "ci": 5641.764486392743,
+     "plus": 26,
+     "minus": 6
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Iop seul en `vortex_iop_terre`",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/pmIopBal.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.5,
+     "diff": 0.09375,
+     "ci": 0.35595785984280626,
+     "plus": 14,
+     "minus": 10
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.625,
+     "diff": 0.3125,
+     "ci": 0.41687175060396314,
+     "plus": 11,
+     "minus": 6
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 2.84375,
+     "diff": 0.40625,
+     "ci": 0.5556233331191659,
+     "plus": 12,
+     "minus": 9
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 2.84375,
+     "diff": 0.40625,
+     "ci": 0.5556233331191659,
+     "plus": 12,
+     "minus": 9
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 14.46875,
+     "diff": 0.40625,
+     "ci": 1.2126382320605096,
+     "plus": 17,
+     "minus": 14
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 10.21875,
+     "diff": 0.65625,
+     "ci": 1.101346843165954,
+     "plus": 15,
+     "minus": 10
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 30080.3125,
+     "diff": -1844.53125,
+     "ci": 2375.070319617372,
+     "plus": 11,
+     "minus": 21
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 54797.9375,
+     "diff": 2542.15625,
+     "ci": 7407.799742720313,
+     "plus": 18,
+     "minus": 14
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Eniripsa seul en `vortex_eniripsa_feu`",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/pmEniBal.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.09375,
+     "diff": -0.3125,
+     "ci": 0.39785893715105575,
+     "plus": 8,
+     "minus": 18
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.40625,
+     "diff": 0.09375,
+     "ci": 0.3666758231383595,
+     "plus": 9,
+     "minus": 6
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 2.75,
+     "diff": 0.3125,
+     "ci": 0.44386657941613555,
+     "plus": 15,
+     "minus": 8
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 2.78125,
+     "diff": 0.34375,
+     "ci": 0.44536360417007,
+     "plus": 16,
+     "minus": 8
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 17.9375,
+     "diff": 3.875,
+     "ci": 1.105350258311087,
+     "plus": 27,
+     "minus": 3
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 9.9375,
+     "diff": 0.375,
+     "ci": 1.0253807318071129,
+     "plus": 13,
+     "minus": 15
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 44588.46875,
+     "diff": 12663.625,
+     "ci": 2959.698985920778,
+     "plus": 29,
+     "minus": 3
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 59413.5625,
+     "diff": 7157.78125,
+     "ci": 6563.695001047177,
+     "plus": 19,
+     "minus": 13
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Exploration — v1 défensif (proxy R1)",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/def.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.09375,
+     "diff": -0.3125,
+     "ci": 0.3674999999999999,
+     "plus": 8,
+     "minus": 15
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.4375,
+     "diff": 0.125,
+     "ci": 0.33799575297961665,
+     "plus": 11,
+     "minus": 7
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 2.90625,
+     "diff": 0.46875,
+     "ci": 0.4126409216763838,
+     "plus": 15,
+     "minus": 7
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 3.15625,
+     "diff": 0.71875,
+     "ci": 0.4758413071568863,
+     "plus": 17,
+     "minus": 6
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 22.34375,
+     "diff": 8.28125,
+     "ci": 1.071493883858028,
+     "plus": 32,
+     "minus": 0
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 18.78125,
+     "diff": 9.21875,
+     "ci": 0.986829779705144,
+     "plus": 32,
+     "minus": 0
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 54209.6875,
+     "diff": 22284.84375,
+     "ci": 2569.819388908181,
+     "plus": 32,
+     "minus": 0
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 84664.0625,
+     "diff": 32408.28125,
+     "ci": 7292.343767441596,
+     "plus": 31,
+     "minus": 1
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Exploration — v1 offensif (proxy R1)",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/off.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 2.125,
+     "diff": 0.71875,
+     "ci": 0.3545953367186047,
+     "plus": 18,
+     "minus": 3
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 3.125,
+     "diff": 0.8125,
+     "ci": 0.3778907398843249,
+     "plus": 15,
+     "minus": 0
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 3.84375,
+     "diff": 1.40625,
+     "ci": 0.5959767244183174,
+     "plus": 20,
+     "minus": 2
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 3.875,
+     "diff": 1.4375,
+     "ci": 0.6093305091285341,
+     "plus": 20,
+     "minus": 2
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 16.71875,
+     "diff": 2.65625,
+     "ci": 1.0398543777934144,
+     "plus": 24,
+     "minus": 4
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 10.4375,
+     "diff": 0.875,
+     "ci": 1.196210077029573,
+     "plus": 19,
+     "minus": 10
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 39049.15625,
+     "diff": 7124.3125,
+     "ci": 2541.461039410863,
+     "plus": 28,
+     "minus": 4
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 71422.1875,
+     "diff": 19166.40625,
+     "ci": 6307.757471265392,
+     "plus": 27,
+     "minus": 5
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Exploration — v2 équilibré (proxy R2, poussée)",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/v2bal.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.4375,
+     "diff": 0.03125,
+     "ci": 0.3783708045367751,
+     "plus": 9,
+     "minus": 10
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.8125,
+     "diff": 0.5,
+     "ci": 0.329290537465801,
+     "plus": 14,
+     "minus": 4
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 3.625,
+     "diff": 1.1875,
+     "ci": 0.39785893715105575,
+     "plus": 22,
+     "minus": 2
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 3.71875,
+     "diff": 1.28125,
+     "ci": 0.4507654220609722,
+     "plus": 22,
+     "minus": 2
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 20.1875,
+     "diff": 6.125,
+     "ci": 0.9427392312111107,
+     "plus": 31,
+     "minus": 0
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 13.3125,
+     "diff": 3.75,
+     "ci": 1.09920205662577,
+     "plus": 27,
+     "minus": 3
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 46547.46875,
+     "diff": 14622.625,
+     "ci": 2355.73329163112,
+     "plus": 32,
+     "minus": 0
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 79998.84375,
+     "diff": 27743.0625,
+     "ci": 7232.049179258441,
+     "plus": 29,
+     "minus": 3
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Exploration — v2 équilibré, Dofus à passif gardés",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/v2balk.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.65625,
+     "diff": 0.25,
+     "ci": 0.48203198930120533,
+     "plus": 12,
+     "minus": 10
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.8125,
+     "diff": 0.5,
+     "ci": 0.3935774711622244,
+     "plus": 14,
+     "minus": 5
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 3.71875,
+     "diff": 1.28125,
+     "ci": 0.5919016220977397,
+     "plus": 22,
+     "minus": 3
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 3.84375,
+     "diff": 1.40625,
+     "ci": 0.6276257344150253,
+     "plus": 22,
+     "minus": 3
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 19.34375,
+     "diff": 5.28125,
+     "ci": 0.9769698618110472,
+     "plus": 32,
+     "minus": 0
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 13.8125,
+     "diff": 4.25,
+     "ci": 1.3200989698967955,
+     "plus": 27,
+     "minus": 2
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 46495.96875,
+     "diff": 14571.125,
+     "ci": 2265.60597714817,
+     "plus": 32,
+     "minus": 0
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 73490.75,
+     "diff": 21234.96875,
+     "ci": 6338.543555280683,
+     "plus": 26,
+     "minus": 6
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Exploration — v2 défensif, Dofus à passif gardés",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/v2defk.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 0.84375,
+     "diff": -0.5625,
+     "ci": 0.4026963055655329,
+     "plus": 5,
+     "minus": 16
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.28125,
+     "diff": -0.03125,
+     "ci": 0.4264859577728431,
+     "plus": 10,
+     "minus": 8
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 2.71875,
+     "diff": 0.28125,
+     "ci": 0.5719371000127267,
+     "plus": 14,
+     "minus": 8
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 2.75,
+     "diff": 0.3125,
+     "ci": 0.5866648147270378,
+     "plus": 14,
+     "minus": 8
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 20.40625,
+     "diff": 6.34375,
+     "ci": 1.0435718893811061,
+     "plus": 30,
+     "minus": 0
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 17.34375,
+     "diff": 7.78125,
+     "ci": 1.10529551496567,
+     "plus": 32,
+     "minus": 0
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 53832.46875,
+     "diff": 21907.625,
+     "ci": 2681.719550215658,
+     "plus": 32,
+     "minus": 0
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 73238.875,
+     "diff": 20983.09375,
+     "ci": 6978.535588945591,
+     "plus": 26,
+     "minus": 6
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Exploration — mix1 : Crâ/Iop équilibré + Enutrof/Eniripsa défensif (R1)",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/mix1.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.125,
+     "diff": -0.28125,
+     "ci": 0.3859706422690051,
+     "plus": 7,
+     "minus": 11
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.59375,
+     "diff": 0.28125,
+     "ci": 0.4149805062463972,
+     "plus": 14,
+     "minus": 9
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 3.21875,
+     "diff": 0.78125,
+     "ci": 0.6143741488360854,
+     "plus": 17,
+     "minus": 7
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 3.5,
+     "diff": 1.0625,
+     "ci": 0.7464365614856904,
+     "plus": 17,
+     "minus": 7
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 21.59375,
+     "diff": 7.53125,
+     "ci": 1.150783021468426,
+     "plus": 31,
+     "minus": 0
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 12.84375,
+     "diff": 3.28125,
+     "ci": 1.2233688737292923,
+     "plus": 25,
+     "minus": 5
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 49757.0625,
+     "diff": 17832.21875,
+     "ci": 2501.499511531249,
+     "plus": 32,
+     "minus": 0
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 80822.8125,
+     "diff": 28567.03125,
+     "ci": 8701.451525386528,
+     "plus": 27,
+     "minus": 5
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Exploration — mix2 : Crâ/Iop offensif + Enutrof/Eniripsa défensif (R1)",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/mix2.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.125,
+     "diff": -0.28125,
+     "ci": 0.4055411930669849,
+     "plus": 11,
+     "minus": 16
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 2.125,
+     "diff": -0.1875,
+     "ci": 0.4074762510396039,
+     "plus": 9,
+     "minus": 10
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 2.5625,
+     "diff": 0.125,
+     "ci": 0.5262029229575147,
+     "plus": 15,
+     "minus": 9
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 2.59375,
+     "diff": 0.15625,
+     "ci": 0.5214669425547696,
+     "plus": 15,
+     "minus": 8
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 20.53125,
+     "diff": 6.46875,
+     "ci": 0.9759783914434356,
+     "plus": 32,
+     "minus": 0
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 10.46875,
+     "diff": 0.90625,
+     "ci": 1.124830968484283,
+     "plus": 16,
+     "minus": 13
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 44016.875,
+     "diff": 12092.03125,
+     "ci": 2529.3327218005375,
+     "plus": 32,
+     "minus": 0
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 66384.75,
+     "diff": 14128.96875,
+     "ci": 6046.097700626355,
+     "plus": 27,
+     "minus": 5
+    }
+   },
+   "snapshot": "snap-1"
+  },
+  {
+   "label": "Exploration — mix3 : Crâ/Iop offensif (R2) + Enutrof/Eniripsa équilibré (R1)",
+   "baseLabel": "Référence : stuffs des presets (n = 32, graines m21)",
+   "base": "out/snap-1/base.m21.jsonl",
+   "arm": "out/snap-1/mix3.m21.jsonl",
+   "n": 32,
+   "wins": 0,
+   "winCi": [
+    0,
+    0.1071827150573635
+   ],
+   "metrics": {
+    "win": {
+     "base": 0,
+     "arm": 0,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "corr7": {
+     "base": 1.40625,
+     "arm": 1.78125,
+     "diff": 0.375,
+     "ci": 0.4197647190448939,
+     "plus": 16,
+     "minus": 7
+    },
+    "corr12": {
+     "base": 2.3125,
+     "arm": 3.03125,
+     "diff": 0.71875,
+     "ci": 0.4507654220609722,
+     "plus": 18,
+     "minus": 4
+    },
+    "corr17": {
+     "base": 2.4375,
+     "arm": 3.71875,
+     "diff": 1.28125,
+     "ci": 0.617517753107735,
+     "plus": 24,
+     "minus": 5
+    },
+    "corrTotal": {
+     "base": 2.4375,
+     "arm": 3.84375,
+     "diff": 1.40625,
+     "ci": 0.6808968454273402,
+     "plus": 24,
+     "minus": 5
+    },
+    "rounds": {
+     "base": 14.0625,
+     "arm": 19.3125,
+     "diff": 5.25,
+     "ci": 1.164217860113154,
+     "plus": 29,
+     "minus": 1
+    },
+    "firstDeath": {
+     "base": 9.5625,
+     "arm": 12.1875,
+     "diff": 2.625,
+     "ci": 1.3512667294777696,
+     "plus": 24,
+     "minus": 7
+    },
+    "deaths": {
+     "base": 4,
+     "arm": 4,
+     "diff": 0,
+     "ci": 0,
+     "plus": 0,
+     "minus": 0
+    },
+    "taken": {
+     "base": 31924.84375,
+     "arm": 44079.78125,
+     "diff": 12154.9375,
+     "ci": 2655.912307913955,
+     "plus": 30,
+     "minus": 2
+    },
+    "dealtWave": {
+     "base": 52255.78125,
+     "arm": 76102.25,
+     "diff": 23846.46875,
+     "ci": 7335.77505506152,
+     "plus": 28,
+     "minus": 4
+    }
+   },
+   "snapshot": "snap-1"
+  }
+ ],
+ "members": [
+  {
+   "preset": "cra_feu_zone",
+   "newPreset": "cra_feu_vortex",
+   "stuffId": "vortex_cra_feu",
+   "profile": "équilibré (proxy R1)",
+   "why": "Ossature du stuff méta conservée (Séculaire 3 + Cycloïde 3) ; l'optimiseur change la cape (Dame du Hasard), l'arme (Épée Diablotine, simple porte-caractéristiques : le Crâ ne frappe qu'aux sorts), un anneau (Ceste de Guerre) et les Dofus sans valeur mesurable pour le proxy (Abyssal, Dolmanax, Turquoise) au profit d'Aprybou (+40 résistances fixes), Dofus Pourpre (+80 Pui) et du trophée Impétueux (+6 % Do distance) ; **6 transcendances Rata Vi** (+600 Vi) et exo PO sur l'amulette (5 → 6 PO). 3 603 → **4 803 PV** ; DPT +14 %, EHP +47 % au proxy. En combat (n = 64) le Crâ meurt au tour 16,1 au lieu de 11,9.",
+   "build": {
+    "items": [
+     {
+      "itemId": 14080,
+      "exos": [
+       {
+        "stat": "range",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 14092,
+      "exos": [
+       {
+        "stat": "ap",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 22192,
+      "exos": [
+       {
+        "stat": "mp",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 14081,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 14093,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 14079,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 17577,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 18718,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 26010,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 11971
+     },
+     {
+      "itemId": 30453
+     },
+     {
+      "itemId": 22022
+     },
+     {
+      "itemId": 6980
+     },
+     {
+      "itemId": 7043
+     },
+     {
+      "itemId": 694
+     },
+     {
+      "itemId": 7754
+     }
+    ],
+    "characteristicPoints": {
+     "vitality": 3,
+     "wisdom": 0,
+     "strength": 0,
+     "intelligence": 992,
+     "chance": 0,
+     "agility": 0
+    },
+    "scrolls": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    }
+   },
+   "detail": {
+    "preset": "cra_feu_zone",
+    "className": "Crâ",
+    "valid": true,
+    "issues": [],
+    "characteristicPoints": {
+     "vitality": 3,
+     "wisdom": 0,
+     "strength": 0,
+     "intelligence": 992,
+     "chance": 0,
+     "agility": 0
+    },
+    "pointsSpent": 995,
+    "pointsAvailable": 995,
+    "scrolls": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    },
+    "base": {
+     "vitality": 3,
+     "wisdom": 0,
+     "strength": 0,
+     "intelligence": 398,
+     "chance": 0,
+     "agility": 0
+    },
+    "additional": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    },
+    "sets": [
+     {
+      "name": "Panoplie Séculaire",
+      "count": 3,
+      "tier": 3
+     },
+     {
+      "name": "Panoplie du Cycloïde",
+      "count": 3,
+      "tier": 3
+     }
+    ],
+    "passiveSpells": [
+     14945,
+     8396,
+     8395,
+     8394
+    ],
+    "items": [
+     {
+      "slot": "Amulette",
+      "itemId": 14080,
+      "name": "Amulette Séculaire",
+      "level": 200,
+      "type": 1,
+      "set": "Panoplie Séculaire",
+      "forgemagie": "exo +1 PO",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+80 Int",
+       "+25 Agi",
+       "+40 Sa",
+       "+1 PA",
+       "+12 Do Feu",
+       "+12 Do Air",
+       "+20 PP",
+       "+8 % Ré Neutre",
+       "+8 % Ré Feu",
+       "+15 Ré Cri"
+      ]
+     },
+     {
+      "slot": "Anneau",
+      "itemId": 14092,
+      "name": "Anneau du Cycloïde",
+      "level": 200,
+      "type": 9,
+      "set": "Panoplie du Cycloïde",
+      "forgemagie": "exo +1 PA",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+40 Fo",
+       "+40 Int",
+       "+40 Agi",
+       "+10 Do Neutre",
+       "+10 Do Terre",
+       "+10 Do Feu",
+       "+10 Do Air",
+       "+300 Ini",
+       "+8 % Ré Eau",
+       "+6 Tacle"
+      ]
+     },
+     {
+      "slot": "Anneau",
+      "itemId": 22192,
+      "name": "Ceste de Guerre",
+      "level": 200,
+      "type": 9,
+      "set": "Panoplie de Guerre",
+      "forgemagie": "exo +1 PM",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+60 Int",
+       "+30 Sa",
+       "+4 % CC",
+       "+10 Do Feu",
+       "-10 Soins",
+       "+7 % Ré Terre",
+       "+7 % Ré Air",
+       "+15 Do Cri"
+      ]
+     },
+     {
+      "slot": "Ceinture",
+      "itemId": 14081,
+      "name": "Ceinture Séculaire",
+      "level": 200,
+      "type": 10,
+      "set": "Panoplie Séculaire",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+80 Int",
+       "+40 Agi",
+       "+50 Sa",
+       "+7 % CC",
+       "+1 PO",
+       "+10 Do Feu",
+       "+10 Soins",
+       "+300 Ini",
+       "+10 % Ré Air",
+       "+15 Fuite",
+       "+15 Do Cri"
+      ]
+     },
+     {
+      "slot": "Bottes",
+      "itemId": 14093,
+      "name": "Bottes du Cycloïde",
+      "level": 200,
+      "type": 11,
+      "set": "Panoplie du Cycloïde",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+50 Fo",
+       "+50 Int",
+       "+50 Agi",
+       "+50 Sa",
+       "+5 % CC",
+       "+1 PM",
+       "+1 PO",
+       "+10 Do Neutre",
+       "+10 Do Terre",
+       "+10 Do Feu",
+       "+10 Do Air",
+       "+10 % Ré Air",
+       "+15 Ré Terre",
+       "+10 Do Cri",
+       "-30 Do Pou"
+      ]
+     },
+     {
+      "slot": "Coiffe",
+      "itemId": 14079,
+      "name": "Coiffe Séculaire",
+      "level": 200,
+      "type": 16,
+      "set": "Panoplie Séculaire",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+100 Int",
+       "+40 Agi",
+       "+40 Sa",
+       "+1 Invo",
+       "+10 Do Feu",
+       "+10 Do Air",
+       "+12 Soins",
+       "+15 PP",
+       "+7 % Ré Terre",
+       "+7 % Ré Eau",
+       "+15 Ré Air"
+      ]
+     },
+     {
+      "slot": "Cape",
+      "itemId": 17577,
+      "name": "Cape de la Dame du Hasard",
+      "level": 200,
+      "type": 17,
+      "set": "Panoplie de la Dame du Hasard",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+70 Int",
+       "+70 Cha",
+       "+40 Sa",
+       "+6 % CC",
+       "+1 PO",
+       "+10 Do Feu",
+       "+10 Do Eau",
+       "+15 PP",
+       "+7 % Ré Terre",
+       "+7 % Ré Eau",
+       "+5 Fuite",
+       "+6 Ret PM",
+       "+15 Do Cri"
+      ]
+     },
+     {
+      "slot": "Bouclier",
+      "itemId": 18718,
+      "name": "Bouclier du Cycloïde",
+      "level": 200,
+      "type": 82,
+      "set": "Panoplie du Cycloïde",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+250 Vi",
+       "+60 Fo",
+       "+60 Int",
+       "+60 Agi",
+       "+40 Sa",
+       "+6 % CC",
+       "+8 % Ré Terre",
+       "+6 % Ré Feu",
+       "+4 % Ré Air",
+       "+10 Tacle"
+      ]
+     },
+     {
+      "slot": "Arme",
+      "itemId": 26010,
+      "name": "Épée Diablotine",
+      "level": 200,
+      "type": 6,
+      "set": "",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+60 Int",
+       "+30 Sa",
+       "+30 Pui",
+       "+5 % CC",
+       "+1 Invo",
+       "+15 Do Feu",
+       "+15 Soins",
+       "+7 % Ré Neutre",
+       "+7 % Ré Feu",
+       "+10 Tacle",
+       "+7 Ret PM",
+       "+12 Do Cri"
+      ]
+     },
+     {
+      "slot": "Familier/Monture",
+      "itemId": 11971,
+      "name": "Bisouglours",
+      "level": 20,
+      "type": 18,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+120 Int",
+       "+20 Do Feu"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 30453,
+      "name": "Impétueux",
+      "level": 150,
+      "type": 151,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+6 % Do Distance",
+       "-6 % Ré Distance"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 22022,
+      "name": "Aprybou",
+      "level": 200,
+      "type": 217,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "-1000 Ini",
+       "+40 Ré Neutre",
+       "+40 Ré Terre",
+       "+40 Ré Feu",
+       "+40 Ré Eau",
+       "+40 Ré Air",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 6980,
+      "name": "Dofus Vulbis",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+1 PM",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 7043,
+      "name": "Dofus des Glaces",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+25 Do Neutre",
+       "+25 Do Terre",
+       "+25 Do Feu",
+       "+25 Do Eau",
+       "+25 Do Air"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 694,
+      "name": "Dofus Pourpre",
+      "level": 110,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+80 Pui",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 7754,
+      "name": "Dofus Ocre",
+      "level": 160,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+1 PA",
+       "sort passif"
+      ]
+     }
+    ],
+    "stats": {
+     "ap": 12,
+     "mp": 6,
+     "range": 6,
+     "hp": 4803,
+     "initiative": 1798,
+     "critical": 53,
+     "main": {
+      "vitality": 3753,
+      "wisdom": 420,
+      "strength": 280,
+      "intelligence": 1308,
+      "chance": 170,
+      "agility": 440
+     },
+     "power": 110,
+     "damage": 0,
+     "elementDamage": {
+      "neutral": 55,
+      "earth": 55,
+      "fire": 152,
+      "water": 35,
+      "air": 97
+     },
+     "criticalDamage": 77,
+     "spellDamagePct": 0,
+     "finalDamagePct": 0,
+     "meleeDamagePct": 0,
+     "rangedDamagePct": 6,
+     "weaponDamagePct": 0,
+     "heals": 57,
+     "resPct": {
+      "neutral": 15,
+      "earth": 29,
+      "fire": 21,
+      "water": 22,
+      "air": 31
+     },
+     "resFixed": {
+      "neutral": 40,
+      "earth": 55,
+      "fire": 40,
+      "water": 40,
+      "air": 55
+     },
+     "meleeResPct": 0,
+     "rangedResPct": -6,
+     "criticalRes": 15,
+     "pushRes": 0,
+     "pushDamage": -30,
+     "apReduction": 42,
+     "mpReduction": 55,
+     "apParry": 42,
+     "mpParry": 42,
+     "tackleBlock": 70,
+     "tackleEvade": 79
+    }
+   },
+   "proxy": {
+    "chosen": {
+     "R2 équilibré": {
+      "logJ": 8.1748,
+      "dpt": 2794,
+      "ehp": 6209,
+      "util": 0,
+      "incoming": 11755
+     },
+     "R2 défensif": {
+      "logJ": 8.3345,
+      "dpt": 2794,
+      "ehp": 6209,
+      "util": 0,
+      "incoming": 11755
+     },
+     "R2 offensif": {
+      "logJ": 8.0551,
+      "dpt": 2794,
+      "ehp": 6209,
+      "util": 0,
+      "incoming": 11755
+     },
+     "R1 (sans poussée)": {
+      "logJ": 8.193,
+      "dpt": 2794,
+      "ehp": 6596,
+      "util": 0,
+      "incoming": 8415
+     }
+    },
+    "start": {
+     "R2 équilibré": {
+      "logJ": 7.9209,
+      "dpt": 2450,
+      "ehp": 4293,
+      "util": 0,
+      "incoming": 12755
+     },
+     "R2 défensif": {
+      "logJ": 8.033,
+      "dpt": 2450,
+      "ehp": 4293,
+      "util": 0,
+      "incoming": 12755
+     },
+     "R2 offensif": {
+      "logJ": 7.8368,
+      "dpt": 2450,
+      "ehp": 4293,
+      "util": 0,
+      "incoming": 12755
+     },
+     "R1 (sans poussée)": {
+      "logJ": 7.9335,
+      "dpt": 2450,
+      "ehp": 4477,
+      "util": 0,
+      "incoming": 9301
+     }
+    }
+   },
+   "front": [
+    {
+     "dpt": 2794,
+     "ehp": 6596,
+     "util": 0,
+     "logJ": 8.193,
+     "hp": 4803,
+     "pushRes": 0,
+     "points": "preset"
+    },
+    {
+     "dpt": 2757,
+     "ehp": 6780,
+     "util": 0,
+     "logJ": 8.1919,
+     "hp": 4853,
+     "pushRes": 0,
+     "points": "preset"
+    },
+    {
+     "dpt": 2896,
+     "ehp": 6010,
+     "util": 0,
+     "logJ": 8.1901,
+     "hp": 4803,
+     "pushRes": 0,
+     "points": "preset"
+    },
+    {
+     "dpt": 2850,
+     "ehp": 6236,
+     "util": 0,
+     "logJ": 8.1899,
+     "hp": 4803,
+     "pushRes": 0,
+     "points": "start"
+    },
+    {
+     "dpt": 2731,
+     "ehp": 6883,
+     "util": 0,
+     "logJ": 8.1898,
+     "hp": 4803,
+     "pushRes": 0,
+     "points": "start"
+    },
+    {
+     "dpt": 2959,
+     "ehp": 5681,
+     "util": 0,
+     "logJ": 8.1883,
+     "hp": 4803,
+     "pushRes": 0,
+     "points": "start"
+    }
+   ]
+  },
+  {
+   "preset": "enutrof_retrait_pm_eau",
+   "newPreset": "enutrof_retrait_pm_vortex",
+   "stuffId": "vortex_enutrof_eau",
+   "profile": "équilibré (proxy R1)",
+   "why": "Le stuff « retrait » des presets sacrifiait les dommages : l'optimiseur passe à Voldelor (3) + Gouffre (3), **200 Chance de base + 695 Vitalité** (au lieu de tout en Chance), **5 transcendances Rata Ret Pme** (+4 Ret PM chacune, 152 Ret PM au total), Volkorne Doré et Turquoise (+1 PA, +30 Ret PM), trophée Entraveur majeur (+24 Ret PM), Dofus Ivoire (+4 % résistances), Argenté Scintillant (+300 Vi), Glaces, Vulbis et Aprybou. 4 253 → **5 745 PV**, résistances 36/18/38/54/21 % ; au proxy DPT +80 %, EHP +50 %, retrait PM espéré +28 %. En combat l'Enutrof inflige 2,3× plus (19 200 contre 8 200 par combat, m21) et meurt au tour 19,3 au lieu de 13,9 (n = 64).",
+   "build": {
+    "items": [
+     {
+      "itemId": 17103,
+      "exos": [
+       {
+        "stat": "mpReduction",
+        "value": 4,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 15190,
+      "exos": [
+       {
+        "stat": "ap",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 12113,
+      "exos": [
+       {
+        "stat": "mp",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 17104,
+      "exos": [
+       {
+        "stat": "mpReduction",
+        "value": 4,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 17105,
+      "exos": [
+       {
+        "stat": "mpReduction",
+        "value": 4,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 34330,
+      "exos": [
+       {
+        "stat": "range",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 34332,
+      "exos": [
+       {
+        "stat": "mpReduction",
+        "value": 4,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 18697,
+      "exos": [
+       {
+        "stat": "mpReduction",
+        "value": 4,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 34331,
+      "exos": [
+       {
+        "stat": "waterDamage",
+        "value": 6,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 33165
+     },
+     {
+      "itemId": 7043
+     },
+     {
+      "itemId": 13789
+     },
+     {
+      "itemId": 7115
+     },
+     {
+      "itemId": 20286
+     },
+     {
+      "itemId": 6980
+     },
+     {
+      "itemId": 22022
+     }
+    ],
+    "characteristicPoints": {
+     "vitality": 695,
+     "wisdom": 0,
+     "strength": 0,
+     "intelligence": 0,
+     "chance": 300,
+     "agility": 0
+    },
+    "scrolls": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    }
+   },
+   "detail": {
+    "preset": "enutrof_retrait_pm_eau",
+    "className": "Enutrof",
+    "valid": true,
+    "issues": [],
+    "characteristicPoints": {
+     "vitality": 695,
+     "wisdom": 0,
+     "strength": 0,
+     "intelligence": 0,
+     "chance": 300,
+     "agility": 0
+    },
+    "pointsSpent": 995,
+    "pointsAvailable": 995,
+    "scrolls": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    },
+    "base": {
+     "vitality": 695,
+     "wisdom": 0,
+     "strength": 0,
+     "intelligence": 0,
+     "chance": 200,
+     "agility": 0
+    },
+    "additional": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    },
+    "sets": [
+     {
+      "name": "Panoplie de Voldelor",
+      "count": 3,
+      "tier": 3
+     },
+     {
+      "name": "Panoplie du Gouffre",
+      "count": 3,
+      "tier": 3
+     }
+    ],
+    "passiveSpells": [
+     18665,
+     18672,
+     8396,
+     14945
+    ],
+    "items": [
+     {
+      "slot": "Amulette",
+      "itemId": 17103,
+      "name": "Amulette Voldelor",
+      "level": 200,
+      "type": 1,
+      "set": "Panoplie de Voldelor",
+      "forgemagie": "transcendance Rata Ret Pme (+4 Ret PM)",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+70 Cha",
+       "+70 Agi",
+       "+40 Sa",
+       "+1 PA",
+       "+12 Do Eau",
+       "+12 Do Air",
+       "+15 PP",
+       "+10 % Ré Feu",
+       "+10 % Ré Eau",
+       "+7 Fuite",
+       "-7 Esq PM",
+       "+15 Do Cri"
+      ]
+     },
+     {
+      "slot": "Anneau",
+      "itemId": 15190,
+      "name": "Bracelet du Piloztère",
+      "level": 200,
+      "type": 9,
+      "set": "Panoplie du Piloztère",
+      "forgemagie": "exo +1 PA",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+50 Pui",
+       "+4 % CC",
+       "+2 PO",
+       "+10 Do Neutre",
+       "+10 Do Terre",
+       "+10 Do Eau",
+       "+10 % Ré Neutre"
+      ]
+     },
+     {
+      "slot": "Anneau",
+      "itemId": 12113,
+      "name": "Alliance Gloursonne",
+      "level": 198,
+      "type": 9,
+      "set": "Panoplie Gloursonne",
+      "forgemagie": "exo +1 PM",
+      "conditions": "",
+      "lines": [
+       "+250 Vi",
+       "+60 Cha",
+       "+60 Agi",
+       "+40 Sa",
+       "+1 PO",
+       "+12 Do Eau",
+       "+12 Do Air",
+       "+10 PP",
+       "+400 Ini",
+       "+7 % Ré Neutre",
+       "+7 % Ré Terre",
+       "+7 % Ré Feu",
+       "+5 Tacle"
+      ]
+     },
+     {
+      "slot": "Ceinture",
+      "itemId": 17104,
+      "name": "Ceinture Voldelor",
+      "level": 200,
+      "type": 10,
+      "set": "Panoplie de Voldelor",
+      "forgemagie": "transcendance Rata Ret Pme (+4 Ret PM)",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+70 Cha",
+       "+70 Agi",
+       "+50 Sa",
+       "+1 PO",
+       "+15 Do Eau",
+       "+15 Do Air",
+       "+15 PP",
+       "+10 % Ré Feu",
+       "+10 % Ré Eau",
+       "+7 Fuite",
+       "-7 Esq PM",
+       "+15 Do Cri"
+      ]
+     },
+     {
+      "slot": "Bottes",
+      "itemId": 17105,
+      "name": "Bottes Voldelor",
+      "level": 200,
+      "type": 11,
+      "set": "Panoplie de Voldelor",
+      "forgemagie": "transcendance Rata Ret Pme (+4 Ret PM)",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+70 Cha",
+       "+70 Agi",
+       "+40 Sa",
+       "+10 % CC",
+       "+1 PM",
+       "+12 Do Eau",
+       "+12 Do Air",
+       "+7 Fuite",
+       "+20 Ré Pou"
+      ]
+     },
+     {
+      "slot": "Coiffe",
+      "itemId": 34330,
+      "name": "Visage de Mureine",
+      "level": 200,
+      "type": 16,
+      "set": "Panoplie du Gouffre",
+      "forgemagie": "exo +1 PO",
+      "conditions": "",
+      "lines": [
+       "+500 Vi",
+       "+80 Cha",
+       "+50 Sa",
+       "+5 % CC",
+       "+1 Invo",
+       "+20 Do Eau",
+       "+20 PP",
+       "-300 Ini",
+       "+10 % Ré Eau",
+       "+7 % Ré Air",
+       "+15 Tacle",
+       "-15 Fuite",
+       "+10 Do Cri"
+      ]
+     },
+     {
+      "slot": "Cape",
+      "itemId": 34332,
+      "name": "Dorsale de Willorque",
+      "level": 200,
+      "type": 17,
+      "set": "Panoplie du Gouffre",
+      "forgemagie": "transcendance Rata Ret Pme (+4 Ret PM)",
+      "conditions": "",
+      "lines": [
+       "+500 Vi",
+       "+100 Cha",
+       "+50 Sa",
+       "+6 % CC",
+       "+10 Do Eau",
+       "+12 Soins",
+       "+15 PP",
+       "-300 Ini",
+       "+7 % Ré Terre",
+       "+10 % Ré Eau",
+       "+10 Tacle",
+       "-10 Esq PM",
+       "+25 Do Cri"
+      ]
+     },
+     {
+      "slot": "Bouclier",
+      "itemId": 18697,
+      "name": "Jadis",
+      "level": 200,
+      "type": 82,
+      "set": "",
+      "forgemagie": "transcendance Rata Ret Pme (+4 Ret PM)",
+      "conditions": "",
+      "lines": [
+       "+250 Vi",
+       "+40 Sa",
+       "+15 % Ré Neutre",
+       "+15 Tacle",
+       "+15 Esq PA",
+       "+15 Esq PM",
+       "+50 Ré Cri",
+       "+50 Ré Pou",
+       "+7 % Ré Mêlée",
+       "+5 % Ré Distance"
+      ]
+     },
+     {
+      "slot": "Arme",
+      "itemId": 34331,
+      "name": "Lancepince d'Exécrabe",
+      "level": 200,
+      "type": 271,
+      "set": "Panoplie du Gouffre",
+      "forgemagie": "transcendance Rata Do Eau (+6 Do Eau)",
+      "conditions": "",
+      "lines": [
+       "+500 Vi",
+       "+90 Cha",
+       "+50 Sa",
+       "+5 % CC",
+       "+12 Do Eau",
+       "+15 PP",
+       "-300 Ini",
+       "+7 % Ré Feu",
+       "+10 % Ré Eau",
+       "+10 Tacle",
+       "+12 Ret PM",
+       "-10 Esq PA",
+       "+20 Do Cri"
+      ]
+     },
+     {
+      "slot": "Familier/Monture",
+      "itemId": 33165,
+      "name": "Volkorne Doré et Turquoise",
+      "level": 60,
+      "type": 333,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+200 Vi",
+       "+1 PA",
+       "+30 Ret PM"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 7043,
+      "name": "Dofus des Glaces",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+25 Do Neutre",
+       "+25 Do Terre",
+       "+25 Do Feu",
+       "+25 Do Eau",
+       "+25 Do Air"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 13789,
+      "name": "Entraveur majeur",
+      "level": 150,
+      "type": 151,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+24 Ret PM",
+       "-24 Esq PA"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 7115,
+      "name": "Dofus Ivoire",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+4 % Ré Neutre",
+       "+4 % Ré Terre",
+       "+4 % Ré Feu",
+       "+4 % Ré Eau",
+       "+4 % Ré Air",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 20286,
+      "name": "Dofus Argenté Scintillant",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 6980,
+      "name": "Dofus Vulbis",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+1 PM",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 22022,
+      "name": "Aprybou",
+      "level": 200,
+      "type": 217,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "-1000 Ini",
+       "+40 Ré Neutre",
+       "+40 Ré Terre",
+       "+40 Ré Feu",
+       "+40 Ré Eau",
+       "+40 Ré Air",
+       "sort passif"
+      ]
+     }
+    ],
+    "stats": {
+     "ap": 12,
+     "mp": 6,
+     "range": 6,
+     "hp": 5745,
+     "initiative": 50,
+     "critical": 47,
+     "main": {
+      "vitality": 4695,
+      "wisdom": 460,
+      "strength": 100,
+      "intelligence": 100,
+      "chance": 940,
+      "agility": 410
+     },
+     "power": 50,
+     "damage": 0,
+     "elementDamage": {
+      "neutral": 35,
+      "earth": 35,
+      "fire": 25,
+      "water": 134,
+      "air": 76
+     },
+     "criticalDamage": 85,
+     "spellDamagePct": 0,
+     "finalDamagePct": 0,
+     "meleeDamagePct": 0,
+     "rangedDamagePct": 0,
+     "weaponDamagePct": 0,
+     "heals": 12,
+     "resPct": {
+      "neutral": 36,
+      "earth": 18,
+      "fire": 38,
+      "water": 54,
+      "air": 21
+     },
+     "resFixed": {
+      "neutral": 40,
+      "earth": 40,
+      "fire": 40,
+      "water": 40,
+      "air": 40
+     },
+     "meleeResPct": 7,
+     "rangedResPct": 5,
+     "criticalRes": 50,
+     "pushRes": 70,
+     "pushDamage": 0,
+     "apReduction": 66,
+     "mpReduction": 152,
+     "apParry": 27,
+     "mpParry": 37,
+     "tackleBlock": 106,
+     "tackleEvade": 62
+    }
+   },
+   "proxy": {
+    "chosen": {
+     "R2 équilibré": {
+      "logJ": 6.6259,
+      "dpt": 1760,
+      "ehp": 11122,
+      "util": 0.93,
+      "incoming": 7850
+     },
+     "R2 défensif": {
+      "logJ": 6.9947,
+      "dpt": 1760,
+      "ehp": 11122,
+      "util": 0.93,
+      "incoming": 7850
+     },
+     "R2 offensif": {
+      "logJ": 6.3494,
+      "dpt": 1760,
+      "ehp": 11122,
+      "util": 0.93,
+      "incoming": 7850
+     },
+     "R1 (sans poussée)": {
+      "logJ": 6.6281,
+      "dpt": 1760,
+      "ehp": 11182,
+      "util": 0.93,
+      "incoming": 5938
+     }
+    },
+    "start": {
+     "R2 équilibré": {
+      "logJ": 6.1344,
+      "dpt": 978,
+      "ehp": 6683,
+      "util": 0.726,
+      "incoming": 9671
+     },
+     "R2 défensif": {
+      "logJ": 6.5188,
+      "dpt": 978,
+      "ehp": 6683,
+      "util": 0.726,
+      "incoming": 9671
+     },
+     "R2 offensif": {
+      "logJ": 5.846,
+      "dpt": 978,
+      "ehp": 6683,
+      "util": 0.726,
+      "incoming": 9671
+     },
+     "R1 (sans poussée)": {
+      "logJ": 6.1772,
+      "dpt": 978,
+      "ehp": 7438,
+      "util": 0.726,
+      "incoming": 6608
+     }
+    }
+   },
+   "front": [
+    {
+     "dpt": 1760,
+     "ehp": 11182,
+     "util": 0.93,
+     "logJ": 6.6281,
+     "hp": 5745,
+     "pushRes": 70,
+     "points": "cap200"
+    },
+    {
+     "dpt": 1812,
+     "ehp": 10890,
+     "util": 0.93,
+     "logJ": 6.6263,
+     "hp": 5595,
+     "pushRes": 70,
+     "points": "cap250"
+    },
+    {
+     "dpt": 1865,
+     "ehp": 10598,
+     "util": 0.93,
+     "logJ": 6.6239,
+     "hp": 5445,
+     "pushRes": 70,
+     "points": "cap300"
+    },
+    {
+     "dpt": 1969,
+     "ehp": 9835,
+     "util": 0.93,
+     "logJ": 6.6104,
+     "hp": 5053,
+     "pushRes": 70,
+     "points": "preset"
+    },
+    {
+     "dpt": 2052,
+     "ehp": 9467,
+     "util": 0.93,
+     "logJ": 6.6076,
+     "hp": 5053,
+     "pushRes": 70,
+     "points": "start"
+    },
+    {
+     "dpt": 1890,
+     "ehp": 9829,
+     "util": 0.942,
+     "logJ": 6.6042,
+     "hp": 5050,
+     "pushRes": 70,
+     "points": "wisdom100"
+    }
+   ]
+  },
+  {
+   "preset": "iop_terre_burst",
+   "newPreset": "iop_terre_vortex",
+   "stuffId": "vortex_iop_terre",
+   "profile": "équilibré (proxy R1)",
+   "why": "Iop au contact : la PO n'est plus payée (6 → 2 PO) au profit des coups critiques — Bonimenteur (3 : Talisman Songe, Sangle Ouare, Cape Ovri), Cycloïde (3), Torkélonia (2 : Corne + Baguette, condition Agi > 299 et Fo > 299 remplie), **4 transcendances Pata Do Cri** (+32 Do Cri) et 2 Rata Vi, montilier Sakochère (+1 PA, +50 Do Cri), trophée Arcaniste (+6 % Do sorts), Dofus Turquoise, Pourpre, Glaces, Dolmanax et Aprybou. **81 % CC**, 4 203 PV, résistances fixes 40-75 ; DPT +11 %, EHP +17 % au proxy. Le maillon faible reste l'Iop (premier mort, tour 14,9 au lieu de 12,3, n = 64).",
+   "build": {
+    "items": [
+     {
+      "itemId": 14169,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 22205,
+      "exos": [
+       {
+        "stat": "mp",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 14092,
+      "exos": [
+       {
+        "stat": "criticalDamage",
+        "value": 8,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 14162,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 14093,
+      "exos": [
+       {
+        "stat": "criticalDamage",
+        "value": 8,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 21235,
+      "exos": [
+       {
+        "stat": "criticalDamage",
+        "value": 8,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 14161,
+      "exos": [
+       {
+        "stat": "ap",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 18718,
+      "exos": [
+       {
+        "stat": "criticalDamage",
+        "value": 8,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 21229
+     },
+     {
+      "itemId": 13465
+     },
+     {
+      "itemId": 739
+     },
+     {
+      "itemId": 13344
+     },
+     {
+      "itemId": 694
+     },
+     {
+      "itemId": 30455
+     },
+     {
+      "itemId": 7043
+     },
+     {
+      "itemId": 22022
+     }
+    ],
+    "characteristicPoints": {
+     "vitality": 3,
+     "wisdom": 0,
+     "strength": 992,
+     "intelligence": 0,
+     "chance": 0,
+     "agility": 0
+    },
+    "scrolls": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    }
+   },
+   "detail": {
+    "preset": "iop_terre_burst",
+    "className": "Iop",
+    "valid": true,
+    "issues": [],
+    "characteristicPoints": {
+     "vitality": 3,
+     "wisdom": 0,
+     "strength": 992,
+     "intelligence": 0,
+     "chance": 0,
+     "agility": 0
+    },
+    "pointsSpent": 995,
+    "pointsAvailable": 995,
+    "scrolls": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    },
+    "base": {
+     "vitality": 3,
+     "wisdom": 0,
+     "strength": 398,
+     "intelligence": 0,
+     "chance": 0,
+     "agility": 0
+    },
+    "additional": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    },
+    "sets": [
+     {
+      "name": "Panoplie du Bonimenteur",
+      "count": 3,
+      "tier": 3
+     },
+     {
+      "name": "Panoplie du Cycloïde",
+      "count": 3,
+      "tier": 3
+     },
+     {
+      "name": "Panoplie de Torkélonia",
+      "count": 2,
+      "tier": 2
+     }
+    ],
+    "passiveSpells": [
+     5952,
+     8395,
+     14945
+    ],
+    "items": [
+     {
+      "slot": "Amulette",
+      "itemId": 14169,
+      "name": "Talisman Songe",
+      "level": 200,
+      "type": 1,
+      "set": "Panoplie du Bonimenteur",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+60 Fo",
+       "+60 Int",
+       "+60 Cha",
+       "+40 Sa",
+       "+1 PA",
+       "+15 Do Neutre",
+       "+15 Do Terre",
+       "+15 Do Feu",
+       "+15 Do Eau",
+       "+15 PP",
+       "+8 % Ré Air",
+       "+15 Ré Feu",
+       "+10 Tacle",
+       "+15 Do Cri"
+      ]
+     },
+     {
+      "slot": "Anneau",
+      "itemId": 22205,
+      "name": "Bague de Corruption",
+      "level": 200,
+      "type": 9,
+      "set": "Panoplie de Corruption",
+      "forgemagie": "exo +1 PM",
+      "conditions": "",
+      "lines": [
+       "+250 Vi",
+       "+60 Fo",
+       "+20 Sa",
+       "+7 % CC",
+       "+12 Do Neutre",
+       "+12 Do Terre",
+       "+10 % Ré Eau",
+       "-5 Esq PA",
+       "+10 Do Cri"
+      ]
+     },
+     {
+      "slot": "Anneau",
+      "itemId": 14092,
+      "name": "Anneau du Cycloïde",
+      "level": 200,
+      "type": 9,
+      "set": "Panoplie du Cycloïde",
+      "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+40 Fo",
+       "+40 Int",
+       "+40 Agi",
+       "+10 Do Neutre",
+       "+10 Do Terre",
+       "+10 Do Feu",
+       "+10 Do Air",
+       "+300 Ini",
+       "+8 % Ré Eau",
+       "+6 Tacle"
+      ]
+     },
+     {
+      "slot": "Ceinture",
+      "itemId": 14162,
+      "name": "Sangle Ouare",
+      "level": 200,
+      "type": 10,
+      "set": "Panoplie du Bonimenteur",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+40 Cha",
+       "+30 Sa",
+       "+40 Pui",
+       "+1 PM",
+       "+2 Invo",
+       "+15 PP",
+       "-400 Ini",
+       "+10 % Ré Eau",
+       "+10 % Ré Air",
+       "+15 Tacle",
+       "-8 Esq PM",
+       "+25 Do Cri",
+       "+25 Do Pou"
+      ]
+     },
+     {
+      "slot": "Bottes",
+      "itemId": 14093,
+      "name": "Bottes du Cycloïde",
+      "level": 200,
+      "type": 11,
+      "set": "Panoplie du Cycloïde",
+      "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+50 Fo",
+       "+50 Int",
+       "+50 Agi",
+       "+50 Sa",
+       "+5 % CC",
+       "+1 PM",
+       "+1 PO",
+       "+10 Do Neutre",
+       "+10 Do Terre",
+       "+10 Do Feu",
+       "+10 Do Air",
+       "+10 % Ré Air",
+       "+15 Ré Terre",
+       "+10 Do Cri",
+       "-30 Do Pou"
+      ]
+     },
+     {
+      "slot": "Coiffe",
+      "itemId": 21235,
+      "name": "Corne de Torkélonia",
+      "level": 200,
+      "type": 16,
+      "set": "Panoplie de Torkélonia",
+      "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+70 Fo",
+       "+50 Agi",
+       "+35 Sa",
+       "+5 % CC",
+       "+12 Do Terre",
+       "+12 Do Air",
+       "+20 PP",
+       "+10 % Ré Neutre",
+       "+10 % Ré Terre",
+       "+5 Esq PM",
+       "+12 Do Cri"
+      ]
+     },
+     {
+      "slot": "Cape",
+      "itemId": 14161,
+      "name": "Cape Ovri",
+      "level": 200,
+      "type": 17,
+      "set": "Panoplie du Bonimenteur",
+      "forgemagie": "exo +1 PA",
+      "conditions": "",
+      "lines": [
+       "+400 Vi",
+       "+60 Fo",
+       "+60 Cha",
+       "+50 Sa",
+       "+5 % CC",
+       "+16 Do Neutre",
+       "+16 Do Terre",
+       "+16 Do Eau",
+       "+400 Ini",
+       "+10 % Ré Neutre",
+       "+20 Ré Feu",
+       "-15 Tacle"
+      ]
+     },
+     {
+      "slot": "Bouclier",
+      "itemId": 18718,
+      "name": "Bouclier du Cycloïde",
+      "level": 200,
+      "type": 82,
+      "set": "Panoplie du Cycloïde",
+      "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+      "conditions": "",
+      "lines": [
+       "+250 Vi",
+       "+60 Fo",
+       "+60 Int",
+       "+60 Agi",
+       "+40 Sa",
+       "+6 % CC",
+       "+8 % Ré Terre",
+       "+6 % Ré Feu",
+       "+4 % Ré Air",
+       "+10 Tacle"
+      ]
+     },
+     {
+      "slot": "Arme",
+      "itemId": 21229,
+      "name": "Baguette de Torkélonia",
+      "level": 200,
+      "type": 3,
+      "set": "Panoplie de Torkélonia",
+      "forgemagie": "—",
+      "conditions": "CA>299&CS>299",
+      "lines": [
+       "+350 Vi",
+       "+60 Fo",
+       "+60 Agi",
+       "+40 Sa",
+       "+30 Pui",
+       "+6 % CC",
+       "+1 Invo",
+       "+20 Do Terre",
+       "+20 Do Air",
+       "+25 PP",
+       "+15 Ré Terre",
+       "+15 Ré Eau",
+       "+20 Do Cri"
+      ]
+     },
+     {
+      "slot": "Familier/Monture",
+      "itemId": 13465,
+      "name": "Sakochère",
+      "level": 60,
+      "type": 121,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+1 PA",
+       "+50 Do Cri"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 739,
+      "name": "Dofus Turquoise",
+      "level": 160,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+10 % CC",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 13344,
+      "name": "Dolmanax",
+      "level": 100,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+70 Fo",
+       "+70 Int",
+       "+70 Cha",
+       "+70 Agi"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 694,
+      "name": "Dofus Pourpre",
+      "level": 110,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+80 Pui",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 30455,
+      "name": "Arcaniste",
+      "level": 150,
+      "type": 151,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+6 % Do Sorts",
+       "-6 % Ré Distance",
+       "-6 % Ré Mêlée"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 7043,
+      "name": "Dofus des Glaces",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+25 Do Neutre",
+       "+25 Do Terre",
+       "+25 Do Feu",
+       "+25 Do Eau",
+       "+25 Do Air"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 22022,
+      "name": "Aprybou",
+      "level": 200,
+      "type": 217,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "-1000 Ini",
+       "+40 Ré Neutre",
+       "+40 Ré Terre",
+       "+40 Ré Feu",
+       "+40 Ré Eau",
+       "+40 Ré Air",
+       "sort passif"
+      ]
+     }
+    ],
+    "stats": {
+     "ap": 12,
+     "mp": 6,
+     "range": 2,
+     "hp": 4203,
+     "initiative": 1778,
+     "critical": 81,
+     "main": {
+      "vitality": 3153,
+      "wisdom": 405,
+      "strength": 1138,
+      "intelligence": 510,
+      "chance": 330,
+      "agility": 500
+     },
+     "power": 200,
+     "damage": 0,
+     "elementDamage": {
+      "neutral": 98,
+      "earth": 130,
+      "fire": 86,
+      "water": 56,
+      "air": 87
+     },
+     "criticalDamage": 174,
+     "spellDamagePct": 6,
+     "finalDamagePct": 0,
+     "meleeDamagePct": 0,
+     "rangedDamagePct": 0,
+     "weaponDamagePct": 0,
+     "heals": 0,
+     "resPct": {
+      "neutral": 20,
+      "earth": 18,
+      "fire": 16,
+      "water": 38,
+      "air": 32
+     },
+     "resFixed": {
+      "neutral": 40,
+      "earth": 70,
+      "fire": 75,
+      "water": 55,
+      "air": 40
+     },
+     "meleeResPct": -6,
+     "rangedResPct": -6,
+     "criticalRes": 0,
+     "pushRes": 0,
+     "pushDamage": 20,
+     "apReduction": 40,
+     "mpReduction": 40,
+     "apParry": 35,
+     "mpParry": 37,
+     "tackleBlock": 91,
+     "tackleEvade": 50
+    }
+   },
+   "proxy": {
+    "chosen": {
+     "R2 équilibré": {
+      "logJ": 8.2162,
+      "dpt": 3061,
+      "ehp": 5759,
+      "util": 0,
+      "incoming": 11090
+     },
+     "R2 défensif": {
+      "logJ": 8.3426,
+      "dpt": 3061,
+      "ehp": 5759,
+      "util": 0,
+      "incoming": 11090
+     },
+     "R2 offensif": {
+      "logJ": 8.1214,
+      "dpt": 3061,
+      "ehp": 5759,
+      "util": 0,
+      "incoming": 11090
+     },
+     "R1 (sans poussée)": {
+      "logJ": 8.2413,
+      "dpt": 3061,
+      "ehp": 6263,
+      "util": 0,
+      "incoming": 7755
+     }
+    },
+    "start": {
+     "R2 équilibré": {
+      "logJ": 8.1072,
+      "dpt": 2754,
+      "ehp": 5125,
+      "util": 0,
+      "incoming": 12314
+     },
+     "R2 défensif": {
+      "logJ": 8.2314,
+      "dpt": 2754,
+      "ehp": 5125,
+      "util": 0,
+      "incoming": 12314
+     },
+     "R2 offensif": {
+      "logJ": 8.0141,
+      "dpt": 2754,
+      "ehp": 5125,
+      "util": 0,
+      "incoming": 12314
+     },
+     "R1 (sans poussée)": {
+      "logJ": 8.1194,
+      "dpt": 2754,
+      "ehp": 5337,
+      "util": 0,
+      "incoming": 8993
+     }
+    }
+   },
+   "front": [
+    {
+     "dpt": 3061,
+     "ehp": 6263,
+     "util": 0,
+     "logJ": 8.2413,
+     "hp": 4203,
+     "pushRes": 0,
+     "points": "preset"
+    },
+    {
+     "dpt": 3001,
+     "ehp": 6561,
+     "util": 0,
+     "logJ": 8.2413,
+     "hp": 4403,
+     "pushRes": 0,
+     "points": "preset"
+    },
+    {
+     "dpt": 2941,
+     "ehp": 6847,
+     "util": 0,
+     "logJ": 8.2401,
+     "hp": 4595,
+     "pushRes": 0,
+     "points": "cap300"
+    },
+    {
+     "dpt": 2919,
+     "ehp": 6943,
+     "util": 0,
+     "logJ": 8.239,
+     "hp": 4403,
+     "pushRes": 0,
+     "points": "preset"
+    },
+    {
+     "dpt": 2881,
+     "ehp": 7145,
+     "util": 0,
+     "logJ": 8.2384,
+     "hp": 4795,
+     "pushRes": 0,
+     "points": "cap300"
+    },
+    {
+     "dpt": 2970,
+     "ehp": 6633,
+     "util": 0,
+     "logJ": 8.2373,
+     "hp": 4203,
+     "pushRes": 0,
+     "points": "preset"
+    }
+   ]
+  },
+  {
+   "preset": "eniripsa_soin_feu",
+   "newPreset": "eniripsa_soin_vortex",
+   "stuffId": "vortex_eniripsa_feu",
+   "profile": "équilibré (proxy R1)",
+   "why": "Soigneur : le proxy (exposants 0,2/0,5/1) accepte −13 % de DPT pour ×2,5 d'EHP — Pnose (3), Vénérable Endormi (2), Panoplistik (2), **300 Int + 395 Vi de base**, **6 transcendances Rata Vi**, Dofus Ivoire, Argenté Scintillant, Ocre, Vulbis, Dolmanax, Aprybou, Volkorne Saphir et Orchidée (+1 PA, +8 % Ré Eau). 3 603 → **5 745 PV**, résistances 40/33/33/51/14 %, Soins 140. En combat l'Eniripsa tient jusqu'au tour 19,6 au lieu de 11,8 (n = 64) et soigne 3× plus (43 700 contre 14 300 par combat, m21).",
+   "build": {
+    "items": [
+     {
+      "itemId": 15749,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 31799,
+      "exos": [
+       {
+        "stat": "ap",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 18594,
+      "exos": [
+       {
+        "stat": "mp",
+        "value": 1
+       }
+      ]
+     },
+     {
+      "itemId": 15750,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 15751,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 19980,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 31797,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 18692,
+      "exos": [
+       {
+        "stat": "vitality",
+        "value": 100,
+        "kind": "transcendence"
+       }
+      ]
+     },
+     {
+      "itemId": 25222
+     },
+     {
+      "itemId": 33245
+     },
+     {
+      "itemId": 22022
+     },
+     {
+      "itemId": 7754
+     },
+     {
+      "itemId": 7115
+     },
+     {
+      "itemId": 13344
+     },
+     {
+      "itemId": 6980
+     },
+     {
+      "itemId": 20286
+     }
+    ],
+    "characteristicPoints": {
+     "vitality": 395,
+     "wisdom": 0,
+     "strength": 0,
+     "intelligence": 600,
+     "chance": 0,
+     "agility": 0
+    },
+    "scrolls": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    }
+   },
+   "detail": {
+    "preset": "eniripsa_soin_feu",
+    "className": "Eniripsa",
+    "valid": true,
+    "issues": [],
+    "characteristicPoints": {
+     "vitality": 395,
+     "wisdom": 0,
+     "strength": 0,
+     "intelligence": 600,
+     "chance": 0,
+     "agility": 0
+    },
+    "pointsSpent": 995,
+    "pointsAvailable": 995,
+    "scrolls": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    },
+    "base": {
+     "vitality": 395,
+     "wisdom": 0,
+     "strength": 0,
+     "intelligence": 300,
+     "chance": 0,
+     "agility": 0
+    },
+    "additional": {
+     "vitality": 100,
+     "wisdom": 100,
+     "strength": 100,
+     "intelligence": 100,
+     "chance": 100,
+     "agility": 100
+    },
+    "sets": [
+     {
+      "name": "Panoplie Pnose",
+      "count": 3,
+      "tier": 3
+     },
+     {
+      "name": "Panoplie du Vénérable Endormi",
+      "count": 2,
+      "tier": 2
+     },
+     {
+      "name": "Panoplistik",
+      "count": 2,
+      "tier": 2
+     }
+    ],
+    "passiveSpells": [
+     14945,
+     8394,
+     18665,
+     8396,
+     18672
+    ],
+    "items": [
+     {
+      "slot": "Amulette",
+      "itemId": 15749,
+      "name": "Talisman Igans",
+      "level": 200,
+      "type": 1,
+      "set": "Panoplie Pnose",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+60 Int",
+       "+60 Cha",
+       "+50 Sa",
+       "+4 % CC",
+       "+1 PA",
+       "+1 PO",
+       "+20 Do Feu",
+       "+20 Do Eau",
+       "+7 % Ré Neutre",
+       "+7 % Ré Terre"
+      ]
+     },
+     {
+      "slot": "Anneau",
+      "itemId": 31799,
+      "name": "Malédiction du Vénérable Endormi",
+      "level": 200,
+      "type": 9,
+      "set": "Panoplie du Vénérable Endormi",
+      "forgemagie": "exo +1 PA",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+100 Int",
+       "+20 Sa",
+       "+3 % CC",
+       "+10 PP",
+       "-300 Ini",
+       "+7 % Ré Feu",
+       "+7 % Ré Eau",
+       "+10 Ret PA",
+       "+15 Ré Pou"
+      ]
+     },
+     {
+      "slot": "Anneau",
+      "itemId": 18594,
+      "name": "Baguistik",
+      "level": 200,
+      "type": 9,
+      "set": "Panoplistik",
+      "forgemagie": "exo +1 PM",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "+40 Fo",
+       "+40 Int",
+       "+40 Sa",
+       "+4 % CC",
+       "+1 PO",
+       "+7 Do Neutre",
+       "+7 Do Terre",
+       "+7 Do Feu",
+       "+10 Soins",
+       "+7 % Ré Eau",
+       "+30 Ré Cri"
+      ]
+     },
+     {
+      "slot": "Ceinture",
+      "itemId": 15750,
+      "name": "Ceintrigue",
+      "level": 200,
+      "type": 10,
+      "set": "Panoplie Pnose",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+350 Vi",
+       "+60 Int",
+       "+60 Cha",
+       "+40 Sa",
+       "+4 % CC",
+       "+1 PO",
+       "+20 Do Feu",
+       "+20 Do Eau",
+       "+15 Soins",
+       "+10 % Ré Air",
+       "+20 Do Pou"
+      ]
+     },
+     {
+      "slot": "Bottes",
+      "itemId": 15751,
+      "name": "Bottes Owesli",
+      "level": 200,
+      "type": 11,
+      "set": "Panoplie Pnose",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+400 Vi",
+       "+50 Int",
+       "+50 Cha",
+       "+40 Sa",
+       "+1 PM",
+       "+1 PO",
+       "+20 Do Feu",
+       "+20 Do Eau",
+       "+7 % Ré Neutre",
+       "+7 % Ré Terre",
+       "+20 Do Pou"
+      ]
+     },
+     {
+      "slot": "Coiffe",
+      "itemId": 19980,
+      "name": "Masquegel",
+      "level": 200,
+      "type": 16,
+      "set": "Panoplie Martegel",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+400 Vi",
+       "+80 Int",
+       "+80 Agi",
+       "+40 Sa",
+       "-10 % CC",
+       "+1 Invo",
+       "+15 Do Feu",
+       "+15 Do Air",
+       "+10 % Ré Neutre",
+       "+10 % Ré Eau",
+       "+10 Fuite",
+       "+10 Esq PA"
+      ]
+     },
+     {
+      "slot": "Cape",
+      "itemId": 31797,
+      "name": "Manteau du Vénérable Endormi",
+      "level": 200,
+      "type": 17,
+      "set": "Panoplie du Vénérable Endormi",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+400 Vi",
+       "+100 Int",
+       "+50 Sa",
+       "+7 % CC",
+       "+1 Invo",
+       "+10 Do Feu",
+       "+15 Soins",
+       "+15 PP",
+       "-200 Ini",
+       "+5 % Ré Terre",
+       "+5 % Ré Feu",
+       "+5 % Ré Eau",
+       "+12 Fuite",
+       "+30 Ré Pou"
+      ]
+     },
+     {
+      "slot": "Bouclier",
+      "itemId": 18692,
+      "name": "Bouclistik",
+      "level": 200,
+      "type": 82,
+      "set": "Panoplistik",
+      "forgemagie": "transcendance Rata Vi (+100 Vi)",
+      "conditions": "",
+      "lines": [
+       "+250 Vi",
+       "+40 Sa",
+       "+50 Pui",
+       "+1 PO",
+       "+20 PP",
+       "+5 % Ré Neutre",
+       "+15 Tacle",
+       "+40 Do Pou",
+       "+7 % Ré Mêlée"
+      ]
+     },
+     {
+      "slot": "Arme",
+      "itemId": 25222,
+      "name": "Marteau Possédé",
+      "level": 200,
+      "type": 7,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+400 Vi",
+       "+50 Int",
+       "+60 Sa",
+       "+50 Pui",
+       "+3 % CC",
+       "+1 Invo",
+       "+12 Do Feu",
+       "+20 Soins",
+       "+10 PP",
+       "-300 Ini",
+       "+7 % Ré Neutre",
+       "+7 % Ré Feu",
+       "+7 Fuite",
+       "-6 Tacle",
+       "+15 Ré Cri"
+      ]
+     },
+     {
+      "slot": "Familier/Monture",
+      "itemId": 33245,
+      "name": "Volkorne Saphir et Orchidée",
+      "level": 60,
+      "type": 333,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+70 Int",
+       "+1 PA",
+       "+8 % Ré Eau"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 22022,
+      "name": "Aprybou",
+      "level": 200,
+      "type": 217,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "-1000 Ini",
+       "+40 Ré Neutre",
+       "+40 Ré Terre",
+       "+40 Ré Feu",
+       "+40 Ré Eau",
+       "+40 Ré Air",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 7754,
+      "name": "Dofus Ocre",
+      "level": 160,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+1 PA",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 7115,
+      "name": "Dofus Ivoire",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+4 % Ré Neutre",
+       "+4 % Ré Terre",
+       "+4 % Ré Feu",
+       "+4 % Ré Eau",
+       "+4 % Ré Air",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 13344,
+      "name": "Dolmanax",
+      "level": 100,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+70 Fo",
+       "+70 Int",
+       "+70 Cha",
+       "+70 Agi"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 6980,
+      "name": "Dofus Vulbis",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+1 PM",
+       "sort passif"
+      ]
+     },
+     {
+      "slot": "Dofus/Trophée/Prysma",
+      "itemId": 20286,
+      "name": "Dofus Argenté Scintillant",
+      "level": 180,
+      "type": 23,
+      "set": "",
+      "forgemagie": "—",
+      "conditions": "",
+      "lines": [
+       "+300 Vi",
+       "sort passif"
+      ]
+     }
+    ],
+    "stats": {
+     "ap": 12,
+     "mp": 6,
+     "range": 6,
+     "hp": 5745,
+     "initiative": 360,
+     "critical": 15,
+     "main": {
+      "vitality": 4695,
+      "wisdom": 520,
+      "strength": 310,
+      "intelligence": 1220,
+      "chance": 380,
+      "agility": 250
+     },
+     "power": 100,
+     "damage": 0,
+     "elementDamage": {
+      "neutral": 17,
+      "earth": 23,
+      "fire": 120,
+      "water": 60,
+      "air": 15
+     },
+     "criticalDamage": 0,
+     "spellDamagePct": 0,
+     "finalDamagePct": 0,
+     "meleeDamagePct": 0,
+     "rangedDamagePct": 0,
+     "weaponDamagePct": 0,
+     "heals": 140,
+     "resPct": {
+      "neutral": 40,
+      "earth": 33,
+      "fire": 33,
+      "water": 51,
+      "air": 14
+     },
+     "resFixed": {
+      "neutral": 40,
+      "earth": 40,
+      "fire": 40,
+      "water": 40,
+      "air": 40
+     },
+     "meleeResPct": 7,
+     "rangedResPct": 0,
+     "criticalRes": 75,
+     "pushRes": 45,
+     "pushDamage": 145,
+     "apReduction": 62,
+     "mpReduction": 52,
+     "apParry": 62,
+     "mpParry": 52,
+     "tackleBlock": 34,
+     "tackleEvade": 54
+    }
+   },
+   "proxy": {
+    "chosen": {
+     "R2 équilibré": {
+      "logJ": 7.023,
+      "dpt": 1735,
+      "ehp": 10571,
+      "util": 1.455,
+      "incoming": 8259
+     },
+     "R2 défensif": {
+      "logJ": 7.7574,
+      "dpt": 1735,
+      "ehp": 10571,
+      "util": 1.455,
+      "incoming": 8259
+     },
+     "R2 offensif": {
+      "logJ": 6.7519,
+      "dpt": 1735,
+      "ehp": 10571,
+      "util": 1.455,
+      "incoming": 8259
+     },
+     "R1 (sans poussée)": {
+      "logJ": 7.0479,
+      "dpt": 1735,
+      "ehp": 11113,
+      "util": 1.455,
+      "incoming": 5974
+     }
+    },
+    "start": {
+     "R2 équilibré": {
+      "logJ": 6.5228,
+      "dpt": 2004,
+      "ehp": 4293,
+      "util": 1.39,
+      "incoming": 12755
+     },
+     "R2 défensif": {
+      "logJ": 7.0553,
+      "dpt": 2004,
+      "ehp": 4293,
+      "util": 1.39,
+      "incoming": 12755
+     },
+     "R2 offensif": {
+      "logJ": 6.4085,
+      "dpt": 2004,
+      "ehp": 4293,
+      "util": 1.39,
+      "incoming": 12755
+     },
+     "R1 (sans poussée)": {
+      "logJ": 6.5437,
+      "dpt": 2004,
+      "ehp": 4477,
+      "util": 1.39,
+      "incoming": 9301
+     }
+    }
+   },
+   "front": [
+    {
+     "dpt": 1735,
+     "ehp": 11113,
+     "util": 1.455,
+     "logJ": 7.0479,
+     "hp": 5745,
+     "pushRes": 45,
+     "points": "cap300"
+    },
+    {
+     "dpt": 1833,
+     "ehp": 10354,
+     "util": 1.51,
+     "logJ": 7.0456,
+     "hp": 5353,
+     "pushRes": 45,
+     "points": "preset"
+    },
+    {
+     "dpt": 1769,
+     "ehp": 10520,
+     "util": 1.505,
+     "logJ": 7.0446,
+     "hp": 5645,
+     "pushRes": 45,
+     "points": "cap300"
+    },
+    {
+     "dpt": 1684,
+     "ehp": 11403,
+     "util": 1.428,
+     "logJ": 7.0438,
+     "hp": 5895,
+     "pushRes": 45,
+     "points": "cap250"
+    },
+    {
+     "dpt": 1871,
+     "ehp": 9790,
+     "util": 1.56,
+     "logJ": 7.0414,
+     "hp": 5253,
+     "pushRes": 45,
+     "points": "preset"
+    },
+    {
+     "dpt": 1763,
+     "ehp": 10741,
+     "util": 1.472,
+     "logJ": 7.0408,
+     "hp": 5553,
+     "pushRes": 45,
+     "points": "start"
+    }
+   ]
+  }
+ ],
+ "variants": [
+  {
+   "title": "offensive (`*_vortex_off`, stuffs `vortex_*_off`)",
+   "team": "cra_feu_vortex_off,enutrof_retrait_pm_vortex_off,iop_terre_vortex_off,eniripsa_soin_vortex_off",
+   "note": "Proxy R2 offensif (a + 0,15, b − 0,15), Dofus à sort passif du stuff de départ imposés (`fixed`). Corrompt le plus tôt (2,0 au tour 7) mais survit 2,2 tours de moins que l'équilibré.",
+   "members": [
+    {
+     "preset": "cra_feu_zone",
+     "stuffId": "vortex_cra_feu_off",
+     "build": {
+      "items": [
+       {
+        "itemId": 13117,
+        "exos": [
+         {
+          "stat": "criticalDamage",
+          "value": 8,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 13642,
+        "exos": [
+         {
+          "stat": "mp",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 22192,
+        "exos": [
+         {
+          "stat": "range",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 14081,
+        "exos": [
+         {
+          "stat": "rangedDamagePct",
+          "value": 1,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 22189,
+        "exos": [
+         {
+          "stat": "rangedDamagePct",
+          "value": 1,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 14079,
+        "exos": [
+         {
+          "stat": "ap",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 17577,
+        "exos": [
+         {
+          "stat": "rangedDamagePct",
+          "value": 1,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 30689,
+        "exos": [
+         {
+          "stat": "criticalDamage",
+          "value": 8,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 13119,
+        "exos": [
+         {
+          "stat": "criticalDamage",
+          "value": 8,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 13465
+       },
+       {
+        "itemId": 18043
+       },
+       {
+        "itemId": 6980
+       },
+       {
+        "itemId": 739
+       },
+       {
+        "itemId": 7754
+       },
+       {
+        "itemId": 30455
+       },
+       {
+        "itemId": 30453
+       }
+      ],
+      "characteristicPoints": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 992,
+       "chance": 0,
+       "agility": 0
+      }
+     },
+     "detail": {
+      "preset": "cra_feu_zone",
+      "className": "Crâ",
+      "valid": true,
+      "issues": [],
+      "characteristicPoints": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 992,
+       "chance": 0,
+       "agility": 0
+      },
+      "pointsSpent": 995,
+      "pointsAvailable": 995,
+      "scrolls": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "base": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 398,
+       "chance": 0,
+       "agility": 0
+      },
+      "additional": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "sets": [
+       {
+        "name": "Panoplie d'Otomaï",
+        "count": 3,
+        "tier": 3
+       },
+       {
+        "name": "Panoplie de Guerre",
+        "count": 2,
+        "tier": 2
+       },
+       {
+        "name": "Panoplie Séculaire",
+        "count": 2,
+        "tier": 2
+       }
+      ],
+      "passiveSpells": [
+       6828,
+       8396,
+       5952,
+       8394
+      ],
+      "items": [
+       {
+        "slot": "Amulette",
+        "itemId": 13117,
+        "name": "Amulette d'Otomaï",
+        "level": 197,
+        "type": 1,
+        "set": "Panoplie d'Otomaï",
+        "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+80 Int",
+         "+50 Sa",
+         "+6 % CC",
+         "+1 PA",
+         "+18 Do Feu",
+         "+12 Soins",
+         "+7 % Ré Feu",
+         "+7 % Ré Eau",
+         "+6 Tacle"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 13642,
+        "name": "Anneau de Padgref",
+        "level": 197,
+        "type": 9,
+        "set": "Panoplie de Padgref",
+        "forgemagie": "exo +1 PM",
+        "conditions": "",
+        "lines": [
+         "+100 Vi",
+         "+60 Int",
+         "+60 Agi",
+         "+40 Sa",
+         "+6 % CC",
+         "+1 PO",
+         "+1 Invo",
+         "+7 Do Feu",
+         "+7 Do Air",
+         "+8 % Ré Eau",
+         "+10 Ré Terre",
+         "+10 Ré Air",
+         "-6 Tacle",
+         "-4 Esq PM",
+         "+12 Do Cri"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 22192,
+        "name": "Ceste de Guerre",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie de Guerre",
+        "forgemagie": "exo +1 PO",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+60 Int",
+         "+30 Sa",
+         "+4 % CC",
+         "+10 Do Feu",
+         "-10 Soins",
+         "+7 % Ré Terre",
+         "+7 % Ré Air",
+         "+15 Do Cri"
+        ]
+       },
+       {
+        "slot": "Ceinture",
+        "itemId": 14081,
+        "name": "Ceinture Séculaire",
+        "level": 200,
+        "type": 10,
+        "set": "Panoplie Séculaire",
+        "forgemagie": "transcendance Ta Do Per Di (+1 % Do Distance)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+80 Int",
+         "+40 Agi",
+         "+50 Sa",
+         "+7 % CC",
+         "+1 PO",
+         "+10 Do Feu",
+         "+10 Soins",
+         "+300 Ini",
+         "+10 % Ré Air",
+         "+15 Fuite",
+         "+15 Do Cri"
+        ]
+       },
+       {
+        "slot": "Bottes",
+        "itemId": 22189,
+        "name": "Solerets de Guerre",
+        "level": 200,
+        "type": 11,
+        "set": "Panoplie de Guerre",
+        "forgemagie": "transcendance Ta Do Per Di (+1 % Do Distance)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+100 Int",
+         "+30 Sa",
+         "+4 % CC",
+         "+1 PM",
+         "+20 Do Feu",
+         "+7 % Ré Neutre",
+         "+7 % Ré Eau",
+         "+20 Tacle",
+         "-20 Fuite",
+         "+10 Ret PM",
+         "+15 Do Cri"
+        ]
+       },
+       {
+        "slot": "Coiffe",
+        "itemId": 14079,
+        "name": "Coiffe Séculaire",
+        "level": 200,
+        "type": 16,
+        "set": "Panoplie Séculaire",
+        "forgemagie": "exo +1 PA",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+100 Int",
+         "+40 Agi",
+         "+40 Sa",
+         "+1 Invo",
+         "+10 Do Feu",
+         "+10 Do Air",
+         "+12 Soins",
+         "+15 PP",
+         "+7 % Ré Terre",
+         "+7 % Ré Eau",
+         "+15 Ré Air"
+        ]
+       },
+       {
+        "slot": "Cape",
+        "itemId": 17577,
+        "name": "Cape de la Dame du Hasard",
+        "level": 200,
+        "type": 17,
+        "set": "Panoplie de la Dame du Hasard",
+        "forgemagie": "transcendance Ta Do Per Di (+1 % Do Distance)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+70 Int",
+         "+70 Cha",
+         "+40 Sa",
+         "+6 % CC",
+         "+1 PO",
+         "+10 Do Feu",
+         "+10 Do Eau",
+         "+15 PP",
+         "+7 % Ré Terre",
+         "+7 % Ré Eau",
+         "+5 Fuite",
+         "+6 Ret PM",
+         "+15 Do Cri"
+        ]
+       },
+       {
+        "slot": "Bouclier",
+        "itemId": 30689,
+        "name": "Fiole d'Otomaï",
+        "level": 196,
+        "type": 82,
+        "set": "Panoplie d'Otomaï",
+        "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+        "conditions": "",
+        "lines": [
+         "+200 Vi",
+         "+70 Int",
+         "+30 Sa",
+         "+5 % CC",
+         "+15 PP",
+         "+7 % Ré Neutre",
+         "+7 % Ré Feu",
+         "+7 Esq PA"
+        ]
+       },
+       {
+        "slot": "Arme",
+        "itemId": 13119,
+        "name": "Épée d'Otomaï",
+        "level": 196,
+        "type": 6,
+        "set": "Panoplie d'Otomaï",
+        "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+80 Int",
+         "+30 Sa",
+         "+3 % CC",
+         "+1 PO",
+         "+1 Invo",
+         "+18 Do Feu",
+         "+15 PP",
+         "+400 Ini",
+         "+20 Ré Neutre",
+         "+20 Ré Eau",
+         "+10 Tacle",
+         "+6 Esq PA"
+        ]
+       },
+       {
+        "slot": "Familier/Monture",
+        "itemId": 13465,
+        "name": "Sakochère",
+        "level": 60,
+        "type": 121,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PA",
+         "+50 Do Cri"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 18043,
+        "name": "Dofus Abyssal",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 6980,
+        "name": "Dofus Vulbis",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PM",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 739,
+        "name": "Dofus Turquoise",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+10 % CC",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7754,
+        "name": "Dofus Ocre",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PA",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 30455,
+        "name": "Arcaniste",
+        "level": 150,
+        "type": 151,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+6 % Do Sorts",
+         "-6 % Ré Distance",
+         "-6 % Ré Mêlée"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 30453,
+        "name": "Impétueux",
+        "level": 150,
+        "type": 151,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+6 % Do Distance",
+         "-6 % Ré Distance"
+        ]
+       }
+      ],
+      "stats": {
+       "ap": 12,
+       "mp": 6,
+       "range": 6,
+       "hp": 4003,
+       "initiative": 2568,
+       "critical": 64,
+       "main": {
+        "vitality": 2953,
+        "wisdom": 440,
+        "strength": 100,
+        "intelligence": 1358,
+        "chance": 170,
+        "agility": 240
+       },
+       "power": 0,
+       "damage": 0,
+       "elementDamage": {
+        "neutral": 0,
+        "earth": 0,
+        "fire": 113,
+        "water": 10,
+        "air": 17
+       },
+       "criticalDamage": 166,
+       "spellDamagePct": 6,
+       "finalDamagePct": 0,
+       "meleeDamagePct": 0,
+       "rangedDamagePct": 9,
+       "weaponDamagePct": 0,
+       "heals": 54,
+       "resPct": {
+        "neutral": 14,
+        "earth": 21,
+        "fire": 14,
+        "water": 36,
+        "air": 17
+       },
+       "resFixed": {
+        "neutral": 20,
+        "earth": 10,
+        "fire": 0,
+        "water": 20,
+        "air": 25
+       },
+       "meleeResPct": -6,
+       "rangedResPct": -12,
+       "criticalRes": 0,
+       "pushRes": 0,
+       "pushDamage": 0,
+       "apReduction": 44,
+       "mpReduction": 70,
+       "apParry": 57,
+       "mpParry": 40,
+       "tackleBlock": 84,
+       "tackleEvade": 39
+      }
+     }
+    },
+    {
+     "preset": "enutrof_retrait_pm_eau",
+     "stuffId": "vortex_enutrof_eau_off",
+     "build": {
+      "items": [
+       {
+        "itemId": 17103,
+        "exos": [
+         {
+          "stat": "range",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 32231,
+        "exos": [
+         {
+          "stat": "ap",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 12113,
+        "exos": [
+         {
+          "stat": "mp",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 17104,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 17105,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 22202,
+        "exos": [
+         {
+          "stat": "spellDamagePct",
+          "value": 1,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 22201,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 32233,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 34331,
+        "exos": [
+         {
+          "stat": "spellDamagePct",
+          "value": 1,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 33252
+       },
+       {
+        "itemId": 972
+       },
+       {
+        "itemId": 7754
+       },
+       {
+        "itemId": 6980
+       },
+       {
+        "itemId": 739
+       },
+       {
+        "itemId": 18043
+       },
+       {
+        "itemId": 22022
+       }
+      ],
+      "characteristicPoints": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 0,
+       "chance": 992,
+       "agility": 0
+      }
+     },
+     "detail": {
+      "preset": "enutrof_retrait_pm_eau",
+      "className": "Enutrof",
+      "valid": true,
+      "issues": [],
+      "characteristicPoints": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 0,
+       "chance": 992,
+       "agility": 0
+      },
+      "pointsSpent": 995,
+      "pointsAvailable": 995,
+      "scrolls": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "base": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 0,
+       "chance": 398,
+       "agility": 0
+      },
+      "additional": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "sets": [
+       {
+        "name": "Panoplie de Voldelor",
+        "count": 3,
+        "tier": 3
+       },
+       {
+        "name": "Panoplie du Chevalier de Glace",
+        "count": 2,
+        "tier": 2
+       },
+       {
+        "name": "Panoplie de Servitude",
+        "count": 2,
+        "tier": 2
+       }
+      ],
+      "passiveSpells": [
+       8418,
+       8394,
+       8396,
+       5952,
+       6828,
+       14945
+      ],
+      "items": [
+       {
+        "slot": "Amulette",
+        "itemId": 17103,
+        "name": "Amulette Voldelor",
+        "level": 200,
+        "type": 1,
+        "set": "Panoplie de Voldelor",
+        "forgemagie": "exo +1 PO",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+70 Cha",
+         "+70 Agi",
+         "+40 Sa",
+         "+1 PA",
+         "+12 Do Eau",
+         "+12 Do Air",
+         "+15 PP",
+         "+10 % Ré Feu",
+         "+10 % Ré Eau",
+         "+7 Fuite",
+         "-7 Esq PM",
+         "+15 Do Cri"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 32231,
+        "name": "Ceste gelé du Chevalier de Glace",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie du Chevalier de Glace",
+        "forgemagie": "exo +1 PA",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+30 Cha",
+         "+30 Sa",
+         "+30 Pui",
+         "+1 PO",
+         "+5 Do",
+         "+10 Do Eau",
+         "+10 PP",
+         "+10 % Ré Eau",
+         "+6 Fuite",
+         "+6 Ret PM"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 12113,
+        "name": "Alliance Gloursonne",
+        "level": 198,
+        "type": 9,
+        "set": "Panoplie Gloursonne",
+        "forgemagie": "exo +1 PM",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+60 Cha",
+         "+60 Agi",
+         "+40 Sa",
+         "+1 PO",
+         "+12 Do Eau",
+         "+12 Do Air",
+         "+10 PP",
+         "+400 Ini",
+         "+7 % Ré Neutre",
+         "+7 % Ré Terre",
+         "+7 % Ré Feu",
+         "+5 Tacle"
+        ]
+       },
+       {
+        "slot": "Ceinture",
+        "itemId": 17104,
+        "name": "Ceinture Voldelor",
+        "level": 200,
+        "type": 10,
+        "set": "Panoplie de Voldelor",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+70 Cha",
+         "+70 Agi",
+         "+50 Sa",
+         "+1 PO",
+         "+15 Do Eau",
+         "+15 Do Air",
+         "+15 PP",
+         "+10 % Ré Feu",
+         "+10 % Ré Eau",
+         "+7 Fuite",
+         "-7 Esq PM",
+         "+15 Do Cri"
+        ]
+       },
+       {
+        "slot": "Bottes",
+        "itemId": 17105,
+        "name": "Bottes Voldelor",
+        "level": 200,
+        "type": 11,
+        "set": "Panoplie de Voldelor",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+70 Cha",
+         "+70 Agi",
+         "+40 Sa",
+         "+10 % CC",
+         "+1 PM",
+         "+12 Do Eau",
+         "+12 Do Air",
+         "+7 Fuite",
+         "+20 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Coiffe",
+        "itemId": 22202,
+        "name": "Dora de Servitude",
+        "level": 200,
+        "type": 16,
+        "set": "Panoplie de Servitude",
+        "forgemagie": "transcendance Ta Do Per So (+1 % Do Sorts)",
+        "conditions": "",
+        "lines": [
+         "+450 Vi",
+         "+80 Cha",
+         "+30 Sa",
+         "+3 % CC",
+         "+1 PO",
+         "+15 Do Eau",
+         "+500 Ini",
+         "+10 % Ré Neutre",
+         "+3 % Ré Terre",
+         "+6 % Ré Eau",
+         "+10 Tacle",
+         "-10 Fuite",
+         "-10 Ret PA",
+         "+10 Esq PM",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Cape",
+        "itemId": 22201,
+        "name": "Manteau de Servitude",
+        "level": 200,
+        "type": 17,
+        "set": "Panoplie de Servitude",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+100 Cha",
+         "+40 Sa",
+         "+4 % CC",
+         "+20 Do Eau",
+         "+5 % Ré Neutre",
+         "+5 % Ré Terre",
+         "+7 % Ré Eau",
+         "+10 Tacle",
+         "-5 Fuite",
+         "-10 Ret PA",
+         "+10 Esq PM",
+         "+40 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Bouclier",
+        "itemId": 32233,
+        "name": "Pavois frigorifié du Chevalier de Glace",
+        "level": 200,
+        "type": 82,
+        "set": "Panoplie du Chevalier de Glace",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+40 Cha",
+         "+40 Sa",
+         "+40 Pui",
+         "+1 Invo",
+         "+15 PP",
+         "+10 % Ré Terre",
+         "+10 % Ré Feu",
+         "+10 Fuite",
+         "+10 Ret PM",
+         "+15 Esq PA"
+        ]
+       },
+       {
+        "slot": "Arme",
+        "itemId": 34331,
+        "name": "Lancepince d'Exécrabe",
+        "level": 200,
+        "type": 271,
+        "set": "Panoplie du Gouffre",
+        "forgemagie": "transcendance Ta Do Per So (+1 % Do Sorts)",
+        "conditions": "",
+        "lines": [
+         "+500 Vi",
+         "+90 Cha",
+         "+50 Sa",
+         "+5 % CC",
+         "+12 Do Eau",
+         "+15 PP",
+         "-300 Ini",
+         "+7 % Ré Feu",
+         "+10 % Ré Eau",
+         "+10 Tacle",
+         "+12 Ret PM",
+         "-10 Esq PA",
+         "+20 Do Cri"
+        ]
+       },
+       {
+        "slot": "Familier/Monture",
+        "itemId": 33252,
+        "name": "Volkorne Turquoise et Indigo",
+        "level": 60,
+        "type": 333,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+70 Cha",
+         "+1 PA",
+         "+30 Ret PM"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 972,
+        "name": "Dofus Cawotte",
+        "level": 60,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+60 Sa",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7754,
+        "name": "Dofus Ocre",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PA",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 6980,
+        "name": "Dofus Vulbis",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PM",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 739,
+        "name": "Dofus Turquoise",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+10 % CC",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 18043,
+        "name": "Dofus Abyssal",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 22022,
+        "name": "Aprybou",
+        "level": 200,
+        "type": 217,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "-1000 Ini",
+         "+40 Ré Neutre",
+         "+40 Ré Terre",
+         "+40 Ré Feu",
+         "+40 Ré Eau",
+         "+40 Ré Air",
+         "sort passif"
+        ]
+       }
+      ],
+      "stats": {
+       "ap": 12,
+       "mp": 6,
+       "range": 6,
+       "hp": 4803,
+       "initiative": 2018,
+       "critical": 42,
+       "main": {
+        "vitality": 3753,
+        "wisdom": 520,
+        "strength": 100,
+        "intelligence": 100,
+        "chance": 1308,
+        "agility": 410
+       },
+       "power": 100,
+       "damage": 5,
+       "elementDamage": {
+        "neutral": 0,
+        "earth": 0,
+        "fire": 0,
+        "water": 118,
+        "air": 51
+       },
+       "criticalDamage": 50,
+       "spellDamagePct": 2,
+       "finalDamagePct": 0,
+       "meleeDamagePct": 0,
+       "rangedDamagePct": 0,
+       "weaponDamagePct": 0,
+       "heals": 0,
+       "resPct": {
+        "neutral": 22,
+        "earth": 25,
+        "fire": 44,
+        "water": 53,
+        "air": 10
+       },
+       "resFixed": {
+        "neutral": 40,
+        "earth": 40,
+        "fire": 40,
+        "water": 40,
+        "air": 40
+       },
+       "meleeResPct": 0,
+       "rangedResPct": 0,
+       "criticalRes": 0,
+       "pushRes": 140,
+       "pushDamage": 0,
+       "apReduction": 52,
+       "mpReduction": 140,
+       "apParry": 72,
+       "mpParry": 68,
+       "tackleBlock": 86,
+       "tackleEvade": 88
+      }
+     }
+    },
+    {
+     "preset": "iop_terre_burst",
+     "stuffId": "vortex_iop_terre_off",
+     "build": {
+      "items": [
+       {
+        "itemId": 24029,
+        "exos": [
+         {
+          "stat": "spellDamagePct",
+          "value": 1,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 14092,
+        "exos": [
+         {
+          "stat": "mp",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 22205,
+        "exos": [
+         {
+          "stat": "criticalDamage",
+          "value": 8,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 22209,
+        "exos": [
+         {
+          "stat": "ap",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 14093,
+        "exos": [
+         {
+          "stat": "criticalDamage",
+          "value": 8,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 21235,
+        "exos": [
+         {
+          "stat": "criticalDamage",
+          "value": 8,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 21230,
+        "exos": [
+         {
+          "stat": "criticalDamage",
+          "value": 8,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 18718,
+        "exos": [
+         {
+          "stat": "criticalDamage",
+          "value": 8,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 21229
+       },
+       {
+        "itemId": 13673
+       },
+       {
+        "itemId": 18043
+       },
+       {
+        "itemId": 7754
+       },
+       {
+        "itemId": 6980
+       },
+       {
+        "itemId": 739
+       },
+       {
+        "itemId": 29136
+       },
+       {
+        "itemId": 30455
+       }
+      ],
+      "characteristicPoints": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 992,
+       "intelligence": 0,
+       "chance": 0,
+       "agility": 0
+      }
+     },
+     "detail": {
+      "preset": "iop_terre_burst",
+      "className": "Iop",
+      "valid": true,
+      "issues": [],
+      "characteristicPoints": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 992,
+       "intelligence": 0,
+       "chance": 0,
+       "agility": 0
+      },
+      "pointsSpent": 995,
+      "pointsAvailable": 995,
+      "scrolls": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "base": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 398,
+       "intelligence": 0,
+       "chance": 0,
+       "agility": 0
+      },
+      "additional": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "sets": [
+       {
+        "name": "Panoplie du Cycloïde",
+        "count": 3,
+        "tier": 3
+       },
+       {
+        "name": "Panoplie de Corruption",
+        "count": 2,
+        "tier": 2
+       },
+       {
+        "name": "Panoplie de Torkélonia",
+        "count": 3,
+        "tier": 3
+       }
+      ],
+      "passiveSpells": [
+       6828,
+       8394,
+       8396,
+       5952,
+       28516
+      ],
+      "items": [
+       {
+        "slot": "Amulette",
+        "itemId": 24029,
+        "name": "Amulette de Wulan",
+        "level": 200,
+        "type": 1,
+        "set": "Panoplie de Wulan",
+        "forgemagie": "transcendance Ta Do Per So (+1 % Do Sorts)",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+60 Fo",
+         "+60 Cha",
+         "+30 Sa",
+         "+4 % CC",
+         "+1 PA",
+         "+1 PO",
+         "+15 Do Neutre",
+         "+15 Do Terre",
+         "+15 Do Eau",
+         "+7 % Ré Eau",
+         "+7 % Ré Air",
+         "-15 Fuite",
+         "-15 Ret PA",
+         "+6 Ret PM",
+         "+20 Do Cri"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 14092,
+        "name": "Anneau du Cycloïde",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie du Cycloïde",
+        "forgemagie": "exo +1 PM",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+40 Fo",
+         "+40 Int",
+         "+40 Agi",
+         "+10 Do Neutre",
+         "+10 Do Terre",
+         "+10 Do Feu",
+         "+10 Do Air",
+         "+300 Ini",
+         "+8 % Ré Eau",
+         "+6 Tacle"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 22205,
+        "name": "Bague de Corruption",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie de Corruption",
+        "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+60 Fo",
+         "+20 Sa",
+         "+7 % CC",
+         "+12 Do Neutre",
+         "+12 Do Terre",
+         "+10 % Ré Eau",
+         "-5 Esq PA",
+         "+10 Do Cri"
+        ]
+       },
+       {
+        "slot": "Ceinture",
+        "itemId": 22209,
+        "name": "Ceinturonce de Corruption",
+        "level": 200,
+        "type": 10,
+        "set": "Panoplie de Corruption",
+        "forgemagie": "exo +1 PA",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+70 Fo",
+         "+40 Sa",
+         "+3 % CC",
+         "+1 PO",
+         "+15 Do Neutre",
+         "+15 Do Terre",
+         "+10 % Ré Neutre",
+         "+7 % Ré Terre",
+         "+10 Ret PM",
+         "-5 Esq PA",
+         "+20 Do Cri"
+        ]
+       },
+       {
+        "slot": "Bottes",
+        "itemId": 14093,
+        "name": "Bottes du Cycloïde",
+        "level": 200,
+        "type": 11,
+        "set": "Panoplie du Cycloïde",
+        "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+50 Fo",
+         "+50 Int",
+         "+50 Agi",
+         "+50 Sa",
+         "+5 % CC",
+         "+1 PM",
+         "+1 PO",
+         "+10 Do Neutre",
+         "+10 Do Terre",
+         "+10 Do Feu",
+         "+10 Do Air",
+         "+10 % Ré Air",
+         "+15 Ré Terre",
+         "+10 Do Cri",
+         "-30 Do Pou"
+        ]
+       },
+       {
+        "slot": "Coiffe",
+        "itemId": 21235,
+        "name": "Corne de Torkélonia",
+        "level": 200,
+        "type": 16,
+        "set": "Panoplie de Torkélonia",
+        "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+70 Fo",
+         "+50 Agi",
+         "+35 Sa",
+         "+5 % CC",
+         "+12 Do Terre",
+         "+12 Do Air",
+         "+20 PP",
+         "+10 % Ré Neutre",
+         "+10 % Ré Terre",
+         "+5 Esq PM",
+         "+12 Do Cri"
+        ]
+       },
+       {
+        "slot": "Cape",
+        "itemId": 21230,
+        "name": "Carapace de Torkélonia",
+        "level": 200,
+        "type": 17,
+        "set": "Panoplie de Torkélonia",
+        "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+50 Fo",
+         "+70 Agi",
+         "+30 Sa",
+         "+5 % CC",
+         "+15 Do Terre",
+         "+15 Do Air",
+         "+10 % Ré Feu",
+         "+10 % Ré Air",
+         "+5 Fuite",
+         "+5 Esq PA",
+         "+12 Do Cri"
+        ]
+       },
+       {
+        "slot": "Bouclier",
+        "itemId": 18718,
+        "name": "Bouclier du Cycloïde",
+        "level": 200,
+        "type": 82,
+        "set": "Panoplie du Cycloïde",
+        "forgemagie": "transcendance Pata Do Cri (+8 Do Cri)",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+60 Fo",
+         "+60 Int",
+         "+60 Agi",
+         "+40 Sa",
+         "+6 % CC",
+         "+8 % Ré Terre",
+         "+6 % Ré Feu",
+         "+4 % Ré Air",
+         "+10 Tacle"
+        ]
+       },
+       {
+        "slot": "Arme",
+        "itemId": 21229,
+        "name": "Baguette de Torkélonia",
+        "level": 200,
+        "type": 3,
+        "set": "Panoplie de Torkélonia",
+        "forgemagie": "—",
+        "conditions": "CA>299&CS>299",
+        "lines": [
+         "+350 Vi",
+         "+60 Fo",
+         "+60 Agi",
+         "+40 Sa",
+         "+30 Pui",
+         "+6 % CC",
+         "+1 Invo",
+         "+20 Do Terre",
+         "+20 Do Air",
+         "+25 PP",
+         "+15 Ré Terre",
+         "+15 Ré Eau",
+         "+20 Do Cri"
+        ]
+       },
+       {
+        "slot": "Familier/Monture",
+        "itemId": 13673,
+        "name": "Kokulte",
+        "level": 20,
+        "type": 18,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+15 % CC",
+         "+40 Do Cri"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 18043,
+        "name": "Dofus Abyssal",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7754,
+        "name": "Dofus Ocre",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PA",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 6980,
+        "name": "Dofus Vulbis",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PM",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 739,
+        "name": "Dofus Turquoise",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+10 % CC",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 29136,
+        "name": "Dofus Sylvestre",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+2 PO",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 30455,
+        "name": "Arcaniste",
+        "level": 150,
+        "type": 151,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+6 % Do Sorts",
+         "-6 % Ré Distance",
+         "-6 % Ré Mêlée"
+        ]
+       }
+      ],
+      "stats": {
+       "ap": 12,
+       "mp": 6,
+       "range": 6,
+       "hp": 4003,
+       "initiative": 2388,
+       "critical": 95,
+       "main": {
+        "vitality": 2953,
+        "wisdom": 385,
+        "strength": 1148,
+        "intelligence": 280,
+        "chance": 160,
+        "agility": 500
+       },
+       "power": 30,
+       "damage": 0,
+       "elementDamage": {
+        "neutral": 72,
+        "earth": 119,
+        "fire": 30,
+        "water": 15,
+        "air": 77
+       },
+       "criticalDamage": 199,
+       "spellDamagePct": 7,
+       "finalDamagePct": 0,
+       "meleeDamagePct": 0,
+       "rangedDamagePct": 0,
+       "weaponDamagePct": 0,
+       "heals": 0,
+       "resPct": {
+        "neutral": 20,
+        "earth": 25,
+        "fire": 16,
+        "water": 25,
+        "air": 31
+       },
+       "resFixed": {
+        "neutral": 0,
+        "earth": 30,
+        "fire": 0,
+        "water": 15,
+        "air": 0
+       },
+       "meleeResPct": -6,
+       "rangedResPct": -6,
+       "criticalRes": 0,
+       "pushRes": 0,
+       "pushDamage": -30,
+       "apReduction": 23,
+       "mpReduction": 54,
+       "apParry": 33,
+       "mpParry": 43,
+       "tackleBlock": 66,
+       "tackleEvade": 40
+      }
+     }
+    },
+    {
+     "preset": "eniripsa_soin_feu",
+     "stuffId": "vortex_eniripsa_feu_off",
+     "build": {
+      "items": [
+       {
+        "itemId": 14080,
+        "exos": [
+         {
+          "stat": "range",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 31799,
+        "exos": [
+         {
+          "stat": "ap",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 18594,
+        "exos": [
+         {
+          "stat": "mp",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 14081,
+        "exos": [
+         {
+          "stat": "intelligence",
+          "value": 20,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 18593,
+        "exos": [
+         {
+          "stat": "intelligence",
+          "value": 20,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 14079,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 31797,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 19598,
+        "exos": [
+         {
+          "stat": "intelligence",
+          "value": 20,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 31800,
+        "exos": [
+         {
+          "stat": "intelligence",
+          "value": 20,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 11971
+       },
+       {
+        "itemId": 18043
+       },
+       {
+        "itemId": 6980
+       },
+       {
+        "itemId": 739
+       },
+       {
+        "itemId": 7754
+       },
+       {
+        "itemId": 22022
+       },
+       {
+        "itemId": 13344
+       }
+      ],
+      "characteristicPoints": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 992,
+       "chance": 0,
+       "agility": 0
+      }
+     },
+     "detail": {
+      "preset": "eniripsa_soin_feu",
+      "className": "Eniripsa",
+      "valid": true,
+      "issues": [],
+      "characteristicPoints": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 992,
+       "chance": 0,
+       "agility": 0
+      },
+      "pointsSpent": 995,
+      "pointsAvailable": 995,
+      "scrolls": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "base": {
+       "vitality": 3,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 398,
+       "chance": 0,
+       "agility": 0
+      },
+      "additional": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "sets": [
+       {
+        "name": "Panoplie Séculaire",
+        "count": 3,
+        "tier": 3
+       },
+       {
+        "name": "Panoplie du Vénérable Endormi",
+        "count": 3,
+        "tier": 3
+       },
+       {
+        "name": "Panoplistik",
+        "count": 2,
+        "tier": 2
+       }
+      ],
+      "passiveSpells": [
+       6828,
+       8396,
+       5952,
+       8394,
+       14945
+      ],
+      "items": [
+       {
+        "slot": "Amulette",
+        "itemId": 14080,
+        "name": "Amulette Séculaire",
+        "level": 200,
+        "type": 1,
+        "set": "Panoplie Séculaire",
+        "forgemagie": "exo +1 PO",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+80 Int",
+         "+25 Agi",
+         "+40 Sa",
+         "+1 PA",
+         "+12 Do Feu",
+         "+12 Do Air",
+         "+20 PP",
+         "+8 % Ré Neutre",
+         "+8 % Ré Feu",
+         "+15 Ré Cri"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 31799,
+        "name": "Malédiction du Vénérable Endormi",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie du Vénérable Endormi",
+        "forgemagie": "exo +1 PA",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+100 Int",
+         "+20 Sa",
+         "+3 % CC",
+         "+10 PP",
+         "-300 Ini",
+         "+7 % Ré Feu",
+         "+7 % Ré Eau",
+         "+10 Ret PA",
+         "+15 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 18594,
+        "name": "Baguistik",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplistik",
+        "forgemagie": "exo +1 PM",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+40 Fo",
+         "+40 Int",
+         "+40 Sa",
+         "+4 % CC",
+         "+1 PO",
+         "+7 Do Neutre",
+         "+7 Do Terre",
+         "+7 Do Feu",
+         "+10 Soins",
+         "+7 % Ré Eau",
+         "+30 Ré Cri"
+        ]
+       },
+       {
+        "slot": "Ceinture",
+        "itemId": 14081,
+        "name": "Ceinture Séculaire",
+        "level": 200,
+        "type": 10,
+        "set": "Panoplie Séculaire",
+        "forgemagie": "transcendance Rata Ine (+20 Int)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+80 Int",
+         "+40 Agi",
+         "+50 Sa",
+         "+7 % CC",
+         "+1 PO",
+         "+10 Do Feu",
+         "+10 Soins",
+         "+300 Ini",
+         "+10 % Ré Air",
+         "+15 Fuite",
+         "+15 Do Cri"
+        ]
+       },
+       {
+        "slot": "Bottes",
+        "itemId": 18593,
+        "name": "Bottistik",
+        "level": 200,
+        "type": 11,
+        "set": "Panoplistik",
+        "forgemagie": "transcendance Rata Ine (+20 Int)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+50 Fo",
+         "+50 Int",
+         "+35 Sa",
+         "+1 PM",
+         "+10 Do Neutre",
+         "+10 Do Terre",
+         "+10 Do Feu",
+         "+12 Soins",
+         "+10 % Ré Air",
+         "+30 Ré Cri",
+         "+25 Do Pou"
+        ]
+       },
+       {
+        "slot": "Coiffe",
+        "itemId": 14079,
+        "name": "Coiffe Séculaire",
+        "level": 200,
+        "type": 16,
+        "set": "Panoplie Séculaire",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+100 Int",
+         "+40 Agi",
+         "+40 Sa",
+         "+1 Invo",
+         "+10 Do Feu",
+         "+10 Do Air",
+         "+12 Soins",
+         "+15 PP",
+         "+7 % Ré Terre",
+         "+7 % Ré Eau",
+         "+15 Ré Air"
+        ]
+       },
+       {
+        "slot": "Cape",
+        "itemId": 31797,
+        "name": "Manteau du Vénérable Endormi",
+        "level": 200,
+        "type": 17,
+        "set": "Panoplie du Vénérable Endormi",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+100 Int",
+         "+50 Sa",
+         "+7 % CC",
+         "+1 Invo",
+         "+10 Do Feu",
+         "+15 Soins",
+         "+15 PP",
+         "-200 Ini",
+         "+5 % Ré Terre",
+         "+5 % Ré Feu",
+         "+5 % Ré Eau",
+         "+12 Fuite",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Bouclier",
+        "itemId": 19598,
+        "name": "Bouclier de Solar",
+        "level": 200,
+        "type": 82,
+        "set": "Panoplie Volcanique",
+        "forgemagie": "transcendance Rata Ine (+20 Int)",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+70 Fo",
+         "+70 Int",
+         "+7 % Ré Neutre",
+         "+7 % Ré Terre",
+         "+7 % Ré Feu",
+         "+80 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Arme",
+        "itemId": 31800,
+        "name": "Arc du Vénérable Endormi",
+        "level": 200,
+        "type": 2,
+        "set": "Panoplie du Vénérable Endormi",
+        "forgemagie": "transcendance Rata Ine (+20 Int)",
+        "conditions": "",
+        "lines": [
+         "+450 Vi",
+         "+100 Fo",
+         "+50 Sa",
+         "+8 % CC",
+         "+1 PO",
+         "+10 Do Terre",
+         "+10 Soins",
+         "+15 PP",
+         "-200 Ini",
+         "+7 % Ré Terre",
+         "+7 % Ré Eau",
+         "+15 Fuite",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Familier/Monture",
+        "itemId": 11971,
+        "name": "Bisouglours",
+        "level": 20,
+        "type": 18,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+120 Int",
+         "+20 Do Feu"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 18043,
+        "name": "Dofus Abyssal",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 6980,
+        "name": "Dofus Vulbis",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PM",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 739,
+        "name": "Dofus Turquoise",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+10 % CC",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7754,
+        "name": "Dofus Ocre",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PA",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 22022,
+        "name": "Aprybou",
+        "level": 200,
+        "type": 217,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "-1000 Ini",
+         "+40 Ré Neutre",
+         "+40 Ré Terre",
+         "+40 Ré Feu",
+         "+40 Ré Eau",
+         "+40 Ré Air",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 13344,
+        "name": "Dolmanax",
+        "level": 100,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+70 Fo",
+         "+70 Int",
+         "+70 Cha",
+         "+70 Agi"
+        ]
+       }
+      ],
+      "stats": {
+       "ap": 12,
+       "mp": 6,
+       "range": 6,
+       "hp": 4703,
+       "initiative": 1178,
+       "critical": 47,
+       "main": {
+        "vitality": 3653,
+        "wisdom": 465,
+        "strength": 530,
+        "intelligence": 1548,
+        "chance": 170,
+        "agility": 330
+       },
+       "power": 0,
+       "damage": 0,
+       "elementDamage": {
+        "neutral": 27,
+        "earth": 43,
+        "fire": 105,
+        "water": 0,
+        "air": 42
+       },
+       "criticalDamage": 25,
+       "spellDamagePct": 0,
+       "finalDamagePct": 0,
+       "meleeDamagePct": 0,
+       "rangedDamagePct": 0,
+       "weaponDamagePct": 0,
+       "heals": 139,
+       "resPct": {
+        "neutral": 15,
+        "earth": 36,
+        "fire": 27,
+        "water": 33,
+        "air": 20
+       },
+       "resFixed": {
+        "neutral": 40,
+        "earth": 40,
+        "fire": 40,
+        "water": 40,
+        "air": 55
+       },
+       "meleeResPct": 0,
+       "rangedResPct": 0,
+       "criticalRes": 105,
+       "pushRes": 155,
+       "pushDamage": 50,
+       "apReduction": 56,
+       "mpReduction": 46,
+       "apParry": 46,
+       "mpParry": 46,
+       "tackleBlock": 33,
+       "tackleEvade": 90
+      }
+     }
+    }
+   ]
+  },
+  {
+   "title": "défensive (`*_vortex_def`, stuffs `vortex_*_def`)",
+   "team": "cra_feu_vortex_def,enutrof_retrait_pm_vortex_def,iop_terre_vortex_def,eniripsa_soin_vortex_def",
+   "note": "Proxy R2 défensif (a − 0,2, b + 0,2, poussée modélisée) : 6 000-6 300 PV et 140-195 Ré Pou par personnage ; première mort au tour 18,3 mais moins de corruptions. À utiliser si l'IA progresse en corruption (tour 3 de réglage) et que la survie redevient le facteur limitant.",
+   "members": [
+    {
+     "preset": "cra_feu_zone",
+     "stuffId": "vortex_cra_feu_def",
+     "build": {
+      "items": [
+       {
+        "itemId": 15749,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 31799,
+        "exos": [
+         {
+          "stat": "ap",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 14879,
+        "exos": [
+         {
+          "stat": "mp",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 15750,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 15751,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 14877,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 31797,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 18715,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 33607
+       },
+       {
+        "itemId": 33161
+       },
+       {
+        "itemId": 7115
+       },
+       {
+        "itemId": 22022
+       },
+       {
+        "itemId": 6980
+       },
+       {
+        "itemId": 7043
+       },
+       {
+        "itemId": 20286
+       },
+       {
+        "itemId": 7754
+       }
+      ],
+      "characteristicPoints": {
+       "vitality": 395,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 600,
+       "chance": 0,
+       "agility": 0
+      }
+     },
+     "detail": {
+      "preset": "cra_feu_zone",
+      "className": "Crâ",
+      "valid": true,
+      "issues": [],
+      "characteristicPoints": {
+       "vitality": 395,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 600,
+       "chance": 0,
+       "agility": 0
+      },
+      "pointsSpent": 995,
+      "pointsAvailable": 995,
+      "scrolls": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "base": {
+       "vitality": 395,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 300,
+       "chance": 0,
+       "agility": 0
+      },
+      "additional": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "sets": [
+       {
+        "name": "Panoplie Pnose",
+        "count": 3,
+        "tier": 3
+       },
+       {
+        "name": "Panoplie du Vénérable Endormi",
+        "count": 2,
+        "tier": 2
+       },
+       {
+        "name": "Panoplie des Abysses",
+        "count": 2,
+        "tier": 2
+       },
+       {
+        "name": "Panoplie des Armutins",
+        "count": 2,
+        "tier": 2
+       }
+      ],
+      "passiveSpells": [
+       18665,
+       14945,
+       8396,
+       18672,
+       8394
+      ],
+      "items": [
+       {
+        "slot": "Amulette",
+        "itemId": 15749,
+        "name": "Talisman Igans",
+        "level": 200,
+        "type": 1,
+        "set": "Panoplie Pnose",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+60 Int",
+         "+60 Cha",
+         "+50 Sa",
+         "+4 % CC",
+         "+1 PA",
+         "+1 PO",
+         "+20 Do Feu",
+         "+20 Do Eau",
+         "+7 % Ré Neutre",
+         "+7 % Ré Terre"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 31799,
+        "name": "Malédiction du Vénérable Endormi",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie du Vénérable Endormi",
+        "forgemagie": "exo +1 PA",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+100 Int",
+         "+20 Sa",
+         "+3 % CC",
+         "+10 PP",
+         "-300 Ini",
+         "+7 % Ré Feu",
+         "+7 % Ré Eau",
+         "+10 Ret PA",
+         "+15 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 14879,
+        "name": "Anneau Tique",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie des Abysses",
+        "forgemagie": "exo +1 PM",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+50 Int",
+         "+30 Sa",
+         "+3 % CC",
+         "+1 PO",
+         "+10 Do Feu",
+         "+6 Do Eau",
+         "+6 Do Air",
+         "+25 PP",
+         "+10 % Ré Eau",
+         "+10 % Ré Air",
+         "+5 Tacle",
+         "-30 Ré Cri",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Ceinture",
+        "itemId": 15750,
+        "name": "Ceintrigue",
+        "level": 200,
+        "type": 10,
+        "set": "Panoplie Pnose",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+60 Int",
+         "+60 Cha",
+         "+40 Sa",
+         "+4 % CC",
+         "+1 PO",
+         "+20 Do Feu",
+         "+20 Do Eau",
+         "+15 Soins",
+         "+10 % Ré Air",
+         "+20 Do Pou"
+        ]
+       },
+       {
+        "slot": "Bottes",
+        "itemId": 15751,
+        "name": "Bottes Owesli",
+        "level": 200,
+        "type": 11,
+        "set": "Panoplie Pnose",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+50 Int",
+         "+50 Cha",
+         "+40 Sa",
+         "+1 PM",
+         "+1 PO",
+         "+20 Do Feu",
+         "+20 Do Eau",
+         "+7 % Ré Neutre",
+         "+7 % Ré Terre",
+         "+20 Do Pou"
+        ]
+       },
+       {
+        "slot": "Coiffe",
+        "itemId": 14877,
+        "name": "Dorabysses",
+        "level": 200,
+        "type": 16,
+        "set": "Panoplie des Abysses",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+50 Agi",
+         "+40 Sa",
+         "+4 % CC",
+         "+6 Do Feu",
+         "+6 Do Eau",
+         "+10 Do Air",
+         "+15 PP",
+         "+10 % Ré Feu",
+         "+10 % Ré Eau",
+         "+10 % Ré Air",
+         "+10 Tacle",
+         "-7 Esq PM",
+         "-30 Ré Cri",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Cape",
+        "itemId": 31797,
+        "name": "Manteau du Vénérable Endormi",
+        "level": 200,
+        "type": 17,
+        "set": "Panoplie du Vénérable Endormi",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+100 Int",
+         "+50 Sa",
+         "+7 % CC",
+         "+1 Invo",
+         "+10 Do Feu",
+         "+15 Soins",
+         "+15 PP",
+         "-200 Ini",
+         "+5 % Ré Terre",
+         "+5 % Ré Feu",
+         "+5 % Ré Eau",
+         "+12 Fuite",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Bouclier",
+        "itemId": 18715,
+        "name": "Bouclier du Stalak",
+        "level": 200,
+        "type": 82,
+        "set": "Panoplie des Armutins",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+40 Cha",
+         "+40 Pui",
+         "+15 Renvoi",
+         "+20 Fuite",
+         "-20 Tacle",
+         "+35 Ré Cri",
+         "+7 % Ré Mêlée",
+         "+4 % Ré Distance"
+        ]
+       },
+       {
+        "slot": "Arme",
+        "itemId": 33607,
+        "name": "Arc du Karkanik",
+        "level": 200,
+        "type": 2,
+        "set": "Panoplie des Armutins",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+500 Vi",
+         "+40 Agi",
+         "+50 Sa",
+         "+50 Pui",
+         "+2 PO",
+         "+12 % Ré Neutre",
+         "+12 % Ré Feu",
+         "-15 Esq PA",
+         "+15 Esq PM"
+        ]
+       },
+       {
+        "slot": "Familier/Monture",
+        "itemId": 33161,
+        "name": "Volkorne Doré et Orchidée",
+        "level": 60,
+        "type": 333,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+200 Vi",
+         "+70 Int",
+         "+1 PA"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7115,
+        "name": "Dofus Ivoire",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+4 % Ré Neutre",
+         "+4 % Ré Terre",
+         "+4 % Ré Feu",
+         "+4 % Ré Eau",
+         "+4 % Ré Air",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 22022,
+        "name": "Aprybou",
+        "level": 200,
+        "type": 217,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "-1000 Ini",
+         "+40 Ré Neutre",
+         "+40 Ré Terre",
+         "+40 Ré Feu",
+         "+40 Ré Eau",
+         "+40 Ré Air",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 6980,
+        "name": "Dofus Vulbis",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PM",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7043,
+        "name": "Dofus des Glaces",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+25 Do Neutre",
+         "+25 Do Terre",
+         "+25 Do Feu",
+         "+25 Do Eau",
+         "+25 Do Air"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 20286,
+        "name": "Dofus Argenté Scintillant",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7754,
+        "name": "Dofus Ocre",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PA",
+         "sort passif"
+        ]
+       }
+      ],
+      "stats": {
+       "ap": 12,
+       "mp": 6,
+       "range": 6,
+       "hp": 6045,
+       "initiative": 280,
+       "critical": 25,
+       "main": {
+        "vitality": 4995,
+        "wisdom": 460,
+        "strength": 160,
+        "intelligence": 1020,
+        "chance": 380,
+        "agility": 220
+       },
+       "power": 140,
+       "damage": 0,
+       "elementDamage": {
+        "neutral": 25,
+        "earth": 31,
+        "fire": 157,
+        "water": 137,
+        "air": 81
+       },
+       "criticalDamage": 0,
+       "spellDamagePct": 0,
+       "finalDamagePct": 0,
+       "meleeDamagePct": 0,
+       "rangedDamagePct": 0,
+       "weaponDamagePct": 0,
+       "heals": 80,
+       "resPct": {
+        "neutral": 30,
+        "earth": 23,
+        "fire": 48,
+        "water": 46,
+        "air": 34
+       },
+       "resFixed": {
+        "neutral": 40,
+        "earth": 40,
+        "fire": 40,
+        "water": 40,
+        "air": 40
+       },
+       "meleeResPct": 7,
+       "rangedResPct": 4,
+       "criticalRes": -25,
+       "pushRes": 165,
+       "pushDamage": 100,
+       "apReduction": 56,
+       "mpReduction": 46,
+       "apParry": 31,
+       "mpParry": 69,
+       "tackleBlock": 32,
+       "tackleEvade": 64
+      }
+     }
+    },
+    {
+     "preset": "enutrof_retrait_pm_eau",
+     "stuffId": "vortex_enutrof_eau_def",
+     "build": {
+      "items": [
+       {
+        "itemId": 31789
+       },
+       {
+        "itemId": 18029,
+        "exos": [
+         {
+          "stat": "ap",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 32231,
+        "exos": [
+         {
+          "stat": "mp",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 13128,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 13129,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 22202,
+        "exos": [
+         {
+          "stat": "pushRes",
+          "value": 12,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 13127,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 18697,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 34331,
+        "exos": [
+         {
+          "stat": "pushRes",
+          "value": 12,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 33165
+       },
+       {
+        "itemId": 22022
+       },
+       {
+        "itemId": 20286
+       },
+       {
+        "itemId": 6980
+       },
+       {
+        "itemId": 7115
+       },
+       {
+        "itemId": 13789
+       },
+       {
+        "itemId": 30451
+       }
+      ],
+      "characteristicPoints": {
+       "vitality": 695,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 0,
+       "chance": 300,
+       "agility": 0
+      }
+     },
+     "detail": {
+      "preset": "enutrof_retrait_pm_eau",
+      "className": "Enutrof",
+      "valid": true,
+      "issues": [],
+      "characteristicPoints": {
+       "vitality": 695,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 0,
+       "chance": 300,
+       "agility": 0
+      },
+      "pointsSpent": 995,
+      "pointsAvailable": 995,
+      "scrolls": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "base": {
+       "vitality": 695,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 0,
+       "chance": 200,
+       "agility": 0
+      },
+      "additional": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "sets": [
+       {
+        "name": "Panoplie de Léthaline Sigisbul",
+        "count": 3,
+        "tier": 3
+       }
+      ],
+      "passiveSpells": [
+       14945,
+       18672,
+       8396,
+       18665
+      ],
+      "items": [
+       {
+        "slot": "Amulette",
+        "itemId": 31789,
+        "name": "Collier de Gargandyas",
+        "level": 200,
+        "type": 1,
+        "set": "Panoplie de Gargandyas",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+500 Vi",
+         "+60 Sa",
+         "+60 Pui",
+         "+4 % CC",
+         "+2 PA",
+         "-1 PM",
+         "+1 PO",
+         "+2 Invo",
+         "-20 Fuite",
+         "-20 Esq PM",
+         "+20 Do Pou",
+         "+40 Ré Pou",
+         "+5 % Ré Mêlée",
+         "+5 % Ré Distance"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 18029,
+        "name": "Bague Trithon",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie Trithon",
+        "forgemagie": "exo +1 PA",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+40 Sa",
+         "+15 PP",
+         "+7 % Ré Terre",
+         "+7 % Ré Eau",
+         "+10 Tacle",
+         "+10 Esq PA",
+         "+20 Do Cri",
+         "+15 Do Pou"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 32231,
+        "name": "Ceste gelé du Chevalier de Glace",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie du Chevalier de Glace",
+        "forgemagie": "exo +1 PM",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+30 Cha",
+         "+30 Sa",
+         "+30 Pui",
+         "+1 PO",
+         "+5 Do",
+         "+10 Do Eau",
+         "+10 PP",
+         "+10 % Ré Eau",
+         "+6 Fuite",
+         "+6 Ret PM"
+        ]
+       },
+       {
+        "slot": "Ceinture",
+        "itemId": 13128,
+        "name": "Ceinture de Léthaline",
+        "level": 194,
+        "type": 10,
+        "set": "Panoplie de Léthaline Sigisbul",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+50 Sa",
+         "+9 % CC",
+         "+1 PO",
+         "+15 Soins",
+         "+20 PP",
+         "+400 Ini",
+         "+10 Fuite",
+         "+5 Ret PA"
+        ]
+       },
+       {
+        "slot": "Bottes",
+        "itemId": 13129,
+        "name": "Bottes de Léthaline",
+        "level": 194,
+        "type": 11,
+        "set": "Panoplie de Léthaline Sigisbul",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+40 Sa",
+         "+4 % CC",
+         "+1 PM",
+         "+1 PO",
+         "+15 Soins",
+         "+500 Ini",
+         "+12 % Ré Neutre",
+         "+20 Ré Cri"
+        ]
+       },
+       {
+        "slot": "Coiffe",
+        "itemId": 22202,
+        "name": "Dora de Servitude",
+        "level": 200,
+        "type": 16,
+        "set": "Panoplie de Servitude",
+        "forgemagie": "transcendance Pata Ré Pou (+12 Ré Pou)",
+        "conditions": "",
+        "lines": [
+         "+450 Vi",
+         "+80 Cha",
+         "+30 Sa",
+         "+3 % CC",
+         "+1 PO",
+         "+15 Do Eau",
+         "+500 Ini",
+         "+10 % Ré Neutre",
+         "+3 % Ré Terre",
+         "+6 % Ré Eau",
+         "+10 Tacle",
+         "-10 Fuite",
+         "-10 Ret PA",
+         "+10 Esq PM",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Cape",
+        "itemId": 13127,
+        "name": "Cape de Léthaline",
+        "level": 194,
+        "type": 17,
+        "set": "Panoplie de Léthaline Sigisbul",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+50 Sa",
+         "+1 PM",
+         "+1 PO",
+         "+2 Invo",
+         "+18 Ré Terre",
+         "+18 Ré Feu",
+         "+18 Ré Eau",
+         "+18 Ré Air",
+         "+10 Fuite",
+         "+6 Ret PM",
+         "+20 Do Pou"
+        ]
+       },
+       {
+        "slot": "Bouclier",
+        "itemId": 18697,
+        "name": "Jadis",
+        "level": 200,
+        "type": 82,
+        "set": "",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+40 Sa",
+         "+15 % Ré Neutre",
+         "+15 Tacle",
+         "+15 Esq PA",
+         "+15 Esq PM",
+         "+50 Ré Cri",
+         "+50 Ré Pou",
+         "+7 % Ré Mêlée",
+         "+5 % Ré Distance"
+        ]
+       },
+       {
+        "slot": "Arme",
+        "itemId": 34331,
+        "name": "Lancepince d'Exécrabe",
+        "level": 200,
+        "type": 271,
+        "set": "Panoplie du Gouffre",
+        "forgemagie": "transcendance Pata Ré Pou (+12 Ré Pou)",
+        "conditions": "",
+        "lines": [
+         "+500 Vi",
+         "+90 Cha",
+         "+50 Sa",
+         "+5 % CC",
+         "+12 Do Eau",
+         "+15 PP",
+         "-300 Ini",
+         "+7 % Ré Feu",
+         "+10 % Ré Eau",
+         "+10 Tacle",
+         "+12 Ret PM",
+         "-10 Esq PA",
+         "+20 Do Cri"
+        ]
+       },
+       {
+        "slot": "Familier/Monture",
+        "itemId": 33165,
+        "name": "Volkorne Doré et Turquoise",
+        "level": 60,
+        "type": 333,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+200 Vi",
+         "+1 PA",
+         "+30 Ret PM"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 22022,
+        "name": "Aprybou",
+        "level": 200,
+        "type": 217,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "-1000 Ini",
+         "+40 Ré Neutre",
+         "+40 Ré Terre",
+         "+40 Ré Feu",
+         "+40 Ré Eau",
+         "+40 Ré Air",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 20286,
+        "name": "Dofus Argenté Scintillant",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 6980,
+        "name": "Dofus Vulbis",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PM",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7115,
+        "name": "Dofus Ivoire",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+4 % Ré Neutre",
+         "+4 % Ré Terre",
+         "+4 % Ré Feu",
+         "+4 % Ré Eau",
+         "+4 % Ré Air",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 13789,
+        "name": "Entraveur majeur",
+        "level": 150,
+        "type": 151,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+24 Ret PM",
+         "-24 Esq PA"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 30451,
+        "name": "Prudent",
+        "level": 150,
+        "type": 151,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+6 % Ré Distance",
+         "-6 % Do Distance"
+        ]
+       }
+      ],
+      "stats": {
+       "ap": 12,
+       "mp": 6,
+       "range": 6,
+       "hp": 6295,
+       "initiative": 900,
+       "critical": 37,
+       "main": {
+        "vitality": 5245,
+        "wisdom": 520,
+        "strength": 100,
+        "intelligence": 100,
+        "chance": 500,
+        "agility": 100
+       },
+       "power": 90,
+       "damage": 5,
+       "elementDamage": {
+        "neutral": 0,
+        "earth": 0,
+        "fire": 0,
+        "water": 37,
+        "air": 0
+       },
+       "criticalDamage": 40,
+       "spellDamagePct": 0,
+       "finalDamagePct": 0,
+       "meleeDamagePct": 0,
+       "rangedDamagePct": -6,
+       "weaponDamagePct": 0,
+       "heals": 80,
+       "resPct": {
+        "neutral": 41,
+        "earth": 26,
+        "fire": 23,
+        "water": 49,
+        "air": 16
+       },
+       "resFixed": {
+        "neutral": 58,
+        "earth": 58,
+        "fire": 58,
+        "water": 58,
+        "air": 58
+       },
+       "meleeResPct": 12,
+       "rangedResPct": 16,
+       "criticalRes": 70,
+       "pushRes": 144,
+       "pushDamage": 115,
+       "apReduction": 59,
+       "mpReduction": 142,
+       "apParry": 43,
+       "mpParry": 57,
+       "tackleBlock": 55,
+       "tackleEvade": 6
+      }
+     }
+    },
+    {
+     "preset": "iop_terre_burst",
+     "stuffId": "vortex_iop_terre_def",
+     "build": {
+      "items": [
+       {
+        "itemId": 14169,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 14077,
+        "exos": [
+         {
+          "stat": "ap",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 22205,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 14162,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 14078,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 31798,
+        "exos": [
+         {
+          "stat": "mp",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 14161,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 18697,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 31800
+       },
+       {
+        "itemId": 33162
+       },
+       {
+        "itemId": 7754
+       },
+       {
+        "itemId": 20286
+       },
+       {
+        "itemId": 13344
+       },
+       {
+        "itemId": 22022
+       },
+       {
+        "itemId": 694
+       },
+       {
+        "itemId": 7115
+       }
+      ],
+      "characteristicPoints": {
+       "vitality": 395,
+       "wisdom": 0,
+       "strength": 600,
+       "intelligence": 0,
+       "chance": 0,
+       "agility": 0
+      }
+     },
+     "detail": {
+      "preset": "iop_terre_burst",
+      "className": "Iop",
+      "valid": true,
+      "issues": [],
+      "characteristicPoints": {
+       "vitality": 395,
+       "wisdom": 0,
+       "strength": 600,
+       "intelligence": 0,
+       "chance": 0,
+       "agility": 0
+      },
+      "pointsSpent": 995,
+      "pointsAvailable": 995,
+      "scrolls": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "base": {
+       "vitality": 395,
+       "wisdom": 0,
+       "strength": 300,
+       "intelligence": 0,
+       "chance": 0,
+       "agility": 0
+      },
+      "additional": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "sets": [
+       {
+        "name": "Panoplie du Bonimenteur",
+        "count": 3,
+        "tier": 3
+       },
+       {
+        "name": "Panoplie du Comte Harebourg",
+        "count": 2,
+        "tier": 2
+       },
+       {
+        "name": "Panoplie du Vénérable Endormi",
+        "count": 2,
+        "tier": 2
+       }
+      ],
+      "passiveSpells": [
+       8394,
+       18672,
+       14945,
+       8395,
+       18665
+      ],
+      "items": [
+       {
+        "slot": "Amulette",
+        "itemId": 14169,
+        "name": "Talisman Songe",
+        "level": 200,
+        "type": 1,
+        "set": "Panoplie du Bonimenteur",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+60 Fo",
+         "+60 Int",
+         "+60 Cha",
+         "+40 Sa",
+         "+1 PA",
+         "+15 Do Neutre",
+         "+15 Do Terre",
+         "+15 Do Feu",
+         "+15 Do Eau",
+         "+15 PP",
+         "+8 % Ré Air",
+         "+15 Ré Feu",
+         "+10 Tacle",
+         "+15 Do Cri"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 14077,
+        "name": "Anneau du Comte Harebourg",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie du Comte Harebourg",
+        "forgemagie": "exo +1 PA",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+50 Fo",
+         "+50 Sa",
+         "+7 % CC",
+         "+15 Do Neutre",
+         "+15 Do Terre",
+         "-500 Ini",
+         "+25 Ré Cri"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 22205,
+        "name": "Bague de Corruption",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie de Corruption",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+60 Fo",
+         "+20 Sa",
+         "+7 % CC",
+         "+12 Do Neutre",
+         "+12 Do Terre",
+         "+10 % Ré Eau",
+         "-5 Esq PA",
+         "+10 Do Cri"
+        ]
+       },
+       {
+        "slot": "Ceinture",
+        "itemId": 14162,
+        "name": "Sangle Ouare",
+        "level": 200,
+        "type": 10,
+        "set": "Panoplie du Bonimenteur",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+40 Cha",
+         "+30 Sa",
+         "+40 Pui",
+         "+1 PM",
+         "+2 Invo",
+         "+15 PP",
+         "-400 Ini",
+         "+10 % Ré Eau",
+         "+10 % Ré Air",
+         "+15 Tacle",
+         "-8 Esq PM",
+         "+25 Do Cri",
+         "+25 Do Pou"
+        ]
+       },
+       {
+        "slot": "Bottes",
+        "itemId": 14078,
+        "name": "Bottes du Comte Harebourg",
+        "level": 200,
+        "type": 11,
+        "set": "Panoplie du Comte Harebourg",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+80 Fo",
+         "+50 Sa",
+         "+1 PM",
+         "+20 Do Neutre",
+         "+20 Do Terre",
+         "+30 Ré Neutre",
+         "+15 Tacle",
+         "-10 Esq PM",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Coiffe",
+        "itemId": 31798,
+        "name": "Cornes du Vénérable Endormi",
+        "level": 200,
+        "type": 16,
+        "set": "Panoplie du Vénérable Endormi",
+        "forgemagie": "exo +1 PM",
+        "conditions": "",
+        "lines": [
+         "+450 Vi",
+         "+100 Fo",
+         "+50 Sa",
+         "+6 % CC",
+         "+1 Invo",
+         "+8 Soins",
+         "+15 PP",
+         "-300 Ini",
+         "+5 % Ré Feu",
+         "+5 % Ré Eau",
+         "+5 % Ré Air",
+         "+12 Fuite",
+         "+10 Ret PM",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Cape",
+        "itemId": 14161,
+        "name": "Cape Ovri",
+        "level": 200,
+        "type": 17,
+        "set": "Panoplie du Bonimenteur",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+60 Fo",
+         "+60 Cha",
+         "+50 Sa",
+         "+5 % CC",
+         "+16 Do Neutre",
+         "+16 Do Terre",
+         "+16 Do Eau",
+         "+400 Ini",
+         "+10 % Ré Neutre",
+         "+20 Ré Feu",
+         "-15 Tacle"
+        ]
+       },
+       {
+        "slot": "Bouclier",
+        "itemId": 18697,
+        "name": "Jadis",
+        "level": 200,
+        "type": 82,
+        "set": "",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+40 Sa",
+         "+15 % Ré Neutre",
+         "+15 Tacle",
+         "+15 Esq PA",
+         "+15 Esq PM",
+         "+50 Ré Cri",
+         "+50 Ré Pou",
+         "+7 % Ré Mêlée",
+         "+5 % Ré Distance"
+        ]
+       },
+       {
+        "slot": "Arme",
+        "itemId": 31800,
+        "name": "Arc du Vénérable Endormi",
+        "level": 200,
+        "type": 2,
+        "set": "Panoplie du Vénérable Endormi",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+450 Vi",
+         "+100 Fo",
+         "+50 Sa",
+         "+8 % CC",
+         "+1 PO",
+         "+10 Do Terre",
+         "+10 Soins",
+         "+15 PP",
+         "-200 Ini",
+         "+7 % Ré Terre",
+         "+7 % Ré Eau",
+         "+15 Fuite",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Familier/Monture",
+        "itemId": 33162,
+        "name": "Volkorne Doré et Pourpre",
+        "level": 60,
+        "type": 333,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+200 Vi",
+         "+70 Fo",
+         "+1 PA"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7754,
+        "name": "Dofus Ocre",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PA",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 20286,
+        "name": "Dofus Argenté Scintillant",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 13344,
+        "name": "Dolmanax",
+        "level": 100,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+70 Fo",
+         "+70 Int",
+         "+70 Cha",
+         "+70 Agi"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 22022,
+        "name": "Aprybou",
+        "level": 200,
+        "type": 217,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "-1000 Ini",
+         "+40 Ré Neutre",
+         "+40 Ré Terre",
+         "+40 Ré Feu",
+         "+40 Ré Eau",
+         "+40 Ré Air",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 694,
+        "name": "Dofus Pourpre",
+        "level": 110,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+80 Pui",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7115,
+        "name": "Dofus Ivoire",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+4 % Ré Neutre",
+         "+4 % Ré Terre",
+         "+4 % Ré Feu",
+         "+4 % Ré Eau",
+         "+4 % Ré Air",
+         "sort passif"
+        ]
+       }
+      ],
+      "stats": {
+       "ap": 12,
+       "mp": 6,
+       "range": 2,
+       "hp": 6245,
+       "initiative": 100,
+       "critical": 48,
+       "main": {
+        "vitality": 5195,
+        "wisdom": 520,
+        "strength": 1210,
+        "intelligence": 390,
+        "chance": 330,
+        "agility": 170
+       },
+       "power": 170,
+       "damage": 0,
+       "elementDamage": {
+        "neutral": 78,
+        "earth": 94,
+        "fire": 37,
+        "water": 31,
+        "air": 0
+       },
+       "criticalDamage": 50,
+       "spellDamagePct": 0,
+       "finalDamagePct": 0,
+       "meleeDamagePct": 0,
+       "rangedDamagePct": 0,
+       "weaponDamagePct": 0,
+       "heals": 28,
+       "resPct": {
+        "neutral": 32,
+        "earth": 14,
+        "fire": 22,
+        "water": 49,
+        "air": 30
+       },
+       "resFixed": {
+        "neutral": 70,
+        "earth": 40,
+        "fire": 75,
+        "water": 40,
+        "air": 40
+       },
+       "meleeResPct": 7,
+       "rangedResPct": 5,
+       "criticalRes": 100,
+       "pushRes": 170,
+       "pushDamage": 50,
+       "apReduction": 52,
+       "mpReduction": 62,
+       "apParry": 62,
+       "mpParry": 49,
+       "tackleBlock": 87,
+       "tackleEvade": 44
+      }
+     }
+    },
+    {
+     "preset": "eniripsa_soin_feu",
+     "stuffId": "vortex_eniripsa_feu_def",
+     "build": {
+      "items": [
+       {
+        "itemId": 14080,
+        "exos": [
+         {
+          "stat": "range",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 18037,
+        "exos": [
+         {
+          "stat": "ap",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 31799,
+        "exos": [
+         {
+          "stat": "mp",
+          "value": 1
+         }
+        ]
+       },
+       {
+        "itemId": 13128,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 13129,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 14079,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 13127,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 18697,
+        "exos": [
+         {
+          "stat": "vitality",
+          "value": 100,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 31800,
+        "exos": [
+         {
+          "stat": "waterResPct",
+          "value": 2,
+          "kind": "transcendence"
+         }
+        ]
+       },
+       {
+        "itemId": 33240
+       },
+       {
+        "itemId": 22022
+       },
+       {
+        "itemId": 7754
+       },
+       {
+        "itemId": 13344
+       },
+       {
+        "itemId": 7115
+       },
+       {
+        "itemId": 20286
+       },
+       {
+        "itemId": 19398
+       }
+      ],
+      "characteristicPoints": {
+       "vitality": 695,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 300,
+       "chance": 0,
+       "agility": 0
+      }
+     },
+     "detail": {
+      "preset": "eniripsa_soin_feu",
+      "className": "Eniripsa",
+      "valid": true,
+      "issues": [],
+      "characteristicPoints": {
+       "vitality": 695,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 300,
+       "chance": 0,
+       "agility": 0
+      },
+      "pointsSpent": 995,
+      "pointsAvailable": 995,
+      "scrolls": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "base": {
+       "vitality": 695,
+       "wisdom": 0,
+       "strength": 0,
+       "intelligence": 200,
+       "chance": 0,
+       "agility": 0
+      },
+      "additional": {
+       "vitality": 100,
+       "wisdom": 100,
+       "strength": 100,
+       "intelligence": 100,
+       "chance": 100,
+       "agility": 100
+      },
+      "sets": [
+       {
+        "name": "Panoplie Séculaire",
+        "count": 2,
+        "tier": 2
+       },
+       {
+        "name": "Panoplie du Vénérable Endormi",
+        "count": 2,
+        "tier": 2
+       },
+       {
+        "name": "Panoplie de Léthaline Sigisbul",
+        "count": 3,
+        "tier": 3
+       }
+      ],
+      "passiveSpells": [
+       14945,
+       8394,
+       18665,
+       18672,
+       10164
+      ],
+      "items": [
+       {
+        "slot": "Amulette",
+        "itemId": 14080,
+        "name": "Amulette Séculaire",
+        "level": 200,
+        "type": 1,
+        "set": "Panoplie Séculaire",
+        "forgemagie": "exo +1 PO",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+80 Int",
+         "+25 Agi",
+         "+40 Sa",
+         "+1 PA",
+         "+12 Do Feu",
+         "+12 Do Air",
+         "+20 PP",
+         "+8 % Ré Neutre",
+         "+8 % Ré Feu",
+         "+15 Ré Cri"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 18037,
+        "name": "Anneau Rifique",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie de R'lyugluglu",
+        "forgemagie": "exo +1 PA",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+80 Int",
+         "+80 Agi",
+         "+40 Sa",
+         "+7 Do Feu",
+         "+7 Do Air",
+         "+15 Soins",
+         "+10 % Ré Neutre",
+         "+15 Ré Cri"
+        ]
+       },
+       {
+        "slot": "Anneau",
+        "itemId": 31799,
+        "name": "Malédiction du Vénérable Endormi",
+        "level": 200,
+        "type": 9,
+        "set": "Panoplie du Vénérable Endormi",
+        "forgemagie": "exo +1 PM",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+100 Int",
+         "+20 Sa",
+         "+3 % CC",
+         "+10 PP",
+         "-300 Ini",
+         "+7 % Ré Feu",
+         "+7 % Ré Eau",
+         "+10 Ret PA",
+         "+15 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Ceinture",
+        "itemId": 13128,
+        "name": "Ceinture de Léthaline",
+        "level": 194,
+        "type": 10,
+        "set": "Panoplie de Léthaline Sigisbul",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+50 Sa",
+         "+9 % CC",
+         "+1 PO",
+         "+15 Soins",
+         "+20 PP",
+         "+400 Ini",
+         "+10 Fuite",
+         "+5 Ret PA"
+        ]
+       },
+       {
+        "slot": "Bottes",
+        "itemId": 13129,
+        "name": "Bottes de Léthaline",
+        "level": 194,
+        "type": 11,
+        "set": "Panoplie de Léthaline Sigisbul",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+350 Vi",
+         "+40 Sa",
+         "+4 % CC",
+         "+1 PM",
+         "+1 PO",
+         "+15 Soins",
+         "+500 Ini",
+         "+12 % Ré Neutre",
+         "+20 Ré Cri"
+        ]
+       },
+       {
+        "slot": "Coiffe",
+        "itemId": 14079,
+        "name": "Coiffe Séculaire",
+        "level": 200,
+        "type": 16,
+        "set": "Panoplie Séculaire",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "+100 Int",
+         "+40 Agi",
+         "+40 Sa",
+         "+1 Invo",
+         "+10 Do Feu",
+         "+10 Do Air",
+         "+12 Soins",
+         "+15 PP",
+         "+7 % Ré Terre",
+         "+7 % Ré Eau",
+         "+15 Ré Air"
+        ]
+       },
+       {
+        "slot": "Cape",
+        "itemId": 13127,
+        "name": "Cape de Léthaline",
+        "level": 194,
+        "type": 17,
+        "set": "Panoplie de Léthaline Sigisbul",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+400 Vi",
+         "+50 Sa",
+         "+1 PM",
+         "+1 PO",
+         "+2 Invo",
+         "+18 Ré Terre",
+         "+18 Ré Feu",
+         "+18 Ré Eau",
+         "+18 Ré Air",
+         "+10 Fuite",
+         "+6 Ret PM",
+         "+20 Do Pou"
+        ]
+       },
+       {
+        "slot": "Bouclier",
+        "itemId": 18697,
+        "name": "Jadis",
+        "level": 200,
+        "type": 82,
+        "set": "",
+        "forgemagie": "transcendance Rata Vi (+100 Vi)",
+        "conditions": "",
+        "lines": [
+         "+250 Vi",
+         "+40 Sa",
+         "+15 % Ré Neutre",
+         "+15 Tacle",
+         "+15 Esq PA",
+         "+15 Esq PM",
+         "+50 Ré Cri",
+         "+50 Ré Pou",
+         "+7 % Ré Mêlée",
+         "+5 % Ré Distance"
+        ]
+       },
+       {
+        "slot": "Arme",
+        "itemId": 31800,
+        "name": "Arc du Vénérable Endormi",
+        "level": 200,
+        "type": 2,
+        "set": "Panoplie du Vénérable Endormi",
+        "forgemagie": "transcendance Ta Ré Per Eau (+2 % Ré Eau)",
+        "conditions": "",
+        "lines": [
+         "+450 Vi",
+         "+100 Fo",
+         "+50 Sa",
+         "+8 % CC",
+         "+1 PO",
+         "+10 Do Terre",
+         "+10 Soins",
+         "+15 PP",
+         "-200 Ini",
+         "+7 % Ré Terre",
+         "+7 % Ré Eau",
+         "+15 Fuite",
+         "+30 Ré Pou"
+        ]
+       },
+       {
+        "slot": "Familier/Monture",
+        "itemId": 33240,
+        "name": "Volkorne Saphir et Doré",
+        "level": 60,
+        "type": 333,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+200 Vi",
+         "+1 PA",
+         "+8 % Ré Eau"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 22022,
+        "name": "Aprybou",
+        "level": 200,
+        "type": 217,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "-1000 Ini",
+         "+40 Ré Neutre",
+         "+40 Ré Terre",
+         "+40 Ré Feu",
+         "+40 Ré Eau",
+         "+40 Ré Air",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7754,
+        "name": "Dofus Ocre",
+        "level": 160,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+1 PA",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 13344,
+        "name": "Dolmanax",
+        "level": 100,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+70 Fo",
+         "+70 Int",
+         "+70 Cha",
+         "+70 Agi"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 7115,
+        "name": "Dofus Ivoire",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+4 % Ré Neutre",
+         "+4 % Ré Terre",
+         "+4 % Ré Feu",
+         "+4 % Ré Eau",
+         "+4 % Ré Air",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 20286,
+        "name": "Dofus Argenté Scintillant",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+300 Vi",
+         "sort passif"
+        ]
+       },
+       {
+        "slot": "Dofus/Trophée/Prysma",
+        "itemId": 19398,
+        "name": "Dofus Forgelave",
+        "level": 180,
+        "type": 23,
+        "set": "",
+        "forgemagie": "—",
+        "conditions": "",
+        "lines": [
+         "+100 Ré Pou",
+         "sort passif"
+        ]
+       }
+      ],
+      "stats": {
+       "ap": 12,
+       "mp": 6,
+       "range": 6,
+       "hp": 6195,
+       "initiative": 1065,
+       "critical": 44,
+       "main": {
+        "vitality": 5145,
+        "wisdom": 540,
+        "strength": 330,
+        "intelligence": 850,
+        "chance": 170,
+        "agility": 315
+       },
+       "power": 0,
+       "damage": 0,
+       "elementDamage": {
+        "neutral": 0,
+        "earth": 16,
+        "fire": 45,
+        "water": 0,
+        "air": 29
+       },
+       "criticalDamage": 10,
+       "spellDamagePct": 0,
+       "finalDamagePct": 0,
+       "meleeDamagePct": 0,
+       "rangedDamagePct": 0,
+       "weaponDamagePct": 0,
+       "heals": 157,
+       "resPct": {
+        "neutral": 49,
+        "earth": 30,
+        "fire": 31,
+        "water": 47,
+        "air": 16
+       },
+       "resFixed": {
+        "neutral": 58,
+        "earth": 58,
+        "fire": 58,
+        "water": 58,
+        "air": 73
+       },
+       "meleeResPct": 7,
+       "rangedResPct": 5,
+       "criticalRes": 100,
+       "pushRes": 195,
+       "pushDamage": 80,
+       "apReduction": 81,
+       "mpReduction": 72,
+       "apParry": 69,
+       "mpParry": 69,
+       "tackleBlock": 46,
+       "tackleEvade": 81
+      }
+     }
+    }
+   ]
+  }
+ ],
+ "verification": {
+  "date": "2026-10-05",
+  "verdict": "builds valides en jeu ; tableaux exacts ; presets.json : ajouts seulement ; gain reproduit sur graines inédites ; 0 victoire",
+  "snapshots": {
+   "snap-v1": "base-stuff-cp5 (e75cfd1) + src/optimizer/{stuff,team} + src/cli/simulate.ts + data/ai/presets.json (ajouts seulement)",
+   "snap-v2": "arbre de travail 11:29Z (HEAD 984037e + tour 3 en cours : src/ai/tactical/rollout.ts, turnSearch.ts, data/ai/theta-default.json)"
+  },
+  "seeds": {
+   "m41": "campaignSeeds(41, 32)",
+   "m42": "campaignSeeds(42, 32)"
+  },
+  "ai": "fast",
+  "results": [
+   {
+    "snapshot": "snap-v1",
+    "arm": "*_vortex − référence",
+    "n": 64,
+    "wins": 0,
+    "corrTotal": [
+     1.97,
+     0.48
+    ],
+    "rounds": [
+     6.5,
+     0.77
+    ],
+    "firstDeath": [
+     4.16,
+     0.81
+    ],
+    "corr7": [
+     0.42,
+     0.26
+    ],
+    "corr12": [
+     0.67,
+     0.31
+    ],
+    "corr17": [
+     1.67,
+     0.42
+    ],
+    "base": {
+     "corrTotal": 2.36,
+     "rounds": 14.03,
+     "firstDeath": 9.66
+    }
+   },
+   {
+    "snapshot": "snap-v1",
+    "arm": "*_vortex_off − référence",
+    "n": 64,
+    "wins": 0,
+    "corrTotal": [
+     1.88,
+     0.48
+    ],
+    "rounds": [
+     3.48,
+     0.89
+    ],
+    "firstDeath": [
+     2.86,
+     0.83
+    ]
+   },
+   {
+    "snapshot": "snap-v1",
+    "arm": "*_vortex − *_vortex_off",
+    "n": 64,
+    "wins": 0,
+    "corrTotal": [
+     0.09,
+     0.52
+    ],
+    "rounds": [
+     3.02,
+     0.78
+    ],
+    "firstDeath": [
+     1.3,
+     0.97
+    ],
+    "corr7": [
+     -0.31,
+     0.26
+    ],
+    "corr12": [
+     -0.31,
+     0.22
+    ]
+   },
+   {
+    "snapshot": "snap-v1",
+    "arm": "*_vortex_def − référence (m41)",
+    "n": 32,
+    "wins": 0,
+    "corrTotal": [
+     0.53,
+     0.54
+    ],
+    "rounds": [
+     8.34,
+     0.95
+    ],
+    "firstDeath": [
+     9.22,
+     0.86
+    ]
+   },
+   {
+    "snapshot": "snap-v2",
+    "arm": "*_vortex − référence (m41)",
+    "n": 32,
+    "wins": 0,
+    "corrTotal": [
+     2.56,
+     0.87
+    ],
+    "rounds": [
+     7.56,
+     1.29
+    ],
+    "firstDeath": [
+     4.97,
+     1.54
+    ],
+    "base": {
+     "corrTotal": 3.09,
+     "rounds": 15.34,
+     "firstDeath": 10.31
+    }
+   }
+  ],
+  "checks": {
+   "validity": "recalcul indépendant depuis les données brutes (.cache/stuff/verif/validate-indep.mts) : 0 erreur, 0 écart avec computeBuildStats sur 12 builds",
+   "tables": "17 lignes + ventilations recalculées (verif/agg.cjs) : exactes",
+   "presetsDiff": "12 stuffs + 12 presets ajoutés, existants identiques",
+   "aliasHash": "8/8 identiques",
+   "tests": "tsc OK ; vitest opt/stats/data : 25 fichiers, 286 tests verts (erreur de harnais RPC onTaskUpdate sur tests de combat longs, non liée)"
+  },
+  "fixes": [
+   "rapport : règle « deux mains sans bouclier » retirée de l’audit (supprimée en 2.41)",
+   "tests/opt-stuff-vortex.test.ts : 2 tests de vérification adverse"
+  ],
+  "recommendedTeam": "cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex,eniripsa_soin_vortex"
+ }
+}

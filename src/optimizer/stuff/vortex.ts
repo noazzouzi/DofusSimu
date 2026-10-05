@@ -14,6 +14,16 @@
  * 5,7 (0,3 × 19) et ses sorts de phase 2 faisaient 33 % des dégâts reçus prévus : l'EHP valorisait les mauvaises
  * résistances (Air/Feu du Vortex au lieu de l'Eau du poison des Harpilles).
  *
+ * Itération 2 (`VORTEX_INCOMING_MIX`, en vigueur) : même calibrage sur les combats de l'équipe aux stuffs optimisés
+ * par l'itération 1 (instantané snap-1, 32 combats `masterSeed` 21, profil équilibré) — l'équipe survit ≈ 20 tours au
+ * lieu de 14, les vagues tardives pèsent davantage : Brabuzar 1,77 → 3,16, Ikargn 0,70 → 1,01. L'itération 1 reste
+ * exportée (`VORTEX_INCOMING_MIX_R1`).
+ *
+ * Poussée (`VORTEX_PUSH`) : les collisions des Brabuzars font 18 % des dégâts subis dans ces combats (8 360 par combat,
+ * premier poste devant le poison des Harpilles) ; tous les monstres sont niveau 212 sans Dommages Poussée ⇒ dégâts ∝
+ * (106 + 32 − RePou) : 100 de Résistance Poussée retire 72 % de ces dégâts. Part sans défense : 0,171 des dégâts reçus
+ * sans défense (itération 1 : 0,047, combats plus courts).
+ *
  * Profils d'exposants (rôle → (a, b, c) de `ROLE_EXPONENTS`) :
  *  - `balanced` : exposants du rôle ;
  *  - `defensive` : a − 0,2, b + 0,2 (les morts commencent au tour ≈ 10 : survie d'abord) ;
@@ -23,7 +33,7 @@
  */
 import type { RoleId } from '../../ai/types'
 import { VORTEX_TARGET_MIX } from '../../dungeons/generic/dummy'
-import { ROLE_EXPONENTS, type ProxyOptions, type ProxyTarget } from './proxy'
+import { ROLE_EXPONENTS, type ProxyOptions, type ProxyPushModel, type ProxyTarget } from './proxy'
 
 const IKARGN = 3834
 const VORTEX = 3835
@@ -32,8 +42,8 @@ const HARPILLE = 3837
 const BUBOXOR = 3838
 const BRABUZAR = 3839
 
-/** Monstres qui frappent au Vortex, poids d'exposition mesurés (voir l'en-tête ; Harpille ramenée à 4). */
-export const VORTEX_INCOMING_MIX: readonly ProxyTarget[] = [
+/** Monstres qui frappent au Vortex, itération 1 (stuffs des presets ; voir l'en-tête ; Harpille ramenée à 4). */
+export const VORTEX_INCOMING_MIX_R1: readonly ProxyTarget[] = [
   { monsterId: HARPILLE, weight: 4 },
   { monsterId: MEJAIRE, weight: 1.84 },
   { monsterId: BRABUZAR, weight: 1.77 },
@@ -41,6 +51,19 @@ export const VORTEX_INCOMING_MIX: readonly ProxyTarget[] = [
   { monsterId: IKARGN, weight: 0.7 },
   { monsterId: VORTEX, weight: 0.17 },
 ]
+
+/** Monstres qui frappent au Vortex, itération 2 (stuffs optimisés, en vigueur ; voir l'en-tête ; Harpille = 4). */
+export const VORTEX_INCOMING_MIX: readonly ProxyTarget[] = [
+  { monsterId: HARPILLE, weight: 4 },
+  { monsterId: MEJAIRE, weight: 1.91 },
+  { monsterId: BRABUZAR, weight: 3.16 },
+  { monsterId: BUBOXOR, weight: 1.69 },
+  { monsterId: IKARGN, weight: 1.01 },
+  { monsterId: VORTEX, weight: 0.19 },
+]
+
+/** Collisions reçues au Vortex (voir l'en-tête) : monstres niveau 212, 0 Dommages Poussée ⇒ bonus 106 + 32. */
+export const VORTEX_PUSH: ProxyPushModel = { share: 0.171, bonus: 138 }
 
 /** Parts mesurées des dégâts subis par élément (0 neutre … 4 air, −1 poussée), mêmes combats que le mix. */
 export const VORTEX_MEASURED_INCOMING_SHARES: Readonly<Record<string, number>> = {
@@ -60,6 +83,10 @@ const MELEE_ROLES: ReadonlySet<RoleId> = new Set<RoleId>(['tank'])
 
 export interface VortexProxyOptions {
   profile?: VortexProfile
+  /** Ignorer les collisions (comparaison avec l'itération 1). */
+  noPush?: boolean
+  /** Mix des monstres qui frappent (défaut `VORTEX_INCOMING_MIX`). */
+  incoming?: readonly ProxyTarget[]
   /** Personnage au contact (Iop, tank…) : pas de PO visée à 6. */
   melee?: boolean
 }
@@ -74,7 +101,8 @@ export function vortexProxyOptions(role: RoleId, opts: VortexProxyOptions = {}):
   const melee = opts.melee ?? MELEE_ROLES.has(role)
   return {
     targets: VORTEX_TARGET_MIX,
-    incoming: VORTEX_INCOMING_MIX,
+    incoming: opts.incoming ?? VORTEX_INCOMING_MIX,
+    ...(opts.noPush ? {} : { incomingPush: VORTEX_PUSH }),
     exponents: { a, b, c: e.c },
     ...(melee ? {} : { rangeNeed: 6 }),
   }

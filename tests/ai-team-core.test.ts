@@ -424,7 +424,7 @@ describe('contrôleur (§9.1, §13.2)', () => {
     prov2(sc2.me).playTurn(sc2.engine, sc2.fight, sc2.me)
     const st = prov2.stats()
     expect(st.nodes).toBeGreaterThan(0)
-    expect(st.nodes).toBeLessThanOrEqual(40 + 8)
+    expect(st.nodes).toBeLessThanOrEqual(defaultAIConfig('fast', 1).theta.tactical.fast.nodes + 8)
     const snap = prov2.snapshot()
     expect(() => prov2.restore(JSON.parse(JSON.stringify(snap)))).not.toThrow()
   })
