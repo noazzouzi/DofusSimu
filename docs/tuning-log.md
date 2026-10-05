@@ -760,3 +760,102 @@ Avec les stuffs `*_vortex` (n = 32, ms 1) : 4,25 → **5,25** corrompus (+1,00 �
 Vérifications : `npx tsc --noEmit` vert ; `npx vitest run tests/ai-* tests/vortex-* tests/engine-summon-owned.test.ts`
 (1 processus) : **333 réussis, 1 ignoré** (ablations, opt-in). Aucune infidélité du moteur trouvée ce tour (aucun test
 `it.fails` ajouté).
+
+---
+
+## Tour 4
+
+### Protocole
+
+- Référence « avant » : tag git `base-tuning-r4` (règles 2.42 : vagues aux tours 1, 7, 13, 19, 25 ; ressuscités à
+  −1 PM ; Vortex de rang 1 à 4 joueurs). Équipe : `cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex,
+  eniripsa_soin_vortex` (stuffs optimisés, docs/reports/vortex-stuffs.md), `fast`, variante `default`.
+- Harnais `.cache/tuning/r4/` (hors dépôt) : `mktree.sh` (arbre figé = `git archive base-tuning-r4`), `mkvar.sh`
+  (arbre figé + fichiers vivants donnés), `run.mts` (un combat par graine : victoire, tours, corrompus cumulés par tour
+  et par vague, morts, dégâts subis par source, empreinte des événements), `batch.sh` (3 processus), `pair.cjs`
+  (Δ apparié ± IC 95 %). Diagnostics : `diag/flow.cjs` (dégâts et kills par tour de jeu), `diag/pround.cjs` (par
+  personnage et par phase : Pacifiste au début du tour, dégâts infligés et subis, PA), `diag/markorder.cjs` (délai du
+  premier kill par monstre de vague), `diag/pacsrc.cjs` (géométrie des Pacifiste posés).
+- Lot : 32 graines `fast` par `masterSeed` ; réglage sur `masterSeed` 31, validation sur `masterSeed` 32.
+- Reprise : une première exécution de ce tour est morte (erreur d'API 529) après ≈ 40 min ; son travail partiel
+  (commit c76c9cb : ligne de kill par glyphe, valeur des invocations dans la menace) est relu et mesuré ci-dessous.
+
+### Mesure de référence (`base-tuning-r4`)
+
+| Métrique | `masterSeed` 31 | `masterSeed` 32 |
+|---|---|---|
+| Victoires | 0 / 32 | 0 / 32 |
+| Tours survécus | 27,03 | 26,91 |
+| Corrompus au tour 7 / 12 / 13 / 17 / 19 / 25 / total | 2,31 / 3,78 / 4,81 / 5,88 / 6,34 / 7,06 / 7,34 | 2,38 / 3,63 / 4,34 / 5,75 / 6,41 / 7,44 / 7,63 |
+| Corrompus par vague (1 à 5) | 3,00 / 3,41 / 0,78 / 0,13 / 0,03 | 2,97 / 3,44 / 1,03 / 0,19 / 0,00 |
+| Premier mort (tour) | 18,2 | 18,8 |
+| Dégâts subis / infligés aux monstres de vague | 50 900 / 121 100 | 51 800 / 123 300 |
+| Kills de monstres de vague | 25,3 | 26,9 |
+| Causes d'échec | submersion 16, vague non corrompue au déverrouillage 14, croix 1, défaite 1 | submersion 17, vague non corrompue 15 |
+
+Dégâts subis par source (ms 31, par combat) : poussées du Brabuzar 9 100, Neutralisation 8 200, poison des Harpilles
+6 700, Superfidie 4 900, Tirs optiques 4 100, Cercle de feu 4 000, Feinterception 2 600, Rayonirique 2 400.
+
+Diagnostic « puissance » (arbre figé modifié, `Engine.applyDamage` × facteur, jamais dans `src/`, ms 31) :
+×1,25 en attaque et ×0,8 en défense : **8 victoires / 32** (12,5 corrompus) ; ×1,5 / ×0,67 : **22 / 32** (17,2).
+
+### Relecture du travail partiel (commit c76c9cb)
+
+| Essai | Changement | `masterSeed` | Corr. t7 / t13 / total (Δ) | Tours (Δ) | Verdict |
+|---|---|---|---|---|---|
+| SV | menace : v(a) des invocations (θ.monster.summonValue) dans le score de ciblage (`threat.ts`) | 31 | −0,28 ± 0,34 / −0,44 ± 0,50 / −0,06 ± 1,04 | −0,09 ± 1,82 | **retiré** (tendance −) |
+| GKL | ligne de kill PAR UNE GLYPHE en `fast` (`turnSearch.ts`, puzzle P6) | 31 | 0 / −0,06 ± 0,09 / 0,00 ± 0,36 (10 combats identiques) | +0,66 ± 1,42 | |
+| GKL | idem | 32 | +0,03 / +0,28 ± 0,32 / +0,09 ± 0,72 (10 identiques) | +0,28 ± 1,07 | **gardé** (neutre, corrige P6 `fast`) |
+| PAC2 | θ `threat.pacifistFactor` 0,9 → 2,0 | 31 | −0,19 / −0,66 ± 0,42 / −0,94 ± 1,11 | −0,59 ± 2,46 | rejeté |
+| CTL4 | θ `value.control` 0,15 → 0,4 | 31 | +0,13 / −0,03 / +0,34 ± 1,04 | −0,19 ± 1,59 | neutre, rejeté |
+
+### Diagnostics (replays de la référence, ms 31)
+
+1. **Dégâts et kills par tour de jeu** (`flow.cjs`) : vague 2 (tour 7) traitée à ≈ 9 500 puis 8 100 de dégâts aux tours
+   8-9, mais seulement 0,09 puis 0,78 premier kill : délai du premier kill 2,7-2,8 tours après l'arrivée (Brabuzar,
+   Buboxor), **4,2 tours pour les Harpilles** ; la vague 2 finit corrompue à 3,4 / 4, mais tard (tours 11-18). **Vague 3**
+   (tour 13 : deux Méjaires, Harpille, Brabuzar) : l'équipe tombe à ≈ 4 000 de dégâts par tour, 0,42 Méjaire marquée
+   (délai 4,5 tours), 0,13 Harpille ; morts à partir du tour 19-20 (vague 4).
+2. **Pacifiste** (`pround.cjs`, tours 14-15) : Iop **53 %** de ses tours sous Pacifiste, Eniripsa 39 %, Crâ 19 %, Enutrof
+   14 % (tours 1-12 : < 10 %). 410 Pacifiste posés aux tours 13-24 (`pacsrc.cjs`) : 90 % par des Méjaires **jamais
+   tuées** (fraîches), 55 % sur une cible déjà à ≤ 3 cases au début du tour de la Méjaire, 84 % après un déplacement de la
+   Méjaire (58 % à 4 PM : l'Enutrof ne lui retire presque jamais de PM — *Maladresse*, 1 PA, −2 PM, 1-12 PO, 4 / tour :
+   0,22 lancer par tour d'Enutrof).
+3. **Bornes supérieures** (arbre figé modifié, diagnostics seulement, jamais dans `src/`) : sans aucun Pacifiste sur les
+   personnages (NOPAC) : corrompus **+3,13 ± 1,49** (7,3 → 10,5), tours +3,9 ± 2,9, **2 victoires / 32** ; sans
+   dommages de poussée du Brabuzar (NOPUSH) : corrompus +1,78 ± 1,33, **tours +5,3 ± 2,9**, premier mort +3,7 ± 2,3,
+   1 victoire / 32. Pacifiste et poussées sont les deux plus gros leviers mesurés.
+4. **Calibration du Pacifiste** (`calibpac.mts`, 9 combats, tours 13-26, paires (fin de tour d'un personnage, Méjaire
+   vivante qui joue avant lui), n = 790) : prévu π·min(1, portée) = **0,075**, réel **0,124** ; avec min(1, 2π) (la
+   Méjaire pose Rayonirique sur DEUX cibles par tour, π n'en compte qu'une) : 0,126. Les Méjaires mortes (ressuscitées
+   avant le tour du personnage) ne sont pas vues (≈ 0,07 de Pacifiste par paire). La portée utilisée est celle du
+   MEILLEUR sort à dégâts (Plumière 3-7 ou Rayonirique 1-3 selon l'allié), pas celle du sort Pacifiste.
+5. **Menace du Brabuzar** (`calib4.mts`, sortie du premier passage) : prévu 24 par tour d'allié, réel 260 + 140 de
+   poussée : `threat.ts` ne compte aucun dommage de collision (la poussée de 4 de *Mise en situation*, +200 dommages de
+   poussée, collisions contre les murs, les alliés et les corrompus).
+6. **Confusion de l'essai PAC2** : `θ.threat.pacifistFactor` est AUSSI le poids `pacifist` du MonsterBrain
+   (`src/ai/monster/profiles/index.ts`) : le passer à 2,0 rend les Méjaires plus agressives. PAC2 (et P1 du tour 2)
+   mesurait donc surtout des monstres modifiés ; les essais Pacifiste de ce tour passent par du code (`threat.ts`), pas
+   par θ.
+7. **Cadence** : ni le planificateur, ni les pricers, ni le modèle abstrait ne supposent 5 tours entre deux vagues
+   (`arrivesRound` vient de `vx.arrivalRounds`, abstract.ts / tracker.ts) : rien à corriger.
+
+### Expériences (appariées, `fast`, ms 31, n = 32 ; référence GKL = `base-tuning-r4` + ligne de kill par glyphe)
+
+| Essai | Changement | Corr. t13 (Δ) | Corr. t19 (Δ) | Corr. total (Δ) | Tours (Δ) | Effet visé | Verdict |
+|---|---|---|---|---|---|---|---|
+| MJ05 | menace intrinsèque d'un poseur de Pacifiste (planificateur, patch MJ du tour 3, 0,5 × DPT) | −0,03 ± 0,53 | −0,22 ± 0,73 | −0,03 ± 1,05 | −1,78 ± 2,38 | vague 3 corrompue +0,22 | rejeté |
+| MJ10 | idem, 1,0 × DPT | −0,13 ± 0,44 | 0,00 ± 0,56 | +0,16 ± 0,89 | −0,56 ± 2,49 | | rejeté |
+| MJC05 | terme `control` : retrait PM/PA d'un poseur de Pacifiste (patch MJC du tour 3) | −0,25 ± 0,30 | +0,09 ± 0,44 | −0,13 ± 0,66 | −0,63 ± 2,23 | | rejeté |
+| PUSH1 | menace : **dommages de collision** des sorts de poussée (`threat.ts`, `pushOn`) | −0,13 ± 0,42 | −0,22 ± 0,54 | +0,06 ± 1,08 | −0,53 ± 2,80 | poussées 9 400 → 8 100, Neutralisation 8 700 → 7 500 | neutre |
+| PCAL1 | menace : portée du sort Pacifiste lui-même + Pacifiste × 1,7 (calibration, 2 cibles / tour) | −0,44 ± 0,39 | −0,25 ± 0,54 | +0,34 ± 1,03 | 0,00 ± 1,70 | Rayonirique subi −15 % ; un combat atteint *Action !* | neutre |
+| PCAL2 | menace : portée du sort Pacifiste seule | −0,16 ± 0,41 | −0,25 ± 0,63 | +0,31 ± 1,16 | −0,84 ± 2,93 | vague 4 +0,28 ± 0,28 | neutre |
+| CPAC | PCAL2 + intention de contrôle d'une Méjaire au prix de la perte de Pacifiste attendue (`allocator.ts`) | −0,34 ± 0,26 (vs PCAL2) | 0,00 ± 0,52 | −0,19 ± 1,19 | +0,69 ± 1,96 | *Maladresse* 5,8 → 7,3 par combat ; Iop pacifié 37 → 30 % des tours (≥ 13) | rejeté |
+| DMEJ2 | **diagnostic** : Méjaires à −2 PM à chaque tour (borne d'un verrou parfait par *Maladresse*) | −0,41 ± 0,40 | −0,09 ± 0,71 | +0,75 ± 1,32 | +0,91 ± 3,14 | Iop pacifié 37 → 27 % | borne faible |
+| N90 | θ `tactical.fast.nodes` 120 → 90 (coût) | **−0,88 ± 0,46** | −0,97 ± 0,67 | **−1,31 ± 0,95** | **−3,31 ± 2,28** | 727 → 628 ms par tour de jeu | rejeté : 120 nœuds est déjà le minimum |
+
+Pacifiste au début des tours (tours ≥ 13, GKL) : Crâ 21 %, Iop 37 %, Eniripsa 33 %, Enutrof 30 %.
+
+**Fenêtres d'étoile manquées** (`starmiss.cjs`, référence, tours 13-24, 314 fenêtres) : converties 31 % ; titulaire
+**pacifié 29 %** ; titulaire à 5-8 cases 18 %, à plus de 8 cases 13 % ; à ≤ 4 cases sans kill 7 % ; mort 2 %. Tours 1-12 :
+83 % converties. Le Pacifiste coûte donc directement ≈ 2,8 corruptions par combat (91 fenêtres / 32).

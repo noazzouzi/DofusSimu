@@ -23,7 +23,7 @@ import type { ScenarioAIModel } from '../../dungeons/types'
 import type { Engine } from '../../engine/engine'
 import { isStaticFighter } from '../../engine/targetMask'
 import type { Buff, Fighter, FightState } from '../../engine/types'
-import { CELL_COUNT, CELL_X, CELL_Y, distance, neighborsOf } from '../../map/geometry'
+import { CELL_COUNT, CELL_X, CELL_Y, cellInDirection, distance, neighborsOf } from '../../map/geometry'
 import { hasLineOfSight } from '../../map/los'
 import type { ThetaJson as StrategyParams } from '../theta'
 import type { AIView, Perception, ReachInfo, ThreatModel } from '../types'
@@ -124,6 +124,13 @@ export interface EnemyThreat {
   hitsFromStart: boolean
   /** L'ennemi peut poser Pacifiste (cantDealDamage) sur un allié. */
   pacifist: boolean
+  /** Sorts de poussée lançables au prochain tour (dommages de collision, `pushOn`), null sinon. */
+  push: PushSpell[] | null
+  /** Sorts qui posent Pacifiste (index dans `e.spells`), null sinon. */
+  pacSpells: number[] | null
+  /** Par allié : valeur d'un Pacifiste par unité de portée (`pacifistFactor`·Pot·PAC_MULT) et portée du sort Pacifiste. */
+  pacU: Float64Array
+  pacH: Float64Array
   /**
    * Amplification du PROCHAIN coup reçu par sa cible (« dommages subis » > 100 % consommés au prochain dommage :
    * Plumière ×1,5 de la Méjaire, Tirs optiques ×2 de la Harpille) : excès (pct/100 − 1), 0 si aucun sort lançable.
@@ -153,7 +160,16 @@ interface GeoRow {
   active: boolean; ap: number; mp: number; frac: number; weight: number; maxRange: number; pacifist: boolean
   reachLo: ReachInfo | null; reachHi: ReachInfo | null; los: LosOracle | null
   memo: Map<number, PairHit>
+  push: PushSpell[] | null
+  /** Index des sorts qui posent Pacifiste (cantDealDamage) sur un ennemi (`pacHitAt`). */
+  pacSpells: number[] | null
 }
+
+/**
+ * Sort de poussée d'un ennemi (réglage, tour 4) : index dans `e.spells`, force (cases), bonus de dommages de poussée que
+ * le sort donne au lanceur AVANT la poussée (Mise en situation du Brabuzar : +200), géométrie et coût.
+ */
+interface PushSpell { k: number; cells: number; boost: number; min: number; max: number; line: boolean; diag: boolean; los: boolean; cost: number }
 /** Plafond du cache de géométries (vidé en bloc : aucune influence sur les décisions). */
 const GEO_CACHE_MAX = 2048
 let geoSerial = 0
@@ -166,13 +182,8 @@ interface ThreatParams {
   hitNextTurn: number
   pacifistFactor: number
   deathSigmaFrac: number
-  /**
-   * v(a) d'une invocation dans le score de ciblage (θ.monster.summonValue, comme le MonsterBrain, §11.4) ; une
-   * invocation statique vaut 0.
-   */
-  summonValue: number
 }
-const DEFAULT_PARAMS: ThreatParams = { tauFrac: 0.25, zoneFactor: 0.6, laterEnemyWeight: 0.8, hitWeak: 0.6, hitNextTurn: 0.25, pacifistFactor: 0.9, deathSigmaFrac: 0.25, summonValue: 0.5 }
+const DEFAULT_PARAMS: ThreatParams = { tauFrac: 0.25, zoneFactor: 0.6, laterEnemyWeight: 0.8, hitWeak: 0.6, hitNextTurn: 0.25, pacifistFactor: 0.9, deathSigmaFrac: 0.25 }
 
 /** Hash de l'ordre des prochains tours (combattants et tours passés). */
 export function orderKey(order: SlotOrder): number {
@@ -252,7 +263,7 @@ export class ThreatModelImpl implements ThreatModel {
   constructor(readonly view: AIView, readonly side: TeamId, readonly perception: Perception | undefined,
               readonly scenario?: ScenarioAIModel, theta?: StrategyParams) {
     this.dpt = (perception?.dpt as DptTableImpl | undefined) ?? createDptTable(view.engine)
-    this.params = theta ? { ...DEFAULT_PARAMS, ...theta.threat, summonValue: theta.monster?.summonValue ?? DEFAULT_PARAMS.summonValue } : DEFAULT_PARAMS
+    this.params = theta ? { ...DEFAULT_PARAMS, ...theta.threat } : DEFAULT_PARAMS
     this.frame = (perception as { frame?: DptFrame } | undefined)?.frame ?? (this.ownFrame = new DptFrame(this.dpt))
   }
 
@@ -428,7 +439,7 @@ export class ThreatModelImpl implements ThreatModel {
     const P = this.params
     const g: GeoRow = {
       k2: 0, serial: ++geoSerial, active: false, ap: 0, mp: 0, frac: 0, weight: 1, maxRange: 0, pacifist: false,
-      reachLo: null, reachHi: null, los: null, memo: new Map(),
+      reachLo: null, reachHi: null, los: null, memo: new Map(), push: null, pacSpells: null,
     }
     if (isStaticFighter(e) || order.passes(e.id) || order.rank(e.id) >= order.count) return g
     const am = nextTurnApMp(e, order)
@@ -447,6 +458,8 @@ export class ThreatModelImpl implements ThreatModel {
     const profiles = this.dpt.profiles.ofFighter(e)
     for (const p of profiles) if (p.damage.length && p.maxRange > g.maxRange) g.maxRange = p.maxRange
     g.pacifist = profiles.some(p => pacifistStates(engine, p))
+    if (g.pacifist) for (let k = 0; k < profiles.length; k++) if (pacifistStates(engine, profiles[k])) (g.pacSpells ??= []).push(k)
+    g.push = pushSpellsOf(engine, e, profiles, am.ap)
     return g
   }
 
@@ -499,8 +512,9 @@ export class ThreatModelImpl implements ThreatModel {
       row = this.pool[k] = {
         e: undefined as unknown as Fighter, active: false, ap: 0, mp: 0, reachLo: null, reachHi: null, frac: 0, weight: 1,
         hit: new Float64Array(m), apAt: new Float64Array(m), dmg: new Float64Array(m), full: new Float64Array(m),
+        pacU: new Float64Array(m), pacH: new Float64Array(m), pacSpells: null,
         score: new Float64Array(m), pi: new Float64Array(m), best: new Int16Array(m), threat: 0, target: -1,
-        hitsFromStart: false, pacifist: false, amp: 0, single: new Float64Array(m), sig: 0, lethal: false, nA: 0,
+        hitsFromStart: false, pacifist: false, push: null, amp: 0, single: new Float64Array(m), sig: 0, lethal: false, nA: 0,
       }
     }
     row.single.fill(0)
@@ -528,6 +542,8 @@ export class ThreatModelImpl implements ThreatModel {
     row.frac = g.frac
     row.weight = g.weight
     row.pacifist = g.pacifist
+    row.push = g.push
+    row.pacSpells = g.pacSpells
     row.amp = 0
     row.hitsFromStart = false
     row.threat = 0
@@ -551,11 +567,19 @@ export class ThreatModelImpl implements ThreatModel {
       row.full[i] = full
       row.single[i] = frame.bestMean(e, a) * frame.calibration(e)
       let dmg = full * hit
-      if (g.pacifist && hit > 0 && potential) dmg += P.pacifistFactor * potential.potential(a.id) * Math.min(1, hit)
+      if (g.push) dmg += PUSH_FACTOR * this.pushOn(row, a, a.cell, -1, Infinity, 0)
+      row.pacU[i] = 0
+      row.pacH[i] = 0
+      if (g.pacifist && potential) {
+        const ph2 = PAC_OWN_HIT ? this.pacHitAt(s, e, g, a.cell) : hit
+        row.pacU[i] = P.pacifistFactor * PAC_MULT * potential.potential(a.id)
+        row.pacH[i] = ph2
+        if (ph2 > 0) dmg += row.pacU[i] * Math.min(1, ph2)
+      }
       row.dmg[i] = dmg
       const he = hpEff(a)
       if (dmg >= he && dmg > 0) row.lethal = true
-      row.score[i] = scoreOf(dmg, a, dmg >= he && dmg > 0 ? frame.dpt(a, e) : 0, this.params.summonValue)
+      row.score[i] = scoreOf(dmg, a, dmg >= he && dmg > 0 ? frame.dpt(a, e) : 0)
     }
     row.amp = this.ampOf(e, g)
     this.finishRow(row)
@@ -749,8 +773,22 @@ export class ThreatModelImpl implements ThreatModel {
       if (hit === 0) hit = distance(eCell, cell) <= 2 * row.mp + p.maxRange + 1 ? P.hitNextTurn : 0
       const dt = this.frame.s === s ? this.frame : this.dpt
       let dmg = dt.dpt(e, f, apAt) * hit
-      if (row.pacifist && hit > 0 && this.perception?.potential) dmg += P.pacifistFactor * this.perception.potential.potential(f.id) * Math.min(1, hit)
-      for (let i = 0; i < nA; i++) scores[i] = i === ai ? scoreOf(dmg, f, dmg >= hpEff(f) && dmg > 0 ? dt.dpt(f, e) : 0, this.params.summonValue) : row.score[i]
+      if (row.push) dmg += PUSH_FACTOR * this.pushOn(row, f, cell, f.id, mpBudget, 0)
+      if (row.pacifist && this.perception?.potential) {
+        let ph = hit
+        if (PAC_OWN_HIT && row.pacSpells) {
+          ph = 0
+          let range = 0
+          for (const k of row.pacSpells) {
+            if (scan(k) >= 0) { ph = 1; break }
+            const pk = profiles[k]
+            if (pk && pk.maxRange > range) range = pk.maxRange
+          }
+          if (ph === 0 && distance(eCell, cell) <= 2 * row.mp + range + 1) ph = P.hitNextTurn
+        }
+        if (ph > 0) dmg += P.pacifistFactor * PAC_MULT * this.perception.potential.potential(f.id) * Math.min(1, ph)
+      }
+      for (let i = 0; i < nA; i++) scores[i] = i === ai ? scoreOf(dmg, f, dmg >= hpEff(f) && dmg > 0 ? dt.dpt(f, e) : 0) : row.score[i]
       let max = 0
       for (let i = 0; i < nA; i++) if (scores[i] > max) max = scores[i]
       if (max <= 0) pi.fill(0, 0, nA)
@@ -780,6 +818,87 @@ export class ThreatModelImpl implements ThreatModel {
       teamDelta += extra - this.scenario.extraIncoming(s, f, f.cell)
     }
     return { own, teamDelta }
+  }
+
+  /**
+   * Portée du sort Pacifiste de `e` sur `cell` (réglage, tour 4) : 1 si une case atteignable permet un sort Pacifiste,
+   * interpolation ⌈PM⌉, `hitNextTurn` si `cell` est à portée au tour d'après, 0 sinon. La portée du MEILLEUR sort à
+   * dégâts (`pairHit`) n'est pas celle du Pacifiste (Méjaire : Plumière 3-7 contre Rayonirique 1-3).
+   */
+  private pacHitAt(s: FightState, e: Fighter, g: GeoRow, cell: number): number {
+    const ks = g.pacSpells
+    if (!ks || !g.reachLo || !g.los) return 0
+    let range = 0
+    for (const k of ks) {
+      if (this.castCell(s, e, k, cell, g.reachLo, g.los, g.ap) >= 0) return 1
+      const p = this.dpt.profiles.ofFighter(e)[k]
+      if (p && p.maxRange > range) range = p.maxRange
+    }
+    if (g.reachHi) for (const k of ks) if (this.castCell(s, e, k, cell, g.reachHi, g.los, g.ap) >= 0) return g.frac
+    return distance(believedCell(e, this.side), cell) <= 2 * g.mp + range + 1 ? this.params.hitNextTurn : 0
+  }
+
+  /**
+   * Dommages de collision attendus si l'ennemi de `row` repousse l'allié `a` placé sur `cell` (réglage, tour 4) : pour
+   * chaque sort de poussée, chaque direction alignée d'où il peut lancer (case de lancer atteignable en dépensant au plus
+   * `mpBudget` PM, avec au moins le coût du sort après un retrait de `apMinus` PA, ligne de vue), la force non consommée
+   * avant le premier obstacle (case non marchable, bord, combattant) donne les dommages de `pushDamage` (niveau/2 + 32 +
+   * dommages de poussée du lanceur + bonus du sort − résistances poussée de la cible) ; meilleure direction retenue.
+   * `movedId` : combattant déplacé sur `cell` (sa case d'origine est libre). Sans elle, la menace d'un Brabuzar (Mise en
+   * situation : poussée de 4 avec +200 dommages de poussée) valait ≈ 1/10 des dégâts subis (poussées 9 100 par combat).
+   */
+  private pushOn(row: EnemyThreat, a: Fighter, cell: number, movedId: number, mpBudget: number, apMinus: number): number {
+    const push = row.push
+    const reach = row.reachLo
+    const s = this.s
+    if (!push || !reach || !s || cell < 0) return 0
+    const e = row.e
+    const occ = this.occ
+    const cells = s.map.cells
+    const mp0 = reach.mpLeft[reach.cells[0]]
+    let best = 0
+    for (const ps of push) {
+      if (row.ap - apMinus < ps.cost) continue
+      const base = Math.floor(pusherLevelOf(s, e) / 2) + 32 + e.stats.pushDamage + ps.boost - a.stats.pushRes
+      if (base <= 0) continue
+      for (let d = 0; d < 8; d++) {
+        const diag = (d & 1) === 0
+        if (diag ? !(ps.diag || !ps.line) : !(ps.line || !ps.diag)) continue
+        // Case de lancer : à r cases de `cell` dans la direction opposée (la cible est repoussée selon +d).
+        let ok = false
+        const back = (d + 4) & 7
+        for (let r = Math.max(1, ps.min); r <= ps.max && !ok; r++) {
+          const c = cellInDirection(cell, back, r)
+          if (c < 0 || c === cell) continue
+          const ap = reach.apLeft[c]
+          if (!(ap >= 0) || ap - apMinus < ps.cost) continue
+          if (mp0 - reach.mpLeft[c] > mpBudget + 1e-9) continue
+          const o = occ[c]
+          if (o >= 0 && o !== e.id && o !== movedId) continue
+          if (ps.los && r > 1 && !losFree(s, c, cell, occ, e.id, movedId)) continue
+          ok = true
+        }
+        if (!ok) continue
+        const steps = diag ? Math.ceil(ps.cells / 2) : ps.cells
+        let free = 0
+        let c = cell
+        while (free < steps) {
+          const nx = cellInDirection(c, d)
+          if (nx < 0) break
+          const mc = cells[nx]
+          if (!mc || !mc.walkable) break
+          const o = occ[nx]
+          if (o >= 0 && o !== movedId && o !== a.id) break
+          free++
+          c = nx
+        }
+        const rem = steps - free
+        if (rem <= 0) continue
+        const dmg = Math.trunc((base * (diag ? 2 * rem : rem)) / 4)
+        if (dmg > best) best = dmg
+      }
+    }
+    return best
   }
 
   /**
@@ -874,16 +993,30 @@ export class ThreatModelImpl implements ThreatModel {
         const hm = this.hitWithin(row, bi, tc, mpLo, 0)
         const hitM = hm.hit
         const dm = hitM > 0 ? dt.dpt(e, a, hm.apAt) * hitM : 0
-        baseDmg[i] = Math.max(0, row.dmg[i] + dm - d0 + pacUnit * (Math.min(1, hitM) - Math.min(1, hit0)))
-        baseScores[i] = scoreOf(baseDmg[i], a, baseDmg[i] >= he && baseDmg[i] > 0 ? dt.dpt(a, e) : 0, this.params.summonValue)
+        // (Portée Pacifiste propre : l'écart du retrait est mesuré sur la case finale, voir plus bas.)
+        const pacM = PAC_OWN_HIT && row.pacSpells ? 0 : pacUnit * (Math.min(1, hitM) - Math.min(1, hit0))
+        baseDmg[i] = Math.max(0, row.dmg[i] + dm - d0 + pacM)
+        baseScores[i] = scoreOf(baseDmg[i], a, baseDmg[i] >= he && baseDmg[i] > 0 ? dt.dpt(a, e) : 0)
         moved = true
       }
       const h1 = this.hitWithin(row, bi, tc, mpHi, dAp)
       const d1 = h1.hit > 0 ? dt.dpt(e, a, h1.apAt) * h1.hit : 0
-      const pac = pacUnit * (Math.min(1, h1.hit) - Math.min(1, hit0))
-      if (d1 === d0 && pac === 0 && tc === a.cell) continue
-      dmg2[i] = Math.max(0, row.dmg[i] + d1 - d0 + pac)
-      scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0, this.params.summonValue)
+      let pac = pacUnit * (Math.min(1, h1.hit) - Math.min(1, hit0))
+      if (PAC_OWN_HIT && row.pacSpells && pacUnit > 0) {
+        // Portée du sort Pacifiste lui-même, avant / après le retrait (même méthode des deux côtés).
+        let p0 = 0
+        let p1 = 0
+        for (const k of row.pacSpells) {
+          p0 = Math.max(p0, this.hitWithin(row, k, tc, mpLo, 0).hit)
+          p1 = Math.max(p1, this.hitWithin(row, k, tc, mpHi, dAp).hit)
+        }
+        pac = pacUnit * (Math.min(1, p1) - Math.min(1, p0))
+      }
+      // Poussée (collision) : même écart avant / après le retrait (case de l'allié inchangée ou case finale du lanceur).
+      const pu = row.push ? PUSH_FACTOR * (this.pushOn(row, a, tc, tc === a.cell ? -1 : a.id, mpHi, dAp) - this.pushOn(row, a, tc, tc === a.cell ? -1 : a.id, mpLo, 0)) : 0
+      if (d1 === d0 && pac === 0 && pu === 0 && tc === a.cell) continue
+      dmg2[i] = Math.max(0, row.dmg[i] + d1 - d0 + pac + pu)
+      scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
     }
     // Retirer des PA/PM n'ajoute pas de dégâts (le lissage π peut produire un écart positif minime : écrêté).
     const r = Math.min(0, moved
@@ -948,7 +1081,7 @@ export class ThreatModelImpl implements ThreatModel {
         if (after === before && pac === 0) continue
         dmg2[i] = Math.max(0, row.dmg[i] + after - before + pac)
         const he = hpEff(a)
-        scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0, this.params.summonValue)
+        scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
       }
       // (2) Leurre : cible concurrente.
       let dmgC = 0
@@ -959,7 +1092,7 @@ export class ThreatModelImpl implements ThreatModel {
         const pr = this.dpt.profiles.ofFighter(e)[row.best[t]]
         if (nextTurnStaticOk(engine, e, ks, lvl, row.ap) && hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, cell, reach, los, true, pr) >= 0) dmgC = row.full[t]
       }
-      scores[nA] = this.params.summonValue * Math.min(dmgC, hp) + (dmgC >= hp && dmgC > 0 ? 0.5 * hp : 0)
+      scores[nA] = Math.min(dmgC, hp) + (dmgC >= hp && dmgC > 0 ? 0.5 * hp : 0)
       let max = 0
       for (let i = 0; i <= nA; i++) if (scores[i] > max) max = scores[i]
       if (max <= 0) pi.fill(0, 0, nA + 1)
@@ -1057,7 +1190,7 @@ export class ThreatModelImpl implements ThreatModel {
       if (after === before && pac === 0) continue
       dmg2[i] = Math.max(0, row.dmg[i] + after - before + pac)
       const he = hpEff(a)
-      scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0, this.params.summonValue)
+      scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
     }
     const r = this.reaggregate(row, scores, dmg2, pi, nA)
     this.deltaMemo.set(key, r)
@@ -1070,8 +1203,7 @@ export class ThreatModelImpl implements ThreatModel {
    * Pacifiste d'un ennemi qui ne peut plus atteindre sa cible).
    */
   private pacPerHit(row: EnemyThreat, i: number): number {
-    const h = Math.min(1, row.hit[i])
-    return h > 0 ? Math.max(0, row.dmg[i] - row.full[i] * row.hit[i]) / h : 0
+    return row.pacU[i]
   }
 
   /** Δ incoming de l'équipe pour une ligne dont les dégâts / scores par allié deviennent `dmg2` / `scores`. */
@@ -1122,16 +1254,9 @@ function piOf(scores: ArrayLike<number>, n: number, tau: number, out: Float64Arr
   if (sum > 0 && sum !== 1) for (let i = 0; i < n; i++) out[i] /= sum
 }
 
-/**
- * Score de ciblage d'un allié (imite le terme dégâts + mort du MonsterBrain, §11.4) : v(a)·min(dmg, PVe) + [mort]·(0,5·PVmax
- * + menace), v(a) = 1 pour un personnage, `summonValue` pour une invocation, 0 pour une invocation statique (Balise…). Sans
- * v(a), les invocations captaient l'essentiel de π : la menace prévue d'un Brabuzar sur un personnage valait ≈ 1/10 des
- * dégâts réellement subis (réglage, tour 4).
- */
-function scoreOf(dmg: number, a: Fighter, threatA: number, summonValue: number): number {
+function scoreOf(dmg: number, a: Fighter, threatA: number): number {
   const he = hpEff(a)
-  const v = isStaticFighter(a) ? 0 : a.kind === 'summon' || a.summonerId !== undefined ? summonValue : 1
-  let sc = v * Math.min(dmg, he)
+  let sc = Math.min(dmg, he)
   if (dmg >= he && dmg > 0) sc += 0.5 * a.maxHp + threatA
   return sc
 }
@@ -1171,6 +1296,47 @@ function losFree(s: FightState, from: number, to: number, occ: Int16Array, caste
     },
     c => !cells[c]?.los,
   )
+}
+
+/** Poids des dommages de collision dans la menace (réglage, tour 4 ; 0 = modèle d'origine). */
+const PUSH_FACTOR = 1
+/**
+ * Calibration du Pacifiste (réglage, tour 4) : une Méjaire pose Rayonirique sur DEUX cibles par tour (2/tour, 1/cible),
+ * π n'en compte qu'une ; mesuré sur 9 combats (tours 13-26) : P(Pacifiste) réelle ≈ 1,65 × π·portée. Ne touche pas le
+ * poids `θ.threat.pacifistFactor`, partagé avec le MonsterBrain (score des monstres).
+ */
+const PAC_MULT = 1
+/** Portée du Pacifiste mesurée avec le sort Pacifiste lui-même (sinon : portée du meilleur sort à dégâts). */
+const PAC_OWN_HIT = false
+
+/** Niveau servant aux dommages de poussée : celui de l'invocateur pour une invocation (comme le moteur). */
+function pusherLevelOf(s: FightState, e: Fighter): number {
+  if (e.summonerId !== undefined) {
+    const o = s.fighters[e.summonerId]
+    if (o) return o.level
+  }
+  return e.level
+}
+
+/** Sorts de poussée d'un ennemi lançables à son prochain tour (poussée d'une cible ennemie, zone d'une case). */
+function pushSpellsOf(engine: Engine, e: Fighter, profiles: readonly SpellProfileX[], ap: number): PushSpell[] | null {
+  let out: PushSpell[] | null = null
+  for (let k = 0; k < profiles.length; k++) {
+    const p = profiles[k]
+    if (p.unsupported) continue
+    let cells = 0
+    for (const m of p.moves) if (m.kind === 'push' && !m.onCaster && m.sides.enemy && m.zone.shape === 'P' && m.cells > cells) cells = m.cells
+    if (cells <= 0) continue
+    const ks = e.spells[k]
+    if (!ks) continue
+    const lvl = levelFor(e, ks)
+    if (!nextTurnStaticOk(engine, e, ks, lvl, ap)) continue
+    let boost = 0
+    for (const st of p.stats) if (st.stat === 'pushDamage' && st.sign > 0 && st.sides.selfOnly) boost += st.value
+    const g = castGeom(e, lvl)
+    ;(out ??= []).push({ k, cells, boost, min: g.min, max: g.max, line: g.line, diag: g.diag, los: lvl.castTestLos, cost: lvl.apCost })
+  }
+  return out
 }
 
 /** Construit le modèle de menace du camp `side` sur l'état `s` (§6.5). */

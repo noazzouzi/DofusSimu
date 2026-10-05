@@ -39,7 +39,7 @@ import { cloneFighter } from '../../engine/engine'
 import { createMonsterFighter } from '../../engine/factory'
 import type { ControllerProvider } from '../../engine/runner'
 import type { Fighter, FightState } from '../../engine/types'
-import { CELL_COUNT, CELL_X, CELL_Y, distance } from '../../map/geometry'
+import { CELL_COUNT, CELL_X, CELL_Y, cellInDirection, distance } from '../../map/geometry'
 import type { AbsAction, CandidateHint, ClockSlot, KeyDecisionReason, MicroResult, ScenarioAIModel, ScenarioParams, ScenarioPlan } from '../types'
 import { absFromFight, absParamsOf, type AbsMonster, type AbsState } from './abstract'
 import { planBurst, type VortexBurstPlan } from './burst'
@@ -230,6 +230,7 @@ export class VortexAIModel implements ScenarioAIModel {
     // Phases de vagues : planificateur d'heures + prix.
     const { prices, plan, root } = this.planWaves(view, bb, px, mode, dpt, players)
     bb.prices = prices
+    this.lastKill = prices.kill
     bb.plan = { kind: 'hours', plan: plan.plan } satisfies VortexBlackboardPlan
     this.lastPlan = plan
     this.lastRoot = root
@@ -459,7 +460,12 @@ export class VortexAIModel implements ScenarioAIModel {
     }
     if (!isWaveMonster(e)) return undefined
     if (isCorrupted(e)) return 0
-    return bb.prices.hp.get(e.id)?.slope ?? this.theta.vortex.waveHpSlope
+    const slope = bb.prices.hp.get(e.id)?.slope ?? this.theta.vortex.waveHpSlope
+    // Méjaire jamais tuée (réglage, tour 4) : 90 % des Pacifiste des tours 13-24 viennent de Méjaires fraîches ; la tuer
+    // une fois la renvoie près du Vortex, à −1 PM et 20-30 % de PV.
+    if (MEJ_FOCUS !== 1 && e.monsterId === MEJAIRE && deathHours(e) === 0) return slope * MEJ_FOCUS
+    if (BRAB_FOCUS !== 1 && e.monsterId === BRABUZAR && deathHours(e) === 0) return slope * BRAB_FOCUS
+    return slope
   }
 
   deathValue(root: FightState, leaf: FightState, victim: Fighter, bb: Blackboard): number | undefined {
@@ -558,8 +564,47 @@ export class VortexAIModel implements ScenarioAIModel {
   extraIncoming(s: FightState, a: Fighter, cell: number): number {
     let v = this.base.extraIncoming?.(s, a, cell) ?? 0
     v += this.heuristiqueIncoming(s, a, cell)
+    if (STAR_PAC_GUARD > 0) v += this.starPacifistGuard(s, a, cell)
     return v
   }
+
+  /**
+   * Garde Pacifiste du TITULAIRE d'une étoile (réglage, tour 4) : si l'horloge ouvrira au prochain tour de `a` la
+   * fenêtre d'étoile d'un monstre (vivant ou mort non corrompu tué à cette heure), un Pacifiste posé d'ici là perd la
+   * corruption (29 % des fenêtres des tours 13-24 perdues ainsi, docs/tuning-log.md). Coût attendu sur `cell` :
+   * `STAR_PAC_GUARD` × prix de la corruption (`kill[m][0]`) si une Méjaire vivante, non corrompue et non pacifiée peut,
+   * avec ses PM actuels (chemin libre, tacle ignoré), se placer en ligne à 1-3 cases de `cell` avec ligne de vue.
+   */
+  private starPacifistGuard(s: FightState, a: Fighter, cell: number): number {
+    if (a.kind !== 'player' || cell < 0 || (this.lastPhase !== 'waveCycle' && this.lastPhase !== 'opening')) return 0
+    const slots = this.lastSlots
+    if (!slots?.length) return 0
+    let g = this.pacGuard.get(s)
+    if (!g) {
+      g = { zone: pacifistZone(s, this.engine), stake: new Map() }
+      this.pacGuard.set(s, g)
+    }
+    if (!g.zone || !g.zone[cell]) return 0
+    let stake = g.stake.get(a.id)
+    if (stake === undefined) {
+      stake = 0
+      const h = this.allyHour(s, a.id, slots)
+      if (h) {
+        const bit = 1 << (h - 1)
+        for (const m of s.fighters) {
+          if (!isWaveMonster(m) || isCorrupted(m) || !(deathHours(m) & bit)) continue
+          const row = this.lastKill?.get(m.id)
+          const w = row ? row[0] : this.theta.vortex.corruptKill
+          if (w > stake) stake = w
+        }
+      }
+      g.stake.set(a.id, stake)
+    }
+    return STAR_PAC_GUARD * stake
+  }
+
+  private pacGuard = new WeakMap<FightState, { zone: Uint8Array | null; stake: Map<number, number> }>()
+  private lastKill?: ReadonlyMap<number, ArrayLike<number>>
 
   /**
    * Phase 2 : Heuristique depuis la case d'arrivée d'Heurage (contact de la future case de l'Auroraire) si Heurage
@@ -768,6 +813,60 @@ export class VortexAIModel implements ScenarioAIModel {
     if (!plan) return this.lastPhase === 'waiting' ? 'Attente : tout est corrompu, sécurité hors des lignes de l’Auroraire' : ''
     return describePlan(plan)
   }
+}
+
+/** Facteur de la pente de PV d'une Méjaire jamais tuée (réglage, tour 4 ; 1 = pente du prix). */
+const MEJ_FOCUS = 1
+/** Idem pour un Brabuzar jamais tué (poussées : 9 100 de dégâts subis par combat). */
+const BRAB_FOCUS = 1
+/** Brabuzar (monstre 3839). */
+const BRABUZAR = 3839
+
+/** Poids de la garde Pacifiste du titulaire d'une étoile (réglage, tour 4 ; 0 = désactivée). */
+const STAR_PAC_GUARD = 0
+
+/**
+ * Cases d'où une Méjaire vivante (non corrompue, non pacifiée) peut pacifier une cible à son prochain tour : cases
+ * atteignables avec ses PM actuels (chemin libre, 4 voisins, tacle ignoré), puis cible en ligne à 1-3 cases, cases
+ * intermédiaires transparentes et inoccupées. null si aucune Méjaire.
+ */
+function pacifistZone(s: FightState, engine: Engine | undefined): Uint8Array | null {
+  let zone: Uint8Array | null = null
+  const occ = new Int16Array(CELL_COUNT).fill(-1)
+  for (const f of s.fighters) if (f.alive && f.cell >= 0) occ[f.cell] = f.id
+  const cells = s.map.cells
+  for (const e of s.fighters) {
+    if (!e.alive || e.cell < 0 || e.team === 0 || e.monsterId !== MEJAIRE || isCorrupted(e)) continue
+    if (engine && engine.stateFlag(e, 'cantDealDamage')) continue
+    const mp = Math.max(0, Math.floor(e.stats.mp))
+    // Accessibilité (BFS, PM entiers).
+    const dist = new Int8Array(CELL_COUNT).fill(-1)
+    const queue = [e.cell]
+    dist[e.cell] = 0
+    for (let qi = 0; qi < queue.length; qi++) {
+      const c = queue[qi]
+      if (dist[c] >= mp) continue
+      for (const d of [1, 3, 5, 7]) {
+        const n = cellInDirection(c, d)
+        if (n < 0 || dist[n] >= 0 || !cells[n]?.walkable || occ[n] >= 0) continue
+        dist[n] = dist[c] + 1
+        queue.push(n)
+      }
+    }
+    zone ??= new Uint8Array(CELL_COUNT)
+    for (const c of queue) {
+      for (const d of [1, 3, 5, 7]) {
+        for (let r = 1; r <= 3; r++) {
+          const t = cellInDirection(c, d, r)
+          if (t < 0 || !cells[t]) break
+          zone[t] = 1
+          // Au-delà : la case t doit laisser passer la vue (transparente, inoccupée sauf par la Méjaire elle-même).
+          if (!cells[t].los || (occ[t] >= 0 && occ[t] !== e.id)) break
+        }
+      }
+    }
+  }
+  return zone
 }
 
 function emptyPlan(version: number): ScenarioPlan {
