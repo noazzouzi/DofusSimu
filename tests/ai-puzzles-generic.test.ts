@@ -212,6 +212,13 @@ describe('ablations des tactiques (§16.4)', () => {
     // Réglage du tour 3 : `fast` passe d'un faisceau de largeur 1 à 3 ; il compose alors la séquence sans la tactique
     // (avant : plan strictement moins bon sans elle).
     expect(off.plan.value).toBeLessThanOrEqual(on.plan.value + 1e-6)
+    // L'ablation garde son sens pour un faisceau glouton (largeur 1, 40 nœuds : l'ancien `fast`, et le tour imbriqué
+    // d'un allié dans les rollouts) : sans la tactique, le plan trouvé vaut strictement moins.
+    const greedy = { width: 1, maxNodes: 40 }
+    const onG = decide(byId('P3').build(), 'fast', { budget: greedy })
+    const offG = decide(byId('P3').build(), 'fast', { budget: greedy, disabledTactics: new Set(['stateChain']) })
+    expect(onG.plan.actions.some(a => a.tactic === 'stateChain')).toBe(true)
+    expect(offG.plan.value).toBeLessThan(onG.plan.value)
     // Largeur 6 : la Balise Tactique (puissance +40 par ennemi en vue) puis l'Explosive est trouvée sans la tactique.
     const onS = decide(byId('P3').build(), 'standard')
     const offS = decide(byId('P3').build(), 'standard', { disabledTactics: new Set(['stateChain']) })

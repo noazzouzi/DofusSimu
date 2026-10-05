@@ -533,7 +533,10 @@ Moyennes (n = 96) : avant 14,22 tours, corrompus 1,16 / 2,10 / 2,22 (t7 / t12 / 
   (Δ apparié ± IC 95 %, graines meilleures / moins bonnes).
 - Lot : 32 graines `fast` par `masterSeed` ; un changement est jugé sur `masterSeed` 1 + 2 (n = 64) puis **validé sur
   des graines inédites** (`masterSeed` 3 + 4, n = 64) avant d'être gardé (leçon du tour 2 : les graines du réglage
-  surestiment le gain).
+  surestiment le gain) ; mesure finale sur `masterSeed` 5 + 6, jamais utilisés pendant le réglage.
+- Reprise : une première exécution de ce tour, interrompue par le redémarrage du conteneur à 10 h 27, avait déjà
+  mesuré la référence (ms 1-4) et plusieurs variantes (arbres `.cache/tuning/r3/trees`) sans modifier le dépôt ;
+  ses résultats sont relus ci-dessous.
 
 ### Mesure de référence (`base-tuning-r3`, `fast`, n = 128, `masterSeed` 1-4)
 
@@ -568,8 +571,8 @@ Essais lancés avant le redémarrage du conteneur (10 h 27), résultats relus ap
 
 W3 par jeu de graines (corr. total ; tours) : ms 1 +0,31 ; +1,56 — ms 2 +0,56 ; +1,38 — ms 3 +0,44 ; +0,97 — ms 4
 +0,44 ; +1,44 : positif sur les quatre jeux. Mécanisme : dégâts infligés aux monstres de vague +12 400 ± 3 100 par
-combat (+23 %), kills +2,6, PA inutilisés par tour 2,72 → 1,45 ; dégâts subis +1 400 (tours en plus). Coût : ≈ 1,6 ×
-le temps d'un combat `fast` (4,7-5,4 s → 7,7-8,2 s, machine partagée).
+combat (+23 %), kills +2,6, PA inutilisés par tour 2,72 → 1,45 ; dégâts subis +1 400 (tours en plus). Coût : voir la validation ci-dessous
+(≈ 2 × par tour de jeu à charge égale).
 
 **Validation de W3 sur graines inédites** (`masterSeed` 5 + 6, n = 64, jamais utilisées pendant le réglage) :
 corrompus +0,50 ± 0,30 (+31 / −9 ; t7 +0,19 ± 0,24, t12 +0,31 ± 0,26, t17 +0,50 ± 0,30), tours **+1,55 ± 0,72**
@@ -687,6 +690,9 @@ Code du dépôt (W3) contre `base-tuning-r3`, même moteur, `fast`, apparié. Gr
 | PA inutilisés par tour de personnage | 2,72 | 1,43 | −1,31 ± 0,10 | −1,29 ± 0,07 |
 | Temps par tour de jeu (lots consécutifs) | 328 ms | 666 ms | ≈ 2 × | |
 
+`standard`, 6 graines (ms 1), apparié : 3 combats identiques, corrompus 3,17 → 3,17, tours 16,33 → 15,83 (une
+graine) : neutre, comme attendu (`standard` ne change que par les invocations, qui jouent en `fast`).
+
 Avec les stuffs `*_vortex` (n = 32, ms 1) : 4,25 → **5,25** corrompus (+1,00 ± 0,69), 20,3 → 22,0 tours, premier mort
 12,7 → 16,3 (voir le tableau précédent).
 
@@ -716,11 +722,26 @@ Avec les stuffs `*_vortex` (n = 32, ms 1) : 4,25 → **5,25** corrompus (+1,00 �
   sans largeur (N80, FKEY) ou une largeur 4 n'apportent rien.
 - **Le stuff** est le second verrou : les stuffs `*_vortex` valent +1,6 corrompu et +6 tours avec l'IA de départ ; IA
   et stuff se renforcent (W3 vaut +1,0 corrompu avec ces stuffs contre +0,46 sans).
+- **Diagnostic « équipe ×2 en attaque et ×0,5 en défense »** (arbre figé modifié, `Engine.applyDamage` × facteur,
+  **jamais dans `src/`** ; mêmes 16 graines `masterSeed` 1 que le diagnostic du tour 2, équipe méta, stuffs des
+  presets) : **8 victoires sur 16 avec W3** (tour 2 : 1 sur 16), 15,3 corrompus en moyenne (8,8), 39,9 tours ; échecs :
+  vague non corrompue au déverrouillage 4, submersion 2, limite de tours 1, burst raté 1. Le pipeline complet
+  (19 corruptions, *Action !*, burst du Vortex) gagne donc une fois sur deux avec une équipe ≈ 4 × plus forte : l'IA
+  n'est plus le verrou principal, la puissance de l'équipe l'est.
+- **Même diagnostic sur l'équipe stuffée (`*_vortex`) avec W3, facteurs réduits** (16 graines ms 1) : **×1,5 en
+  attaque et ×0,67 en défense : 8 victoires sur 16**, 14,4 corrompus en moyenne, 38,8 tours (échecs : vague non
+  corrompue au déverrouillage 6, limite de tours 1, submersion 1) ; **×1,25 / ×0,8 : 0 victoire sur 16**, 8,8
+  corrompus, 28,3 tours (vague non corrompue au déverrouillage 9, submersion 6). Le seuil de victoire se situe entre
+  +25 % et +50 % de dégâts (avec −20 % à −33 % de dégâts subis) au-delà des stuffs optimisés, et non plus « 4 × plus
+  fort » comme au tour 2.
 - **Rythme** : même stuffée et avec W3, l'équipe corrompt 5,25 monstres sur 19 en 22 tours ; la victoire exige les 19
   avant le ~26ᵉ tour du Vortex, puis le burst. La vague 2 (deux Harpilles résistantes au Feu) et la vague 3 (deux
-  Méjaires) ne sont pas tenues : il faut ≈ 2 × plus de dégâts utiles par tour (équipe ou composition : élément Feu
-  doublé face aux Harpilles) ET une gestion des Méjaires (retrait de PM ciblé, placement hors des lignes) que les
-  heuristiques de valeur actuelles ne produisent pas.
+  Méjaires) ne sont pas tenues sans marge : d'après le diagnostic ci-dessus, il manque ≈ +25-50 % de dégâts utiles et
+  −20-33 % de dégâts subis (équipe, composition — élément Feu doublé face aux Harpilles — ou IA : gestion des Méjaires,
+  focus de la vague 2), ce que les heuristiques de valeur essayées ce tour ne produisent pas.
+- **Conclusion** : en l'état (stuffs `*_vortex` + W3), aucune victoire sur 32 graines ; la victoire devient fréquente
+  (8 / 16) pour une équipe ≈ 1,5 × plus offensive et 1,5 × plus résistante. Les deux leviers restants sont
+  l'équipe (stuff / composition) et le rythme de corruption des vagues 2-3 par l'IA.
 
 ### Pistes pour le tour 4
 
@@ -736,4 +757,6 @@ Avec les stuffs `*_vortex` (n = 32, ms 1) : 4,25 → **5,25** corrompus (+1,00 �
 - **Ressuscités** : modèle de menace plus fin que REZ (case de résurrection réelle de la zone C63,3, ligne de vue,
   exemption du tueur prévu quand le ressuscité n'est pas un poseur de Pacifiste) ; REZ global était instable.
 
-(Suite en cours : `standard` et diagnostic « équipe ×2 / ×0,5 » avec W3.)
+Vérifications : `npx tsc --noEmit` vert ; `npx vitest run tests/ai-* tests/vortex-* tests/engine-summon-owned.test.ts`
+(1 processus) : **333 réussis, 1 ignoré** (ablations, opt-in). Aucune infidélité du moteur trouvée ce tour (aucun test
+`it.fails` ajouté).
