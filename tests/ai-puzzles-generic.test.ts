@@ -13,6 +13,12 @@
  *  P11 Méjaire alignée à 3 cases du Iop                       → le Iop quitte la ligne avant la fin de son tour
  *  P13 tank au contact de 2 monstres de mêlée                 → il reste au contact (tacle) au lieu de fuir
  *  P15 couloir unique vers le Crâ (fragile), Osamodas         → invocation sur la case d'étranglement
+ *
+ * Ablations (§16.4, « la tactique désactivée fait perdre de la valeur ») : `stateChain` sur P3 (fast ; en standard le
+ * faisceau retrouve seul la séquence) ; `carryThrow` sur P10 (standard : sans elle, plus de portage et un plan qui vaut
+ * moins). `glyphClock` : P6 (tests/ai-puzzles-vortex.test.ts). Sur P1 (`mpLock`), P8 (`healCleanse`) et P15
+ * (`bodyBlock`), la recherche générique trouve le même plan avec ou sans la tactique : leurs ablations (et celles de
+ * `groupForZone`, `burstSetup`) sont mesurées sur des combats complets appariés (tests/ai-team-ablation.test.ts).
  */
 import { describe, expect, it } from 'vitest'
 import { createPerception, createView, nextTurnApMp, type PerceptionX } from '../src/ai/core'
@@ -193,6 +199,31 @@ describe('puzzles tactiques génériques (standard)', () => {
       expect(p.check(sc, 'standard')).toBe('')
     }, 120_000)
   }
+})
+
+describe('ablations des tactiques (§16.4)', () => {
+  const byId = (id: string): Puzzle => PUZZLES.find(p => p.id === id)!
+  it('P3 sans stateChain (fast) : le plan trouvé vaut moins ; en standard, le faisceau le retrouve seul (pas moins)', () => {
+    const on = decide(byId('P3').build(), 'fast')
+    const off = decide(byId('P3').build(), 'fast', { disabledTactics: new Set(['stateChain']) })
+    expect(on.plan.actions.some(a => a.tactic === 'stateChain')).toBe(true)
+    expect(off.plan.value).toBeLessThan(on.plan.value)
+    // Largeur 6 : la Balise Tactique (puissance +40 par ennemi en vue) puis l'Explosive est trouvée sans la tactique.
+    const onS = decide(byId('P3').build(), 'standard')
+    const offS = decide(byId('P3').build(), 'standard', { disabledTactics: new Set(['stateChain']) })
+    expect(offS.plan.value).toBeLessThanOrEqual(onS.plan.value + 1e-6)
+  }, 120_000)
+
+  it('P10 sans carryThrow (standard) : plus de portage de l\'Ikargn, et le plan vaut moins', () => {
+    const p = byId('P10')
+    const sc = p.build()
+    expect(p.check(sc, 'standard')).toBe('')
+    const on = decide(p.build(), 'standard')
+    const off = decide(p.build(), 'standard', { disabledTactics: new Set(['carryThrow']) })
+    const ika = sc.get('Ika').cell
+    expect(castsOf(off.plan.actions).some(c => c.cell === ika && (c.spellId === 12787 || c.spellId === 12810))).toBe(false)
+    expect(off.plan.value).toBeLessThan(on.plan.value)
+  }, 120_000)
 })
 
 describe('puzzles tactiques génériques (fast) : taux de réussite suivi', () => {

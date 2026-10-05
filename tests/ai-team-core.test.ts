@@ -10,8 +10,9 @@
  */
 import { describe, expect, it } from 'vitest'
 import { createControllers, defaultAIConfig } from '../src/ai'
-import { createNodeBudget, createPerception, createView, simClone, stateHash, type PerceptionX } from '../src/ai/core'
-import { evalLeaf, healCleansablePoison, intentSatisfaction, rootInfo, scenarioTerm } from '../src/ai/tactical/evaluate'
+import { createNodeBudget, createPerception, createView, LAST_SEEN_TAG, observeVisibility, simClone, stateHash, STATE_INVISIBLE, type PerceptionX } from '../src/ai/core'
+import { evalLeaf, healCleansablePoison, intentSatisfaction, newSummonLife, rootInfo, scenarioTerm } from '../src/ai/tactical/evaluate'
+import { generate, macroContent, selectForSim } from '../src/ai/tactical/generate'
 import { deviation, executePlan } from '../src/ai/tactical/executor'
 import { postKeyReason, preKeyReason } from '../src/ai/tactical/keys'
 import { mctsChoose } from '../src/ai/tactical/mcts'
@@ -23,12 +24,13 @@ import { computeFocus, deserializeBlackboard, emptyBlackboard, serializeBlackboa
 import { createTeamController, TeamController } from '../src/ai/team/controller'
 import { createGenericModel } from '../src/ai/team/genericModel'
 import { assignRoles, capabilities, defaultReferenceTargets, GENERIC_NEEDS, roleScores } from '../src/ai/team/roles'
-import type { Intent, MacroAction, RoleId } from '../src/ai/types'
+import { toActions, type Intent, type MacroAction, type RoleId } from '../src/ai/types'
+import { castSpell } from '../src/engine/cast'
 import { castSubSpell } from '../src/engine/effects/core'
 import { runFight } from '../src/engine/runner'
 import type { FightState } from '../src/engine/types'
 import { BREEDS, yieldToEventLoop } from './ai-core-helpers'
-import { castsOf, decide, foe, hero, scene, type Scene } from './ai-puzzles-helpers'
+import { at, castsOf, decide, foe, hero, scene, type Scene } from './ai-puzzles-helpers'
 
 /** Scène P1 (Enutrof, Crâ, Buboxor) : petite, rapide. */
 function p1(): Scene {
@@ -454,4 +456,189 @@ describe('contrôleur (§9.1, §13.2)', () => {
     expect(d.nodes).toBeLessThanOrEqual(12 + 4)
     void createNodeBudget
   }, 60_000)
+})
+
+// ───────────────────────────── revue adversariale (WP2) : régressions ─────────────────────────────
+
+describe('revue WP2 : rôles, reprise, écarts, doublons, cohérence, invocations, honnêteté, deep', () => {
+  it('réassignation (§9.2) : les rôles écrits par l’IA sur Fighter.role ne passent pas pour des rôles imposés', () => {
+    const sc = team4()
+    const tc = createTeamController(defaultAIConfig('fast', 3))
+    // Chaque personnage décide une fois : l'IA écrit son rôle dans Fighter.role (replay).
+    for (const n of ['Iop', 'Cra', 'Enu', 'Eni']) tc.decide(sc.engine, sc.fight, sc.get(n))
+    for (const n of ['Iop', 'Cra', 'Enu', 'Eni']) expect(sc.get(n).role).toBe(tc.brain.bb.roles.get(sc.get(n).id)!.primary)
+    const healer = [...tc.brain.bb.roles].find(([, r]) => r.primary === 'healer')![0]
+    sc.engine.kill(sc.fight, sc.fight.fighters[healer])
+    tc.brain.observe(sc.engine, sc.fight, sc.get('Iop'))
+    // Référence : affectation libre (aucun rôle imposé) des survivants.
+    const view = createView(sc.engine, sc.fight, sc.get('Iop'), 1)
+    const p = perceptionOf(sc)
+    const players = sc.fight.fighters.filter(f => f.alive && f.kind === 'player')
+    const ref = defaultReferenceTargets(view)
+    const scores = players.map(f => roleScores(view, f, capabilities(view, f, p, ref), p))
+    const expected = assignRoles(players, scores, GENERIC_NEEDS)
+    for (const f of players) expect(tc.brain.bb.roles.get(f.id)!.primary).toBe(expected.get(f.id)!.primary)
+    // Un rôle réellement imposé (preset) le reste après réassignation.
+    const sc2 = team4()
+    sc2.get('Iop').role = 'tank'
+    const tc2 = createTeamController(defaultAIConfig('fast', 3))
+    for (const n of ['Iop', 'Cra', 'Enu', 'Eni']) tc2.decide(sc2.engine, sc2.fight, sc2.get(n))
+    const h2 = [...tc2.brain.bb.roles].find(([, r]) => r.primary === 'healer')
+    if (h2) sc2.engine.kill(sc2.fight, sc2.fight.fighters[h2[0]])
+    tc2.brain.observe(sc2.engine, sc2.fight, sc2.get('Iop'))
+    expect(tc2.brain.bb.roles.get(sc2.get('Iop').id)!.primary).toBe('tank')
+    // Rôles imposés par les options du contrôleur (TeamOptions.roles).
+    const sc3 = team4()
+    const tc3 = createTeamController(defaultAIConfig('fast', 3), undefined, { roles: new Map<number, RoleId>([[sc3.get('Cra').id, 'support']]) })
+    tc3.brain.observe(sc3.engine, sc3.fight, sc3.me)
+    expect(tc3.brain.bb.roles.get(sc3.get('Cra').id)!.primary).toBe('support')
+  }, 60_000)
+
+  it('instantané (§15.8) : capacités et rôles imposés repris à l’identique (données pures)', () => {
+    const sc = team4()
+    sc.get('Iop').role = 'tank'
+    const tc = createTeamController(defaultAIConfig('fast', 3))
+    tc.brain.observe(sc.engine, sc.fight, sc.me)
+    // L'IA écrit les rôles affectés (Fighter.role) : un contrôleur restauré ne doit pas les prendre pour imposés.
+    for (const n of ['Cra', 'Enu', 'Eni']) tc.decide(sc.engine, sc.fight, sc.get(n))
+    const snap = JSON.parse(JSON.stringify(tc.brain.snapshot()))
+    const tc2 = createTeamController(defaultAIConfig('fast', 3))
+    tc2.brain.restore(snap)
+    expect([...tc2.brain.caps.keys()].sort()).toEqual([...tc.brain.caps.keys()].sort())
+    for (const [id, c] of tc.brain.caps) expect(tc2.brain.caps.get(id)).toEqual(c)
+    expect(tc2.brain.imposed.get(sc.get('Iop').id)).toBe('tank')
+    expect(tc2.brain.imposed.get(sc.get('Cra').id) ?? null).toBeNull()
+    // Après la mort du soigneur, les deux cerveaux réassignent de la même façon.
+    const healer = [...tc.brain.bb.roles].find(([, r]) => r.primary === 'healer')
+    if (healer) sc.engine.kill(sc.fight, sc.fight.fighters[healer[0]])
+    tc.brain.observe(sc.engine, sc.fight, sc.get('Iop'))
+    tc2.brain.observe(sc.engine, sc.fight, sc.get('Iop'))
+    expect(serializeBlackboard(tc2.brain.bb).roles).toEqual(serializeBlackboard(tc.brain.bb).roles)
+  }, 60_000)
+
+  it('exécuteur (§8.7) : un retrait de PM esquivé ou un combattant hors de sa case prévue est un écart', () => {
+    const sc = p1()
+    const bubo = sc.get('Bubo')
+    const s = simClone(createView(sc.engine, sc.fight, sc.me, 1), sc.fight, 9)
+    const d0 = digestOf(sc.fight, s, sc.me.id)
+    expect(d0.moved).toBeUndefined()
+    // Prévu : le Buboxor à 3 PM (retrait de 3) ; réel : aucun retrait.
+    const dodged = { ...d0, moved: [[bubo.id, bubo.cell, bubo.stats.ap, bubo.stats.mp - 3]] as [number, number, number, number][] }
+    expect(deviation(sc.fight, sc.me, dodged, 0.15)).toBe('retrait')
+    // Écart fractionnaire (espérance du clone) sous 0,75 point : conforme.
+    const close = { ...d0, moved: [[bubo.id, bubo.cell, bubo.stats.ap, bubo.stats.mp - 0.5]] as [number, number, number, number][] }
+    expect(deviation(sc.fight, sc.me, close, 0.15)).toBe('')
+    const pushed = { ...d0, moved: [[bubo.id, bubo.cell + 1, bubo.stats.ap, bubo.stats.mp]] as [number, number, number, number][] }
+    expect(deviation(sc.fight, sc.me, pushed, 0.15)).toBe('déplacement')
+    // Empreinte d'un vrai retrait simulé : le Buboxor y figure avec ses PM prévus.
+    const enu = s.fighters[sc.me.id]
+    const mal = enu.spells.find(k => k.spellId === 13337)!
+    const after = sc.engine.cloneFight(s, false)
+    after.options.rollMode = 'average'
+    const r = castSpell(sc.engine, after, after.fighters[sc.me.id], mal.spellId, bubo.cell)
+    if (r.ok && after.fighters[bubo.id].stats.mp < bubo.stats.mp) {
+      const d1 = digestOf(s, after, sc.me.id)
+      expect(d1.moved?.some(([id, , , mp]) => id === bubo.id && mp < bubo.stats.mp)).toBe(true)
+    }
+  })
+
+  it('génération (§8.1, §10) : une tactique qui ré-étiquette un candidat générique n’est pas simulée deux fois', () => {
+    const sc = p1()
+    const d = decide(sc, 'fast')
+    const root = d.ctx.root!
+    const node = { s: root, hash: stateHash(root), depth: 0, actions: [], v: 0, adj: 0, split: false, tactics: [], cats: [], hasMandatory: false, digests: [] }
+    const g = generate(d.ctx, node)
+    const base = g.generic[0]
+    const copy: MacroAction = { ...base, key: `ml[${base.key}]`, tactic: 'mpLock', prior: base.prior + 500, mandatory: true }
+    const picked = selectForSim(d.ctx, node, { ...g, tactics: [copy, ...g.tactics] }, d.budget)
+    const same = picked.filter(m => macroContent(m) === macroContent(base))
+    expect(same).toHaveLength(1)
+    expect(same[0].mandatory).toBe(true)
+    const contents = picked.map(macroContent)
+    expect(new Set(contents).size).toBe(contents.length)
+  })
+
+  it('cohérence (§9.3) : une seule attente publiée par recherche, celle du plan retenu', () => {
+    const sc = team4()
+    const d = decide(sc, 'standard')
+    const calls: [number, string][] = []
+    const plan = searchTurn({ ...d.ctx, root: undefined, isKey: false, nodes: createNodeBudget(d.budget.maxNodes), expect: (id, key) => calls.push([id, key]) })
+    expect(calls.length).toBeLessThanOrEqual(1)
+    if (calls.length) expect(sc.fight.fighters[calls[0][0]].team).toBe(sc.me.team)
+    expect(plan.actions.length).toBeGreaterThan(0)
+  }, 60_000)
+
+  it('invocations (§7, écart) : invoquer ne crée pas de valeur par les PV de l’invocation', () => {
+    const sc = p1()
+    const d = decide(sc, 'fast')
+    const ctx = d.ctx
+    const root = ctx.root!
+    const s = simClone(ctx.view, root, 17)
+    const enu = s.fighters[sc.me.id]
+    const coffre = enu.spells.find(k => k.spellId === 13347)
+    expect(coffre).toBeDefined()
+    // Case libre adjacente où le Coffre Animé peut être invoqué.
+    let ok = false
+    for (const c of [enu.cell + 1, enu.cell - 1, enu.cell + 14, enu.cell - 14, enu.cell + 15, enu.cell - 15, enu.cell + 13, enu.cell - 13]) {
+      const t = sc.engine.cloneFight(s, false)
+      t.options.rollMode = 'average'
+      if (castSpell(sc.engine, t, t.fighters[sc.me.id], 13347, c).ok && t.fighters.length > s.fighters.length) {
+        const summon = t.fighters[t.fighters.length - 1]
+        expect(summon.team).toBe(sc.me.team)
+        const born = newSummonLife(ctx, t)
+        expect(born).toBeCloseTo(ctx.cfg.theta.value.summonLife * (summon.hp + ctx.cfg.theta.value.allyShield * summon.shield), 6)
+        const e0 = evalLeaf(ctx, root, { terminal: false })
+        const e1 = evalLeaf(ctx, t, { terminal: false })
+        // Personne d'autre n'a changé de PV : allyLife inchangé malgré les PV de l'invocation.
+        expect(e1.b.allyLife).toBeCloseTo(e0.b.allyLife, 6)
+        ok = true
+        break
+      }
+    }
+    expect(ok).toBe(true)
+  })
+
+  it('honnêteté (§6.1) : la décision ne dépend pas de la case RÉELLE d’un invisible adverse', () => {
+    const plans: string[] = []
+    for (const real of [[20, -1], [22, -4], [22, -4]] as const) {
+      const visible = plans.length === 4 // 3e variante : l'Ikargn VISIBLE sur sa vraie case (témoin)
+      const sc = scene({
+        fighters: [hero(BREEDS.cra, 'Cra', 18, -10), hero(BREEDS.enutrof, 'Enu', 16, -8), foe(3838, 'Bubo', 20, -4), foe(3834, 'Ika', 23, -3)],
+        order: ['Cra', 'Bubo', 'Enu', 'Ika'],
+      })
+      const ika = sc.get('Ika')
+      // Invisible, vu pour la dernière fois sur sa case de départ, réellement ailleurs (deux variantes).
+      observeVisibility(sc.fight)
+      if (!visible) ika.states.push(STATE_INVISIBLE)
+      ika.tags[LAST_SEEN_TAG] = ika.cell
+      ika.cell = at(real[0], real[1])
+      if (visible) observeVisibility(sc.fight)
+      for (const mode of ['fast', 'standard'] as const) {
+        const d = decide(sc, mode)
+        plans.push(`${mode}:${d.plan.actions.map(m => m.key).join('>')}:${d.plan.value.toFixed(3)}:${d.ctx.bb.focus.join(',')}`)
+      }
+    }
+    expect(plans[2]).toBe(plans[0])
+    expect(plans[3]).toBe(plans[1])
+    // Témoin : visible sur cette case, l'Ikargn change la décision (la case réelle compterait si elle était lue).
+    expect(plans[4] !== plans[2] || plans[5] !== plans[3]).toBe(true)
+  }, 120_000)
+
+  it('deep (§8.8, simplifié) : une décision clé passe par le MCTS ; déterministe ; plan valide', () => {
+    const build = () => scene({ fighters: [hero(BREEDS.eniripsa, 'Eni', 20, -9), hero(BREEDS.cra, 'Cra', 20, -6), foe(3838, 'Bubo', 20, -4)], order: ['Eni', 'Bubo', 'Cra'], setup: (_e, _f, get) => { get('Cra').hp = 300 } })
+    const run = () => {
+      const sc = build()
+      // Budget réduit (le `deep` complet coûte ≈ 40 s par décision clé : 15 000 nœuds + 1 500 itérations).
+      const d = decide(sc, 'deep', { budget: { maxNodes: 400, width: 4, rollouts: 2, mctsIterations: 12 } })
+      return { sc, d }
+    }
+    const a = run()
+    expect(a.d.key).toBe('allyDeathRisk')
+    expect(a.d.mode).toBe('deep')
+    expect(a.d.nodes).toBeGreaterThan(a.d.ctx.nodes.used) // itérations du MCTS comptées en plus de la recherche
+    const b = run()
+    expect(b.d.plan.actions.map(m => m.key)).toEqual(a.d.plan.actions.map(m => m.key))
+    const r = executePlan(a.sc.engine, a.sc.fight, a.sc.me, a.d.plan, { mode: 'deep', replan: () => null, maxReplans: 0, hpDev: 0.15 })
+    expect(r.deviations.filter(x => x === 'échec')).toHaveLength(0)
+  }, 120_000)
 })

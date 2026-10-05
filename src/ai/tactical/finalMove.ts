@@ -10,10 +10,11 @@
  * Préfiltre (coût) : `cellIncoming` n'est calculé que pour les 12 meilleures cases selon les termes bon marché (rôle,
  * prix de case, indices, opportunité) et les 8 cases les plus éloignées des ennemis (abri).
  *
- * Anti-blocage (AJOUT au design) : sans aucun dégât depuis `STALL_ROUNDS` tours de jeu (PV publics, suivis par le
- * `TeamBrain`), deux équipes prudentes se regardent hors de portée jusqu'à la limite de tours (miroir 1 c 1 : 100 %
- * de nuls). Le personnage reçoit alors +40 PVe par case gagnée vers sa cible focale et 75 % de la hausse de menace
- * sur sa case lui est rendue : il accepte l'échange de coups et le combat avance.
+ * Anti-blocage (AJOUT au design) : sans progrès depuis `STALL_ROUNDS` tours de jeu (ni mort ni record de PV
+ * manquants, suivis par le `TeamBrain`), deux équipes prudentes se regardent hors de portée (ou « frappent puis
+ * fuient ») jusqu'à la limite de tours (miroir 1 c 1 : 100 % de nuls). Le personnage reçoit alors +40 PVe par case
+ * gagnée vers sa cible focale, et l'évaluation ne compte plus que 25 % de l'écart de menace à la racine
+ * (`evalLeaf`, evaluate.ts) : il accepte l'échange de coups et le combat avance.
  */
 import { isStaticFighter } from '../../engine/targetMask'
 import type { Fighter, FightState } from '../../engine/types'
@@ -21,7 +22,7 @@ import { distance, neighborsOf } from '../../map/geometry'
 import { applyMacro, buildOccupancy, cachedReach, hpEff, reachPath, simClone, simSalt, type PerceptionX } from '../core'
 import { damageWeightOf } from '../core/potential'
 import type { MacroAction, RoleId } from '../types'
-import { evalLeaf, intentActive } from './evaluate'
+import { evalLeaf, intentActive, STALL_REFUND, STALL_ROUNDS } from './evaluate'
 import type { FinalLeaf, SearchNode, TacticalContext } from './node'
 
 /** Cible focale du combattant : premier ennemi vivant du focus, sinon le plus proche. */
@@ -198,19 +199,17 @@ function cellExtras(ctx: TacticalContext, me: Fighter, cell: number): number {
   return v
 }
 
-/** Seuil de tours de jeu sans aucun dégât au-delà duquel l'anti-blocage s'active. */
-export const STALL_ROUNDS = 2
+/** Seuil de tours de jeu sans progrès au-delà duquel l'anti-blocage s'active (défini dans evaluate.ts). */
+export { STALL_ROUNDS }
 /** PVe par case gagnée vers la cible focale en situation de blocage. */
 const STALL_APPROACH = 40
-/** Part de la hausse de menace sur soi rendue en situation de blocage (le combat doit avancer). */
-const STALL_REFUND = 0.75
 
 /** Case du combattant à la racine de la recherche (progrès mesuré depuis le début du tour). */
 function rootCell(ctx: TacticalContext, me: Fighter): number {
   return (ctx.root ?? ctx.view.fight).fighters[me.id]?.cell ?? me.cell
 }
 
-/** Anti-blocage (écart au design, voir l'en-tête du module) : aucun dégât depuis `STALL_ROUNDS` tours de jeu. */
+/** Anti-blocage (écart au design, voir l'en-tête du module) : aucun progrès depuis `STALL_ROUNDS` tours de jeu. */
 function stalled(ctx: TacticalContext, me: Fighter): boolean {
   return (ctx.stall ?? 0) >= STALL_ROUNDS && me.kind === 'player'
 }
@@ -303,8 +302,6 @@ export function finalize(ctx: TacticalContext, node: SearchNode): FinalLeaf {
     const position = cm.alive ? roleTerm(ctx, child, cm, cm.cell) + stallTerm(ctx, s, me, rootCell(ctx, me), cm.cell, 0, 0) : 0
     const e = evalLeaf(ctx, child, { terminal: true, position })
     let v = e.v + node.adj
-    // Anti-blocage : 75 % de la hausse de menace (terme `incoming` exact de V) est rendue.
-    if (cm.alive && stalled(ctx, me)) v += STALL_REFUND * Math.max(0, stay.breakdown.incoming - e.b.incoming)
     if (v > best.v + (best === stay ? minGain : 0) || (best !== stay && v > best.v)) {
       best = { node, s: child, endPath: path, v, vTerminal: v, breakdown: e.b, rolled: false }
     }

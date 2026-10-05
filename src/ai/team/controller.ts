@@ -51,6 +51,10 @@ export interface TeamBrainSnapshot {
   rolesFor: string
   /** Anti-blocage : compteur, tour de jeu observé, PV manquants par combattant (−1 : mort). */
   stall?: { n: number; round: number; hp: number[] }
+  /** Rôles imposés par les presets (lus sur `Fighter.role` AVANT toute écriture de l'IA) : id → rôle. */
+  imposed?: [number, RoleId][]
+  /** Capacités mesurées lors de la dernière affectation des rôles (allocation, tactiques) : reprise identique. */
+  caps?: CapabilityProfile[]
 }
 
 /** Options d'un `TeamController` (ablations §16.5, diagnostics). */
@@ -111,6 +115,14 @@ export class TeamBrain {
   private stallRound = -1
   private stallHp: number[] = []
   caps = new Map<number, CapabilityProfile>()
+  /**
+   * Rôles imposés par les presets, relevés sur `Fighter.role` à la première observation de chaque personnage, AVANT
+   * que l'IA n'y écrive son affectation (replay) : sans ce relevé, une réassignation (mort d'un porteur de rôle clé)
+   * prenait les rôles écrits par l'IA pour des rôles imposés et ne changeait plus rien.
+   */
+  imposed = new Map<number, RoleId | null>()
+  /** Rôles imposés par les options du contrôleur (`TeamOptions.roles`), prioritaires sur ceux des presets. */
+  roleOverrides?: ReadonlyMap<number, RoleId>
   private perception?: PerceptionX
   private perceptionEngine?: Engine
   readonly scenario: ScenarioAIModel
@@ -143,21 +155,24 @@ export class TeamBrain {
   }
 
   /**
-   * Une fois par tour de jeu : si aucun combattant n'a perdu de PV (PV manquants en hausse) ni n'est mort depuis le tour
-   * précédent, `stall` + 1, sinon remis à 0 (PV publics ; vitalité, soin et bouclier ne comptent pas).
+   * Une fois par tour de jeu : si aucun combattant n'est mort ni n'a atteint un nouveau record de PV manquants depuis le
+   * dernier progrès, `stall` + 1, sinon remis à 0 (PV publics ; vitalité, soin et bouclier ne comptent pas). Le record
+   * (et non le tour précédent) : un « frapper puis fuir » dont les dégâts sont soignés entre deux assauts (régénération,
+   * Vitalité) ne compte pas comme un progrès.
    */
   private trackStall(fight: FightState): void {
     if (fight.round === this.stallRound) return
     let lost = this.stallRound < 0
-    const missing: number[] = []
+    const record: number[] = []
     for (const f of fight.fighters) {
       // PV manquants (une vitalité qui s'éteint baisse PV et PV max ensemble : pas une perte) ; −1 : mort.
-      missing[f.id] = f.alive ? f.maxHp - f.hp : -1
+      const missing = f.alive ? f.maxHp - f.hp : -1
       const prev = this.stallHp[f.id]
-      if (prev !== undefined && prev >= 0 && (missing[f.id] < 0 || missing[f.id] > prev)) lost = true
+      if (prev !== undefined && prev >= 0 && (missing < 0 || missing > prev)) lost = true
+      record[f.id] = missing < 0 || prev === undefined || prev < 0 ? missing : Math.max(prev, missing)
     }
     this.stall = lost ? 0 : this.stall + 1
-    this.stallHp = missing
+    this.stallHp = record
     this.stallRound = fight.round
   }
 
@@ -165,6 +180,7 @@ export class TeamBrain {
   private assignRolesIfNeeded(view: AIView, p: PerceptionX): void {
     const s = view.fight
     const players = s.fighters.filter(f => f.alive && f.team === view.team && f.kind === 'player')
+    for (const f of players) if (!this.imposed.has(f.id)) this.imposed.set(f.id, imposedRole(f) ?? null)
     const key = players.map(f => f.id).join(',')
     if (key === this.rolesFor) return
     if (this.rolesFor) {
@@ -186,7 +202,7 @@ export class TeamBrain {
     })
     const prior = new Map<number, RoleId>()
     for (const f of players) {
-      const r = imposedRole(f)
+      const r = this.roleOverrides?.get(f.id) ?? this.imposed.get(f.id)
       if (r) prior.set(f.id, r)
     }
     const needs = this.scenario.roleNeeds?.() ?? GENERIC_NEEDS
@@ -204,6 +220,8 @@ export class TeamBrain {
       lastFocus: this.lastFocus,
       rolesFor: this.rolesFor,
       stall: { n: this.stall, round: this.stallRound, hp: this.stallHp.slice() },
+      imposed: [...this.imposed].filter((x): x is [number, RoleId] => x[1] !== null),
+      caps: [...this.caps.values()].map(c => ({ ...c })),
     }
   }
 
@@ -220,6 +238,12 @@ export class TeamBrain {
     this.stallRound = snap.stall?.round ?? -1
     this.stallHp = snap.stall?.hp.slice() ?? []
     this.caps.clear()
+    for (const c of snap.caps ?? []) this.caps.set(c.fighterId, { ...c })
+    // Personnages déjà observés : rôle imposé relevé (absent de la liste = aucun rôle imposé).
+    this.imposed.clear()
+    const imposed = new Map(snap.imposed ?? [])
+    for (const id of this.rolesFor ? this.rolesFor.split(',').map(Number) : []) this.imposed.set(id, imposed.get(id) ?? null)
+    for (const [id, r] of imposed) this.imposed.set(id, r)
     if (this.perception) this.perception.bb = this.bb
   }
 }
@@ -234,6 +258,7 @@ export class TeamController implements Controller {
     readonly options: TeamOptions = {},
   ) {
     this.brain = new TeamBrain(cfg, scenario)
+    this.brain.roleOverrides = options.roles
     this.predict = createMonsterBrain(cfg, 'predict')
   }
 
@@ -254,7 +279,8 @@ export class TeamController implements Controller {
     const explain = this.cfg.explain && fight.options.record
     if (explain) this.notesBeforeTurn(engine, fight, view)
     const role = bb.roles.get(me.id)?.primary ?? this.options.roles?.get(me.id)
-    if (!summon && me.role === undefined && role) me.role = role
+    // Rôle affiché par le replay (§9.2) : celui de l'affectation courante, sauf rôle imposé par le preset.
+    if (!summon && role && !brain.imposed.get(me.id) && !brain.roleOverrides?.has(me.id) && me.role !== role) me.role = role
     const base: TurnBudget = summon ? summonBudget(this.cfg) : mode === this.cfg.mode ? this.cfg.budget : this.budgetFor(mode)
     const budget: TurnBudget = this.options.budget && !summon ? { ...base, ...this.options.budget } : base
     const effMode: AIMode = summon ? 'fast' : mode
@@ -286,6 +312,9 @@ export class TeamController implements Controller {
       stall: brain.stall,
     }
     brain.expectations.delete(me.id)
+    // `deep` : les plans alternatifs (premières actions distinctes) sont toujours extraits — sans coût de recherche —
+    // pour servir de racines au MCTS si la décision s'avère clé après la recherche (`closeCall`, `allyDeathRisk`).
+    if (!summon && effMode === 'deep') ctx.wantAlternatives = 6
     // Décision clé (§8.8).
     let key: string | undefined
     const keysLeft = brain.keysUsed < budget.maxKeyDecisions
@@ -295,18 +324,20 @@ export class TeamController implements Controller {
         key = r
         ctx.isKey = true
         if (effMode === 'standard') ctx.nodes = createNodeBudget(budget.maxNodes * Math.max(1, budget.keyDecisionBoost))
-        else ctx.wantAlternatives = 6
       }
     }
     let plan = searchTurn(ctx)
     let used = ctx.nodes.used
-    if (!summon && !key && keysLeft && effMode === 'standard') {
+    if (!summon && !key && keysLeft && (effMode === 'standard' || effMode === 'deep')) {
       const r = postKeyReason(plan)
       if (r) {
         key = r
-        const ctx2: TacticalContext = { ...ctx, isKey: true, root: undefined, nodes: createNodeBudget(budget.maxNodes * Math.max(1, budget.keyDecisionBoost)) }
-        plan = searchTurn(ctx2)
-        used += ctx2.nodes.used
+        // standard : nouvelle recherche à budget ×2 ; deep : MCTS sur les plans déjà trouvés (ci-dessous).
+        if (effMode === 'standard') {
+          const ctx2: TacticalContext = { ...ctx, isKey: true, root: undefined, nodes: createNodeBudget(budget.maxNodes * Math.max(1, budget.keyDecisionBoost)) }
+          plan = searchTurn(ctx2)
+          used += ctx2.nodes.used
+        }
       }
     }
     if (key && effMode === 'deep' && budget.mctsIterations > 0) {
@@ -337,15 +368,25 @@ export class TeamController implements Controller {
     let used = d.nodes
     // Exécution (replanification sur écart ; après chaque action en fast).
     const turnNodes = ctx.nodes
+    // fast : relance après chaque action tant que le reste du budget du tour permet une vraie recherche (≥ la moitié
+    // du budget) ; sur écart (jets, tacle, mort…), relance avec au moins `replanFraction` du budget, au plus
+    // `maxReplans` fois. Une relance affamée (quelques nœuds) rendait un plan d'une action et laissait des PA inutilisés.
+    const fastMin = Math.ceil(budget.maxNodes / 2)
+    const fastFresh = Math.max(1, Math.floor(budget.maxNodes * budget.replanFraction))
+    let deviationReplans = 0
     const exec = executePlan(engine, fight, me, plan, {
       mode: effMode,
       hpDev: this.cfg.theta.tactical.replanHpDev,
       maxReplans: effMode === 'fast' ? 12 : budget.maxReplans,
-      replan: () => {
+      replan: reason => {
         if (!me.alive || fight.ended) return null
         let nodes = turnNodes
         if (effMode === 'fast') {
-          if (turnNodes.remaining() < 2) return null
+          if (turnNodes.remaining() < fastMin) {
+            if (reason === 'fast' || deviationReplans >= budget.maxReplans) return null
+            deviationReplans++
+            nodes = createNodeBudget(Math.max(fastFresh, turnNodes.remaining()))
+          }
         } else nodes = createNodeBudget(Math.max(1, Math.floor(budget.maxNodes * budget.replanFraction)))
         const before = turnNodes.used
         const c2: TacticalContext = { ...ctx, isKey: false, root: undefined, nodes, expectedKey: undefined, wantAlternatives: undefined }

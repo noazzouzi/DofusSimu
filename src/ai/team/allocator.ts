@@ -69,7 +69,10 @@ function aptitude(role: RoleId | undefined, kind: IntentKind): number {
 
 /** Faisabilité (0..1) : un sort utile porte sur la cible après un déplacement. */
 function feasibility(p: PerceptionX, a: Fighter, n: Need, target: Fighter, caps: CapabilityProfile | undefined): number {
-  const d = distance(a.cell, target.cell)
+  // Case de la cible vue par l'équipe de `a` (invisible adverse : dernière case connue, §6.1).
+  const tc = believedCell(target, a.team)
+  if (tc < 0) return 0
+  const d = distance(a.cell, tc)
   const mp = Math.max(0, a.stats.mp)
   const within = (r: number): number => (r < 0 ? 0 : d <= r ? 1 : d <= r + mp ? 0.8 : 0.2)
   switch (n.kind) {
@@ -108,7 +111,7 @@ export function allocateIntents(view: AIView, p: PerceptionX, bb: Blackboard, th
   const reserved = new Set<number>()
   for (const r of bb.reservations.values()) if (r.p >= 0.8) reserved.add(r.targetId)
   // Contrôle des ennemis menaçants (par contribution décroissante).
-  const enemies = s.fighters.filter(f => f.alive && f.team !== team && f.cell >= 0 && !isStaticFighter(f))
+  const enemies = s.fighters.filter(f => f.alive && f.team !== team && believedCell(f, team) >= 0 && !isStaticFighter(f))
     .map(e => ({ e, c: p.threat.contribution(e) }))
     .filter(x => x.c > 0)
     .sort((a, b) => b.c - a.c || a.e.id - b.e.id)

@@ -150,7 +150,8 @@ export function teamRollout(ctx: TacticalContext, f: FinalLeaf): number | undefi
     rng: ctx.rng,
     reservedCells: ctx.reservedCells,
   })
-  if (plan.actions[0]) ctx.expect?.(next.id, plan.actions[0].key)
+  // Cohérence (§9.3) : mémorisée sur la feuille, publiée par `searchTurn` seulement pour le plan retenu.
+  if (plan.actions[0]) f.expect = { allyId: next.id, key: plan.actions[0].key }
   playPlanOn(engine, s, next.id, plan.actions)
   const vAlly = evalLeaf(ctx, s, { terminal: true, inTurn: false }).v
   return 0.5 * vMon + 0.5 * vAlly

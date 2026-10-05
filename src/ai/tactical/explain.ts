@@ -162,7 +162,9 @@ export function intentNote(s: FightState, it: Intent): Note {
 export function focusNote(s: FightState, team: number, focus: readonly number[]): Note | undefined {
   const f = focus.length ? s.fighters[focus[0]] : undefined
   if (!f || !f.alive || f.team === team) return undefined
-  return { kind: 'focus', text: `Cible prioritaire de l'équipe : ${f.name}`, targets: [f.id], cells: f.cell >= 0 ? [f.cell] : undefined }
+  // Case vue par l'équipe (un invisible adverse est montré sur sa dernière case connue).
+  const cell = believedCell(f, team as 0 | 1)
+  return { kind: 'focus', text: `Cible prioritaire de l'équipe : ${f.name}`, targets: [f.id], cells: cell >= 0 ? [cell] : undefined }
 }
 
 /** Émet une note dans le combat réel (enregistrée seulement si le combat enregistre ses événements). */

@@ -28,11 +28,53 @@ export function genericCands(ctx: TacticalContext, node: SearchNode): MacroActio
       bb: ctx.bb,
       maxCastCells: fast ? 2 : 3,
       maxZoneCenters: fast ? 4 : 6,
-    })
+    }).map(m => correctInvulnerablePrior(ctx, s, me, m))
   }
   CANDS.set(node, c)
   return c
 }
+
+/**
+ * Le sort `spellIndex` de `me` peut-il lever l'invulnérabilité de `f` (règle R9) ? Lecture directe des effets du
+ * niveau (sans sous-sorts) contre les buffs d'état invulnérable de la cible : 951/952 sur l'état, 132 si un tel buff
+ * est désenvoûtable, 406/1406 s'il vient du sort retiré, 1075 s'il est désenvoûtable et finit dans le tour.
+ */
+function liftsInvulnerability(ctx: TacticalContext, me: Fighter, spellIndex: number, f: Fighter): boolean {
+  const engine = ctx.view.engine
+  const inv = f.states.filter(st => engine.data.state(st)?.invulnerable && !(f.disabledStates?.includes(st)))
+  if (!inv.length) return false
+  const buffs = f.buffs.filter(b => b.stateId !== undefined && inv.includes(b.stateId))
+  for (const e of me.spells[spellIndex]?.level.effects ?? []) {
+    const id = e.effectId
+    if ((id === 951 || id === 952) && inv.includes(e.value)) return true
+    if (id === 132 && buffs.some(b => b.dispellable)) return true
+    if ((id === 406 || id === 1406) && buffs.some(b => b.spellId === e.value)) return true
+    if (id === 1075 && buffs.some(b => b.dispellable && b.remaining <= Math.max(1, e.diceNum))) return true
+  }
+  return false
+}
+
+/**
+ * Correction du prior `quick` (WP1, src/ai/core/candidates.ts) : il prête +0,3·PVmax à TOUT sort « qui retire des
+ * états » (`removesStates` : 132, 406, 1075, 1406, 951, 952) lancé sur un ennemi invulnérable, comme s'il levait
+ * l'invulnérabilité. Or 406/1075 retirent les effets d'un sort donné ou raccourcissent les buffs désenvoûtables : tous
+ * les « Mots » de l'Eniripsa (406 sur leur propre famille) visaient ainsi le Vortex invulnérable de la phase 1
+ * (+7 300 de prior chacun) et évinçaient soins et contrôles des quotas — l'Eniripsa ne soignait plus. Le bonus est
+ * retiré quand le sort ne peut pas lever cette invulnérabilité (À RETIRER quand WP1 corrigera `quickEstimate`).
+ */
+function correctInvulnerablePrior(ctx: TacticalContext, s: FightState, me: Fighter, m: MacroAction): MacroAction {
+  if (!m.cast || m.seq) return m
+  const p = profileOf(ctx, me, m.cast.spellId)
+  if (!p || !p.prof.removesStates) return m
+  const team = ctx.view.team
+  for (const f of s.fighters) {
+    if (!f.alive || f.team === team || f.carriedBy !== undefined || believedCell(f, team) !== m.cast.cell) continue
+    if (!ctx.view.engine.stateFlag(f, 'invulnerable') || liftsInvulnerability(ctx, me, p.index, f)) return m
+    return { ...m, prior: m.prior - 0.3 * f.maxHp }
+  }
+  return m
+}
+
 
 /** Case d'où la macro lance son sort (fin du chemin, sinon la case actuelle). */
 export function castFrom(m: MacroAction, meCell: number): number {

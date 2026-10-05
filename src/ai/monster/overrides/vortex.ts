@@ -169,13 +169,16 @@ export const brabuzarHooks: MonsterHooks = {
     if (!t0 || !ctx.isEnemy(t0)) return base
     const t1 = sim.fighters[t0.id]
     if (!t1 || !t1.alive || t1.cell < 0) return base
+    // Positions vues par le camp du monstre (invisibles adverses sur leur dernière case connue).
     const iso = (s: FightState, t: Fighter): number => {
+      const tc = believedCell(t, ctx.team)
       let d = 99
       for (const a of s.fighters) {
-        if (!a.alive || a.id === t.id || a.team !== t.team || a.cell < 0) continue
-        d = Math.min(d, distance(a.cell, t.cell))
+        if (!a.alive || a.id === t.id || a.team !== t.team) continue
+        const ac = believedCell(a, ctx.team)
+        if (ac >= 0) d = Math.min(d, distance(ac, tc))
       }
-      return d === 99 ? 0 : d
+      return d === 99 || tc < 0 ? 0 : d
     }
     const delta = iso(sim, t1) - iso(ctx.fight, t0)
     return base + 15 * Math.max(0, Math.min(8, delta))

@@ -2,7 +2,8 @@
  * Recherche tactique d'un tour de joueur (docs/design/ai.md §8.2, §8.3) — WP2.
  *
  * Un seul moteur de tour, paramétré par le mode :
- *  - `fast` : faisceau de largeur 1 (topK 6, ≤ 40 nœuds par tour), replanifié après CHAQUE action par l'exécuteur ;
+ *  - `fast` : faisceau de largeur 1 (topK 6, ≤ 40 nœuds par tour), replanifié après chaque action par l'exécuteur tant
+ *    que le reste du budget du tour le permet, et sur écart (team/controller.ts) ;
  *  - `standard` : faisceau 6 (topK 12, profondeur 6, 1 500 nœuds), 3 rollouts d'équipe avec pessimisme β ;
  *  - `deep` : faisceau 12 (topK 20, profondeur 8, 15 000 nœuds), 6 rollouts, MCTS sur les décisions clés (mcts.ts).
  *
@@ -21,7 +22,9 @@
  * (le mélange 0,5·V + 0,5·rollout n'est pas comparable à une V seule).
  *
  * Split léthal (`standard`/`deep`, au plus un par chemin, §6.7) : une cible qui finit à 0 < PV ≤ 8 % PVmax ou meurt
- * avec une marge < 8 % ⇒ le lancer est rejoué en jets min/max, valeur = p·V(tué) + (1 − p)·V(survivant).
+ * ⇒ le lancer est rejoué en jets min/max, valeur = p·V(tué) + (1 − p)·V(survivant) ; la correction (`adj`) suit le
+ * chemin jusque dans la valeur déroulée. Écart au design : tout kill est testé (le filtre « marge < 8 % » de
+ * l'espérance DPT laissait passer les kills qui ne tiennent qu'au coup critique).
  * Sorts à groupes aléatoires (`hasRandomGroups`) : simulés deux fois (deux sels) hors `fast`, valeur moyenne.
  * Rejets durs (C9) : lanceur tué ; tir ami > 20 % des PV d'un allié sans gain ≥ 2× sur les ennemis.
  */
@@ -29,7 +32,7 @@ import { mix32 } from '../../core/hash'
 import { isStaticFighter } from '../../engine/targetMask'
 import type { FightState } from '../../engine/types'
 import {
-  applyMacro, calibrationOf, hpEff, lethalSplit, lifeToKill, simClone, simSalt, stateHash, viewOn, type PerceptionX,
+  applyMacro, hpEff, lethalSplit, simClone, simSalt, stateHash, viewOn, type PerceptionX,
 } from '../core'
 import type { CandidateCat, MacroAction, TacticId, TurnBudget } from '../types'
 import { profileOf } from './cands'
@@ -56,6 +59,7 @@ export function digestOf(before: FightState, after: FightState, meId: number): S
   const me = after.fighters[meId]
   const alive: number[] = []
   const hp: [number, number, number][] = []
+  const moved: [number, number, number, number][] = []
   for (const f of after.fighters) {
     if (f.alive) alive.push(f.id)
     const b = before.fighters[f.id]
@@ -63,6 +67,9 @@ export function digestOf(before: FightState, after: FightState, meId: number): S
     const h0 = b.hp + b.shield
     const h1 = f.alive ? f.hp + f.shield : 0
     if (Math.abs(h1 - h0) >= 1) hp.push([f.id, h1, h0])
+    if (f.id !== meId && f.alive && (f.cell !== b.cell || Math.abs(f.stats.ap - b.stats.ap) > 0.05 || Math.abs(f.stats.mp - b.stats.mp) > 0.05)) {
+      moved.push([f.id, f.cell, f.stats.ap, f.stats.mp])
+    }
   }
   return {
     meCell: me ? me.cell : -1,
@@ -72,6 +79,7 @@ export function digestOf(before: FightState, after: FightState, meId: number): S
     alive,
     hp,
     symbol: hourOf(after) || -1,
+    ...(moved.length ? { moved } : {}),
   }
 }
 
@@ -114,12 +122,16 @@ function friendlyFire(before: FightState, after: FightState, team: number): { wo
   return { worstPct, friendly, enemy }
 }
 
-/** Victime candidate au split léthal : ennemi presque mort, ou tué avec une faible marge (§6.7). */
+/**
+ * Victime candidate au split léthal (§6.7) : ennemi laissé presque mort (0 < PV ≤ 8 % PVmax), ou tué par ce lancer.
+ * Pour un mort, le split est toujours tenté (2 à 3 nœuds, un par chemin) : `lethalSplit` rejoue le lancer en jets
+ * 'min'/'max' et conclut p = 1 si le jet minimal tue. Un filtre analytique (espérance DPT > PV de 8 %) laissait passer
+ * des kills incertains : sort qui ne tue que sur critique (espérance gonflée par les critiques), sorts dont le DPT
+ * surestime les dégâts immédiats.
+ */
 function splitVictim(ctx: TacticalContext, parent: FightState, child: FightState, m: MacroAction): number {
   if (!m.cast || m.seq) return -1
   const band = ctx.cfg.theta.tactical.lethalBand
-  const me0 = parent.fighters[ctx.view.me.id]
-  const p = me0 ? profileOf(ctx, me0, m.cast.spellId) : undefined
   for (const f of child.fighters) {
     const b = parent.fighters[f.id]
     if (!b || !b.alive || b.team === ctx.view.team || isStaticFighter(b)) continue
@@ -127,9 +139,7 @@ function splitVictim(ctx: TacticalContext, parent: FightState, child: FightState
       if (f.hp + f.shield < b.hp + b.shield && f.hp > 0 && f.hp <= band * f.maxHp) return f.id
       continue
     }
-    if (!p || !me0) continue
-    const mean = (ctx.perception as PerceptionX).dpt.perCast(me0, p.index, b).mean * calibrationOf(me0)
-    if (mean < (1 + band) * lifeToKill(b)) return f.id
+    return f.id
   }
   return -1
 }
@@ -168,8 +178,10 @@ function expand(ctx: TacticalContext, node: SearchNode, m: MacroAction, salt: nu
       const ls = lethalSplit(viewOn(ctx.view, node.s), node.s, meId, m, victim, salt, ctx.perception)
       if (ls) {
         ctx.nodes.spend(ls.nodes)
-        split = true
+        // Un split par chemin : marqué seulement s'il modifie le nœud (un lancer non léthal, p ≈ 0, laisse le split
+        // au lancer suivant qui peut tuer).
         if (ls.p > 0.02 && ls.p < 0.98 && ls.killed && ls.survived) {
+          split = true
           const vk = evalLeaf(ctx, ls.killed, { terminal: false })
           const vs = evalLeaf(ctx, ls.survived, { terminal: false })
           const mixed = ls.p * vk.v + (1 - ls.p) * vs.v
@@ -179,6 +191,7 @@ function expand(ctx: TacticalContext, node: SearchNode, m: MacroAction, salt: nu
           adj += mixed - follow.ev.v
           v = follow.ev.v
         } else if (ls.p <= 0.02 && ls.survived && !s.fighters[victim].alive) {
+          split = true
           s = ls.survived
           e = evalLeaf(ctx, s, { terminal: false })
           v = e.v
@@ -357,7 +370,8 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
       const r = teamRollout(ctx, f)
       if (r === undefined) continue
       f.rollout = r
-      f.v = 0.5 * f.vTerminal + 0.5 * r
+      // Corrections du chemin (split léthal, cohérence) : portées aussi par la valeur déroulée.
+      f.v = 0.5 * f.vTerminal + 0.5 * (r + f.node.adj)
       f.rolled = true
     }
     // Plans comparables : déroulés (et « rien » déroulé) ; sinon repli sur la V terminale.
@@ -373,6 +387,7 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   const minGain = theta.value.minGain
   const chosen = best && (best.v - pass.v >= minGain || best.node.hasMandatory) ? best : pass
   const plan = extractPlan(ctx, chosen, pass)
+  if (chosen.expect) ctx.expect?.(chosen.expect.allyId, chosen.expect.key)
   ctx.trace?.({ t: 'choice', keys: plan.actions.map(m => m.key), v: chosen.v, pass: pass.v })
   // Décisions clés et marquage créatif.
   const second = pool.find(f => f !== chosen && firstKey(f) !== firstKey(chosen))

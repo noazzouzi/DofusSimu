@@ -21,7 +21,8 @@
  * au prochain tour (PM + portée), × 0,5 si un autre monstre est plus proche d'eux ; λ : kiter 0,03, fearful 0,06,
  * support 0,04, sinon 0. `glyph(c)` (R3) : valeur des effets des glyphes de début/fin de tour pour CE monstre (soin
  * seulement s'il est blessé, dégâts et retraits négatifs). Fin de tour : meilleure case atteignable (tacle exact,
- * pièges connus et glyphes « à l'entrée » contournés : R4, R5, R14), immobile si le gain < `endMoveMinGain` (5 PVe).
+ * pièges connus et glyphes « à l'entrée » nuisibles contournés : R4, R5, R14 ; glyphes « à l'entrée » sans effet sur lui
+ * traversées), immobile si le gain < `endMoveMinGain` (5 PVe).
  */
 import { matchesTargetMask } from '../../engine/targetMask'
 import type { Fighter, FightState } from '../../engine/types'
@@ -74,8 +75,12 @@ export function turnBehaviour(ctx: MonsterContext): Behaviour {
   return ctx.behaviour
 }
 
-/** Cadre de position du monstre de `ctx` sur l'état `s` (focale de la racine si elle y est vivante, sinon la plus proche). */
-export function buildFrame(ctx: MonsterContext, s: FightState, behaviour: Behaviour): PosFrame {
+/**
+ * Cadre de position du monstre de `ctx` sur l'état `s` (focale de la racine si elle y est vivante, sinon la plus proche).
+ * `onlyCell` ≥ 0 : seule cette case sera évaluée (position d'un candidat pendant le tour) — la recherche des distances
+ * de marche depuis la focale s'arrête dès qu'elle l'atteint (mêmes valeurs pour cette case).
+ */
+export function buildFrame(ctx: MonsterContext, s: FightState, behaviour: Behaviour, onlyCell = -1): PosFrame {
   const me = s.fighters[ctx.me.id] ?? ctx.me
   const team = ctx.team
   const enemies: PosFrame['enemies'] = []
@@ -107,7 +112,7 @@ export function buildFrame(ctx: MonsterContext, s: FightState, behaviour: Behavi
   if (focalCell >= 0 && (behaviour === 'aggressive' || behaviour === 'mad')) {
     const occ = buildOccupancy(s, team)
     const cells = s.map.cells
-    SEARCH.run(focalCell, c => !!cells[c]?.walkable && (occ[c] < 0 || occ[c] === me.id))
+    SEARCH.run(focalCell, c => !!cells[c]?.walkable && (occ[c] < 0 || occ[c] === me.id), undefined, onlyCell)
     focalDist = SEARCH.dist.slice()
   }
   // Géométrie de ses sorts de dégâts (kiter) : alignement exigé et ligne de vue.
@@ -271,7 +276,8 @@ export function posScore(frame: PosFrame, cell: number): number {
 
 /**
  * Déplacement de fin de tour (§11.5) avec les PM restants : meilleure case atteignable (tacle exact, R4/R5 ; pièges
- * connus et glyphes « à l'entrée » contournés, R14), immobile si le gain < `endMoveMinGain`. Renvoie le chemin joué.
+ * connus et glyphes « à l'entrée » nuisibles contournés, R14), immobile si le gain < `endMoveMinGain`. Renvoie le chemin
+ * joué.
  */
 export function finalMove(ctx: MonsterContext): number[] | null {
   const me = ctx.me
@@ -279,7 +285,8 @@ export function finalMove(ctx: MonsterContext): number[] | null {
   if (!me.alive || fight.ended || me.mp < 1 || me.tags.endTurnNow) return null
   const behaviour = endBehaviour(ctx)
   if (behaviour === 'static') return null
-  const reach = computeReach(ctx.view, fight, me, { allowEventCells: harmlessGlyphCells(fight, me) })
+  // Glyphes « à l'entrée » sans effet sur lui : traversables (état de marche du contexte).
+  const reach = computeReach(ctx.view, ctx.walkState(), me)
   if (reach.count <= 1) return null
   const frame = buildFrame(ctx, fight, behaviour)
   if (!frame.enemies.length && behaviour !== 'devoted' && !frame.glyph && !frame.hook) return null
@@ -307,19 +314,14 @@ export function finalMove(ctx: MonsterContext): number[] | null {
 }
 
 /**
- * Cases de glyphes « à l'entrée » sans effet sur `me` (masques : glyphes des monstres du Vortex qui ne visent que les
- * personnages) : admises comme cases d'arrivée de fin de tour (l'accessibilité du socle les contourne par défaut).
+ * Glyphe « à l'entrée » sans effet sur `me` (aucun effet dont le masque l'accepte, relativement au poseur) : glyphes 1165
+ * des monstres du Vortex qui ne visent que les personnages, glyphes alliées d'un adversaire… Les portails et les autres
+ * marques ne le sont jamais (un portail déplace).
  */
-export function harmlessGlyphCells(s: FightState, me: Fighter): Set<number> | undefined {
-  let out: Set<number> | undefined
-  for (const g of s.glyphs) {
-    if (g.trigger !== 'enter') continue
-    const src = s.fighters[g.sourceId] ?? me
-    if (g.effects.some(e => matchesTargetMask(e.targetMask, src, me))) continue
-    out ??= new Set()
-    for (const c of g.cells) out.add(c)
-  }
-  return out
+export function harmlessEnterGlyph(s: FightState, g: FightState['glyphs'][number], me: Fighter): boolean {
+  if (g.trigger !== 'enter' || (g.markType ?? 'glyph') !== 'glyph') return false
+  const src = s.fighters[g.sourceId] ?? me
+  return !g.effects.some(e => matchesTargetMask(e.targetMask, src, me))
 }
 
 /** Cases voisines libres (aide des overrides). */

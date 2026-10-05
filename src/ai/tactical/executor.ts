@@ -5,14 +5,18 @@
  * l'empreinte prévue (`StepDigest`) après chaque macro-action. Il replanifie (nouvelle recherche depuis l'état réel,
  * budget `replanFraction` × budget initial, ≤ `maxReplans` fois par tour) si : une action échoue ; la case, les PA ou
  * les PM du joueur diffèrent (esquive, tacle, poussée) ; un combattant apparaît, disparaît, meurt ou survit contre la
- * prévision ; l'écart de PV d'une cible dépasse θ.tactical.replanHpDev (15 %) des dégâts prévus ; l'heure a changé.
+ * prévision ; l'écart de PV d'une cible dépasse θ.tactical.replanHpDev (15 %) des dégâts prévus ; l'heure a changé ;
+ * un autre combattant n'est pas sur la case prévue ou ses PA/PM diffèrent d'au moins 0,75 point de la prévision
+ * (retrait esquivé, poussée bloquée — ajout au design : sans lui, un retrait de PM entièrement esquivé passait inaperçu).
  * En `fast`, la recherche est relancée après CHAQUE action tant que le budget du tour le permet (le plan ne sert que
- * pour sa première action), sinon le plan courant est poursuivi. Garde : ≤ 12 actions moteur par tour.
+ * pour sa première action), sinon le plan courant est poursuivi ; la politique de budget des relances est celle de
+ * l'appelant (`replan` renvoie null pour poursuivre). Garde : ≤ 12 actions moteur par tour.
  * L'équivalent joueur des règles R10/R11/R18 des monstres.
  */
 import type { Engine } from '../../engine/engine'
 import { performAction } from '../../engine/runner'
 import type { Fighter, FightState } from '../../engine/types'
+import { isInvisible } from '../core'
 import { toActions, type AIMode } from '../types'
 import { hourOf } from './evaluate'
 import type { SearchPlan, StepDigest } from './node'
@@ -56,6 +60,16 @@ export function deviation(fight: FightState, me: Fighter, d: StepDigest | undefi
     if (Math.abs(real - pred) >= 1 && Math.abs(real - pred) > hpDev * Math.max(1, planned)) return 'PV'
   }
   if (d.symbol >= 0 && hourOf(fight) !== d.symbol) return 'heure'
+  // Combattants déplacés / retraits de PA-PM prévus : un retrait esquivé (le plan de contrôle a échoué), une poussée
+  // bloquée ou un portage raté changent la suite du tour. Écart ≥ 0,75 point (espérances fractionnaires des clones).
+  // Un invisible adverse n'est pas comparé (sa case réelle n'est pas connue de l'équipe, §6.1).
+  for (const [id, cell, ap, mp] of d.moved ?? []) {
+    const f = fight.fighters[id]
+    if (!f || !f.alive) continue
+    if (f.team !== me.team && isInvisible(f)) continue
+    if (f.cell !== cell) return 'déplacement'
+    if (Math.abs(f.stats.ap - ap) >= 0.75 || Math.abs(f.stats.mp - mp) >= 0.75) return 'retrait'
+  }
   return ''
 }
 

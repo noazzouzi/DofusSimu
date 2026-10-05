@@ -278,7 +278,7 @@ export function scoreTransition(ctx: MonsterContext, after: FightState, c: Monst
     parts.total = -Infinity
     return parts
   }
-  if (selfKill) parts.self -= 1.5 * snap.hpEff[meId]
+  if (selfKill) parts.self -= 1.5 * ctx.root(meId).hpEff[meId]
   const tmp = { ap: 0, mp: 0 }
   let enemyEffect = 0
   for (const f0 of root.fighters) {
@@ -286,6 +286,7 @@ export function scoreTransition(ctx: MonsterContext, after: FightState, c: Monst
     const f1 = after.fighters[f0.id]
     // Combattant intact (cas le plus fréquent : le lancer ne l'a pas touché) : aucune contribution.
     if (f0.id !== meId && f1 && unchanged(f0, f1)) continue
+    ctx.root(f0.id)
     const dead = !f1 || !f1.alive
     const hb = snap.hpEff[f0.id]
     const ha = dead ? 0 : hpEff(f1)
@@ -339,13 +340,13 @@ export function scoreTransition(ctx: MonsterContext, after: FightState, c: Monst
       parts.buffs += bv.debuff
       parts.states += bv.dispel
       if (bv.nextHit + bv.debuff + bv.dispel > 0) enemyEffect += bv.nextHit + bv.debuff + bv.dispel
-      if (f1.buffs.length && f1.buffs.some(b => b.kind === 'trigger' && !snap.buffUids[f0.id]?.has(b.uid))) {
-        const d = pendingDotOn(after, f1, 0.8) - ctx.rootDot(f0)
-        if (d > 0) {
-          const x = w.wDmg * v * Math.min(d, ha)
-          parts.dot += x
-          enemyEffect += x
-        }
+      // Poisons NOUVEAUX seulement, évalués sur la cible de la racine : un « dommages subis ×150 % » posé par le même
+      // lancer (Plumière, Tirs optiques) ne doit pas revaloriser les poisons déjà programmés (terme `nextHit`).
+      const d = newDotValue(after, f0, f1, snap.buffUids[f0.id])
+      if (d > 0) {
+        const x = w.wDmg * v * Math.min(d, ha)
+        parts.dot += x
+        enemyEffect += x
       }
       continue
     }
@@ -383,6 +384,16 @@ export function scoreTransition(ctx: MonsterContext, after: FightState, c: Monst
   parts.blocked = !parts.offensive && offensiveSpell(ctx, c)
   parts.total = totalOf(parts)
   return parts
+}
+
+/** Dégâts programmés (poisons TB/TE, décote 0,8 par tour) des buffs de `f1` absents de la racine, sur la cible `f0`. */
+function newDotValue(after: FightState, f0: Fighter, f1: Fighter, known: Set<number> | undefined): number {
+  let news: Buff[] | undefined
+  for (const b of f1.buffs) {
+    if (b.kind !== 'trigger' || known?.has(b.uid) || !b.triggers || !/(^|\|)(TB|TE)(\||$)/.test(b.triggers)) continue
+    ;(news ??= []).push(b)
+  }
+  return news ? pendingDotOn(after, { ...f0, buffs: news }, 0.8) : 0
 }
 
 /** Le candidat est-il le sort suicidaire d'un kamikaze (effet 141 « tue » visant le lanceur) ? */
@@ -455,7 +466,7 @@ function enemyStates(ctx: MonsterContext, f0: Fighter, f1: Fighter): number {
 /** Nouveaux buffs / buffs retirés d'un ennemi : bonus « prochain coup » (1163, 786), débuffs, désenvoûtement. */
 function enemyBuffs(ctx: MonsterContext, f0: Fighter, f1: Fighter, me1: Fighter, c: MonsterCandidate): { nextHit: number; debuff: number; dispel: number } {
   const out = { nextHit: 0, debuff: 0, dispel: 0 }
-  const known = ctx.snapshot().buffUids[f0.id]
+  const known = ctx.root(f0.id).buffUids[f0.id]
   let hitE = -1
   const hit = () => (hitE >= 0 ? hitE : (hitE = ctx.nextAllyHit(f0, ctx.fight, me1.alive ? me1.ap : 0, c.cast?.spellId ?? -1)))
   let added = 0
@@ -585,8 +596,6 @@ export function quickMonster(ctx: MonsterContext, c: MonsterCandidate, dPos = 0)
       }
     }
     if (enemy) {
-      let thMemo = -1
-      const threat = () => (thMemo >= 0 ? thMemo : (thMemo = ctx.threatOf(f)))
       let dAp = 0
       let dMp = 0
       for (const r of p.removals) {
@@ -599,8 +608,8 @@ export function quickMonster(ctx: MonsterContext, c: MonsterCandidate, dPos = 0)
         if (pool === 'ap') dAp += removed
         else dMp += removed
       }
-      if (dAp > 0) value += w.wAP * dAp * (threat() / Math.max(1, f.stats.ap))
-      if (dMp > 0) value += w.wMP * dMp * ((ctx.alphaMp(f) * threat()) / Math.max(1, f.stats.mp))
+      if (dAp > 0) value += w.wAP * dAp * (ctx.threatOf(f) / Math.max(1, f.stats.ap))
+      if (dMp > 0) value += w.wMP * dMp * ((ctx.alphaMp(f) * ctx.threatOf(f)) / Math.max(1, f.stats.mp))
       if (dAp > 0 || dMp > 0) touched++
       let pacified = false
       for (const st of p.states) {
@@ -609,7 +618,7 @@ export function quickMonster(ctx: MonsterContext, c: MonsterCandidate, dPos = 0)
         const custom = ctx.profile.stateValue?.[st.stateId]
         const data = ctx.engine.data.state(st.stateId)
         if (custom === 'targetThreat' || (custom === undefined && data?.cantDealDamage)) {
-          if (!pacified && st.duration >= 1) value += w.pacifist * threat()
+          if (!pacified && st.duration >= 1) value += w.pacifist * ctx.threatOf(f)
           pacified = true
         } else if (typeof custom === 'number') value += custom
         else if (data?.incurable) value += (ctx.enemyHasHealer() ? 0.1 : 0.02) * f.maxHp
@@ -619,7 +628,7 @@ export function quickMonster(ctx: MonsterContext, c: MonsterCandidate, dPos = 0)
       }
       for (const mv of p.moves) if (!mv.onCaster && lineHit(mv.zone, mv.mask, f, cell)) value += 10
       for (const sl of p.stats) if (sl.sign < 0 && lineHit(sl.zone, sl.mask, f, cell)) value += debuffValue(ctx, f, sl.stat, sl.value) * turnsFactor(sl.duration)
-      if (p.removesStates && cell === target && ctx.engine.stateFlag(f, 'invulnerable')) value += 0.5 * threat() + 0.1 * f.maxHp
+      if (p.removesStates && cell === target && ctx.engine.stateFlag(f, 'invulnerable')) value += 0.5 * ctx.threatOf(f) + 0.1 * f.maxHp
       continue
     }
     if (f.team !== ctx.team && f.id !== me.id) continue

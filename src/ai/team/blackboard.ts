@@ -13,10 +13,11 @@
  *    joue (gérée par le `TeamBrain`).
  * Sérialisation pure (`serializeBlackboard`/`deserializeBlackboard`) pour le rembobinage (§15.8).
  */
+import type { TeamId } from '../../core/types'
 import { isStaticFighter } from '../../engine/targetMask'
 import type { Fighter, FightState } from '../../engine/types'
 import { distance } from '../../map/geometry'
-import { canKillNow, hpEff, type PerceptionX } from '../core'
+import { believedCell, canKillNow, hpEff, type PerceptionX } from '../core'
 import type { AIView, Blackboard, Intent, PhaseId, PriceTable, RoleAssignment } from '../types'
 
 export function emptyPriceTable(): PriceTable {
@@ -38,14 +39,17 @@ export function emptyBlackboard(): Blackboard {
   }
 }
 
-/** Ennemis actifs (vivants, placés, non statiques) de l'équipe `team`. */
+/** Ennemis actifs (vivants, placés — case connue de l'équipe —, non statiques) de l'équipe `team`. */
 export function activeEnemies(s: FightState, team: number): Fighter[] {
-  return s.fighters.filter(f => f.alive && f.team !== team && f.cell >= 0 && !isStaticFighter(f) && f.carriedBy === undefined)
+  return s.fighters.filter(f => f.alive && f.team !== team && believedCell(f, team as TeamId) >= 0 && !isStaticFighter(f) && f.carriedBy === undefined)
 }
 
-/** Atteignabilité grossière de `e` par `a` au prochain tour : 1 à portée, 0,6 après un déplacement, 0,25 au-delà. */
+/**
+ * Atteignabilité grossière de `e` par `a` au prochain tour : 1 à portée, 0,6 après un déplacement, 0,25 au-delà.
+ * Cases vues par l'équipe de `a` (un invisible adverse est sur sa dernière case connue, §6.1).
+ */
 export function reachFactor(a: Fighter, e: Fighter, range: number): number {
-  const d = distance(a.cell, e.cell)
+  const d = distance(believedCell(a, a.team), believedCell(e, a.team))
   const mp = Math.max(0, a.stats.mp)
   return d <= range ? 1 : d <= range + mp ? 0.6 : 0.25
 }

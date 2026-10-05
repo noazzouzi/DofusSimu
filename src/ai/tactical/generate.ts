@@ -12,7 +12,8 @@
  * Sélection : top-K par prior sous QUOTAS par groupe de catégories (standard K = 12 : damage 5, control 2,
  * placement 2, heal/buff 1, summon/mark 1, utility 1, mis à l'échelle de K par plus forts restes), modulés par le rôle
  * (mpLock/apLock : control +2 ; placer : placement +2 ; healer : heal +1 si un allié < 70 %) ; quotas inutilisés
- * redistribués par valeur ; + obligatoires (≤ `mandatoryMax`) ; + propositions des tactiques.
+ * redistribués par valeur ; + obligatoires (≤ `mandatoryMax`) ; + propositions des tactiques (sans re-simuler un coup
+ * déjà retenu).
  * Ablation `offensiveOnly` : seuls les candidats `damage` (ni tactiques ni obligatoires non offensifs).
  */
 import type { Fighter } from '../../engine/types'
@@ -108,7 +109,18 @@ export function generate(ctx: TacticalContext, node: SearchNode): Generated {
   return out
 }
 
-/** Sélection pour simulation (§8.1) : quotas + obligatoires + tactiques, sans doublon de clé. */
+/**
+ * Contenu d'une macro-action (fin de chemin, lancer, séquence), indépendant de sa clé : une tactique qui ré-étiquette
+ * un candidat générique (`ml[…]`, `hc[…]`, `gz[…]`, `bs[…]`) propose le MÊME coup ; le simuler deux fois gaspillait
+ * des nœuds (≈ 2-3 par profondeur en `fast`) pour un état identique (écarté ensuite par les transpositions).
+ */
+export function macroContent(m: MacroAction): string {
+  const end = m.path && m.path.length > 1 ? m.path[m.path.length - 1] : -1
+  const head = `${end}/${m.cast ? `${m.cast.spellId}@${m.cast.cell}` : '-'}`
+  return m.seq && m.seq.length ? `${head}{${m.seq.map(macroContent).join(';')}}` : head
+}
+
+/** Sélection pour simulation (§8.1) : quotas + obligatoires + tactiques, sans doublon de clé ni de contenu. */
 export function selectForSim(ctx: TacticalContext, node: SearchNode, g: Generated, b: TurnBudget): MacroAction[] {
   const me = node.s.fighters[ctx.view.me.id]
   if (!me) return []
@@ -147,6 +159,20 @@ export function selectForSim(ctx: TacticalContext, node: SearchNode, g: Generate
     mand++
   }
   for (const m of g.explore) add(m)
-  for (const m of g.tactics) add(m)
+  // Propositions des tactiques : un coup déjà retenu (même contenu) n'est pas re-simulé ; s'il est obligatoire côté
+  // tactique (levier d'horloge), l'exemplaire retenu le devient.
+  const content = new Map<string, number>()
+  picked.forEach((m, i) => content.set(macroContent(m), i))
+  for (const m of g.tactics) {
+    const c = macroContent(m)
+    const i = content.get(c)
+    if (i !== undefined) {
+      if (m.mandatory && !picked[i].mandatory) picked[i] = { ...picked[i], mandatory: true }
+      continue
+    }
+    const before = picked.length
+    add(m)
+    if (picked.length > before) content.set(c, picked.length - 1)
+  }
   return picked
 }

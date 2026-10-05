@@ -20,13 +20,14 @@ import { isStaticFighter } from '../../engine/targetMask'
 import type { Action, AiNoteKind, Fighter, FightState } from '../../engine/types'
 import { distance, inLine, isInCastRange } from '../../map/geometry'
 import { castGeom, levelFor, LosOracle } from '../core/castCells'
+import { buildOccupancy, cachedReach } from '../core/reach'
 import { createDptTable, type DptTableImpl } from '../core/dpt'
 import { createSpellProfileIndex, type SpellProfileIndexX, type SpellProfileX } from '../core/spellProfile'
 import { flagAtNextTurn, hpEff, nextTurnApMp } from '../core/threat'
 import { SlotOrder } from '../core/timeline'
-import { pendingDotOn } from '../core/value'
 import { believedCell, createView } from '../core/view'
-import type { AIConfig, AIView, MonsterSetting } from '../types'
+import { harmlessEnterGlyph } from './position'
+import type { AIConfig, AIView, MonsterSetting, ReachInfo } from '../types'
 import type { ArchetypeInfo } from './archetype'
 import { defaultWeights, resolveProfile } from './profiles'
 import type { Behaviour, MonsterAIProfile, ScoreWeights } from './types'
@@ -39,9 +40,11 @@ export interface RootSnapshot {
   mpNext: Float64Array
   /** uids des buffs de chaque combattant (désenvoûtements, nouveaux buffs). */
   buffUids: (Set<number> | undefined)[]
-  /** Dégâts programmés (poisons) : NaN = non calculé. */
-  dot: Float64Array
+  /** 1 : valeurs du combattant calculées (`MonsterContext.root`). */
+  ready: Uint8Array
 }
+
+const ROOT_TMP = { ap: 0, mp: 0 }
 
 export class MonsterContext {
   readonly view: AIView
@@ -71,6 +74,9 @@ export class MonsterContext {
   /** Focale du tour (recalculée si elle meurt). */
   private focalMemo: Fighter | null | undefined
   private healerMemo: boolean | undefined
+  /** État « de marche » du pas (voir `walkState`) et état dont il est tiré. */
+  private walkMemo: FightState | undefined
+  private walkSrc: FightState | undefined
 
   constructor(
     readonly engine: Engine,
@@ -336,38 +342,64 @@ export class MonsterContext {
 
   // ───────────────────────────── instantané de la racine ─────────────────────────────
 
-  /** Valeurs « avant » de la racine du pas (voir `RootSnapshot`). */
+  /**
+   * Instantané de la racine du pas (voir `RootSnapshot`) : les valeurs d'un combattant sont calculées à la demande
+   * (`root(id)`), seulement pour ceux qu'un candidat a modifiés.
+   */
   snapshot(): RootSnapshot {
     if (this.snap && this.snap.s === this.fight) return this.snap
-    const s = this.fight
-    const n = s.fighters.length
-    const order = this.order()
-    const snap: RootSnapshot = {
-      s,
+    const n = this.fight.fighters.length
+    return (this.snap = {
+      s: this.fight,
       hpEff: new Float64Array(n),
       apNext: new Float64Array(n),
       mpNext: new Float64Array(n),
       buffUids: new Array(n),
-      dot: new Float64Array(n).fill(NaN),
-    }
-    const tmp = { ap: 0, mp: 0 }
-    for (const f of s.fighters) {
-      if (!f.alive) continue
-      snap.hpEff[f.id] = hpEff(f)
-      nextTurnApMp(f, order, tmp)
-      snap.apNext[f.id] = tmp.ap
-      snap.mpNext[f.id] = tmp.mp
-      if (f.buffs.length) snap.buffUids[f.id] = new Set(f.buffs.map(b => b.uid))
-    }
-    return (this.snap = snap)
+      ready: new Uint8Array(n),
+    })
   }
 
-  /** Poisons programmés sur `f` à la racine (mémo). */
-  rootDot(f: Fighter): number {
+  /** Instantané de la racine avec les valeurs du combattant `id` calculées. */
+  root(id: number): RootSnapshot {
     const snap = this.snapshot()
-    let v = snap.dot[f.id]
-    if (Number.isNaN(v)) snap.dot[f.id] = v = pendingDotOn(snap.s, f, 0.8)
-    return v
+    if (snap.ready[id]) return snap
+    snap.ready[id] = 1
+    const f = snap.s.fighters[id]
+    if (!f || !f.alive) return snap
+    snap.hpEff[id] = hpEff(f)
+    nextTurnApMp(f, this.order(), ROOT_TMP)
+    snap.apNext[id] = ROOT_TMP.ap
+    snap.mpNext[id] = ROOT_TMP.mp
+    if (f.buffs.length) snap.buffUids[id] = new Set(f.buffs.map(b => b.uid))
+    return snap
+  }
+
+  /**
+   * État « de marche » du pas pour l'accessibilité du monstre : le combat courant dont les glyphes « à l'entrée » SANS
+   * effet sur lui (masques : glyphes 1165 des monstres du Vortex qui ne visent que les personnages, glyphes alliées
+   * d'un adversaire…) sont retirées. `move` (src/engine/move.ts) ne s'arrête que sur les pièges : une telle glyphe se
+   * traverse librement, alors que l'accessibilité du socle contourne toute glyphe « à l'entrée » (case-événement).
+   * Objet superficiel (mêmes combattants, carte, pièges) : seulement LU (accessibilité, chemins), jamais simulé.
+   */
+  walkState(): FightState {
+    if (this.walkMemo && this.walkSrc === this.fight) return this.walkMemo
+    const s = this.fight
+    this.walkSrc = s
+    let keep: typeof s.glyphs | undefined
+    for (let i = 0; i < s.glyphs.length; i++) {
+      const g = s.glyphs[i]
+      if (!harmlessEnterGlyph(s, g, this.me)) {
+        if (keep) keep.push(g)
+        continue
+      }
+      keep ??= s.glyphs.slice(0, i)
+    }
+    return (this.walkMemo = keep ? { ...s, glyphs: keep } : s)
+  }
+
+  /** Accessibilité du monstre (PM et PA courants) sur l'état de marche — résultat partagé du cache du socle (lecture seule). */
+  reach(): ReachInfo {
+    return cachedReach(this.engine, this.walkState(), this.me, this.team, this.me.mp, this.me.ap, buildOccupancy(this.fight, this.team))
   }
 
   // ───────────────────────────── actions ─────────────────────────────
@@ -393,6 +425,7 @@ export class MonsterContext {
     this.orderMemo = undefined
     this.alphaMemo.clear()
     this.healerMemo = undefined
+    this.walkMemo = this.walkSrc = undefined
   }
 
   /**

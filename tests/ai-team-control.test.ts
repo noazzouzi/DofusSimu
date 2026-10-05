@@ -5,7 +5,7 @@
  *  - miroir 1 c 1 (même classe, même stuff, côté et équipe qui commence tirés sur la graine) ⇒ ≈ 50 % ;
  *  - échelle : `fast` fait au moins aussi bien que `scripted` sur un combat dur (4 monstres du Vortex, grade 5),
  *    appariée sur les mêmes graines ; l'IA simule réellement (nœuds > 0), joue des actions non offensives
- *    (coups « créatifs ») et utilise ses tactiques.
+ *    (coups « créatifs ») et utilise ses tactiques ; `standard` gagne au moins aussi vite que `fast` (2 graines).
  */
 import { describe, expect, it } from 'vitest'
 import { loadTheta } from '../src/ai'
@@ -56,8 +56,8 @@ describe('combats de contrôle (§16.5)', () => {
       decided++
       if (r.win) wins++
     }
-    // Anti-blocage (finalMove.ts) : la majorité des miroirs se décident avant la limite de 30 tours.
-    expect(decided).toBeGreaterThanOrEqual(12)
+    // Anti-blocage (evaluate.ts, finalMove.ts) : au moins deux miroirs sur trois se décident avant la limite de tours.
+    expect(decided).toBeGreaterThanOrEqual(16)
     const rate = wins / decided
     console.info(`[miroir] ${wins}/${decided} = ${(100 * rate).toFixed(0)} %`)
     expect(rate).toBeGreaterThanOrEqual(0.25)
@@ -90,5 +90,17 @@ describe('combats de contrôle (§16.5)', () => {
     expect(fastWins + fastHp).toBeGreaterThan(scriptedWins + scriptedHp)
     expect(creative).toBeGreaterThan(0)
     expect(tactics.size).toBeGreaterThan(0)
+  }, 600_000)
+
+  it('échelle (suite) : standard ≥ fast sur le combat dur (2 graines appariées : victoire, au plus autant de tours)', async () => {
+    const hard = 'control:143393281:3834,3836,3837,3838'
+    for (const seed of [1, 4]) {
+      const f = runOne(DATA, spec(hard, META, 'fast'), seed).summary
+      const st = runOne(DATA, spec(hard, META, 'standard'), seed).summary
+      console.info(`[échelle] graine ${seed} : fast ${f.win ? 'V' : 'D'} en ${f.rounds} tours (PV ${f.hpLeftPct.toFixed(2)}) — standard ${st.win ? 'V' : 'D'} en ${st.rounds} tours (PV ${st.hpLeftPct.toFixed(2)})`)
+      expect(st.win).toBe(true)
+      if (f.win) expect(st.rounds).toBeLessThanOrEqual(f.rounds)
+      await yieldToEventLoop()
+    }
   }, 600_000)
 })

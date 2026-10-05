@@ -26,18 +26,23 @@
  * Économies de simulation (nœud mesuré ≈ 3× l'hypothèse de 70 µs du design, §14.2) : hors `reference`, un candidat à
  * préfiltre exact (couverture ≥ 0,9) sous 30 % du meilleur n'est pas simulé ; les variantes d'un même lancer monocible
  * sans déplacement (même sort, même cible, même nature mêlée / distance) partagent une simulation, la position étant
- * réévaluée par variante. Accord mesuré play/reference ≥ 99 % (tests/ai-monster-equivalence.test.ts).
+ * réévaluée par variante ; les forcés sont simulés d'abord et, dès que l'un d'eux est retenu (il est joué quoi qu'il
+ * arrive), les autres candidats ne le sont plus (décision identique ; `decideTop` simule tout pour son classement).
+ * Accord mesuré play/reference ≥ 99 % (tests/ai-monster-equivalence.test.ts).
+ *
+ * Accessibilité : glyphes « à l'entrée » sans effet sur le monstre traversées (`MonsterContext.walkState`).
  */
 import { mix32 } from '../../core/hash'
 import type { Engine } from '../../engine/engine'
 import { isStaticFighter } from '../../engine/targetMask'
 import type { Fighter, FightState } from '../../engine/types'
-import { CELL_COUNT, CELL_X, CELL_Y, distance } from '../../map/geometry'
+import { CELL_COUNT, distance } from '../../map/geometry'
 import { GridSearch } from '../../map/path'
 import { zoneMembership } from '../../map/zones'
 import { castCellsFor, castFailureStatic, levelFor, LosOracle } from '../core/castCells'
 import { generateCasts } from '../core/candidates'
-import { buildOccupancy, cachedReach, mpSpent, reachPath } from '../core/reach'
+import { buildOccupancy, mpSpent, reachPath } from '../core/reach'
+import { believedCell } from '../core/view'
 import { decisionRng, detExp } from '../core/rng'
 import { applyMacro, simClone } from '../core/sim'
 import { canPlay } from '../core/timeline'
@@ -150,7 +155,9 @@ export class MonsterBrain implements MonsterController {
     const behaviour = ctx.behaviour
     const frame0 = buildFrame(ctx, fight, behaviour)
     const pos0 = posScore(frame0, me.cell)
-    for (const c of cands) c.prior = quickMonster(ctx, c, w.positionDuringTurn * (posScore(frame0, c.from) - pos0))
+    // Δposition du préfiltre à la case d'ARRIVÉE du lanceur (case visée pour une téléportation / un échange de soi :
+    // Envolupté de la Méjaire), sinon à sa case de lancer.
+    for (const c of cands) c.prior = quickMonster(ctx, c, w.positionDuringTurn * (posScore(frame0, arrivalCell(ctx, c)) - pos0))
     markMandatory(ctx, cands, this.setting)
     cands.sort((a, b) => b.prior - a.prior || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
     const k = this.topK
@@ -174,7 +181,13 @@ export class MonsterBrain implements MonsterController {
     // Simulation : même sel pour tous les frères (nombres aléatoires communs, jamais l'état réel des dés).
     const salt = mix32(mix32(this.cfg.seed ^ 0x6d6f6e, fight.round), me.id * 64 + (ctx.step & 63))
     const look = ctx.profile.lookahead
-    const order = look && look.length ? [...selected.filter(c => !look.includes(c.cast?.spellId ?? -1)), ...selected.filter(c => look.includes(c.cast?.spellId ?? -1))] : selected
+    const isLook = (c: MonsterCandidate): boolean => !!look && look.length > 0 && look.includes(c.cast?.spellId ?? -1)
+    // Ordre : forcés, autres, puis candidats à anticipation (qui comparent leur suite au meilleur lancer direct). Un forcé
+    // qui ne nuit pas est joué quoi qu'il arrive : une fois TOUS les forcés simulés et l'un d'eux retenu, les autres
+    // candidats ne changent plus la décision et ne sont pas simulés (sauf classement complet demandé par `decideTop`).
+    const order = [...selected.filter(c => c.forced && !isLook(c)), ...selected.filter(c => !c.forced && !isLook(c)), ...selected.filter(isLook)]
+    let forcedLeft = 0
+    for (const c of selected) if (c.forced) forcedLeft++
     let best: MonsterDecision | null = null
     let bestForced: MonsterDecision | null = null
     let bestDirect = 0
@@ -185,6 +198,8 @@ export class MonsterBrain implements MonsterController {
     // de lancer d'un sort sans déplacement ni zone : une seule simulation, la position est réévaluée par variante.
     const shared = new Map<string, { clone: FightState; parts: ScoreParts } | null>()
     for (const c of order) {
+      if (bestForced && forcedLeft === 0 && !this.rankAll) break
+      if (c.forced) forcedLeft--
       const sk = shareKey(ctx, c)
       const prev = sk ? shared.get(sk) : undefined
       let clone: FightState
@@ -206,8 +221,9 @@ export class MonsterBrain implements MonsterController {
       if (parts.casterDead) continue
       if (parts.blocked) ctx.sawBlocked = true
       const me1 = clone.fighters[me.id]
-      const frame1 = sameFrame(frame0, fight, clone, me.id) ? frame0 : buildFrame(ctx, clone, behaviour)
-      parts.position = me1.alive ? w.positionDuringTurn * (posScore(frame1, prev ? c.from : me1.cell) - pos0) : 0
+      const at = prev ? c.from : me1.cell
+      const frame1 = sameFrame(frame0, fight, clone, me.id) ? frame0 : buildFrame(ctx, clone, behaviour, at)
+      parts.position = me1.alive ? w.positionDuringTurn * (posScore(frame1, at) - pos0) : 0
       let total = totalOf(parts)
       const hook = ctx.profile.hooks?.scoreCast
       if (hook) total = hook(ctx, c, total, clone)
@@ -239,6 +255,8 @@ export class MonsterBrain implements MonsterController {
   /** Candidats simulés du dernier pas (classement de `decideTop`). */
   private lastScored: MonsterDecision[] = []
   private lastChosen: MonsterDecision | null = null
+  /** Simuler tous les candidats retenus même quand un forcé décide déjà (classement complet de `decideTop`). */
+  private rankAll = false
 
   /**
    * Classement du premier pas du tour (sans rien jouer) : la décision retenue d'abord, puis les autres candidats
@@ -251,7 +269,12 @@ export class MonsterBrain implements MonsterController {
     if (ctx.baseBehaviour === 'static') return []
     this.lastScored = []
     this.lastChosen = null
-    this.pickBestAction(ctx)
+    this.rankAll = true
+    try {
+      this.pickBestAction(ctx)
+    } finally {
+      this.rankAll = false
+    }
     const chosen = this.lastChosen as MonsterDecision | null
     const rest = this.lastScored.filter(d => d !== chosen && d.score >= ctx.w.minActionScore)
     rest.sort((a, b) => (better(ctx, this.cfg.seed, a, b) ? -1 : better(ctx, this.cfg.seed, b, a) ? 1 : 0))
@@ -291,6 +314,14 @@ function shareKey(ctx: MonsterContext, c: MonsterCandidate): string | null {
   if (!p || p.zoneRadius !== 0 || p.moves.length || p.summonLines.length || p.glyph || p.trap || p.maxRange === 0) return null
   if (p.damage.some(d => d.aroundCaster)) return null
   return `${c.cast.spellId}:${c.cast.cell}:${distance(c.from, c.cast.cell) <= 1 ? 'm' : 'r'}`
+}
+
+/** Case où finit le lanceur d'un candidat : case visée par une téléportation / un échange du lanceur, sinon case de lancer. */
+function arrivalCell(ctx: MonsterContext, c: MonsterCandidate): number {
+  if (!c.cast || c.spellIndex < 0) return c.from
+  const p = ctx.spellProfiles()[c.spellIndex]
+  if (p && p.moves.some(m => m.onCaster && (m.kind === 'teleport' || m.kind === 'swap'))) return c.cast.cell
+  return c.from
 }
 
 /** `a` est-il préférable à `b` ? Score, puis `castOrder`, priorités de Stump, moins de PM, hachage de la clé. */
@@ -368,7 +399,8 @@ function generate(ctx: MonsterContext): MonsterCandidate[] {
   }
   const extra = ctx.profile.hooks?.extraCandidates?.(ctx) ?? []
   if (!any && !extra.length) return []
-  const raw = generateCasts(ctx.view, ctx.fight, me, { withPrior: false, unsupportedSpells: ctx.cfg.unsupportedSpells })
+  // Accessibilité sur l'état de marche : les glyphes « à l'entrée » sans effet sur le monstre se traversent.
+  const raw = generateCasts(ctx.view, ctx.fight, me, { withPrior: false, unsupportedSpells: ctx.cfg.unsupportedSpells, reach: ctx.reach() })
   const out: MonsterCandidate[] = []
   const seen = new Set<string>()
   const push = (m: MacroAction, reason?: string) => {
@@ -390,19 +422,17 @@ function generate(ctx: MonsterContext): MonsterCandidate[] {
   const forbid = profile.forbidSpells
   const filter = profile.hooks?.filterCast
   const gap = profile.gapCloser
+  // Rapprochement (Envolupté) : seulement si AUCUN ennemi n'est atteignable ce tour par un autre sort de dégâts (case de
+  // lancer accessible, portée, alignement, ligne de vue : les candidats générés le disent) à ≤ `lineRange` cases.
   let gapBlocked = false
   if (gap && out.some(c => c.cast!.spellId === gap.spellId)) {
-    // Un ennemi atteignable en ligne à ≤ lineRange depuis une case accessible ce tour : pas de rapprochement.
     const lr = gap.lineRange ?? 7
-    const reach = cachedReach(ctx.engine, ctx.fight, me, ctx.team, me.mp, me.ap, buildOccupancy(ctx.fight, ctx.team))
-    const enemies = ctx.enemies().map(e => e.cell)
-    for (let i = 0; i < reach.count && !gapBlocked; i++) {
-      const c = reach.cells[i]
-      for (const ec of enemies) {
-        if (lineDistance(c, ec) <= lr) {
-          gapBlocked = true
-          break
-        }
+    for (const c of out) {
+      if (c.cast!.spellId === gap.spellId || !damaging(ctx, c)) continue
+      const t = ctx.fighterAt(c.cast!.cell)
+      if (t && ctx.isEnemy(t) && distance(c.from, c.cast!.cell) <= lr) {
+        gapBlocked = true
+        break
       }
     }
   }
@@ -423,23 +453,6 @@ function generate(ctx: MonsterContext): MonsterCandidate[] {
   return result
 }
 
-/** Distance si les cases sont alignées, sinon l'infini. */
-function lineDistance(a: number, b: number): number {
-  const ax = cellX(a)
-  const ay = cellY(a)
-  const bx = cellX(b)
-  const by = cellY(b)
-  if (ax !== bx && ay !== by) return Infinity
-  return Math.abs(ax - bx) + Math.abs(ay - by)
-}
-
-function cellX(c: number): number {
-  return CELL_X[c]
-}
-function cellY(c: number): number {
-  return CELL_Y[c]
-}
-
 /**
  * R14 : un piège posé ne doit pas couvrir la case de lancer ni le début du plus court chemin vers la focale (sur les PM
  * restants) — le monstre ne pose pas de piège qu'il déclencherait en se déplaçant.
@@ -456,8 +469,11 @@ function trapSafe(ctx: MonsterContext, c: MonsterCandidate): boolean {
   const fight = ctx.fight
   const occ = buildOccupancy(fight, ctx.team)
   const mpLeft = Math.max(0, Math.floor(ctx.me.mp) - (c.path ? c.path.length - 1 : 0))
-  SEARCH.run(c.from, x => !!fight.map.cells[x]?.walkable && (occ[x] < 0 || occ[x] === ctx.me.id), CELL_COUNT, focal.cell)
-  const path = SEARCH.pathTo(focal.cell)
+  // La case de la focale est occupée : admise comme arrivée (sinon la recherche ne l'atteint jamais).
+  const goal = believedCell(focal, ctx.team)
+  if (goal < 0) return true
+  SEARCH.run(c.from, x => x === goal || (!!fight.map.cells[x]?.walkable && (occ[x] < 0 || occ[x] === ctx.me.id)), CELL_COUNT, goal)
+  const path = SEARCH.pathTo(goal)
   if (!path) return true
   for (let i = 1; i < path.length - 1 && i <= mpLeft; i++) if (inZone(path[i])) return false
   return true
@@ -541,7 +557,7 @@ function touchedEnemies(ctx: MonsterContext, c: MonsterCandidate): number {
   let n = 0
   const zones = p.level.effects.filter(e => !e.clientOnly).map(e => zoneMembership(e.zone, c.cast!.cell, c.from))
   for (const e of ctx.enemies()) {
-    const cell = e.cell
+    const cell = believedCell(e, ctx.team)
     if (zones.some(z => z(cell))) n++
   }
   return n
@@ -559,7 +575,7 @@ function addAltCells(ctx: MonsterContext, selected: MonsterCandidate[], frame: P
   if (me.mp < 1) return
   const fight = ctx.fight
   const occ = buildOccupancy(fight, ctx.team)
-  const reach = cachedReach(ctx.engine, fight, me, ctx.team, me.mp, me.ap, occ)
+  const reach = ctx.reach()
   const los = new LosOracle(fight, ctx.team, me.id, occ)
   const cells: number[] = []
   const keys = new Set(selected.map(c => c.key))
@@ -586,10 +602,14 @@ function addAltCells(ctx: MonsterContext, selected: MonsterCandidate[], frame: P
     if (keys.has(key)) continue
     const path = bestCell === me.cell ? undefined : reachPath(reach, me.cell, bestCell) ?? undefined
     if (bestCell !== me.cell && !path) continue
-    keys.add(key)
     const alt: MonsterCandidate = { ...c, key, from: bestCell, reason: 'altCell', mandatory: true, forced: false }
     if (path) alt.path = path
     else delete alt.path
+    // Mêmes filtres durs que les candidats générés (R14 piège sur son chemin, R3 invocation sur glyphe, hooks).
+    if (!trapSafe(ctx, alt) || !summonSafe(ctx, alt)) continue
+    const filter = ctx.profile.hooks?.filterCast
+    if (filter && !filter(ctx, alt)) continue
+    keys.add(key)
     selected.push(alt)
   }
 }
@@ -615,7 +635,7 @@ function immuneEnemyInReach(ctx: MonsterContext): boolean {
   if (range < 0) return false
   const reach = Math.max(0, Math.floor(me.mp)) + range
   for (const e of ctx.enemies()) {
-    if (distance(me.cell, e.cell) > reach) continue
+    if (distance(me.cell, believedCell(e, ctx.team)) > reach) continue
     if (ctx.engine.stateFlag(e, 'invulnerable') || e.stats.reflect >= me.hp) return true
   }
   return false

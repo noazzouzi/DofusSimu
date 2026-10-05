@@ -100,6 +100,11 @@ export interface StepDigest {
   hp: [number, number, number][]
   /** Empreinte symbolique du scénario (heure de l'Auroraire au Vortex), −1 si sans objet. */
   symbol: number
+  /**
+   * Autres combattants déplacés ou dont les PA/PM (caractéristiques) ont changé pendant l'étape : [id, case, PA, PM]
+   * prévus (retrait de PM esquivé, poussée bloquée, portage…). Facultatif (empreintes construites à la main).
+   */
+  moved?: [number, number, number, number][]
 }
 
 /** Nœud du faisceau (§8.2). */
@@ -136,6 +141,8 @@ export interface FinalLeaf {
   breakdown: EvalBreakdown
   rolled: boolean
   rollout?: number
+  /** Première action prêtée par le rollout à l'allié suivant (cohérence, §9.3) ; publiée seulement si ce plan est retenu. */
+  expect?: { allyId: number; key: string }
 }
 
 /** Plan enrichi (le contrat `TurnPlan` est gelé : champs ajoutés par extension). */

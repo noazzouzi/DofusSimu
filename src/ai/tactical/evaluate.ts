@@ -8,6 +8,7 @@
  *               + cell[case finale]                        feuilles terminales seulement
  *               + Σ_i price_i · sat_i(racine, s)           intentions du combattant courant (§8.4)
  *               + revivedValue(racine, s)                  morts puis résurrections traversées par un rollout (Vortex)
+ *               − ω·PV des invocations alliées apparues depuis la racine (écart au §7, voir `newSummonLife`)
  *
  * Les quatre derniers termes forment `EvalBreakdown.scenario`. Les grandeurs de la racine (heure, PA/PM du prochain
  * tour des ennemis, incoming et potentiel des alliés, sorts lancés) sont calculées une fois par racine et mises en
@@ -261,7 +262,63 @@ export function evalLeaf(ctx: TacticalContext, s: FightState, o: LeafOptions): L
     b.scenario += scn
     b.total += scn
   }
+  // Invocations apparues depuis la racine : leurs PV ne sont pas une valeur créée (voir `newSummonLife`).
+  const born = newSummonLife(ctx, s)
+  if (born !== 0) {
+    b.allyLife -= born
+    b.total -= born
+  }
+  // Anti-blocage (AJOUT au design, finalMove.ts) : sans progrès depuis STALL_ROUNDS tours de jeu, la menace subie ne
+  // compte plus qu'à 25 % de son écart à la racine — dans les deux sens : fuir (Bond, recul) ne rapporte presque plus,
+  // engager ne coûte presque plus. Sinon deux personnages prudents « frappent puis fuient » jusqu'à la limite de tours.
+  if (isStalled(ctx)) {
+    const adj = -STALL_REFUND * (b.incoming - info.v.incoming)
+    b.incoming += adj
+    b.total += adj
+  }
   return { v: b.total, b }
+}
+
+/**
+ * PV (pondérés par ω des invocations, θ.value.summonLife, bouclier compris) des invocations alliées APPARUES depuis la
+ * racine. `allyLife` (§7) compte ω·PV pour tout allié vivant : invoquer « créait » donc ω·PV de valeur (Balise
+ * Tactique ≈ 7 000 PV ⇒ +2 800 PVe, Coffre/Pelle/Sac Animés de l'Enutrof ≈ +4 500 PVe par tour), ce qui faisait
+ * préférer l'invocation à tout contrôle ou contrat. Une invocation neuve vaut par ses effets — potentiel offensif,
+ * menace détournée des personnages (`incoming`), blocage, buffs — et ses PV ne comptent qu'en perte (dégâts subis,
+ * mort). Les invocations présentes à la racine gardent le terme du design (ω·PV), commun à toutes les feuilles.
+ * ÉCART au §7 (lu à la lettre, `allyLife` rémunère l'invocation) ; mesuré sur le combat dur (4 monstres du Vortex,
+ * `fast`, 10 graines) : 10/10 victoires dans les deux cas, mais 5,4 tours au lieu de 6,6, 95 % de PV restants au lieu
+ * de 67 % et aucun allié mort au lieu de 10 ; `standard` (4 graines) inchangé.
+ */
+export function newSummonLife(ctx: TacticalContext, s: FightState): number {
+  const root = ctx.root ?? ctx.view.fight
+  const team = ctx.view.team
+  const tv = ctx.cfg.theta.value
+  let v = 0
+  for (let i = root.fighters.length; i < s.fighters.length; i++) {
+    const f = s.fighters[i]
+    if (!f.alive || f.team !== team) continue
+    if (f.kind !== 'summon' && f.summonerId === undefined) continue
+    v += tv.summonLife * (f.hp + tv.allyShield * f.shield)
+  }
+  for (let i = 0; i < Math.min(root.fighters.length, s.fighters.length); i++) {
+    const f = s.fighters[i]
+    const r = root.fighters[i]
+    if (!f.alive || r.alive || f.team !== team || (f.kind !== 'summon' && f.summonerId === undefined)) continue
+    // Invocation ressuscitée / réinvoquée sur un id existant (rare) : même traitement.
+    v += tv.summonLife * (f.hp + tv.allyShield * f.shield)
+  }
+  return v
+}
+
+/** Tours de jeu sans progrès (ni mort, ni record de PV manquants : `TeamBrain`) avant l'anti-blocage. */
+export const STALL_ROUNDS = 2
+/** Part de l'écart de menace (à la racine) neutralisée en situation de blocage. */
+export const STALL_REFUND = 0.75
+
+/** Situation de blocage pour le combattant courant (personnage seulement). */
+export function isStalled(ctx: TacticalContext): boolean {
+  return (ctx.stall ?? 0) >= STALL_ROUNDS && ctx.view.me.kind === 'player'
 }
 
 function clamp(x: number, lo: number, hi: number): number {
