@@ -9,6 +9,9 @@
  *  - EHP : PV × (dégâts reçus d'un personnage sans défense / dégâts reçus avec ses défenses), les dégâts reçus étant
  *    ceux des rotations des monstres du mix (DoMath, % résistances plafonnés à 50, résistances fixes, critiques,
  *    % résistances mêlée/distance et sorts) : la pondération des éléments reçus vient des sorts réels des monstres ;
+ *    mix des monstres QUI FRAPPENT distinct du mix des cibles (`ProxyOptions.incoming`, ex. `VORTEX_INCOMING_MIX` de
+ *    vortex.ts : poids d'exposition mesurés en combat — le Vortex, invulnérable et presque passif en phase 1, ne pèse
+ *    pas dans les dégâts reçus) ; défaut : le mix des cibles ;
  *  - UTIL : retrait PM/PA espéré (fraction des PM/PA de la cible de référence, `expectedApMpRemoved`), soins par tour
  *    (/1 500), tacle (tank), poussée (placeur), invocations ;
  *  - exposants (a, b, c) par rôle : killer/zoneDps 0,7/0,3/0 ; tank 0,2/0,8/0,2 ; mpLock/apLock 0,3/0,4/1 ; healer
@@ -90,6 +93,11 @@ export interface ProxyTarget {
 export interface ProxyOptions {
   /** Mix de cibles (défaut : mix du Vortex, `VORTEX_TARGET_MIX`). */
   targets?: readonly ProxyTarget[]
+  /**
+   * Mix des monstres qui FRAPPENT le personnage (EHP) ; défaut : `targets`. Poids = part des tours d'attaque (exposition),
+   * pas le nombre de monstres (ex. `VORTEX_INCOMING_MIX`, calibré sur les dégâts subis en combat).
+   */
+  incoming?: readonly ProxyTarget[]
   /** Grade des cibles sans grade explicite (défaut 5). */
   grade?: number
   exponents?: Partial<ProxyExponents>
@@ -275,6 +283,9 @@ export class ProxyContext {
   /** Cibles réelles du mix et leurs poids. */
   readonly targets: Fighter[]
   readonly weights: number[]
+  /** Monstres qui frappent (EHP) et leurs poids (mêmes tableaux que `targets`/`weights` sans `ProxyOptions.incoming`). */
+  readonly incTargets: Fighter[]
+  readonly incWeights: number[]
   /** Cible synthétique (résistances moyennes pondérées). */
   readonly mixTarget: Fighter
   /** Combattant du personnage (caractéristiques remplacées à chaque évaluation exacte). */
@@ -316,6 +327,18 @@ export class ProxyContext {
       return f
     })
     this.weights = mix.map(t => t.weight)
+    if (opts.incoming) {
+      this.incTargets = opts.incoming.map((t, i) => {
+        const f = createMonsterFighter(data, { monsterId: t.monsterId, grade: t.grade ?? grade, team: 1 })
+        f.id = 101 + i
+        f.tags.referenceTarget = true
+        return f
+      })
+      this.incWeights = opts.incoming.map(t => t.weight)
+    } else {
+      this.incTargets = this.targets
+      this.incWeights = this.weights
+    }
     // Cible synthétique : premier monstre du mix, défenses et parades moyennées.
     const synth = createMonsterFighter(data, { monsterId: mix[0].monsterId, grade: mix[0].grade ?? grade, team: 1 })
     synth.id = 1 + mix.length
@@ -380,9 +403,9 @@ export class ProxyContext {
     }
     this.rangeNeed = opts.rangeNeed ?? needRange
 
-    // Lignes reçues : rotations des monstres du mix contre le personnage de référence.
+    // Lignes reçues : rotations des monstres qui frappent (mix `incoming`, défaut : mix des cibles) contre le personnage.
     let inConstant = 0
-    this.targets.forEach((m, mi) => {
+    this.incTargets.forEach((m, mi) => {
       const mProfiles = this.dptTable.profiles.ofFighter(m)
       const mIndex = new Map<number, number>()
       m.spells.forEach((s, i) => mIndex.set(s.spellId, i))
@@ -399,7 +422,7 @@ export class ProxyContext {
           const el = resolveElement(line.element, st)
           if (el < 0) continue
           const boosted = line.family === 'boosted' || line.family === 'mp'
-          const w = this.weights[mi] * n * lineWeight(line)
+          const w = this.incWeights[mi] * n * lineWeight(line)
           const power = Math.max(0, st.power + st[ELEMENT_MAIN_STAT[el as Element]] + (st.spellPower ?? 0))
           const fixed = st[ELEMENT_FIXED_DAMAGE[el as Element]] + st.damage
           const inLine: InLine = {
@@ -604,10 +627,10 @@ export class ProxyContext {
     return this.dptTable.turn(this.fighter, t, Math.max(0, s.ap), 'next').mean * this.calibration
   }
 
-  /** Dégâts par tour d'un monstre du mix (index) sur le personnage `s` (PA du monstre ou `ap`). */
+  /** Dégâts par tour d'un monstre du mix qui frappe (index dans `incTargets`) sur le personnage `s` (PA du monstre ou `ap`). */
   incomingFrom(s: Stats, maxHp: number, monster: number, ap?: number): number {
     this.setFighter(s, maxHp)
-    const m = this.targets[monster]
+    const m = this.incTargets[monster]
     return this.dptTable.turn(m, this.fighter, Math.max(0, ap ?? m.stats.ap), 'next').mean
   }
 
@@ -653,10 +676,29 @@ export class ProxyContext {
 
   private incomingExact(): number {
     let inc = 0
-    this.targets.forEach((m, i) => {
-      inc += this.weights[i] * this.dptTable.turn(m, this.fighter, Math.max(0, m.stats.ap), 'next').mean
+    this.incTargets.forEach((m, i) => {
+      inc += this.incWeights[i] * this.dptTable.turn(m, this.fighter, Math.max(0, m.stats.ap), 'next').mean
     })
     return inc
+  }
+
+  /**
+   * Dégâts reçus par tour (forme fermée) répartis par élément (0 neutre … 4 air ; `constant` : lignes non boostées) —
+   * rapports et tests (profil des dégâts subis).
+   */
+  incomingByElement(s: Stats): { byElement: number[]; constant: number } {
+    const byElement = [0, 0, 0, 0, 0]
+    const spellRes = 1 - s.spellResPct / 100
+    for (const l of this.inLines) {
+      const el = l.element
+      const fr = s[ELEMENT_RES_FIXED[el]]
+      const res = Math.min(50, s[ELEMENT_RES_PCT[el]]) / 100
+      const n = Math.max(0, l.preN - fr) * (1 - res)
+      const c = l.crit
+      const e = c > 0 ? (1 - c) * n + c * Math.max(0, l.preC - fr - s.criticalRes) * (1 - res) : n
+      byElement[el] += l.weight * e * l.mult * spellRes * (1 - (l.melee ? s.meleeResPct : s.rangedResPct) / 100)
+    }
+    return { byElement, constant: this.inConstant }
   }
 
   private setFighter(s: Stats, maxHp: number): void {

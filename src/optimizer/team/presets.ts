@@ -13,6 +13,15 @@
  * (aucun objet ; points et parchemins du preset — référence « sans stuff ») ou 'naked' (ni objet, ni point, ni
  * parchemin).
  *
+ * Stuffs « build complet » (ex. `vortex_*`, docs/reports/vortex-stuffs.md) : un stuff peut porter sa propre répartition
+ * de points (`points`, elle remplace celle du preset quand ce stuff est choisi) et être réservé à des classes
+ * (`breeds`). Presets dérivés (`extends`) : un preset `{ id, extends: <base>, stuff, label?, source? }` hérite de TOUS
+ * les champs absents du preset de base (variantes, rotation, rôle, élément, points), lus au chargement — un réglage des
+ * variantes du preset de base s'y propage. Pour l'IA, un membre construit depuis un preset dérivé garde l'identifiant
+ * du preset de BASE (`MemberSpec.presetId` : calibration DPT de data/ai/calibration.json, rotation `scripted`) : un
+ * preset dérivé est un alias « base@stuff » (`cra_feu_vortex` ≡ `cra_feu_zone@vortex_cra_feu`). Les presets dérivés
+ * ne sont pas candidats par défaut de la recherche de composition (`BASE_PRESETS`).
+ *
  * Ce module ne dépend que des données (pas du moteur ni de l'IA) : il est partagé par l'optimiseur, la CLI, les
  * workers et la politique `scripted` (src/ai/policies/scripted.ts).
  */
@@ -40,6 +49,15 @@ export interface StuffTemplate {
   label: string
   element: PresetElement
   items: EquippedItem[]
+  /**
+   * Répartition des points propre au stuff (stuff « build complet », ex. optimisé pour un donjon) : remplace celle du
+   * preset quand ce stuff est choisi. Absent : points du preset.
+   */
+  points?: PresetPoints
+  /** Classes pour lesquelles le stuff est conçu (absent : toutes ; les stuffs génériques valent pour toutes). */
+  breeds?: number[]
+  /** Provenance (optimiseur, rapport). */
+  source?: string
 }
 
 /** Répartition des points de caractéristiques (`allocateAll`). */
@@ -67,6 +85,8 @@ export interface Preset {
   rotation: RotationStep[]
   /** Provenance (fiche de classe, set, rotations). */
   source: string
+  /** Preset dérivé : identifiant du preset de base dont il hérite les champs absents (voir l'en-tête). */
+  extends?: string
 }
 
 export interface PresetsFile {
@@ -84,10 +104,32 @@ export type StuffChoice = 'default' | 'unstuffed' | 'naked' | (string & {})
 
 const FILE = presetsJson as unknown as PresetsFile
 
-/** Fichier des presets (lecture seule). */
+/**
+ * Résout les presets dérivés (`extends`) : champs absents repris du preset de base (copies : variantes et rotation ne
+ * sont pas partagées). Erreur explicite si la base est inconnue, elle-même dérivée, ou d'une autre classe.
+ */
+export function resolvePresetExtends(raw: readonly Partial<Preset>[]): Preset[] {
+  const byId = new Map(raw.map(p => [p.id, p]))
+  return raw.map(p => {
+    if (!p.extends) return p as Preset
+    const base = byId.get(p.extends)
+    if (!base) throw new Error(`Preset « ${p.id} » : base « ${p.extends} » inconnue`)
+    if (base.extends) throw new Error(`Preset « ${p.id} » : la base « ${p.extends} » est elle-même dérivée`)
+    if (p.breedId !== undefined && p.breedId !== base.breedId) throw new Error(`Preset « ${p.id} » : classe différente de sa base « ${base.id} »`)
+    const out = { ...base, ...p } as Preset
+    out.variants = (p.variants ?? base.variants ?? []).slice()
+    out.rotation = (p.rotation ?? base.rotation ?? []).map(r => ({ ...r }))
+    out.points = { ...(p.points ?? base.points!) }
+    return out
+  })
+}
+
+/** Fichier des presets (lecture seule ; presets dérivés NON résolus). */
 export const PRESETS_FILE: Readonly<PresetsFile> = FILE
-/** Tous les presets, dans l'ordre du fichier. */
-export const PRESETS: readonly Preset[] = FILE.presets
+/** Tous les presets, dans l'ordre du fichier (presets dérivés résolus). */
+export const PRESETS: readonly Preset[] = resolvePresetExtends(FILE.presets)
+/** Presets de base (non dérivés) : candidats par défaut de la recherche de composition (src/optimizer/team). */
+export const BASE_PRESETS: readonly Preset[] = PRESETS.filter(p => !p.extends)
 /** Stuffs de départ par identifiant. */
 export const STUFFS: Readonly<Record<string, StuffTemplate>> = FILE.stuffs
 /** Niveau des presets. */
@@ -112,9 +154,9 @@ export function presetsOf(breedId: number): Preset[] {
   return PRESETS.filter(p => p.breedId === breedId)
 }
 
-/** Preset par défaut d'une classe. */
+/** Preset par défaut d'une classe (premier preset de base de la classe). */
 export function defaultPresetOf(breedId: number): Preset {
-  const p = PRESETS.find(x => x.breedId === breedId)
+  const p = BASE_PRESETS.find(x => x.breedId === breedId)
   if (!p) throw new Error(`Aucun preset pour la classe ${breedId}`)
   return p
 }
@@ -143,7 +185,15 @@ export function breedIdOf(name: string): number | undefined {
 
 // ───────────────────────────── builds ─────────────────────────────
 
-/** Points de caractéristiques d'un preset au niveau donné. */
+/** Points de caractéristiques d'une répartition (`PresetPoints`) pour une classe, au niveau donné. */
+export function allocatePoints(p: PresetPoints, breedId: number, data: BuildDataSource, level = PRESET_LEVEL): Partial<Record<PrimaryStat, number>> {
+  return allocateAll(data.breed(breedId), level, p.primary, {
+    primaryCap: p.primaryCap,
+    rest: p.rest === undefined ? 'vitality' : p.rest,
+  }).points
+}
+
+/** Points de caractéristiques d'un preset au niveau donné (répartition du preset ; voir `stuffPoints`). */
 export function presetPoints(preset: Preset, data: BuildDataSource, level = PRESET_LEVEL): Partial<Record<PrimaryStat, number>> {
   const p = preset.points
   return allocateAll(data.breed(preset.breedId), level, p.primary, {
@@ -157,13 +207,24 @@ function copyItems(items: readonly EquippedItem[]): EquippedItem[] {
   return items.map(it => ({ ...it, exos: it.exos?.map(e => ({ ...e })), rolls: it.rolls ? { ...it.rolls } : undefined }))
 }
 
-/** Objets d'un choix de stuff pour un preset. */
-export function stuffItems(preset: Preset, stuff: StuffChoice = 'default'): EquippedItem[] {
-  if (stuff === 'unstuffed' || stuff === 'naked') return []
+/** Gabarit d'un choix de stuff pour un preset (undefined pour 'unstuffed' / 'naked'). */
+export function stuffTemplateOf(preset: Preset, stuff: StuffChoice = 'default'): StuffTemplate | undefined {
+  if (stuff === 'unstuffed' || stuff === 'naked') return undefined
   const id = stuff === 'default' ? preset.stuff : stuff
   const tpl = STUFFS[id]
   if (!tpl) throw new Error(`Stuff inconnu : « ${id} » (connus : ${Object.keys(STUFFS).join(', ')}, unstuffed, naked)`)
-  return copyItems(tpl.items)
+  return tpl
+}
+
+/** Objets d'un choix de stuff pour un preset. */
+export function stuffItems(preset: Preset, stuff: StuffChoice = 'default'): EquippedItem[] {
+  const tpl = stuffTemplateOf(preset, stuff)
+  return tpl ? copyItems(tpl.items) : []
+}
+
+/** Répartition des points d'un preset avec un choix de stuff : celle du stuff s'il en porte une, sinon celle du preset. */
+export function stuffPoints(preset: Preset, stuff: StuffChoice = 'default'): PresetPoints {
+  return stuffTemplateOf(preset, stuff)?.points ?? preset.points
 }
 
 export interface PresetBuildOptions {
@@ -181,7 +242,7 @@ export function presetBuild(preset: Preset, data: BuildDataSource, opts: PresetB
     name: opts.name ?? preset.className,
     breedId: preset.breedId,
     level,
-    characteristicPoints: naked ? {} : presetPoints(preset, data, level),
+    characteristicPoints: naked ? {} : allocatePoints(stuffPoints(preset, stuff), preset.breedId, data, level),
     scrolls: naked ? {} : fullScrolls(),
     items: stuffItems(preset, stuff),
     spellVariants: preset.variants.slice(),
@@ -198,13 +259,16 @@ export interface MemberOptions extends PresetBuildOptions {
   role?: RoleId
 }
 
-/** Membre d'équipe (`MemberSpec`) construit depuis un preset. */
+/**
+ * Membre d'équipe (`MemberSpec`) construit depuis un preset. Preset dérivé (`extends`) : le membre porte l'identifiant
+ * du preset de BASE (identité pour l'IA, voir l'en-tête) avec le stuff (et les points) du preset dérivé.
+ */
 export function presetMember(preset: Preset, data: BuildDataSource, opts: MemberOptions = {}): MemberSpec {
   const build = presetBuild(preset, data, opts)
   return {
     name: build.name,
     breedId: preset.breedId,
-    presetId: preset.id,
+    presetId: preset.extends ?? preset.id,
     build,
     variants: preset.variants.slice(),
     role: opts.role ?? preset.role,

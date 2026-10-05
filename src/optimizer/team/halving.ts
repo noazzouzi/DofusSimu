@@ -30,7 +30,7 @@ import { validateStuffs, type StuffValidation } from '../stuff/validate'
 import { evaluateSpecs, pairedVectors, tuneThetaByFights, type ConfigEval, type Objective, type TuneOptions, type TuneResult } from '../tune'
 import type { BatchResult, FightSpec, FightSummary, MemberSpec, WorkerTask } from '../types'
 import { optimizeVariants, type VariantSearchOptions, type VariantSearchResult } from '../variants'
-import { findPreset, presetMember, PRESETS, resolvePreset, type Preset } from './presets'
+import { BASE_PRESETS, findPreset, presetMember, resolvePreset, type Preset } from './presets'
 import { archetypeKey, archetypeOf } from './prior'
 import { defaultT0Params, t0Evaluate, t0Rank, type PresetCapability, type T0Params, type T0RankOptions, type T0Result } from './t0model'
 
@@ -321,7 +321,7 @@ function teamCandidate(team: MemberSpec[], tag = ''): TeamCandidate {
  */
 export async function evolveTeams(data: GameDataStore, base: Omit<FightSpec, 'team'>, population: readonly TeamCandidate[], pool: FightExecutor, opts: EvolveOptions = {}): Promise<EvolveResult> {
   const rng = new Rng(opts.rngSeed ?? 0xe401)
-  const presets = opts.presets ?? PRESETS
+  const presets = opts.presets ?? BASE_PRESETS
   const maxSame = opts.maxSameClass ?? 2
   const nSeeds = opts.seeds ?? 32
   const steps: EvolveStep[] = []
@@ -507,7 +507,7 @@ export async function runCompositionCampaign(data: GameDataStore, base: Omit<Fig
   let candidates = opts.candidates?.slice()
   if (!candidates) {
     let r = t0Rank(data, opts.t0)
-    const presets = opts.t0?.presets ?? PRESETS
+    const presets = opts.t0?.presets ?? BASE_PRESETS
     let params: T0Params = { ...defaultT0Params(data, opts.t0?.size ?? 4), ...opts.t0?.params }
     let calibration: T0FightCalibration | undefined
     say(`T0 : ${r.evaluated} équipes notées en ${(r.ms / 1000).toFixed(1)} s`)

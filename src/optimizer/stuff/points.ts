@@ -4,6 +4,8 @@
  * Répartitions candidates (src/stats `allocateAll`, coûts par paliers de Dofus 3) :
  *  - `all` : tout dans l'élément principal (398 au niveau 200), reste en Vitalité ;
  *  - `cap300` : 300 dans l'élément, le reste (395) en Vitalité ;
+ *  - `cap250` / `cap200` : 250 (545 Vitalité) / 200 (695 Vitalité) dans l'élément — compromis de survie (Vortex : les
+ *    morts commencent au tour ≈ 10) ;
  *  - tank : `cap100` (100 élément + Vitalité) et `vitality` (tout en Vitalité) ;
  *  - retrait (mpLock / apLock) : `wisdom100` (100 Sagesse puis l'élément) ;
  *  - `preset` : la répartition du preset (data/ai/presets.json), si fournie.
@@ -36,6 +38,8 @@ export function pointsOptions(breed: BreedData | undefined, level: number, prima
   if (preset) push('preset', 'répartition du preset', { ...preset })
   push('all', `tout en ${primary}, reste en Vitalité`, allocateAll(breed, level, primary).points)
   push('cap300', `300 en ${primary}, reste en Vitalité`, allocateAll(breed, level, primary, { primaryCap: 300 }).points)
+  push('cap250', `250 en ${primary}, reste en Vitalité`, allocateAll(breed, level, primary, { primaryCap: 250 }).points)
+  push('cap200', `200 en ${primary}, reste en Vitalité`, allocateAll(breed, level, primary, { primaryCap: 200 }).points)
   if (role === 'tank') {
     push('cap100', `100 en ${primary}, reste en Vitalité`, allocateAll(breed, level, primary, { primaryCap: 100 }).points)
     push('vitality', 'tout en Vitalité', allocateAll(breed, level, 'vitality').points)

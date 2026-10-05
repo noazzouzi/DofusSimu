@@ -31,7 +31,7 @@ import { ARRIVAL_ROUNDS_DEFAULT, VORTEX, VORTEX_HP_BY_GRADE, VORTEX_PHASE2_AP, w
 import { createMonsterFighter } from '../../engine/factory'
 import { computeBuildStats, type CharacterBuild } from '../../stats/build'
 import { createProxyContext } from '../stuff/proxy'
-import { PRESETS, presetMember, type Preset } from './presets'
+import { BASE_PRESETS, presetMember, type Preset } from './presets'
 import { archetypeKey, teamPrior, type TeamPrior } from './prior'
 
 export interface PresetCapability {
@@ -65,7 +65,7 @@ export interface CapabilityOptions {
 }
 
 /** Capacités des presets (voir l'en-tête), dans l'ordre de `presets`. */
-export function presetCapabilities(data: GameDataStore, presets: readonly Preset[] = PRESETS, opts: CapabilityOptions = {}): PresetCapability[] {
+export function presetCapabilities(data: GameDataStore, presets: readonly Preset[] = BASE_PRESETS, opts: CapabilityOptions = {}): PresetCapability[] {
   const players = opts.players ?? 4
   const waves = waveComposition(players).map(w => w.filter(id => id !== VORTEX))
   const counts = new Map<number, number>()
@@ -436,7 +436,7 @@ export interface T0Ranking {
 /** Classe toutes les équipes avec T0 et garde les `top` meilleures (score décroissant, départage par ids). */
 export function t0Rank(data: GameDataStore, opts: T0RankOptions = {}): T0Ranking {
   const t0 = performance.now()
-  const presets = opts.presets ?? PRESETS
+  const presets = opts.presets ?? BASE_PRESETS
   const caps = opts.capabilities ? opts.capabilities.slice() : presetCapabilities(data, presets)
   const params = { ...defaultT0Params(data, opts.size ?? 4), ...opts.params }
   const top = opts.top ?? 400
