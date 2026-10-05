@@ -76,6 +76,7 @@ export class Engine {
       seed: options.seed,
       scenario: setup.scenarioId,
     })
+    this.hooks.onFightStart?.(fight)
     this.scenario?.onFightStart?.(fight)
     return fight
   }
@@ -561,6 +562,8 @@ export class Engine {
    * Gardés hors de FightState pour que l'état reste clonable.
    */
   hooks: {
+    /** Début du combat, après l'événement fightStart (sorts passifs d'équipement...). */
+    onFightStart?: (fight: FightState) => void
     onTurnStart?: (fight: FightState, f: Fighter) => void
     onTurnEnd?: (fight: FightState, f: Fighter) => void
     /**
@@ -770,5 +773,6 @@ export function cloneFighter(f: Fighter): Fighter {
     spellMods: f.spellMods,
     disabledStates: f.disabledStates,
     rev: f.rev,
+    passiveSpells: f.passiveSpells,
   }
 }

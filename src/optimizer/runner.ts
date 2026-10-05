@@ -307,6 +307,7 @@ export function buildTeam(data: DataStore, members: readonly MemberSpec[]): Figh
       variants,
       role: m.role ?? findPreset(m.presetId)?.role,
       ai: 'player',
+      passiveSpells: res.passiveSpells,
     })
     f.tags.presetId = m.presetId
     return f

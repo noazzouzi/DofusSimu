@@ -173,6 +173,8 @@ export interface Fighter {
    * dans une décision ni un hash d'état. Absente = combattant jamais recalculé.
    */
   rev?: number
+  /** Sorts passifs conférés par l'équipement (effet 1175 : Dofus, objets légendaires), lancés au début du combat. */
+  passiveSpells?: number[]
 }
 
 export interface Glyph {

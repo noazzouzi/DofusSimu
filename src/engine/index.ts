@@ -8,7 +8,7 @@ import type { DataStore } from '../data/store'
 import { Engine } from './engine'
 import './effects/buffs'
 import './effects/castspell'
-import { installEffectCore } from './effects/core'
+import { castSubSpell, installEffectCore } from './effects/core'
 import { installDamageHooks } from './effects/damage'
 import { installMarks } from './effects/marks'
 import './effects/misc'
@@ -23,7 +23,27 @@ export function createEngine(data: DataStore, scenario?: ScenarioHooks): Engine 
   installDamageHooks(engine)
   installMovement(engine)
   installMarks(engine)
+  installEquipmentPassives(engine)
   return engine
+}
+
+/**
+ * Sorts passifs d'équipement (effet 1175 : Dofus, trophées, objets légendaires) : chaque sort est lancé sur son
+ * porteur au début du combat, comme un sort de départ ; ses effets sont des buffs/déclencheurs gérés par le moteur.
+ * Un sort passif absent des données extraites est ignoré.
+ */
+function installEquipmentPassives(engine: Engine): void {
+  const prev = engine.hooks.onFightStart
+  engine.hooks.onFightStart = fight => {
+    prev?.(fight)
+    for (const f of fight.fighters) {
+      if (!f.alive || f.cell < 0 || !f.passiveSpells?.length) continue
+      for (const spellId of f.passiveSpells) {
+        if (!engine.data.spell(spellId)) continue
+        castSubSpell(engine, fight, f, spellId, 0, f.cell, false, 0)
+      }
+    }
+  }
 }
 
 export { Engine } from './engine'

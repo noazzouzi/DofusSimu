@@ -22,6 +22,8 @@ export interface PlayerFighterInput {
   role?: string
   team?: TeamId
   cell?: number
+  /** Sorts passifs de l'équipement (effet 1175, cf. computeBuildStats().passiveSpells). */
+  passiveSpells?: number[]
 }
 
 export function breedSpellIds(data: DataStore, breedId: number, level: number, variants?: (0 | 1)[]): number[] {
@@ -76,6 +78,7 @@ export function createPlayerFighter(data: DataStore, input: PlayerFighterInput):
     castsOnTarget: {},
     ai: input.ai ?? 'player',
     role: input.role,
+    passiveSpells: input.passiveSpells?.length ? input.passiveSpells.slice() : undefined,
     direction: 1,
     tags: {},
   }
