@@ -494,10 +494,10 @@ describe('50 / 51 — porter et jeter (Pandawa)', () => {
     expect(engine.fighterAt(fs, panda.cell)).toBe(panda)
 
     const land = cellAt(13, 0)
-    // canCast refuse tout sort à un Porteur (état 3 `preventsSpellCast`) : l'exception « le critère du sort exige
-    // l'état » (mechanics.md §4.3, HS=3 de Propulsion) n'est pas dans cast.ts — sous-sort (mêmes effets) en attendant.
-    expect(castSpell(engine, fs, panda, PROPULSION, land).failure).toBe('state')
-    expect(castSubSpell(engine, fs, panda, PROPULSION, 3, land, false, 0)).toBe(true)
+    // Un Porteur (état 3 `preventsSpellCast`) peut lancer les sorts dont le critère exige l'état (HS=3 de Propulsion,
+    // mechanics.md §4.3 — exception gérée par cast.ts `castPreventedByStates`).
+    panda.ap = 20
+    expect(castSpell(engine, fs, panda, PROPULSION, land).ok).toBe(true)
     expect(ally.cell).toBe(land)
     expect(panda.cell).toBe(cellAt(10, 0))
     expect(panda.carrying).toBeUndefined()
