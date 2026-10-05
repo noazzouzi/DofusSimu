@@ -17,6 +17,7 @@ import { nextRandom } from '../random'
 import { compileTargetMask, matchesTargetMask, type MaskContext } from '../targetMask'
 import type { Buff, DamageKind, Fighter, FightState, KnownSpell } from '../types'
 import { getEffectHandler, noteUnknownEffect, type EffectContext } from './registry'
+import { enforceMaxStack } from './buffs/common'
 
 /** Profondeur maximale de sous-sorts / déclenchements imbriqués. */
 export const MAX_DEPTH = 8
@@ -512,6 +513,8 @@ export function runEffect(engine: Engine, fight: FightState, a: RunEffectArgs): 
   const effect = a.effect
   if (effect.delay > 0) {
     for (const t of a.targets) {
+      // Cumul limité par le maxStack du sort, comme pour les buffs instantanés (buffs/common.ts).
+      enforceMaxStack({ engine, fight, ...a } as EffectContext, t, 0, 'delayed')
       engine.addBuff(fight, t, {
         sourceId: a.caster.id,
         spellId: a.spellId,
@@ -534,6 +537,8 @@ export function runEffect(engine: Engine, fight: FightState, a: RunEffectArgs): 
     for (const t of a.targets) {
       // Pas de « +1 tour » pour les buffs TB : c'est un artefact du décompte OTOMAI (effects.md, vérification).
       const bonus = 0
+      // Cumul limité par le maxStack du sort (ex. Bouclier absorbant du Buboxor : 3 cumuls ; poisons).
+      enforceMaxStack({ engine, fight, ...a } as EffectContext, t, 0, 'trigger')
       engine.addBuff(fight, t, {
         sourceId: a.caster.id,
         spellId: a.spellId,
