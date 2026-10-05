@@ -1,7 +1,7 @@
 /**
  * Campagne de composition du Vortex (docs/reports/vortex-composition.md) : stuffs Vortex construits par
- * l'optimiseur pour les classes candidates, ajoutés comme presets dérivés (`<preset>_vortex[_def]`, stuff
- * `vortex_<preset>[_def]`). Vérifie que chaque build est valide en jeu (conditions, 995 points + parchemins, un seul
+ * l'optimiseur pour les classes candidates, ajoutés comme presets dérivés (`<preset>_vortex[_def|_off]`, stuff
+ * `vortex_<preset>[_def|_off]`). Vérifie que chaque build est valide en jeu (conditions, 995 points + parchemins, un seul
  * exo PA/PM/PO, une ligne de forgemagie par objet, au plus 6 transcendances, une seule prysmaradite, Dofus/trophées
  * uniques) et qu'un preset dérivé garde l'identité IA de son preset de base.
  */
@@ -17,7 +17,8 @@ describe('presets de la campagne de composition (vortex-composition.md)', () => 
   it('existent, dérivent d\'un preset de base et ne sont pas candidats de composition', () => {
     expect(COMPO.length).toBeGreaterThanOrEqual(20)
     for (const p of COMPO) {
-      expect(p.stuff, p.id).toBe(`vortex_${p.extends}${p.id.endsWith('_def') ? '_def' : ''}`)
+      const suffix = p.id.endsWith('_def') ? '_def' : p.id.endsWith('_off') ? '_off' : ''
+      expect(p.stuff, p.id).toBe(`vortex_${p.extends}${suffix}`)
       expect(p.id.startsWith(`${p.extends}_vortex`), p.id).toBe(true)
       expect(BASE_PRESETS.some(b => b.id === p.id), p.id).toBe(false)
       const base = getPreset(p.extends!)

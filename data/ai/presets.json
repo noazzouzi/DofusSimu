@@ -1058,6 +1058,131 @@
         {"itemId": 694},
         {"itemId": 13344}
       ]
+    },
+    "vortex_osamodas_invocations_def": {
+      "label": "Osamodas armée d'invocations — Œil de Vortex, défensif (docs/reports/vortex-composition.md)",
+      "element": "water",
+      "breeds": [2],
+      "points": {"primary": "chance", "primaryCap": 200, "rest": "vitality"},
+      "source": "docs/reports/vortex-composition.md — optimizeStuff, proxy Vortex défensif (proxy R2, même méthode que docs/reports/vortex-stuffs.md)",
+      "items": [
+        {"itemId": 31789, "exos": [{"stat": "neutralResPct", "value": 2, "kind": "transcendence"}]},
+        {"itemId": 15698, "exos": [{"stat": "ap", "value": 1}]},
+        {"itemId": 15190, "exos": [{"stat": "mp", "value": 1}]},
+        {"itemId": 14162, "exos": [{"stat": "range", "value": 1}]},
+        {"itemId": 15191, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 34330, "exos": [{"stat": "neutralResPct", "value": 2, "kind": "transcendence"}]},
+        {"itemId": 14161, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 18697, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 34331, "exos": [{"stat": "neutralResPct", "value": 2, "kind": "transcendence"}]},
+        {"itemId": 33156},
+        {"itemId": 7754},
+        {"itemId": 20286},
+        {"itemId": 7043},
+        {"itemId": 22022},
+        {"itemId": 694},
+        {"itemId": 7115}
+      ]
+    },
+    "vortex_steamer_artillerie_def": {
+      "label": "Steamer artillerie — Œil de Vortex, défensif (docs/reports/vortex-composition.md)",
+      "element": "earth",
+      "breeds": [15],
+      "points": {"primary": "strength", "primaryCap": 200, "rest": "vitality"},
+      "source": "docs/reports/vortex-composition.md — optimizeStuff, proxy Vortex défensif (proxy R2, même méthode que docs/reports/vortex-stuffs.md)",
+      "items": [
+        {"itemId": 31789, "exos": [{"stat": "criticalDamage", "value": 8, "kind": "transcendence"}]},
+        {"itemId": 19608, "exos": [{"stat": "ap", "value": 1}]},
+        {"itemId": 15190, "exos": [{"stat": "mp", "value": 1}]},
+        {"itemId": 14162, "exos": [{"stat": "range", "value": 1}]},
+        {"itemId": 15191, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 31798, "exos": [{"stat": "criticalDamage", "value": 8, "kind": "transcendence"}]},
+        {"itemId": 14161, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 18697, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 31800, "exos": [{"stat": "criticalDamage", "value": 8, "kind": "transcendence"}]},
+        {"itemId": 33226},
+        {"itemId": 7754},
+        {"itemId": 20286},
+        {"itemId": 7043},
+        {"itemId": 22022},
+        {"itemId": 7115},
+        {"itemId": 694}
+      ]
+    },
+    "vortex_osamodas_invocations_off": {
+      "label": "Osamodas armée d'invocations — Œil de Vortex, offensif (docs/reports/vortex-composition.md)",
+      "element": "water",
+      "breeds": [2],
+      "points": {"primary": "chance", "rest": "vitality"},
+      "source": "docs/reports/vortex-composition.md — optimizeStuff, proxy Vortex offensif (proxy R2, même méthode que docs/reports/vortex-stuffs.md)",
+      "items": [
+        {"itemId": 22200, "exos": [{"stat": "rangedDamagePct", "value": 1, "kind": "transcendence"}]},
+        {"itemId": 32231, "exos": [{"stat": "ap", "value": 1}]},
+        {"itemId": 19985, "exos": [{"stat": "mp", "value": 1}]},
+        {"itemId": 14162, "exos": [{"stat": "range", "value": 1}]},
+        {"itemId": 32121, "exos": [{"stat": "rangedDamagePct", "value": 1, "kind": "transcendence"}]},
+        {"itemId": 22202, "exos": [{"stat": "rangedDamagePct", "value": 1, "kind": "transcendence"}]},
+        {"itemId": 18005, "exos": [{"stat": "rangedDamagePct", "value": 1, "kind": "transcendence"}]},
+        {"itemId": 32233, "exos": [{"stat": "rangedDamagePct", "value": 1, "kind": "transcendence"}]},
+        {"itemId": 18017, "exos": [{"stat": "rangedDamagePct", "value": 1, "kind": "transcendence"}]},
+        {"itemId": 33137},
+        {"itemId": 30453},
+        {"itemId": 7043},
+        {"itemId": 7754},
+        {"itemId": 694},
+        {"itemId": 30455},
+        {"itemId": 22020}
+      ]
+    },
+    "vortex_steamer_artillerie_off": {
+      "label": "Steamer artillerie — Œil de Vortex, offensif (docs/reports/vortex-composition.md)",
+      "element": "earth",
+      "breeds": [15],
+      "points": {"primary": "strength", "rest": "vitality"},
+      "source": "docs/reports/vortex-composition.md — optimizeStuff, proxy Vortex offensif (proxy R2, même méthode que docs/reports/vortex-stuffs.md)",
+      "items": [
+        {"itemId": 14091, "exos": [{"stat": "mp", "value": 1}]},
+        {"itemId": 22206, "exos": [{"stat": "ap", "value": 1}]},
+        {"itemId": 22205, "exos": [{"stat": "criticalDamage", "value": 8, "kind": "transcendence"}]},
+        {"itemId": 14162},
+        {"itemId": 14093, "exos": [{"stat": "criticalDamage", "value": 8, "kind": "transcendence"}]},
+        {"itemId": 31798, "exos": [{"stat": "criticalDamage", "value": 8, "kind": "transcendence"}]},
+        {"itemId": 14161, "exos": [{"stat": "criticalDamage", "value": 8, "kind": "transcendence"}]},
+        {"itemId": 18718, "exos": [{"stat": "criticalDamage", "value": 8, "kind": "transcendence"}]},
+        {"itemId": 31800, "exos": [{"stat": "criticalDamage", "value": 8, "kind": "transcendence"}]},
+        {"itemId": 13465},
+        {"itemId": 30453},
+        {"itemId": 7043},
+        {"itemId": 29136},
+        {"itemId": 19398},
+        {"itemId": 7754},
+        {"itemId": 22001}
+      ]
+    },
+    "vortex_steamer_soutien_off": {
+      "label": "Steamer soutien — Œil de Vortex, offensif (docs/reports/vortex-composition.md)",
+      "element": "earth",
+      "breeds": [15],
+      "points": {"primary": "strength", "rest": "vitality"},
+      "source": "docs/reports/vortex-composition.md — optimizeStuff, proxy Vortex offensif (proxy R2, même méthode que docs/reports/vortex-stuffs.md)",
+      "items": [
+        {"itemId": 14169, "exos": [{"stat": "range", "value": 1}]},
+        {"itemId": 14077, "exos": [{"stat": "ap", "value": 1}]},
+        {"itemId": 18594, "exos": [{"stat": "mp", "value": 1}]},
+        {"itemId": 14162, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 14078, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 31798, "exos": [{"stat": "pushRes", "value": 12, "kind": "transcendence"}]},
+        {"itemId": 14161, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 18692, "exos": [{"stat": "vitality", "value": 100, "kind": "transcendence"}]},
+        {"itemId": 31800, "exos": [{"stat": "pushRes", "value": 12, "kind": "transcendence"}]},
+        {"itemId": 33162},
+        {"itemId": 7754},
+        {"itemId": 7115},
+        {"itemId": 20286},
+        {"itemId": 22022},
+        {"itemId": 13759},
+        {"itemId": 13344}
+      ]
     }
   },
   "presets": [
@@ -1146,6 +1271,11 @@
     {"id": "forgelance_zone_terre_vortex", "extends": "forgelance_zone_terre", "stuff": "vortex_forgelance_zone_terre", "label": "Forgelance zone Terre-Feu — stuff Vortex (équilibré)", "source": "docs/reports/vortex-composition.md (preset dérivé de forgelance_zone_terre, stuff vortex_forgelance_zone_terre)"},
     {"id": "sadida_terre_vortex", "extends": "sadida_terre", "stuff": "vortex_sadida_terre", "label": "Sadida DPS Terre — stuff Vortex (équilibré)", "source": "docs/reports/vortex-composition.md (preset dérivé de sadida_terre, stuff vortex_sadida_terre)"},
     {"id": "iop_multi_zone_vortex", "extends": "iop_multi_zone", "stuff": "vortex_iop_multi_zone", "label": "Iop zone Feu (vagues) — stuff Vortex (équilibré)", "source": "docs/reports/vortex-composition.md (preset dérivé de iop_multi_zone, stuff vortex_iop_multi_zone)"},
-    {"id": "sadida_terre_vortex_def", "extends": "sadida_terre", "stuff": "vortex_sadida_terre_def", "label": "Sadida DPS Terre — stuff Vortex (défensif)", "source": "docs/reports/vortex-composition.md (preset dérivé de sadida_terre, stuff vortex_sadida_terre_def)"}
+    {"id": "sadida_terre_vortex_def", "extends": "sadida_terre", "stuff": "vortex_sadida_terre_def", "label": "Sadida DPS Terre — stuff Vortex (défensif)", "source": "docs/reports/vortex-composition.md (preset dérivé de sadida_terre, stuff vortex_sadida_terre_def)"},
+    {"id": "osamodas_invocations_vortex_def", "extends": "osamodas_invocations", "stuff": "vortex_osamodas_invocations_def", "label": "Osamodas armée d'invocations — stuff Vortex (défensif)", "source": "docs/reports/vortex-composition.md (preset dérivé de osamodas_invocations, stuff vortex_osamodas_invocations_def)"},
+    {"id": "steamer_artillerie_vortex_def", "extends": "steamer_artillerie", "stuff": "vortex_steamer_artillerie_def", "label": "Steamer artillerie — stuff Vortex (défensif)", "source": "docs/reports/vortex-composition.md (preset dérivé de steamer_artillerie, stuff vortex_steamer_artillerie_def)"},
+    {"id": "osamodas_invocations_vortex_off", "extends": "osamodas_invocations", "stuff": "vortex_osamodas_invocations_off", "label": "Osamodas armée d'invocations — stuff Vortex (offensif)", "source": "docs/reports/vortex-composition.md (preset dérivé de osamodas_invocations, stuff vortex_osamodas_invocations_off)"},
+    {"id": "steamer_artillerie_vortex_off", "extends": "steamer_artillerie", "stuff": "vortex_steamer_artillerie_off", "label": "Steamer artillerie — stuff Vortex (offensif)", "source": "docs/reports/vortex-composition.md (preset dérivé de steamer_artillerie, stuff vortex_steamer_artillerie_off)"},
+    {"id": "steamer_soutien_vortex_off", "extends": "steamer_soutien", "stuff": "vortex_steamer_soutien_off", "label": "Steamer soutien — stuff Vortex (offensif)", "source": "docs/reports/vortex-composition.md (preset dérivé de steamer_soutien, stuff vortex_steamer_soutien_off)"}
   ]
 }

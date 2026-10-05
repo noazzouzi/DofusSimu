@@ -1,5 +1,11 @@
 # Œil de Vortex — campagne de composition (quatre classes, stuffs et séquence de combat)
 
+> **Campagne interrompue le 2026-10-05 à la demande de l'utilisateur.** La composition d'un donjon est désormais
+> choisie par l'utilisateur (pour l'Œil de Vortex : 1 Eniripsa, 1 Enutrof, 2 Crâs) ; le simulateur optimise les builds
+> (élément, stuff, exos, variantes de sorts) et la stratégie de CETTE composition. Les mesures ci-dessous (criblage à
+> 32 graines, début du halving) restent valables comme exploration : elles ne sont pas un classement définitif.
+
+
 *Rapport en cours de rédaction (campagne du 2026-10-05) — les tableaux sont complétés au fil des mesures.*
 
 ## Protocole
@@ -190,6 +196,28 @@ Osamodas soin ou Steamer soutien à la place de l'Eniripsa, Steamer artillerie) 
 | Iop → Sadida Terre, Eniripsa → Osamodas soin | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,34 (+0,16 ± 0,56) | 6,34 (+0,22 ± 0,81) | 7,50 (−0,44 ± 1,76) | 25,13 (−3,81 ± 3,47) | 18,09 (−2,94 ± 2,53) | 27,2 % | 6 491 | 119 880 | 40 337 |
 | Iop → Steamer artillerie, Eniripsa → Osamodas soin | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,06 (−0,13 ± 0,53) | 6,22 (+0,09 ± 0,69) | 7,06 (−0,88 ± 1,49) | 25,78 (−3,16 ± 2,86) | 19,00 (−2,03 ± 2,42) | 32,5 % | 6 852 | 122 634 | 38 078 |
 | Iop → Sadida Terre (déf.) | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,03 (−0,16 ± 0,47) | 5,81 (−0,31 ± 0,55) | 7,00 (−0,94 ± 1,11) | 26,75 (−2,19 ± 2,52) | 19,38 (−1,66 ± 2,07) | 27,2 % | 11 816 | 124 733 | 50 767 |
+
+### Pourquoi les équipes d'invocateurs gagnent (lecture des combats)
+
+Les remplacements isolés étaient neutres, mais **empiler les invocateurs** (Osamodas invocateur, Steamer artillerie,
+Steamer soutien, Osamodas soin) change la nature du combat :
+
+- **Les invocations encaissent à la place des personnages.** Dans la victoire `Y_STEOSASTE` graine 456089576 (tour 47,
+  aucun mort), les invocations alliées (Harponneuse, Foreuse, Gardienne, Bathyscaphe, Crocoléreux, objets animés de
+  l'Enutrof) absorbent **143 000** dégâts, contre ≈ 40 000 pour les quatre personnages ; les dégâts subis par les
+  personnages tombent de 54 500 (R) à 40 000 par combat, les collisions du Brabuzar de 11 200 à 8 500, et la première
+  mort recule de 5 à 9 tours.
+- **Elles héritent du stuff Vortex de leur invocateur** (DofusDB `bonusCharacteristics`, appliqué par
+  `createMonsterFighter`, `summonerShare`) : les tourelles du Steamer reçoivent **180 % des PV** de l'invocateur et 100 %
+  de ses caractéristiques et dommages (Harponneuse / Gardienne / Bathyscaphe : 10 881 PV avec les 6 045 PV du Steamer
+  soutien), les créatures de l'Osamodas 100 % des PV, de la Chance et des dommages Eau (Crocoléreux : 5 353 PV).
+- **Leurs dégâts ignorent le *Pacifiste* de leur maître** : 13 000 à 17 500 dégâts par combat viennent des créatures de
+  l'Osamodas ; la part des tours pacifiés des personnages tombe de 31 % (R) à 20-26 %.
+- **Elles occupent le terrain** : murs de corps (créatures, tourelles), cibles pour les Méjaires et les Brabuzars.
+
+**Fidélité** : la part des caractéristiques de l'invocateur vient des données (`bonusCharacteristics`) mais sa base
+exacte (PV max de début de combat, buffs compris ou non) est marquée INCERTAINE dans `src/engine/factory.ts` ; l'IA des
+invocations est celle de l'équipe (`src/ai/team/summons.ts`). Le gain mesuré dépend de ces deux points.
 
 ## Halving successif
 
