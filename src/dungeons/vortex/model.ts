@@ -471,12 +471,6 @@ export class VortexAIModel implements ScenarioAIModel {
     const star = hasStar(victim) || (r0 !== undefined && hasStar(r0) && newDeathHour(r0, victim) === 0)
     if (star) return row ? row[0] : this.theta.vortex.corruptKill
     const h = newDeathHour(r0, victim) || currentHour(leaf)
-    // Fin de partie (réglage, tour 4) : toutes les vagues arrivées et au plus ENDGAME_LEFT monstres à corrompre ⇒ une
-    // heure de mort NOUVELLE ouvre des fenêtres d'étoile à d'autres personnages (combat bloqué 30 tours à 18 / 19 : le
-    // dernier zombie n'avait qu'une heure, celle de l'Enutrof, qui ne le tuait jamais) ; son coût d'heure ne compte plus.
-    if (ENDGAME_NEWHOUR > 0 && h >= 1 && h <= HOUR_COUNT && newDeathHour(r0, victim) === h && r0 && deathHours(r0) !== 0 && isEndgame(root)) {
-      return Math.max(row ? row[h] : -Infinity, ENDGAME_NEWHOUR)
-    }
     if (row && h >= 1 && h <= HOUR_COUNT) return row[h]
     // Monstre sans prix (apparu depuis la mise à jour) : mort non planifiée (coût zombie + Vortex si l'heure est neuve).
     return this.unplannedDeath(root, victim, h)
@@ -675,17 +669,6 @@ export class VortexAIModel implements ScenarioAIModel {
       }
       // Pas d'indice pour les kills « payés » hors étoile et hors contrat (essai KH du tour 2, retiré à la vérification :
       // corrompus −0,28 ± 0,29, tours −0,83 ± 0,60 sur 64 graines inédites ; docs/tuning-log.md).
-      // Fin de partie (réglage, tour 4) : un zombie restant tué à une heure nouvelle (voir `deathValue`) — la ligne de
-      // kill de `fast` le vise (sans indice, aucun plan ne l'achevait : PV regagnés par vol de vie entre deux étoiles).
-      if (ENDGAME_NEWHOUR > 0 && isEndgame(view.fight)) {
-        const h = currentHour(view.fight)
-        for (const f of view.fight.fighters) {
-          if (!f.alive || !isWaveMonster(f) || isCorrupted(f) || hasStar(f) || !h) continue
-          const mask = deathHours(f)
-          if (mask === 0 || mask & (1 << (h - 1)) || out.some(x => x.kind === 'kill' && x.targetId === f.id)) continue
-          out.push({ kind: 'kill', targetId: f.id, weight: ENDGAME_NEWHOUR })
-        }
-      }
     }
     const avoid: number[] = []
     if (bb.prices.cell) for (let c = 0; c < bb.prices.cell.length; c++) if (bb.prices.cell[c] < 0) avoid.push(c)
@@ -785,20 +768,6 @@ export class VortexAIModel implements ScenarioAIModel {
     if (!plan) return this.lastPhase === 'waiting' ? 'Attente : tout est corrompu, sécurité hors des lignes de l’Auroraire' : ''
     return describePlan(plan)
   }
-}
-
-/** Prix d'une heure de mort nouvelle d'un zombie en fin de partie (réglage, tour 4 ; 0 = prix du planificateur). */
-const ENDGAME_NEWHOUR = 800
-/** Fin de partie : toutes les vagues arrivées et au plus ce nombre de monstres de vague non corrompus. */
-const ENDGAME_LEFT = 2
-
-/** Toutes les vagues sont arrivées et il reste au plus `ENDGAME_LEFT` monstres de vague à corrompre. */
-function isEndgame(s: FightState): boolean {
-  const vx = vortexState(s)
-  if (!vx || vx.wavesSpawned < vx.arrivalRounds.length) return false
-  let left = 0
-  for (const f of s.fighters) if (isWaveMonster(f) && !isCorrupted(f)) left++
-  return left > 0 && left <= ENDGAME_LEFT
 }
 
 function emptyPlan(version: number): ScenarioPlan {

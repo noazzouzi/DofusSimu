@@ -960,11 +960,13 @@ au tour 7 **−0,18 ± 0,16** (+55 / −79), au tour 13 −0,17 ± 0,21, total +
 
 1. `src/ai/tactical/turnSearch.ts` — **ligne de kill par une glyphe** (`glyphKillLine`, travail partiel repris) : neutre
    (n = 64), corrige le puzzle P6 en `fast` (plus de `it.fails`).
-2. `src/dungeons/vortex/model.ts` — **fin de partie** : toutes les vagues arrivées et au plus 2 monstres à corrompre ⇒ une
+2. **[RETIRÉ à la vérification, voir « Vérification (tour 4) » : ralentit les fins de partie naturelles et coûte une
+   victoire]** `src/dungeons/vortex/model.ts` — **fin de partie** : toutes les vagues arrivées et au plus 2 monstres à corrompre ⇒ une
    mort de zombie à une heure NOUVELLE vaut au moins +800 PVe (`deathValue`) et le zombie reçoit un indice `kill` (ligne de
    kill de `fast`). Ne change aucune décision avant la fin de partie ; débloque le combat 2750401650 (18 / 19 pendant 30
    tours → victoire dans la variante SPG) et accélère la victoire 3712432396 (45 → 44 tours).
-3. Tests : `tests/ai-puzzles-vortex.test.ts` — P6 `fast` n'est plus marqué `it.fails` ; **P19** (fin de partie : dernier
+3. Tests : `tests/ai-puzzles-vortex.test.ts` — P6 `fast` n'est plus marqué `it.fails` ; **P19 [retiré avec le
+   correctif à la vérification]** (fin de partie : dernier
    zombie à 500 PV, une seule heure de mort, toutes les vagues arrivées ⇒ indice `kill` et kill à l'heure nouvelle ; échoue
    sans le correctif).
 4. Équipe (aucun preset modifié) : l'Iop en stuff défensif (`iop_terre_vortex_def`) allonge la survie (+1,4 tour,
@@ -1055,3 +1057,70 @@ défaut, voir plus bas) : graine **243694197**, équipe `cra_feu_vortex,enutrof_
 eniripsa_soin_vortex`, IA `fast` : **victoire au tour 49, 1 mort** (« Le Vortex est vaincu »). Reproductible par
 `npx tsx src/cli/simulate.ts fight vortex --team cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex,eniripsa_soin_vortex --ai fast --seed 243694197 --theta θ.json --json`
 avec `θ.json` = `{"value":{"potAfter":0.3}}` ; replay : `.cache/tuning/r4/rep/final/cli-s243694197.json`.
+
+### Vérification (tour 4)
+
+Vérification indépendante (harnais `.cache/tuning/r4v/` : `run.mts` et `pair.cjs` du réglage, `batch.sh`, 3 processus).
+Arbres de travail git : **avant** = `base-tuning-r4` ; **livré** = `base-tuning-r4` + seuls les diffs du réglage
+(`turnSearch.ts`, `model.ts`, tests ; identique à l'arbre vivant, aucun changement concurrent) ; **GKL seule** = avant +
+`turnSearch.ts` ; **fin de partie seule** = avant + `model.ts`. `fast`, graines inédites `masterSeed` 7 (64), plus les
+graines du réglage (`masterSeed` 31-34) pour les bras qu'il n'avait pas mesurés : avant + Iop défensif, GKL seule + Iop
+défensif. La GKL est inactive en `standard` (largeur 6) : 3 graines `standard` (`masterSeed` 7), avant et livré
+**identiques** événement par événement.
+
+Reproductions : victoire **3712432396** (Iop défensif) refaite par la CLI — tour 44 avec le code livré, mais **aussi
+gagnée par le code d'AVANT** (tour 45) et par le code final ci-dessous (tour 45) : cette victoire vient du stuff de
+l'Iop, pas du code du tour 4. Victoire 243694197 (θ `potAfter` 0,3, non gardé) refaite (tour 49, 1 mort). Les tableaux
+du réglage se recalculent à l'identique depuis ses lignes brutes (`.cache/tuning/r4/out`). P6 `fast` et P19 échouent
+sur `base-tuning-r4` et réussissent sur le livré, comme annoncé.
+
+| Δ apparié, `fast` | n | Victoires | Corr. t7 | Corr. t13 | Corr. total | Tours | Premier mort |
+|---|---|---|---|---|---|---|---|
+| Livré − avant, équipe stuffée (ms 7) | 64 | 0 → 0 | −0,02 ± 0,03 | 0,00 ± 0,17 | +0,06 ± 0,57 | −0,02 ± 0,96 | +0,05 ± 0,94 |
+| Code final (GKL) − avant, équipe stuffée (ms 7 + 31-34) | 192 | 0 → 0 | −0,01 ± 0,03 | +0,01 ± 0,10 | −0,07 ± 0,27 | −0,13 ± 0,51 | −0,07 ± 0,44 |
+| Livré − avant, Iop défensif (ms 7) | 64 | **2 → 0** | 0,00 ± 0,09 | +0,06 ± 0,11 | −0,36 ± 0,70 | −0,73 ± 1,32 | −0,36 ± 1,23 |
+| Livré − avant, Iop défensif (ms 31-34) | 128 | **3 → 1** | −0,04 ± 0,07 | +0,15 ± 0,13 | +0,01 ± 0,46 | −0,22 ± 0,82 | −1,05 ± 1,43 |
+| Code final (GKL) − avant, Iop défensif (ms 7 + 31-34) | 192 | **5 → 2** (+0 / −3) | −0,03 ± 0,05 | +0,12 ± 0,10 | −0,11 ± 0,38 | −0,42 ± 0,70 | −0,55 ± 1,24 |
+| Iop défensif − équipe stuffée, code d'avant | 192 | **0 → 5** | −0,16 ± 0,14 | **−0,37 ± 0,18** | +0,20 ± 0,49 | **+1,32 ± 0,89** | **+3,28 ± 1,44** |
+| Iop défensif − équipe stuffée, code final | 192 | 0 → 2 | −0,18 ± 0,14 | **−0,26 ± 0,17** | +0,16 ± 0,47 | **+1,03 ± 0,81** | **+2,79 ± 1,42** |
+
+Moyennes (n = 192) : équipe stuffée avant 26,77 tours, corrompus 2,27 / 4,48 / 7,22 (t7 / t13 / total), premier mort
+18,4 ; code final 26,64, 2,26 / 4,48 / 7,15, 18,4. Iop défensif avant 28,09, 2,10 / 4,11 / 7,43, 21,7, **5 victoires**
+(379124828, 2315204589, 3712432396, 1108010007, 905653739) ; code final 27,67, 2,08 / 4,23 / 7,31, 21,2, 2 victoires
+(3712432396, 1108010007).
+
+- **Correctif de fin de partie (`model.ts`) : RETIRÉ.** Il ne peut agir qu'à ≥ 17 corrompus ; sur 384 combats d'avant
+  (équipe stuffée 192, Iop défensif 192), seuls les 5 combats gagnés y arrivent, et AUCUN n'y bloque (le blocage à 18 / 19
+  du réglage n'a été vu que dans la variante SPG, rejetée). Arbre « fin de partie seule » sur ces 5 combats : 379124828
+  victoire 47 → 51 tours et 1 → 3 morts ; 2315204589 **victoire → défaite** (limite de 60 tours, Vortex à 11 % ; une heure
+  distincte de plus pour le Vortex, 9 → 10, phase 2 de 10 → 19 tours) ; 1108010007 dernier corrompu au tour 35 → 39
+  (victoire 46 → 49) ; 905653739 tour 40 → 43 (victoire 47 → 50) ; 3712432396 45 → 44. Sur l'arbre GKL (Iop défensif,
+  n = 192), il change 2 combats : 3712432396 (45 → 44) et **1108010007 (victoire au tour 47 → burst raté au tour 53)**.
+  Mécanisme (replay 1108010007, tours 33-34) : dès qu'il ne reste qu'un monstre, l'indice `kill` à 800 détourne
+  l'Enutrof de la mise en place du kill SOUS ÉTOILE prévu au créneau suivant (heure V) : sans *Maladresse* et à une autre
+  case, il ne l'achève plus au tour 34, puis le zombie est tué à IX et XII (heures nouvelles) avant d'être corrompu
+  au tour 39. Le prix `max(kill[h], 800)` ignore à la fois la fenêtre d'étoile imminente et C_vx (heure nouvelle pour le
+  Vortex). Code rétabli à `base-tuning-r4` ; P19 (qui exigeait ce comportement) supprimé.
+- **Ligne de kill par une glyphe (GKL, `turnSearch.ts`) : gardée, neutre.** Équipe stuffée n = 192 : tous les Δ < 0,15
+  en valeur absolue (IC ± 0,03 à ± 0,5) ; Iop défensif n = 192 : corrompus au tour 13 +0,12 ± 0,10, total −0,11 ± 0,38,
+  tours −0,42 ± 0,70 ; elle corrige P6 `fast`. **Réserve** : avec l'Iop défensif, 3 victoires de l'avant sont perdues
+  (379124828, 2315204589, 905653739) et aucune n'est gagnée (McNemar 3-0, p = 0,25, non significatif) ; ces combats
+  divergent tôt (tours 9-21) par simple chaos : premier écart de 379124828 au tour 9, Eniripsa (même début « Scalpel puis
+  glyphe », suite différente car la GKL consomme jusqu'à 3 nœuds + sa ligne sur les 120 du faisceau et inscrit ses nœuds
+  dans `seen`). Variante essayée : GKL seulement si la ligne directe ne tue pas avec V > racine — P6 échoue (la ligne
+  directe y « gagne » V malgré l'heure à −3 000) ; non retenue.
+- **Iop en stuff défensif (preset existant, aucun preset modifié)** : le seul levier de victoire mesuré. Sur n = 192 :
+  **0 → 5 victoires** avec le code d'avant (0 → 2 avec le code final), +1,0 à +1,3 tour, +2,8 à +3,3 tours avant le
+  premier mort, mais corruption précoce plus lente (t13 −0,26 à −0,37, significatif). Les échecs « vague non corrompue
+  au déverrouillage » passent de 90 à 110 (l'équipe vit plus longtemps mais corrompt moins vite). Le gain de tours annoncé
+  (+1,23 ± 1,04) se reproduit sur l'ensemble, pas sur `masterSeed` 7 seul avec le code livré (+0,34 ± 1,16).
+- Ce qu'annonçait le réglage et qui ne tient pas : « 1 victoire / 128 avec le code final » est vrai, mais le code d'avant
+  en fait 3 / 128 sur les mêmes graines avec la même équipe ; aucune victoire n'est due au code du tour 4.
+- Tests sur l'arbre vivant final (GKL seule) : `npx tsc --noEmit` vert ; `npx vitest run tests/ai-* tests/vortex-*
+  tests/engine-summon-owned.test.ts` : **333 réussis, 1 ignoré** (P19 retiré ; dont combats de contrôle `ai-team-control`
+  et puzzles Vortex, P6 `fast` compris). Aucune infidélité du moteur trouvée (aucun test `it.fails` ajouté).
+- Pistes ajoutées pour le tour 5 : fin de partie à reprendre SEULEMENT en cas de blocage avéré (aucun progrès depuis
+  ≥ 2 boucles d'horloge, aucune fenêtre d'étoile prévue pour le monstre dans l'horizon, heure déjà utilisée par le
+  Vortex), à valider sur les combats qui atteignent 17 corrompus ; GKL : ne pas inscrire ses nœuds dans `seen` / ne la
+  lancer que si le pas de kill de la ligne directe fait baisser V ; mesurer l'équipe avec l'Iop défensif comme référence
+  (seule source de victoires mesurée) et juger les victoires sur n ≥ 384.
