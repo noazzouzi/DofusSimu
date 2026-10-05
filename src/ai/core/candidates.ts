@@ -31,6 +31,7 @@ import { createMonsterFighter } from '../../engine/factory'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
 import { CELL_COUNT, cellInDirection, distance } from '../../map/geometry'
 import { pullDirection, pushDirection } from '../../engine/effects/movement/drag'
+import { availableSummonSlots, summonSlotCost } from '../../engine/effects/summons'
 import { compileZone, zoneEfficiency, zoneMembership } from '../../map/zones'
 import type { ZoneSpec } from '../../data/model'
 import type { AIView, Blackboard, MacroAction, Perception, ReachInfo } from '../types'
@@ -455,6 +456,9 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
     if (!mem(cell) || !matchesTargetMask(mask, me, f)) return 0
     return zoneEfficiency(zone, c.cell, cell, c.from)
   }
+  // Case finale du lanceur : case de lancer (chemin) puis téléportation éventuelle.
+  let dest = c.from
+  if (prof.moves.some(mv => mv.onCaster && (mv.kind === 'teleport' || mv.kind === 'swap' || mv.kind === 'symmetric'))) dest = c.cell
   let value = 0
   for (const f of s.fighters) {
     if (!f.alive || f.carriedBy !== undefined) continue
@@ -498,7 +502,7 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
         else dMp += removed
       }
       if (dAp > 0 || dMp > 0) {
-        value -= w.incoming * threat.removalDelta(f, dAp, dMp)
+        value -= w.incoming * threat.removalDelta(f, dAp, dMp, me.id, dest)
         const row = threat.rowOf(f)
         const alpha = row && row.hitsFromStart ? 0.15 : 0.6
         value += (w.control ?? 0.15) * (dAp * (th / Math.max(1, f.stats.ap)) + dMp * ((alpha * th) / Math.max(1, f.stats.mp)))
@@ -579,20 +583,25 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
       value -= w.incoming * threat.cellIncomingTeamDelta(f, c.from)
     }
   }
-  // Déplacement du lanceur : case de lancer (chemin) puis téléportation éventuelle — Δ des dégâts attendus sur lui.
-  let dest = c.from
-  if (prof.moves.some(mv => mv.onCaster && (mv.kind === 'teleport' || mv.kind === 'swap' || mv.kind === 'symmetric'))) dest = c.cell
+  // Déplacement du lanceur — Δ des dégâts attendus sur l'équipe.
   if (dest !== meCell && dest >= 0 && dest < CELL_COUNT) value -= w.incoming * threat.cellIncomingTeamDelta(me, dest)
   const occupied = s.fighters.some(f => f.alive && f.carriedBy === undefined && (f.id === me.id ? c.from : believedCell(f, view.team)) === c.cell)
   let summonedOnce = false
   if (prof.summonLines.length && !occupied) {
     // Même valeur que V : PV de l'invocation × ω (0,4) + menace détournée (leurre : `decoyDelta`, π recalculé).
+    const bypass = view.engine.data.spell(c.spellId)?.bypassSummoningLimit === true
+    let slots = me.kind === 'player' && !bypass ? availableSummonSlots(s, me) : Infinity
     for (const sl of prof.summonLines) {
       if (sl.revive) {
         const dead = s.fighters.some(f => !f.alive && f.team === me.team && f.kind === 'player')
         if (dead) value += 0.5 * me.baseMaxHp
         continue
       }
+      // Limite d'invocations (comme le moteur, summons.ts) : plus de place ⇒ le sort n'invoque rien.
+      const md = view.engine.data.monster(sl.monsterId)
+      const cost = md ? summonSlotCost(md) : 0
+      if (cost > 0 && slots < cost) continue
+      slots -= cost
       const tmpl = summonTemplate(view.engine, me, sl.monsterId, sl.grade)
       const hp = tmpl ? tmpl.maxHp : 0.3 * me.baseMaxHp
       value += 0.4 * hp - w.incoming * threat.decoyDelta(c.cell, hp, tmpl?.stats.tackleBlock ?? 0)

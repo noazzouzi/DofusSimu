@@ -53,6 +53,8 @@ export interface VortexBurstPlan extends BurstPlan {
   sigma: number
   /** P(kill) sur deux fenêtres (plan B). */
   pKill2: number
+  /** Créneau du tour du Vortex qui clôt la première fenêtre de burst (undefined hors prévision). */
+  windowEnd?: { round: number; index: number }
   /** Case prévue du Vortex au début de la fenêtre. */
   vortexCell: number
   /** Contribution de chaque joueur (μ·ρ). */
@@ -161,10 +163,10 @@ export function planBurst(view: AIView, o: BurstOptions): VortexBurstPlan | unde
       v = nextVortexSlot(slots, v + 1)
       if (v < 0) break
     }
-    vulnIdx = v < 0 ? slots.length : v + 1
+    vulnIdx = v < 0 ? slots.length : firstPlayerAfter(slots, v)
   } else if (invulnerable) {
     const v = nextVortexSlot(slots, 1)
-    vulnIdx = v < 0 ? slots.length : v + 1
+    vulnIdx = v < 0 ? slots.length : firstPlayerAfter(slots, v)
   }
   const nextV = nextVortexSlot(slots, Math.max(1, vulnIdx))
   const windowEnd = nextV < 0 ? slots.length : nextV
@@ -172,7 +174,8 @@ export function planBurst(view: AIView, o: BurstOptions): VortexBurstPlan | unde
   const window2End = nextV2 < 0 ? slots.length : nextV2
   const players = s.fighters.filter(f => f.alive && f.team === view.team && f.kind === 'player' && f.summonerId === undefined)
   // Case prévue du Vortex au début de la fenêtre : il a joué juste avant (Heurage → contact de l'Auroraire).
-  const vSlot = vulnIdx > 0 ? slots[vulnIdx - 1] : undefined
+  let vSlot: (typeof slots)[number] | undefined
+  for (let i = Math.min(vulnIdx, slots.length) - 1; i >= 0 && !vSlot; i--) if (slots[i].isVortex) vSlot = slots[i]
   const heurageReady = (vortex.cooldowns[SPELL.HEURAGE] ?? 0) <= 1
   const startCell = unlocked ? vortex.cell : o.params.vortexCell
   const aurCell = vSlot ? HOUR_CELL[vSlot.hour] : -1
@@ -234,7 +237,8 @@ export function planBurst(view: AIView, o: BurstOptions): VortexBurstPlan | unde
   const safe = safeCellsFor(s, origins, vSlot ? vSlot.hour : currentHour(s))
   const reserve: { fighterId: number; spellId: number }[] = []
   const prepSlots: { round: number; index: number }[] = []
-  const zDensity = phiDensity(main.z) / main.sigma
+  // Valeur d'un PV retiré au Vortex (fraction de kill) : ∂pKill/∂dégâts, au moins 1/PV (burst sur plusieurs tours).
+  const zDensity = Math.max(phiDensity(main.z) / main.sigma, 1 / Math.max(1, hp))
   for (let i = 0; i < vulnIdx && i < slots.length; i++) {
     const sl = slots[i]
     if (!sl.isPlayer || !contributions.has(sl.fighterId)) continue
@@ -271,7 +275,7 @@ export function planBurst(view: AIView, o: BurstOptions): VortexBurstPlan | unde
   const vulnerableNow = unlocked && !invulnerable
   if (vulnerableNow) {
     prices.kill.set(vortex.id, new Float32Array(HOUR_COUNT + 1).fill(vortexKill))
-    prices.hp.set(vortex.id, { slope: 1 + Math.min(4, zDensity * vortexKill) })
+    prices.hp.set(vortex.id, { slope: 1 + Math.min(4, (phiDensity(main.z) / main.sigma) * vortexKill) })
   }
   const vulnerableFrom = vulnIdx < slots.length ? { round: slots[vulnIdx].round, index: slots[vulnIdx].index } : { round: (slots[slots.length - 1]?.round ?? s.round) + 1, index: 0 }
   const safeCache = new Map<string, Uint8Array>()
@@ -298,11 +302,18 @@ export function planBurst(view: AIView, o: BurstOptions): VortexBurstPlan | unde
     mean: main.mean,
     sigma: main.sigma,
     pKill2: both.p,
+    windowEnd: windowEnd < slots.length ? { round: slots[windowEnd].round, index: slots[windowEnd].index } : undefined,
     vortexCell,
     contributions,
     prices,
     vulnerableNow: vulnerableNow && slots.length > 0 && vulnIdx === 0,
   }
+}
+
+/** Premier créneau joueur après le créneau i (repli : i + 1). */
+function firstPlayerAfter(slots: readonly { isPlayer: boolean }[], i: number): number {
+  for (let j = i + 1; j < slots.length; j++) if (slots[j].isPlayer) return j
+  return Math.min(slots.length, i + 1)
 }
 
 /** Tour du Vortex prévu pour *Action !* (même règle que `vortexPhase`, scenario.ts / setup.ts). */

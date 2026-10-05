@@ -210,80 +210,68 @@ function hpEntry(inp: PricerInput, m: AbsMonster, row: Float32Array, hourNow: nu
 }
 
 /**
- * Prix contrefactuels (§9.6) : heuristiques, puis remplacés pour les actions racines chiffrées par le planificateur
- * (relances forcées pour celles qui manquent).
+ * Prix contrefactuels (§9.6). Pour que deux actions racines soient comparées à effort égal, chaque action chiffrée est
+ * rejouée par une relance FORCÉE de même réglage (`replan` : faisceau réduit, horizon 8) plutôt que lue sur le faisceau
+ * principal (où l'action dominante reçoit l'essentiel des nœuds et serait sur-évaluée) : « rien », puis la mort de
+ * chaque monstre atteignable maintenant (P(kill) décroissante), puis glyphe +1 / mort avec glyphe avant / glyphe +2 si
+ * une glyphe est atteignable, dans la limite de `maxReplans`. Prix = score de l'action − meilleur score des actions
+ * relancées qui ne tuent pas ce monstre (même nombre d'heures de glyphe) ; horloge = score(glyphe +k) − score(rien) −
+ * k·détour. Les entrées non relancées gardent le prix heuristique ; sans `replan`, lecture du faisceau principal.
  */
 export function searchPrices(inp: PricerInput): PriceTable {
   const table = heuristicPrices({ ...inp, replan: undefined })
-  const { ctx, theta, root, result } = inp
+  const { ctx, theta, root } = inp
   const tv = theta.vortex
-  const scores = new Map(result.priceScores)
-  const forced = new Map<string, number>()
-  let replans = 0
-  const maxReplans = inp.maxReplans ?? 6
-  let forcedBase: number | undefined
-  /** Score d'une clé racine : faisceau principal, sinon relance forcée (comparée à la relance « rien »). */
-  const scoreOf = (key: string, action: AbsAction): { v: number; base: 'main' | 'forced' } | undefined => {
-    const v = scores.get(key)
-    if (v !== undefined) return { v, base: 'main' }
-    if (!inp.replan) return undefined
-    const f = forced.get(key)
-    if (f !== undefined) return { v: f, base: 'forced' }
-    if (replans >= maxReplans) return undefined
-    if (forcedBase === undefined) {
-      forcedBase = inp.replan({ t: 'none' }).best
-      replans++
+  const h0 = ctx.slots[0]?.hour ?? root.hour
+  const h1 = nextHour(h0, 1)
+  const canAct = ctx.slots[0]?.isPlayer === true && (ctx.slots[0]?.index ?? -1) >= 0
+  const scores = new Map<string, number>()
+  if (inp.replan && canAct) {
+    const budget = Math.max(1, inp.maxReplans ?? 6)
+    const run = (a: AbsAction): void => {
+      const key = actionKey(a)
+      if (scores.has(key) || scores.size >= budget) return
+      const r = inp.replan!(a)
+      scores.set(key, r.priceScores.get(key) ?? r.best)
     }
-    if (replans >= maxReplans) return undefined
-    const r = inp.replan(action).best
-    replans++
-    forced.set(key, r)
-    return { v: r, base: 'forced' }
-  }
-  /** Meilleur score parmi les clés qui ne tuent pas `m`, avec `g` heures de glyphe. */
+    run({ t: 'none' })
+    const reachable = root.monsters
+      .filter(m => m.id >= 0 && m.status === 'alive' && ctx.expected(0, inp.me, m) > 0)
+      .map(m => ({ m, p: ctx.pKillNow?.(m) ?? 0, e: ctx.expected(0, inp.me, m) }))
+      .sort((a, b) => b.p - a.p || b.e / b.m.hp - a.e / a.m.hp || a.m.id - b.m.id)
+    for (const { m } of reachable) run({ t: 'kill', m: [m.id], glyph: 'none' })
+    if (ctx.glyphsNow >= 1) {
+      run({ t: 'glyph', count: 1 })
+      for (const { m } of reachable) run({ t: 'kill', m: [m.id], glyph: 'before' })
+      if (ctx.glyphsNow >= 2) run({ t: 'glyph', count: 2 })
+    }
+  } else for (const [k, v] of inp.result.priceScores) scores.set(k, v)
+  /** Meilleur score parmi les actions chiffrées qui ne tuent pas `m`, avec `g` heures de glyphe. */
   const bestWithout = (m: number, g: number): number => {
     let b = -Infinity
     for (const [k, v] of scores) if (glyphOfKey(k) === g && !killsOfKey(k).includes(m)) b = Math.max(b, v)
     return b
   }
-  const h0 = ctx.slots[0]?.hour ?? root.hour
-  const h1 = nextHour(h0, 1)
   for (const m of root.monsters) {
     if (m.id < 0 || m.status !== 'alive') continue
     const row = table.kill.get(m.id)
     if (!row) continue
     for (const glyph of ['none', 'before'] as const) {
-      const a: AbsAction = { t: 'kill', m: [m.id], glyph }
-      const key = actionKey(a)
-      const g = glyph === 'none' ? 0 : 1
-      const sc = scoreOf(key, a)
-      if (!sc) continue
-      const base = sc.base === 'main' ? bestWithout(m.id, g) : g === 0 ? forcedBase : undefined
-      if (base === undefined || !Number.isFinite(base)) continue
-      const h = glyph === 'none' ? h0 : h1
+      const key = actionKey({ t: 'kill', m: [m.id], glyph })
+      const v = scores.get(key)
+      if (v === undefined) continue
+      const base = bestWithout(m.id, glyph === 'none' ? 0 : 1)
+      if (!Number.isFinite(base)) continue
       const star = glyph === 'none' ? m.star : maskHas(m.hours, h1)
-      row[star ? 0 : h] = clamp(sc.v - base, tv.killMin, star ? Math.max(tv.killMax, tv.corruptKill) : tv.killMax)
-    }
-    // Pente de PV : (best(dégâts E sur m) − best(rien)) / E (mêmes pré-dégâts que le planificateur).
-    const entry = table.hp.get(m.id)
-    const dmg = scores.get(`damage:${m.id}`)
-    const none = scores.get('none')
-    if (entry && entry.bandMax === undefined && dmg !== undefined && none !== undefined) {
-      const amount = Math.min(Math.floor(0.9 * ctx.expected(0, inp.me, m)), m.hp - 1)
-      // Plancher à la moitié de la pente par défaut : l'écart de deux lignes du faisceau est bruité (les monstres à ne
-      // pas toucher passent par le plancher de PV, pas par une pente nulle).
-      if (amount > 0) entry.slope = clamp((dmg - none) / amount, 0.5 * tv.waveHpSlope, 1.2)
+      row[star ? 0 : glyph === 'none' ? h0 : h1] = clamp(v - base, tv.killMin, star ? Math.max(tv.killMax, tv.corruptKill) : tv.killMax)
     }
   }
-  const clock = clockFrom(scores, theta)
-  if (clock) {
-    // Racines de glyphe absentes : relances forcées.
+  const none = scores.get('none')
+  if (none !== undefined) {
     for (const k of [1, 2] as const) {
-      if (scores.has(`glyph+${k}`)) continue
-      const sc = scoreOf(`glyph+${k}`, { t: 'glyph', count: k })
-      if (sc && forcedBase !== undefined) clock[k] = clamp(sc.v - forcedBase - k * tv.shiftDetour, -2000, 2000)
+      const g = scores.get(`glyph+${k}`)
+      if (g !== undefined) table.clock[k] = clamp(g - none - k * tv.shiftDetour, -2000, 2000)
     }
-    table.clock = clock
   }
   return table
 }

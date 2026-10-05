@@ -141,6 +141,9 @@ export class VortexAIModel implements ScenarioAIModel {
   private refThreat = new Map<number, number>()
   private engine?: Engine
   private meId = -1
+  private deathKey = ''
+  /** Fin de la première fenêtre de burst (tour du Vortex qui la clôt). */
+  private burstWindowEnd?: { round: number; index: number }
 
   constructor(
     params: ScenarioParams,
@@ -179,6 +182,8 @@ export class VortexAIModel implements ScenarioAIModel {
       this.lastBurst = burst
       this.deathExtra.clear()
       if (!burst) return
+      // Première fenêtre de burst (décision clé 'burst') : du premier créneau vulnérable au tour suivant du Vortex.
+      if (phase === 'burst' && !this.burstWindowEnd && burst.vulnerableNow) this.burstWindowEnd = burst.windowEnd ?? { round: s.round + 1, index: 0 }
       bb.prices = { ...burst.prices, cell: swapCellPrices(forecastHours(s, 2, this.params), view.me.id, this.theta) }
       for (const st of burst.steps) bb.intents.push(...st.intents)
       bb.plan = { kind: 'burst', burst } satisfies VortexBlackboardPlan
@@ -326,11 +331,12 @@ export class VortexAIModel implements ScenarioAIModel {
     }
     const version = ++this.version
     const result = planHours(root, ctx, cfg, { version })
-    // Relances forcées (SearchPricer §9.6 : faisceau 8, horizon 8).
+    // Relances forcées (SearchPricer §9.6) : même réglage pour toutes les actions chiffrées (comparaison à effort égal).
+    const replanBeam = Math.max(2, Math.round(cfg.beamWidth / 4))
     const replan = (force: AbsAction): PlanResult =>
-      planHours(root, ctx, cfg, { forceRoot: force, beamWidth: Math.min(8, cfg.beamWidth * 2), horizonPlayerSlots: Math.min(8, cfg.horizonPlayerSlots), version })
+      planHours(root, ctx, cfg, { forceRoot: force, beamWidth: replanBeam, horizonPlayerSlots: Math.min(8, cfg.horizonPlayerSlots), version })
     const floorOf = (m: AbsMonster): number => this.floorOf(s, m, players, dpt)
-    const inp = { result, root, ctx, cfg, theta, me: me.id, floorOf, replan: glyphsNow > 0 || mode !== 'fast' ? replan : undefined }
+    const inp = { result, root, ctx, cfg, theta, me: me.id, floorOf, replan: glyphsNow > 0 || mode !== 'fast' ? replan : undefined, maxReplans: mode === 'deep' ? 10 : 6 }
     const prices = mode === 'standard' || mode === 'deep' ? searchPrices(inp) : heuristicPrices(inp)
     // Calibration : dégâts prévus de MON action racine.
     if (meNow) oracle.expect(me.id, rootPredictedDamage(result, root, slot0), s.metrics[me.id]?.damageDealt ?? 0, s.metrics[me.id]?.turnsPlayed ?? 0)
@@ -353,6 +359,10 @@ export class VortexAIModel implements ScenarioAIModel {
 
   /** Coût de mort de chaque allié : écart de score du plan sans son créneau (standard/deep), forme close en fast. */
   private computeDeathExtra(root: AbsState, ctx: PlannerContext, cfg: PlannerConfig, result: PlanResult, players: Fighter[], mode: AIMode): void {
+    // Recalcul à chaque événement symbolique ou nouveau tour de jeu seulement (coût : N + 1 plans `fast`).
+    const key = `${this.tracker.version}|${root.round}|${players.map(p => p.id).join(',')}|${mode}`
+    if (key === this.deathKey) return
+    this.deathKey = key
     this.deathExtra.clear()
     if (mode === 'standard' || mode === 'deep') {
       const fast = plannerConfig('fast', this.theta)
@@ -484,7 +494,9 @@ export class VortexAIModel implements ScenarioAIModel {
   isKeyDecision(view: AIView, bb: Blackboard): KeyDecisionReason | null {
     const base = this.base.isKeyDecision?.(view, bb) ?? null
     if (base) return base
-    if (bb.phase === 'burst' && this.lastBurst?.vulnerableNow) return 'burst'
+    const end = this.burstWindowEnd
+    const s = view.fight
+    if (bb.phase === 'burst' && end && (s.round < end.round || (s.round === end.round && s.turnIndex < end.index))) return 'burst'
     const plan = this.lastPlan?.plan
     const st = plan?.steps[0]
     if (plan && st && st.fighterId === view.me.id && plan.contracts.some(c => c.kind === 'corrupt' && c.killer === view.me.id && c.round === st.round && c.index === st.index)) return 'corruptionKill'

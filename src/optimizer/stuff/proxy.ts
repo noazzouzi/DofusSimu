@@ -189,7 +189,8 @@ interface InLine {
 
 /** Rotation de soin / retrait d'un nombre de PA donné. */
 interface UtilRotation {
-  heals: { baseN: number; baseC: number; crit: number; element: Element; count: number }[]
+  /** Soins boostés (Intelligence/élément, Soins) ; `fixed` : soin constant (% PV max d'un allié de référence). */
+  heals: { baseN: number; baseC: number; crit: number; element: Element; count: number; fixed: number }[]
   /** Points retirés tentés (esquivables) et sûrs, par réserve. */
   mpTry: number
   mpSure: number
@@ -198,6 +199,25 @@ interface UtilRotation {
 }
 
 const MAX_AP = 16
+
+/** PV d'un allié de référence pour les soins en % des PV max (1109). */
+const REF_ALLY_HP = 4000
+
+/** Lettres de masque désignant seulement un camp (pas une condition). */
+const SIDE_LETTERS = new Set(['a', 'A', 'g', 'G', 'h', 'H', 'l', 'L', 'd', 'D', 'm', 'M', 'i', 'I', 'j', 'J', 's', 'S', 'c', 'C', 'u', 'U'])
+
+/** Le masque comporte-t-il une condition (état, porté, invocation précise…) : ligne alternative, pas cumulative. */
+function conditionalMask(mask: string): boolean {
+  if (!mask) return false
+  return mask.split(',').some(t => t.length > 1 || !SIDE_LETTERS.has(t))
+}
+
+/** Valeur moyenne d'une ligne de soin pour des caractéristiques (boostée, ou % PV max d'un allié de référence). */
+function healLineValue(h: { kind: string; min: number; max: number; element: number }, s: Stats): number {
+  if (h.kind === 'pctMax') return (meanOf(h.min, h.max) / 100) * REF_ALLY_HP
+  if (h.kind !== 'boosted') return 0
+  return heal(meanOf(h.min, h.max), s, { element: Math.max(0, h.element) as Element })
+}
 
 /** Lignes d'un lancer retenues par `castDamage` (centre ou couronne, la meilleure) contre `d`. */
 function castLines(a: Fighter, d: Fighter, p: SpellProfileX, isWeapon: boolean): DamageLineX[] {
@@ -408,27 +428,42 @@ export class ProxyContext {
 
   private utilRotation(profiles: readonly SpellProfileX[], ap: number): UtilRotation {
     const r: UtilRotation = { heals: [], mpTry: 0, mpSure: 0, apTry: 0, apSure: 0 }
-    // Soins : glouton par soin moyen / PA (caractéristiques de référence).
+    // Soins : glouton par soin moyen / PA (caractéristiques de référence). Par sort : lignes inconditionnelles
+    // + la meilleure ligne CONDITIONNELLE (masque à condition d'état, de porté… : alternatives exclusives).
+    const healLines = (p: SpellProfileX) => {
+      const plain = p.heals.filter(h => h.kind !== 'fixed' && !conditionalMask(h.mask))
+      const cond = p.heals.filter(h => h.kind !== 'fixed' && conditionalMask(h.mask))
+      const value = (h: (typeof p.heals)[number]) => healLineValue(h, this.refStats)
+      let best: (typeof p.heals)[number] | undefined
+      for (const h of cond) if (!best || value(h) > value(best)) best = h
+      return best ? [...plain, best] : plain
+    }
     const healers = profiles
-      .map((p, i) => ({ p, i, v: p.heals.reduce((a, h) => a + (h.kind === 'boosted' ? heal(meanOf(h.min, h.max), this.refStats, { element: Math.max(0, h.element) as Element }) : 0), 0) }))
+      .map((p, i) => ({ p, i, lines: healLines(p) }))
+      .map(x => ({ ...x, v: x.lines.reduce((a, h) => a + h.p * healLineValue(h, this.refStats), 0) }))
       .filter(x => x.v > 0 && x.p.apCost > 0)
       .sort((x, y) => y.v / y.p.apCost - x.v / x.p.apCost || x.i - y.i)
     let left = ap
-    for (const { p } of healers) {
+    for (const { p, lines } of healers) {
       const max = p.cooldown > 0 ? 1 : p.castsPerTurn > 0 ? p.castsPerTurn : 99
       const n = Math.min(max, Math.floor(left / p.apCost))
       if (n <= 0) continue
       left -= n * p.apCost
       const crit = p.level.criticalEffects.length ? p.level.critChance : 0
-      for (const h of p.heals) {
-        if (h.kind !== 'boosted') continue
-        r.heals.push({ baseN: meanOf(h.min, h.max), baseC: meanOf(h.critMin, h.critMax), crit, element: Math.max(0, h.element) as Element, count: n * h.p })
+      // Soin SOUTENU : un sort à relance de k tours compte pour 1/k par tour.
+      const sustain = p.cooldown > 1 ? 1 / p.cooldown : 1
+      for (const h of lines) {
+        const fixed = h.kind === 'pctMax' ? (meanOf(h.min, h.max) / 100) * REF_ALLY_HP : 0
+        r.heals.push({ baseN: meanOf(h.min, h.max), baseC: meanOf(h.critMin, h.critMax), crit, element: Math.max(0, h.element) as Element, count: n * h.p * sustain, fixed })
       }
     }
-    // Retraits : glouton par points retirés / PA, par réserve.
+    // Retraits : glouton par points retirés / PA, par réserve. Un retrait plus grand que la réserve de la cible
+    // (« retire 100 PM ») est plafonné à ses PM/PA ; un sort à relance de k tours compte pour 1/k (soutenu).
     for (const pool of ['mp', 'ap'] as const) {
+      const cap = pool === 'mp' ? this.targetMp : this.targetAp
+      const sustainOf = (p: SpellProfileX) => (p.cooldown > 1 ? 1 / p.cooldown : 1)
       const list = profiles
-        .map((p, i) => ({ p, i, v: p.removals.filter(x => x.pool === pool && x.delay <= 0).reduce((a, x) => a + x.value, 0) }))
+        .map((p, i) => ({ p, i, v: sustainOf(p) * p.removals.filter(x => x.pool === pool && x.delay <= 0).reduce((a, x) => a + Math.min(cap, x.value), 0) }))
         .filter(x => x.v > 0 && x.p.apCost > 0)
         .sort((x, y) => y.v / y.p.apCost - x.v / x.p.apCost || x.i - y.i)
       let budget = ap
@@ -437,9 +472,10 @@ export class ProxyContext {
         const n = Math.min(max, Math.floor(budget / p.apCost))
         if (n <= 0) continue
         budget -= n * p.apCost
+        const k = n * sustainOf(p)
         for (const x of p.removals) {
           if (x.pool !== pool || x.delay > 0) continue
-          const v = n * x.value
+          const v = k * Math.min(cap, x.value)
           if (pool === 'mp') {
             if (x.dodgeable) r.mpTry += v
             else r.mpSure += v
@@ -526,6 +562,10 @@ export class ProxyContext {
   healPerTurn(s: Stats): number {
     let h = 0
     for (const x of this.rotationAt(s).heals) {
+      if (x.fixed > 0) {
+        h += x.count * x.fixed
+        continue
+      }
       const n = heal(x.baseN, s, { element: x.element })
       const c = x.crit > 0 ? critChance(x.crit, s.critical) / 100 : 0
       h += x.count * (c > 0 ? (1 - c) * n + c * heal(x.baseC, s, { element: x.element }) : n)

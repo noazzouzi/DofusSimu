@@ -111,11 +111,6 @@ export interface EnemyThreat {
   /** PA restants sur la case de lancer retenue (le DPT est calculé avec ces PA). */
   apAt: Float64Array
   dmg: Float64Array
-  /**
-   * Débordement attendu sur l'allié : PA laissés par le sac à dos sur une autre cible (lancers par cible plafonnés)
-   * dépensés sur lui, Σ_{a ≠ b} π_a·hit_b·dpt(e, b, PA restants après a).
-   */
-  spill: Float64Array
   /** dpt complet (hit = 1) sur l'allié. */
   full: Float64Array
   score: Float64Array
@@ -225,6 +220,8 @@ export class ThreatModelImpl implements ThreatModel {
   private readonly tmpScores = new Float64Array(65)
   private readonly tmpPi = new Float64Array(65)
   private readonly tmpDmg = new Float64Array(64)
+  private readonly tmpBaseDmg = new Float64Array(64)
+  private readonly tmpBaseScores = new Float64Array(64)
   /** Mémo de `removalDelta` / `decoyDelta` (vidé à chaque `build`). */
   private readonly deltaMemo = new Map<string, number>()
   /** Cadre DPT de l'état courant (celui de la perception, ou un cadre propre). */
@@ -336,7 +333,7 @@ export class ThreatModelImpl implements ThreatModel {
       for (let i = 0; i < this.allies.length; i++) {
         const a = this.allies[i]
         if (!order.before(row.e.id, a.id)) continue
-        const z = this.zoneShare(row, i) + row.spill[i]
+        const z = this.zoneShare(row, i)
         this.inc[a.id] += row.weight * (row.pi[i] * row.dmg[i] + z)
         this.incDmg[a.id] += row.weight * (row.pi[i] * row.full[i] * row.hit[i] + z)
       }
@@ -441,13 +438,12 @@ export class ThreatModelImpl implements ThreatModel {
       const m = Math.max(nA, 4)
       row = this.pool[k] = {
         e: undefined as unknown as Fighter, active: false, ap: 0, mp: 0, reachLo: null, reachHi: null, frac: 0, weight: 1,
-        hit: new Float64Array(m), apAt: new Float64Array(m), dmg: new Float64Array(m), full: new Float64Array(m), spill: new Float64Array(m),
+        hit: new Float64Array(m), apAt: new Float64Array(m), dmg: new Float64Array(m), full: new Float64Array(m),
         score: new Float64Array(m), pi: new Float64Array(m), best: new Int16Array(m), threat: 0, target: -1,
         hitsFromStart: false, pacifist: false, sig: 0, lethal: false, nA: 0,
       }
     }
     row.hit.fill(0)
-    row.spill.fill(0)
     row.apAt.fill(0)
     row.dmg.fill(0)
     row.full.fill(0)
@@ -499,22 +495,6 @@ export class ThreatModelImpl implements ThreatModel {
       row.score[i] = scoreOf(dmg, a, dmg >= he && dmg > 0 ? frame.dpt(a, e) : 0)
     }
     this.finishRow(row)
-    // Débordement (voir `EnemyThreat.spill`) : seulement pour les cibles probables (π > 5 %).
-    if (row.threat > 0 && nA > 1) {
-      let minCost = Infinity
-      const profiles = this.dpt.profiles.ofFighter(e)
-      for (let k = 0; k < profiles.length; k++) if (profiles[k].damage.length && profiles[k].apCost < minCost) minCost = profiles[k].apCost
-      for (let t = 0; t < nA; t++) {
-        if (row.pi[t] <= 0.05 || row.best[t] < 0 || row.hit[t] <= 0) continue
-        const left = row.apAt[t] - frame.turnNext(e, this.allies[t], row.apAt[t]).apUsed
-        if (left < minCost) continue
-        for (let i = 0; i < nA; i++) {
-          if (i === t || row.hit[i] <= 0 || row.best[i] < 0) continue
-          row.spill[i] += row.pi[t] * row.hit[i] * frame.dpt(e, this.allies[i], left)
-        }
-      }
-      for (let i = 0; i < nA; i++) row.threat += row.spill[i]
-    }
     return row
   }
 
@@ -733,12 +713,14 @@ export class ThreatModelImpl implements ThreatModel {
    * Variation (PVe, positive = plus de dégâts subis) de l'incoming TOTAL de l'équipe si l'ennemi `e` perdait `dAp` PA et
    * `dMp` PM à son prochain tour (retraits dont la durée couvre ce tour) : cases de lancer limitées aux PM restants,
    * DPT avec les PA restants, cible prédite (π) recalculée. Recalcul local (≈ quelques µs), mémoïsé jusqu'au prochain
-   * `sync` ; sert au préfiltre `quickEstimate` (§8.1 : « Δmenace d'un ennemi »).
+   * `sync` ; sert au préfiltre `quickEstimate` (§8.1 : « Δmenace d'un ennemi »). `moverId` / `moverCell` : allié (le
+   * lanceur) qui finit sur `moverCell` — l'écart est alors celui du retrait UNE FOIS l'allié déplacé (fuite + retrait de
+   * PM : ni l'un ni l'autre seul ne protège).
    */
-  removalDelta(e: Fighter, dAp: number, dMp: number): number {
+  removalDelta(e: Fighter, dAp: number, dMp: number, moverId = -1, moverCell = -1): number {
     const row = this.rowOf(e)
     if (!row || !row.active || !row.reachLo || (dAp <= 0 && dMp <= 0)) return 0
-    const key = `r${e.id}:${Math.round(dAp * 100)}:${Math.round(dMp * 100)}`
+    const key = `r${e.id}:${Math.round(dAp * 100)}:${Math.round(dMp * 100)}:${moverId}:${moverCell}`
     const hit = this.deltaMemo.get(key)
     if (hit !== undefined) return hit
     // Plus assez de PA pour le moindre sort à dégâts : l'ennemi ne frappe plus.
@@ -754,26 +736,47 @@ export class ThreatModelImpl implements ThreatModel {
     const scores = this.tmpScores
     const pi = this.tmpPi
     const dmg2 = this.tmpDmg
+    const baseDmg = this.tmpBaseDmg
+    const baseScores = this.tmpBaseScores
     const dt = this.frame.s === this.s ? this.frame : this.dpt
     const mpLo = Math.floor(row.mp)
+    const mpHi = Math.max(0, Math.floor(row.mp - dMp))
+    let moved = false
     for (let i = 0; i < nA; i++) {
       const a = this.allies[i]
       const bi = row.best[i]
-      dmg2[i] = row.dmg[i]
-      scores[i] = row.score[i]
+      dmg2[i] = baseDmg[i] = row.dmg[i]
+      scores[i] = baseScores[i] = row.score[i]
       if (bi < 0) continue
       // Avant / après avec la même méthode (seul l'écart est appliqué à la ligne).
       const h0 = this.hitWithin(row, bi, a.cell, mpLo, 0)
-      const d0 = dt.dpt(e, a, h0.apAt) * h0.hit
-      const h1 = this.hitWithin(row, bi, a.cell, Math.max(0, Math.floor(row.mp - dMp)), dAp)
-      const d1 = h1.hit > 0 ? dt.dpt(e, a, h1.apAt) * h1.hit : 0
-      if (d1 === d0) continue
-      dmg2[i] = Math.max(0, row.dmg[i] + d1 - d0)
+      const hit0 = h0.hit
+      const d0 = dt.dpt(e, a, h0.apAt) * hit0
+      const pacUnit = row.pacifist ? this.pacPerHit(row, i) : 0
       const he = hpEff(a)
+      // Lanceur déplacé (chemin, téléportation) : le retrait est jugé depuis sa case finale, et la référence devient
+      // « déplacé sans retrait » (le déplacement seul est compté à part par `cellIncomingTeamDelta`).
+      let tc = a.cell
+      if (a.id === moverId && moverCell >= 0 && moverCell !== a.cell) {
+        tc = moverCell
+        const hm = this.hitWithin(row, bi, tc, mpLo, 0)
+        const hitM = hm.hit
+        const dm = hitM > 0 ? dt.dpt(e, a, hm.apAt) * hitM : 0
+        baseDmg[i] = Math.max(0, row.dmg[i] + dm - d0 + pacUnit * (Math.min(1, hitM) - Math.min(1, hit0)))
+        baseScores[i] = scoreOf(baseDmg[i], a, baseDmg[i] >= he && baseDmg[i] > 0 ? dt.dpt(a, e) : 0)
+        moved = true
+      }
+      const h1 = this.hitWithin(row, bi, tc, mpHi, dAp)
+      const d1 = h1.hit > 0 ? dt.dpt(e, a, h1.apAt) * h1.hit : 0
+      const pac = pacUnit * (Math.min(1, h1.hit) - Math.min(1, hit0))
+      if (d1 === d0 && pac === 0 && tc === a.cell) continue
+      dmg2[i] = Math.max(0, row.dmg[i] + d1 - d0 + pac)
       scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
     }
     // Retirer des PA/PM n'ajoute pas de dégâts (le lissage π peut produire un écart positif minime : écrêté).
-    const r = Math.min(0, this.reaggregate(row, scores, dmg2, pi, nA))
+    const r = Math.min(0, moved
+      ? this.aggregate(row, scores, dmg2, pi, nA) - this.aggregate(row, baseScores, baseDmg, pi, nA)
+      : this.reaggregate(row, scores, dmg2, pi, nA))
     this.deltaMemo.set(key, r)
     return r
   }
@@ -829,8 +832,9 @@ export class ThreatModelImpl implements ThreatModel {
         }
         const before = row.full[i] * row.hit[i]
         const after = c1 >= 0 ? Math.min(before, dt.dpt(e, a, reach.apLeft[c1])) : row.full[i] * this.params.hitNextTurn
-        if (after === before) continue
-        dmg2[i] = Math.max(0, row.dmg[i] + after - before)
+        const pac = row.pacifist && c1 < 0 ? this.pacPerHit(row, i) * (Math.min(1, this.params.hitNextTurn) - Math.min(1, row.hit[i])) : 0
+        if (after === before && pac === 0) continue
+        dmg2[i] = Math.max(0, row.dmg[i] + after - before + pac)
         const he = hpEff(a)
         scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
       }
@@ -867,7 +871,7 @@ export class ThreatModelImpl implements ThreatModel {
     let v = 0
     for (let i = 0; i < this.allies.length; i++) {
       if (!this.order.before(row.e.id, this.allies[i].id)) continue
-      v += row.weight * (row.pi[i] * row.dmg[i] + this.zoneShare(row, i) + row.spill[i])
+      v += row.weight * (row.pi[i] * row.dmg[i] + this.zoneShare(row, i))
     }
     return v
   }
@@ -928,18 +932,34 @@ export class ThreatModelImpl implements ThreatModel {
       // lançable ⇒ coup plein avec les PA de la case ; sinon tour d'après (si à distance), ou ligne inchangée si le
       // sort principal ne portait déjà pas.
       const before = row.full[i] * row.hit[i]
-      let after: number
-      if (c1 >= 0) after = dt.dpt(e, a, reach.apLeft[c1])
-      else if (row.hit[i] >= 1) after = distance(cell, a.cell) <= 2 * row.mp + maxRange + 1 ? row.full[i] * P.hitNextTurn : 0
-      else after = before
-      if (after === before) continue
-      dmg2[i] = Math.max(0, row.dmg[i] + after - before)
+      let after = before
+      let hitAfter = row.hit[i]
+      if (c1 >= 0) {
+        after = dt.dpt(e, a, reach.apLeft[c1])
+        hitAfter = 1
+      } else if (row.hit[i] >= 1) {
+        hitAfter = distance(cell, a.cell) <= 2 * row.mp + maxRange + 1 ? P.hitNextTurn : 0
+        after = row.full[i] * hitAfter
+      }
+      const pac = row.pacifist ? this.pacPerHit(row, i) * (Math.min(1, hitAfter) - Math.min(1, row.hit[i])) : 0
+      if (after === before && pac === 0) continue
+      dmg2[i] = Math.max(0, row.dmg[i] + after - before + pac)
       const he = hpEff(a)
       scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
     }
     const r = this.reaggregate(row, scores, dmg2, pi, nA)
     this.deltaMemo.set(key, r)
     return r
+  }
+
+  /**
+   * Part « Pacifiste » de `row.dmg[i]` par unité de portée : dans `hpRow` elle vaut `pacifistFactor`·Pot·min(1, hit) ;
+   * les recalculs locaux la font suivre la nouvelle portée (sinon un retrait de PM laisserait intacte la menace
+   * Pacifiste d'un ennemi qui ne peut plus atteindre sa cible).
+   */
+  private pacPerHit(row: EnemyThreat, i: number): number {
+    const h = Math.min(1, row.hit[i])
+    return h > 0 ? Math.max(0, row.dmg[i] - row.full[i] * row.hit[i]) / h : 0
   }
 
   /** Δ incoming de l'équipe pour une ligne dont les dégâts / scores par allié deviennent `dmg2` / `scores`. */
@@ -954,6 +974,17 @@ export class ThreatModelImpl implements ThreatModel {
       delta += row.weight * (pi[i] * dmg2[i] - row.pi[i] * row.dmg[i])
     }
     return delta
+  }
+
+  /** Incoming de l'équipe dû à une ligne dont les dégâts / scores par allié seraient `dmg` / `scores` (π recalculé). */
+  private aggregate(row: EnemyThreat, scores: Float64Array, dmg: Float64Array, pi: Float64Array, nA: number): number {
+    let max = 0
+    for (let i = 0; i < nA; i++) if (scores[i] > max) max = scores[i]
+    if (max <= 0) return 0
+    piOf(scores, nA, this.params.tauFrac * max, pi)
+    let v = 0
+    for (let i = 0; i < nA; i++) if (this.order.before(row.e.id, this.allies[i].id)) v += row.weight * pi[i] * dmg[i]
+    return v
   }
 }
 

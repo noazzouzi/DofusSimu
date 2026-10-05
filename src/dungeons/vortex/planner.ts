@@ -17,8 +17,11 @@
  *  - créneau monstre : `−wExposure·menace` de chaque monstre vivant qui joue (invulnérable compris) ; monstres des vagues
  *    futures (sans créneau dans la prévision) : une fois par tour de jeu, au créneau du Vortex ;
  *  - submersion : `−overloadCost·(vivants − maxAliveFactor·N)` par créneau joueur en surnombre ;
- *  - coût terminal (borne optimiste) : exposition jusqu'à la première fenêtre d'étoile accessible + coût d'heure minimal
- *    d'un monstre encore à marquer (aucun bonus de corruption futur : corrompre dans l'horizon reste préféré).
+ *  - coût restant (borne optimiste, `futureCost`) : exposition jusqu'à la première fenêtre d'étoile accessible à un
+ *    tueur (après résurrection), meilleur compromis attente + cycle + coût d'heure pour un monstre encore à marquer ;
+ *    aucun bonus de corruption futur (corrompre dans l'horizon reste préféré). Il sert de coût terminal ET de rang du
+ *    faisceau (score − coût restant, à la A*, plus les PV restant à retirer × θ.vortex.waveHpSlope) : une mort payée
+ *    maintenant est comparée à l'exposition qu'elle évite, et les pré-dégâts qui préparent un kill survivent.
  *
  * Élagage (§12.5) : ≤ `maxKillsPerSlot` morts par créneau, jamais un monstre mort/corrompu/invulnérable ; hors créneau
  * courant, pas de mort à une heure NOUVELLE de `C_vx > badHourVx` si une heure moins chère existe dans l'horizon, pas de
@@ -103,6 +106,11 @@ export interface PlannerConfig {
   badHourVx: number
   /** Tours (sans glyphe) dans lesquels un tueur doit revoir une heure de mort (§12.5 `unreachableHourCost`). */
   followUpRounds: number
+  /**
+   * Valeur d'un PV restant à retirer (θ.vortex.waveHpSlope) dans le RANG du faisceau seulement (guide les lignes de
+   * pré-dégâts) ; le score final n'en tient pas compte (la recherche tactique paie déjà les PV par `hp.slope`).
+   */
+  hpSlope: number
 }
 
 /**
@@ -140,6 +148,7 @@ export function plannerConfig(mode: AIMode, theta: StrategyParams): PlannerConfi
     maxActions: 14,
     badHourVx: 1000,
     followUpRounds: 3,
+    hpSlope: theta.vortex.waveHpSlope,
   }
 }
 
@@ -250,6 +259,10 @@ interface PNode {
   /** Empreinte de déduplication (état abstrait × action racine) et empreinte structurelle, calculées à la demande. */
   h?: number
   sh?: number
+  /** Coût restant (borne de fin) de l'état au créneau en cours, calculé à la demande. */
+  hv?: number
+  /** Rang (score − coût restant) au moment de la sélection. */
+  f?: number
 }
 
 /** Candidat d'un créneau joueur : l'état enfant n'est construit (`applyAbs`) que s'il est retenu. */
@@ -267,6 +280,8 @@ interface Cand {
   node?: PNode | null
   /** Rang de génération (départage déterministe hors créneau courant). */
   tie?: number
+  /** Rang dans le faisceau : score − coût restant de l'enfant. */
+  f?: number
 }
 
 // ───────────────────────────── planificateur ─────────────────────────────
@@ -457,6 +472,7 @@ export function planHours(root: AbsState, ctx: PlannerContext, cfg: PlannerConfi
       key: isRoot ? c.key : c.n.key,
       hypo: isRoot ? c.hypo : c.n.hypo,
       adj: c.n.adj + c.adj,
+      f: c.f,
     })
   }
 
@@ -478,55 +494,140 @@ export function planHours(root: AbsState, ctx: PlannerContext, cfg: PlannerConfi
     return c
   }
 
-  // Coût terminal : premier créneau (après l'horizon) d'un tueur qui voit l'heure h, avec un décalage d'horloge g.
-  const after: number[] = []
-  for (let j = last + 1; j < slots.length; j++) if (isActionSlot(slots[j]) && ctx.canContract(slots[j].fighterId)) after.push(j)
-  const firstSeen = new Map<number, number>()
-  /** Tours de jeu jusqu'au premier créneau (au-delà de l'horizon) où un tueur voit h ; repli : distance d'horloge / N. */
-  const roundsUntil = (h: number, g: number, fromRound: number, fromHour: number): number => {
-    const k = (g % 12) * 16 + h
-    let j = firstSeen.get(k)
-    if (j === undefined) {
-      j = -1
-      for (const x of after) {
-        if (nextHour(slots[x].hour, g) === h) {
-          j = x
-          break
-        }
+  // ── borne de fin (coût restant optimiste) ──
+  // nextSeen[i·13 + h] = premier créneau joueur APRÈS i d'un tueur autorisé qui voit l'heure h (sans glyphe), −1 sinon.
+  const nextSeen = new Int32Array((slots.length + 1) * 13).fill(-1)
+  for (let i = slots.length - 2; i >= -1; i--) {
+    const row = (i + 1) * 13
+    const nextRow = (i + 2) * 13
+    if (i + 2 <= slots.length) nextSeen.copyWithin(row, nextRow, nextRow + 13)
+    const sl = slots[i + 1]
+    if (isActionSlot(sl) && ctx.canContract(sl.fighterId)) nextSeen[row + sl.hour] = i + 1
+  }
+  // Ligne « après i » : index i + 1 du tableau (i = −1 : depuis le début).
+  const lastRound = slots.length ? slots[slots.length - 1].round : root.round
+  const cycle = HOUR_COUNT / N
+  // Tables de coût d'heure par type de monstre (h nouvelle / déjà posée).
+  const typeIdx = new Map<number, number>()
+  const costFresh: number[][] = []
+  const costUsed: number[][] = []
+  const typeOf = (monsterId: number): number => {
+    let t = typeIdx.get(monsterId)
+    if (t === undefined) {
+      t = costFresh.length
+      typeIdx.set(monsterId, t)
+      const f: number[] = [0]
+      const u: number[] = [0]
+      for (let h = 1; h <= HOUR_COUNT; h++) {
+        u.push(costs.cMon(monsterId, h))
+        f.push(costs.cMon(monsterId, h) + costs.cVx(h))
       }
-      firstSeen.set(k, j)
+      costFresh.push(f)
+      costUsed.push(u)
     }
-    if (j >= 0) return Math.max(0, slots[j].round - fromRound)
-    const lastRound = slots.length ? slots[slots.length - 1].round : fromRound
-    return Math.max(0, lastRound - fromRound) + ((((h - fromHour - 1 + 24) % 12) + 1) / N)
+    return t
+  }
+  // Attentes (tours de jeu) jusqu'au premier créneau d'un tueur qui voit h, après le créneau i, décalage g.
+  const waitCache = new Map<number, Float64Array>()
+  const waitsAfter = (i: number, g: number, round: number, hour: number): Float64Array => {
+    const key = ((i + 1) * 12 + (g % 12)) * 4096 + round * 13 + hour
+    let w = waitCache.get(key)
+    if (w) return w
+    w = new Float64Array(HOUR_COUNT + 1)
+    for (let h = 1; h <= HOUR_COUNT; h++) {
+      const j = nextSeen[(i + 1) * 13 + nextHour(h, -g)]
+      w[h] = j >= 0 ? Math.max(0, slots[j].round - round) : Math.max(0, lastRound - round) + ((((h - hour - 1 + 24) % 12) + 1) / N)
+    }
+    waitCache.set(key, w)
+    return w
+  }
+  /**
+   * Coût restant d'un monstre après le créneau i (borne optimiste, §12.5 « coût terminal ») : PV restants
+   * (`hpSlope`, PV d'un ressuscité pour un mort) ; marqué → exposition jusqu'au premier créneau d'un tueur qui revoit
+   * une de ses heures (après sa résurrection s'il est mort) ; à marquer → meilleure heure h : attente + un cycle
+   * d'horloge (+ invulnérabilité d'arrivée) d'exposition, plus le coût de h.
+   */
+  const futureOf = (m: AbsMonster, s: AbsState, i: number, withHp = false): number => {
+    if (m.status === 'corrupt' || m.corruptOnWake) return 0
+    const w = cfg.wExposure * m.threat
+    // PV encore à retirer (classement seulement) : marquer puis corrompre (PV + PV d'un ressuscité) pour un monstre neuf,
+    // corrompre (PV) pour un marqué vivant, PV d'un ressuscité pour un mort.
+    const rez = withHp ? zombieHp(m) : 0
+    const c = withHp ? cfg.hpSlope * (m.status === 'dead' ? rez : (m.status === 'pending' ? m.maxHp : m.hp) + (m.hours === 0 ? rez : 0)) : 0
+    if (m.hours === 0) {
+      const extra = cycle + (m.status === 'invulnerable' || m.status === 'pending' ? (abs.arrivalInvulnerableTurns ?? 1) : 0)
+      const W = waitsAfter(i, s.glyphShift, s.round, s.hour)
+      const t = typeOf(m.monsterId)
+      const fresh = costFresh[t]
+      const used = costUsed[t]
+      const hu = s.hoursUsed
+      let best = Infinity
+      for (let h = 1; h <= HOUR_COUNT; h++) {
+        const v = w * (W[h] + extra) + ((hu >> (h - 1)) & 1 ? used[h] : fresh[h])
+        if (v < best) best = v
+      }
+      return c + best
+    }
+    if (m.status === 'alive' && m.star) return c
+    const from = m.status === 'dead' ? Math.max(i, nextVortex[Math.max(0, i)]) : i
+    const W = waitsAfter(from, s.glyphShift, s.round, s.hour)
+    let d = Infinity
+    for (let h = 1; h <= HOUR_COUNT; h++) if ((m.hours >> (h - 1)) & 1 && W[h] < d) d = W[h]
+    return c + w * (Number.isFinite(d) ? d : cycle)
+  }
+  // Les monstres des vagues à venir ne dépendent des décisions que par l'heure, le décalage et les heures posées :
+  // leur part est mise en cache par (créneau, décalage, heures posées).
+  const pendingCache = new Map<number, number>()
+  const futureCost = (s: AbsState, i: number, withHp = false): number => {
+    let c = 0
+    let hasPending = false
+    for (const m of s.monsters) {
+      if (m.status === 'pending') hasPending = true
+      else c += futureOf(m, s, i, withHp)
+    }
+    if (hasPending) {
+      const key = (((i + 1) * 12 + (s.glyphShift % 12)) * 4096 + s.hoursUsed) * 2 + (withHp ? 1 : 0)
+      let p = pendingCache.get(key)
+      if (p === undefined) {
+        p = 0
+        for (const m of s.monsters) if (m.status === 'pending') p += futureOf(m, s, i, withHp)
+        pendingCache.set(key, p)
+      }
+      c += p
+    }
+    return c
   }
 
   /**
-   * Coût terminal (borne optimiste) : un monstre marqué est exposé jusqu'au premier créneau d'un tueur qui revoit une
-   * de ses heures ; un monstre à marquer, jusqu'à la meilleure heure h (attente + un cycle d'horloge + invulnérabilité
-   * d'arrivée) plus le coût de h.
+   * Rang d'un candidat dans le faisceau : score − coût restant de l'enfant (classement de type A* : une mort payée
+   * maintenant est comparée à l'exposition qu'elle évite). Calcul incrémental pour les morts et pré-dégâts sans
+   * glyphe (seuls les monstres concernés changent), complet pour les glyphes.
    */
-  const terminalCost = (s: AbsState): number => {
-    const cycle = HOUR_COUNT / N
-    let c = 0
-    for (const m of s.monsters) {
-      if (m.status === 'corrupt' || m.corruptOnWake) continue
-      if (m.hours === 0) {
-        const extra = cycle + (m.status === 'invulnerable' || m.status === 'pending' ? (abs.arrivalInvulnerableTurns ?? 1) : 0)
-        let best = Infinity
-        for (let h = 1; h <= HOUR_COUNT; h++) {
-          const wait = roundsUntil(h, s.glyphShift, s.round, s.hour)
-          best = Math.min(best, cfg.wExposure * m.threat * (wait + extra) + costs.markCost(m.monsterId, h, s.hoursUsed))
-        }
-        c += best
-        continue
+  const rankOf = (c: Cand, i: number, materialized: (c: Cand) => PNode | null): number => {
+    if (c.f !== undefined) return c.f
+    const n = c.n
+    const s = n.s
+    const hParent = (n.hv ??= futureCost(s, i, true))
+    const a = c.a
+    let h = hParent
+    if (a.t === 'kill' && a.glyph === 'none') {
+      let used = s.hoursUsed
+      for (let k = 0; k < a.m.length; k++) {
+        const mi = s.monsters.findIndex(x => x.id === a.m[k])
+        if (mi < 0) continue
+        const m = s.monsters[mi]
+        const after: AbsMonster = { ...m, status: 'dead', hp: 0, hours: m.hours | hourBit(s.hour), corruptOnWake: m.star }
+        h += futureOf(after, { ...s, hoursUsed: used }, i, true) - futureOf(m, s, i, true)
+        if (!m.star) used |= hourBit(s.hour)
       }
-      if (m.status === 'alive' && m.star) continue
-      let d = Infinity
-      for (let h = 1; h <= HOUR_COUNT; h++) if (maskHas(m.hours, h)) d = Math.min(d, roundsUntil(h, s.glyphShift, s.round, s.hour))
-      c += cfg.wExposure * m.threat * (Number.isFinite(d) ? d : cycle)
+    } else if (a.t === 'damage') {
+      const m = s.monsters.find(x => x.id === a.m)
+      if (m) h += futureOf({ ...m, hp: Math.max(1, m.hp - a.amount) }, s, i, true) - futureOf(m, s, i, true)
+    } else if (a.t !== 'none') {
+      const node = materialized(c)
+      h = node ? futureCost(node.s, i, true) : hParent
     }
-    return c
+    return (c.f = c.score - h)
   }
 
   // ── faisceau ──
@@ -557,12 +658,14 @@ export function planHours(root: AbsState, ctx: PlannerContext, cfg: PlannerConfi
       if (kept.length) cands.push(...kept)
       else cands.push({ n: beam[0], a: opts.forceRoot, key: fk, score: beam[0].s.score, adj: 0, hypo: false, hour: beam[0].s.hour })
     }
+    for (const c of cands) rankOf(c, i, x => materialize(x, i))
     beam = selectBeam(cands, i, width, cfg.rootDiversity, isRoot, materialize)
   }
   if (!rootIsAction) beam = beam.map(n => (n.key ? n : { ...n, key: 'none' }))
 
   // ── fin d'horizon ──
-  const finals = beam.map(n => ({ ...n, s: { ...n.s, score: n.s.score - terminalCost(n.s) } }))
+  const lastIdx = Math.min(last, slots.length - 1)
+  const finals = beam.map(n => ({ ...n, s: { ...n.s, score: n.s.score - futureCost(n.s, lastIdx) } }))
   finals.sort(byScore)
   const rootScores = new Map<string, number>()
   const priceScores = new Map<string, number>()
@@ -588,7 +691,7 @@ function cmpKey(a: string, b: string): number {
 }
 
 function byCandScore(a: Cand, b: Cand): number {
-  return b.score - a.score || cmpKey(a.key, b.key) || cmpKey(a.n.key, b.n.key) || (a.tie ?? 0) - (b.tie ?? 0) || nodeHash(a.n) - nodeHash(b.n)
+  return (b.f ?? b.score) - (a.f ?? a.score) || cmpKey(a.key, b.key) || cmpKey(a.n.key, b.n.key) || (a.tie ?? 0) - (b.tie ?? 0) || nodeHash(a.n) - nodeHash(b.n)
 }
 
 function nodeHash(n: PNode): number {
@@ -610,12 +713,19 @@ function stateHash(s: AbsState): number {
   return h >>> 0
 }
 
-/** Empreinte STRUCTURELLE (statuts, heures, étoiles, heure, décalage ; ni PV ni action racine) : complément du faisceau. */
+/**
+ * Empreinte STRUCTURELLE (statuts, heures, étoiles, heure, décalage, PV par quarts de PV max ; pas l'action racine) :
+ * complément du faisceau. Les quarts de PV gardent distinctes les lignes de pré-dégâts (un monstre entamé pour le
+ * tueur suivant) sans dupliquer des lignes qui ne diffèrent que de quelques centaines de PV.
+ */
 function structHash(n: PNode): number {
   if (n.sh !== undefined) return n.sh
   const s = n.s
   let h = mix(s.slotIdx, (s.hour << 8) | (s.glyphShift % 12))
-  for (const m of s.monsters) h = mix(h, (m.hours << 12) | (STATUS_CODE[m.status] << 8) | (m.star ? 2 : 0) | (m.corruptOnWake ? 1 : 0))
+  for (const m of s.monsters) {
+    const q = m.maxHp > 0 ? Math.min(4, Math.floor((4 * m.hp) / m.maxHp)) : 0
+    h = mix(h, (m.hours << 12) | (STATUS_CODE[m.status] << 8) | (q << 2) | (m.star ? 2 : 0) | (m.corruptOnWake ? 1 : 0))
+  }
   return (n.sh = h >>> 0)
 }
 const STATUS_CODE: Record<AbsMonster['status'], number> = { pending: 1, invulnerable: 2, alive: 3, dead: 4, corrupt: 5 }
@@ -669,7 +779,11 @@ function selectBeam(cands: Cand[], i: number, width: number, diversity: number, 
     if (used.has(c) || (isRoot ? c.hypo : c.n.hypo)) continue
     take(c, false)
   }
-  return out.sort(byScore)
+  return out.sort(byRank)
+}
+
+function byRank(a: PNode, b: PNode): number {
+  return (b.f ?? b.s.score) - (a.f ?? a.s.score) || byScore(a, b)
 }
 
 // ───────────────────────────── extraction ─────────────────────────────
@@ -774,7 +888,8 @@ function extractPlan(
 /**
  * Oracle de kill : `E_i(m) = dpt(i, m)·ρ_i(m)·c_i`, ρ = 1 si une case de lancer est accessible maintenant (créneau
  * courant), `futureReach` pour un créneau futur ; `c_i` = moyenne mobile (α = θ.planner.oracleAlpha) du rapport dégâts
- * réalisés / prévus du joueur i dans ce combat (bornée à [0,4 ; 1,3]). Un monstre qui aura l'heure V au moment du créneau
+ * réalisés / prévus du joueur i dans ce combat (borné à [0,4 ; 1,3]) ; un tour sans aucun dégât (contrôle, soin) ne
+ * met pas la calibration à jour. Un monstre qui aura l'heure V au moment du créneau
  * (et ne la porte pas encore) subit ×70 %.
  */
 export class KillOracle {
@@ -841,6 +956,11 @@ export class KillOracle {
     for (const [id, pr] of [...this.pending]) {
       const m = metrics(id)
       if (!m || m.turns <= pr.turns) continue
+      // Aucun dégât : choix tactique (contrôle, soin, placement), pas une erreur du modèle — prévision abandonnée.
+      if (m.dealt <= pr.dealt) {
+        this.pending.delete(id)
+        continue
+      }
       const ratio = Math.max(0.4, Math.min(1.3, (m.dealt - pr.dealt) / pr.predicted))
       const c = this.calib.get(id) ?? 1
       this.calib.set(id, (1 - this.alpha) * c + this.alpha * ratio)

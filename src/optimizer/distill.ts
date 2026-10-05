@@ -3,7 +3,9 @@
  *
  * On journalise des décisions de l'IA lente (racine, candidats évalués, plan choisi) et on règle les poids de la
  * fonction de valeur utilisée par `fast` pour maximiser l'ACCORD DE CLASSEMENT : perte logistique par paires
- * (`softplus((s_j − s_choisi)/T)` sur chaque candidat non choisi j), minimisée par CEM en espace log (poids positifs).
+ * (`softplus((s_j − s_choisi)/T)` sur chaque candidat non choisi j), minimisée en espace log (poids positifs) par CEM
+ * (exploration globale) puis descente de gradient analytique (raffinement) ; température T par défaut = médiane des
+ * |s_j − s_choisi| aux poids initiaux (perte indépendante de l'échelle des termes).
  * Le Monte-Carlo rapide devient ainsi représentatif de l'IA lente. Les monstres ne sont jamais concernés.
  *
  * Données : `DecisionRecord` = termes BRUTS (non pondérés) de `EvalBreakdown` (§7) de chaque candidat d'une décision
@@ -77,6 +79,7 @@ export function rankingLoss(records: readonly DecisionRecord[], w: readonly numb
   for (const r of records) {
     const sc = linearScore(r.candidates[r.chosen], w)
     let l = 0
+    // (la température est fournie par l'appelant)
     for (let j = 0; j < r.candidates.length; j++) if (j !== r.chosen) l += softplus((linearScore(r.candidates[j], w) - sc) / T)
     const k = Math.max(1, r.candidates.length - 1)
     loss += (r.weight ?? 1) * (l / k)
@@ -105,6 +108,12 @@ export function agreement(records: readonly DecisionRecord[], w: readonly number
 }
 
 export interface DistillOptions {
+  /** Méthode (défaut 'cem+gradient'). */
+  method?: 'cem' | 'gradient' | 'cem+gradient'
+  /** Itérations de la descente de gradient (défaut 200). */
+  steps?: number
+  /** Pas initial en coordonnées log (défaut 0,1). */
+  learningRate?: number
   population?: number
   elite?: number
   smoothing?: number
@@ -125,10 +134,78 @@ export interface DistillResult {
   history: { generation: number; loss: number; agreement: number }[]
 }
 
-/** Distille des poids (positifs) par CEM sur la perte de classement (voir l'en-tête). */
+/** Logistique σ(x) = 1 / (1 + e^−x), déterministe. */
+function sigmoid(x: number): number {
+  if (x >= 0) return 1 / (1 + detExp(-x))
+  const e = detExp(x)
+  return e / (1 + e)
+}
+
+/** Température par défaut : médiane des |s_j − s_choisi| aux poids `w` (≥ 1e-9). */
+export function defaultTemperature(records: readonly DecisionRecord[], w: readonly number[]): number {
+  const d: number[] = []
+  for (const r of records) {
+    const sc = linearScore(r.candidates[r.chosen], w)
+    for (let j = 0; j < r.candidates.length; j++) if (j !== r.chosen) d.push(Math.abs(linearScore(r.candidates[j], w) - sc))
+  }
+  if (!d.length) return 1
+  d.sort((a, b) => a - b)
+  return Math.max(1e-9, d[Math.floor(d.length / 2)])
+}
+
+/** Gradient de la perte par rapport aux coordonnées log u (w = e^u) ; poids nuls ou figés : 0. */
+function lossGradient(records: readonly DecisionRecord[], w: readonly number[], T: number, frozen: ReadonlySet<number>): number[] {
+  const n = w.length
+  const g = new Array<number>(n).fill(0)
+  let tw = 0
+  for (const r of records) {
+    const c = r.candidates[r.chosen]
+    const sc = linearScore(c, w)
+    const k = Math.max(1, r.candidates.length - 1)
+    const rw = (r.weight ?? 1) / k
+    tw += r.weight ?? 1
+    for (let j = 0; j < r.candidates.length; j++) {
+      if (j === r.chosen) continue
+      const f = r.candidates[j]
+      const s = sigmoid((linearScore(f, w) - sc) / T) / T
+      for (let i = 0; i < n; i++) g[i] += rw * s * (f[i] - c[i])
+    }
+  }
+  for (let i = 0; i < n; i++) g[i] = frozen.has(i) || !(w[i] > 0) || tw <= 0 ? 0 : (g[i] / tw) * w[i]
+  return g
+}
+
+/** Descente de gradient (Adam, déterministe) en coordonnées log. */
+function gradientDescent(records: readonly DecisionRecord[], start: readonly number[], T: number, frozen: ReadonlySet<number>, steps: number, lr0: number): number[] {
+  const n = start.length
+  const u = start.map(v => (v > 0 ? detLog(v) : -Infinity))
+  const m = new Array<number>(n).fill(0)
+  const v2 = new Array<number>(n).fill(0)
+  let best = { w: start.slice(), loss: rankingLoss(records, start, T) }
+  for (let t = 1; t <= steps; t++) {
+    const w = u.map(x => (x === -Infinity ? 0 : detExp(x)))
+    const g = lossGradient(records, w, T, frozen)
+    const lr = lr0 / (1 + t / 100)
+    for (let i = 0; i < n; i++) {
+      if (u[i] === -Infinity || g[i] === 0) continue
+      m[i] = 0.9 * m[i] + 0.1 * g[i]
+      v2[i] = 0.999 * v2[i] + 0.001 * g[i] * g[i]
+      const mh = m[i] / (1 - 0.9 ** t)
+      const vh = v2[i] / (1 - 0.999 ** t)
+      u[i] -= (lr * mh) / (Math.sqrt(vh) + 1e-12)
+    }
+    const nw = u.map(x => (x === -Infinity ? 0 : detExp(x)))
+    const l = rankingLoss(records, nw, T)
+    if (l < best.loss) best = { w: nw, loss: l }
+  }
+  return best.w
+}
+
+/** Distille des poids (positifs) sur la perte de classement (voir l'en-tête). */
 export function distillWeights(records: readonly DecisionRecord[], init: readonly number[], opts: DistillOptions = {}): DistillResult {
   const n = init.length
-  const T = opts.temperature ?? 100
+  const T = opts.temperature ?? defaultTemperature(records, init)
+  const method = opts.method ?? 'cem+gradient'
   const pop = Math.max(4, opts.population ?? 24)
   const eliteN = Math.max(2, Math.min(pop - 1, opts.elite ?? 6))
   const alpha = opts.smoothing ?? 0.7
@@ -142,7 +219,8 @@ export function distillWeights(records: readonly DecisionRecord[], init: readonl
   const initialAgreement = agreement(records, init)
   let best = { w: init.slice(), loss: initialLoss }
   const history: DistillResult['history'] = []
-  for (let g = 0; g < (opts.generations ?? 30); g++) {
+  const gens = method === 'gradient' ? 0 : (opts.generations ?? 30)
+  for (let g = 0; g < gens; g++) {
     const xs: number[][] = [mu.slice()]
     for (let k = 1; k < pop; k++) xs.push(mu.map((m, i) => (sigma[i] > 0 ? m + sigma[i] * normal01(rng) : m)))
     const losses = xs.map(x => rankingLoss(records, toW(x), T))
@@ -162,6 +240,12 @@ export function distillWeights(records: readonly DecisionRecord[], init: readonl
       return Math.max(0.01, alpha * Math.sqrt(v / elite.length) + (1 - alpha) * s)
     })
     history.push({ generation: g, loss: best.loss, agreement: agreement(records, best.w) })
+  }
+  if (method !== 'cem') {
+    const w = gradientDescent(records, best.w, T, frozen, opts.steps ?? 200, opts.learningRate ?? 0.1)
+    const l = rankingLoss(records, w, T)
+    if (l < best.loss) best = { w, loss: l }
+    history.push({ generation: gens, loss: best.loss, agreement: agreement(records, best.w) })
   }
   return { weights: best.w.map(v => roundSig(v, 4)), loss: best.loss, agreement: agreement(records, best.w), initialLoss, initialAgreement, history }
 }
