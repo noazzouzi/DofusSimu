@@ -7,10 +7,12 @@
  * tours : seuls les coups des monstres comptent. Critères du design : corrélation ≥ 0,8 entre `incoming(a)` (part
  * « dégâts ») et les dégâts subis par `a` avant son prochain tour ; cible prédite = première cible réelle ≥ 85 %.
  * ÉCART : la corrélation mesurée est ≈ 0,71 (garde-fou à 0,6) — `incoming` est une ESPÉRANCE (π lissé, τ = 0,25·max ;
- * ex æquo fréquents entre alliés), le rollout une réalisation où chaque monstre concentre ses coups. Σ prévu ≈ 0,73 ×
- * Σ subi : les PA laissés par le sac à dos sur la cible prédite (lancers par cible plafonnés) ne sont pas reportés sur
- * une 2e cible. Un tel report (« débordement ») a été essayé : Σ ≈ 1,09 mais corrélation 0,675 et préfiltre dégradé
- * (T-prefilter −9 points, les recalculs locaux ne le reproduisent pas) : retiré. La cible prédite atteint ≈ 91 %.
+ * ex æquo fréquents entre alliés), le rollout une réalisation où chaque monstre concentre ses coups (un τ plus petit
+ * n'y change rien : 0,70 à τ = 0,03). Σ prévu ≈ 0,78 × Σ subi : les PA laissés par le sac à dos sur la cible prédite
+ * (lancers par cible plafonnés) ne sont pas reportés sur une 2e cible. Un tel report (« débordement ») a été essayé :
+ * Σ ≈ 1,09 mais corrélation 0,675 et préfiltre dégradé (T-prefilter −9 points) : retiré. Les coups AMPLIFIÉS
+ * (Plumière ×1,5 de la Méjaire, Tirs optiques ×2 de la Harpille, consommés par le coup suivant d'un autre monstre) sont
+ * comptés en espérance (`incAmp`, revue WP1-core : Σ 0,75 → 0,78). La cible prédite atteint ≈ 91 %.
  * Plus : potentiel, et cohérence des recalculs locaux (`removalDelta`, `movedDelta`, `decoyDelta`, `contribution`).
  */
 import { describe, expect, it } from 'vitest'
@@ -19,6 +21,7 @@ import {
   reachPath, simClone, valueOf,
 } from '../src/ai/core'
 import { castSpell } from '../src/engine/cast'
+import { bumpRev } from '../src/engine/rev'
 import type { Engine } from '../src/engine/engine'
 import { move } from '../src/engine/move'
 import { passController, type Controller } from '../src/engine/runner'
@@ -177,6 +180,43 @@ describe('menace : recalculs locaux cohérents', () => {
     }
     expect(checkedRemoval).toBeGreaterThan(80)
     expect(checkedMoves).toBeGreaterThan(80)
+  })
+
+  it('coups amplifiés (Tirs optiques ×2, Plumière ×1,5) : comptés pour l’allié visé, nuls sans amplificateur actif', () => {
+    const engine = engineFor()
+    let withAmp = 0
+    for (let seed = 1; seed <= 40; seed++) {
+      const { fight, me } = randomScene(seed, { engine })
+      const view = createView(engine, fight, me, 1)
+      const p = createPerception(view)
+      const t = p.threat
+      const amps = t.enemies.filter(r => r.active && r.amp > 0)
+      const total = t.allies.reduce((x, a) => x + t.incAmp[a.id], 0)
+      if (!amps.length) {
+        expect(total).toBe(0)
+        continue
+      }
+      for (const a of t.allies) {
+        const i = t.allyIdx(a.id)
+        // Borne : au plus l'excès maximal (×2 ⇒ +100 %) du meilleur lancer d'un ennemi qui joue avant l'allié.
+        let bound = 0
+        for (const r of t.enemies) if (r.active && t.order.before(r.e.id, a.id)) bound = Math.max(bound, r.single[i])
+        expect(t.incAmp[a.id]).toBeGreaterThanOrEqual(0)
+        expect(t.incAmp[a.id]).toBeLessThanOrEqual(2 * bound + 1e-6)
+        expect(t.incoming(a.id)).toBeGreaterThanOrEqual(t.incAmp[a.id])
+      }
+      if (total > 0) withAmp++
+      // Amplificateurs privés de PA : plus de coups amplifiés.
+      const c = engine.cloneFight(fight, false)
+      for (const r of amps) {
+        const e = c.fighters[r.e.id]
+        e.stats = { ...e.stats, ap: 0 }
+        bumpRev(e)
+      }
+      const p2 = createPerception(createView(engine, c, c.fighters[me.id], 1))
+      for (const a of p2.threat.allies) expect(p2.threat.incAmp[a.id]).toBe(0)
+    }
+    expect(withAmp).toBeGreaterThan(5)
   })
 
   it('potentiel : nul sous Pacifiste et pour un allié sans ennemi à portée, borné par les PV ennemis', () => {

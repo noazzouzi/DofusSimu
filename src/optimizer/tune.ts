@@ -17,6 +17,7 @@
  *     sur un micro-scénario (`kindSchedule`, ex. 'prefix12') ; la moyenne courante est toujours ré-évaluée (candidat 0) ;
  *  3. validation sur graines neuves (200 par défaut), test apparié contre θ₀ : accepté seulement si l'amélioration est
  *     significative (z ≥ 2), sinon θ₀ est rendu.
+ * θ global : même procédure sur un panel d'équipes (`panelThetaEvaluator`, `tuneThetaOnPanel`).
  * Les monstres ne sont jamais réglés (aucun chemin `monster.*` accepté) ; les budgets de recherche (`tactical.*`) non
  * plus (ils changent le coût, pas la stratégie). Les θ produits sont arrondis à 4 chiffres significatifs (clés de cache
  * stables). Déterministe : `Rng` graine, normales d'Irwin-Hall, log/exp déterministes (stuff/detmath.ts).
@@ -190,6 +191,20 @@ export function fightThetaEvaluator(base: FightSpec, pool: FightExecutor, opts: 
   return async (thetas, seeds, kind) => {
     const evals = await evaluateSpecs(thetas.map(theta => ({ ...base, theta })), seeds, pool, { ...opts, kind: kind ?? opts.kind })
     return evals.map(e => e.perSeed)
+  }
+}
+
+/**
+ * Évaluateur de θ sur un PANEL d'équipes (§15.3 : le θ global est réglé sur ≈ 12 équipes, chaque finaliste part de
+ * ce θ) : chaque θ est joué par chaque spécification du panel sur les MÊMES graines ; l'objectif d'une graine est la
+ * moyenne du panel (vecteur aligné sur les graines : les comparaisons restent appariées).
+ */
+export function panelThetaEvaluator(panel: readonly FightSpec[], pool: FightExecutor, opts: EvalOptions = {}): ThetaEvaluator {
+  if (!panel.length) throw new Error('θ : panel d’équipes vide')
+  return async (thetas, seeds, kind) => {
+    const specs = thetas.flatMap(theta => panel.map(b => ({ ...b, theta })))
+    const evals = await evaluateSpecs(specs, seeds, pool, { ...opts, kind: kind ?? opts.kind })
+    return thetas.map((_, t) => seeds.map((__, s) => mean(panel.map((___, p) => evals[t * panel.length + p].perSeed[s]))))
   }
 }
 
@@ -400,6 +415,11 @@ export async function tuneTheta(theta0: ThetaJson, evaluate: ThetaEvaluator, opt
 /** Réglage par combats réels (`base` : scénario, équipe, mode ; θ remplacé). */
 export async function tuneThetaByFights(base: FightSpec, pool: FightExecutor, opts: TuneOptions & EvalOptions = {}): Promise<TuneResult> {
   return tuneTheta(base.theta, fightThetaEvaluator(base, pool, opts), opts)
+}
+
+/** Réglage du θ GLOBAL sur un panel d'équipes (`panelThetaEvaluator`) ; θ₀ = θ de la première spécification. */
+export async function tuneThetaOnPanel(panel: readonly FightSpec[], pool: FightExecutor, opts: TuneOptions & EvalOptions = {}): Promise<TuneResult> {
+  return tuneTheta(panel[0].theta, panelThetaEvaluator(panel, pool, opts), opts)
 }
 
 /** Résumé d'un lot (rapports). */

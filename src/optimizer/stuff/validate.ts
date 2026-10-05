@@ -2,12 +2,14 @@
  * Validation des stuffs par combats (niveau L3, docs/design/ai.md §15.4 point 7) — WP4b.
  *
  * Les builds diversifiés d'un membre (front DPT/EHP/UTIL de `optimizeStuff`, + son build actuel) sont comparés DANS
- * l'équipe finaliste, sur les mêmes graines (CRN, 32 par défaut ; T1 `prefix12` + `phase2` pour le Vortex via
- * `kinds`). Le build retenu est celui d'objectif moyen maximal ; le build actuel n'est remplacé que si la différence
- * appariée est positive (z ≥ `minZ`, défaut 0 : meilleur objectif moyen) — le proxy propose, les combats décident.
+ * l'équipe finaliste, sur les mêmes graines (CRN, 32 par défaut). Types de combats (`kinds`) : par défaut T1
+ * `prefix12` + `phase2` (§15.4 point 7) si le scénario a ces micro-scénarios (Vortex), sinon le combat complet. Le build
+ * retenu est celui d'objectif moyen maximal ; le build actuel n'est remplacé que si la différence appariée est positive
+ * (z ≥ `minZ`, défaut 0 : meilleur objectif moyen) — le proxy propose, les combats décident.
  */
 import type { FightCache } from '../cache'
 import type { FightExecutor } from '../montecarlo'
+import { resolveScenario } from '../runner'
 import { campaignSeeds } from '../seeds'
 import { evaluateSpecs, pairedVectors, type ConfigEval, type Objective, type PairedObjective } from '../tune'
 import type { CharacterBuild, FightSpec, WorkerTask } from '../types'
@@ -16,7 +18,7 @@ import type { StuffCandidate } from './search'
 export interface StuffValidationOptions {
   seeds?: number
   masterSeed?: number
-  /** Types de tâches cumulés (défaut ['full']) ; l'objectif est la moyenne des types. */
+  /** Types de tâches cumulés (défaut `defaultValidationKinds`) ; l'objectif est la moyenne des types. */
   kinds?: readonly WorkerTask['kind'][]
   minZ?: number
   cache?: FightCache
@@ -35,12 +37,18 @@ export interface StuffValidation {
   evals: ConfigEval[][]
 }
 
+/** Types de combats de la validation par défaut : `prefix12` + `phase2` si le scénario les a, sinon 'full'. */
+export function defaultValidationKinds(scenarioId: string): WorkerTask['kind'][] {
+  const micro = resolveScenario(scenarioId).micro
+  return micro.prefix12 && micro.phase2 ? ['prefix12', 'phase2'] : ['full']
+}
+
 /** Compare des builds d'un membre dans l'équipe (voir l'en-tête). */
 export async function validateStuffs(base: FightSpec, member: number, candidates: readonly (StuffCandidate | CharacterBuild)[], pool: FightExecutor, opts: StuffValidationOptions = {}): Promise<StuffValidation> {
   const seeds = campaignSeeds(opts.masterSeed ?? 0x57f, opts.seeds ?? 32)
   const builds = [base.team[member].build, ...candidates.map(c => ('build' in c ? c.build : c))]
   const specs = builds.map(build => ({ ...base, team: base.team.map((m, i) => (i === member ? { ...m, build: { ...build, spellVariants: m.build.spellVariants ?? build.spellVariants } } : m)) }))
-  const kinds = opts.kinds ?? ['full']
+  const kinds = opts.kinds ?? defaultValidationKinds(base.scenarioId)
   const evals: ConfigEval[][] = []
   for (const kind of kinds) evals.push(await evaluateSpecs(specs, seeds, pool, { kind, cache: opts.cache, objective: opts.objective }))
   const perSeed = specs.map((_, i) => seeds.flatMap((_, s) => kinds.map((__, k) => evals[k][i].perSeed[s])))

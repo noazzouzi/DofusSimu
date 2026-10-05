@@ -161,7 +161,8 @@ export function castGeometryOk(s: FightState, caster: Fighter, spell: KnownSpell
   if (lvl.needFreeCell && occId >= 0 && occId !== caster.id) return false
   if (lvl.needFreeCell && from !== caster.cell && target === from) return false
   if (lvl.needTakenCell && occId < 0) return false
-  if (!nextTurn && !perTargetChecked && lvl.maxCastPerTarget > 0 && occId >= 0) {
+  // Lancers par cible ≤ lancers du tour (castSpell incrémente les deux) : clé chaînée seulement si le sort a déjà servi.
+  if (!nextTurn && !perTargetChecked && lvl.maxCastPerTarget > 0 && occId >= 0 && (caster.castsThisTurn[spell.spellId] ?? 0) > 0) {
     if ((caster.castsOnTarget[`${spell.spellId}:${occId}`] ?? 0) >= lvl.maxCastPerTarget) return false
   }
   if (lvl.castTestLos && distance(from, target) > 1 && !los.los(from, target)) return false
@@ -184,7 +185,7 @@ export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, 
   let perTarget = false
   const occT = target >= 0 && target < CELL_COUNT ? los.occ[target] : -1
   if (!nextTurn && lvl.maxCastPerTarget > 0 && occT >= 0 && occT !== caster.id) {
-    if ((caster.castsOnTarget[`${spell.spellId}:${occT}`] ?? 0) >= lvl.maxCastPerTarget) return out
+    if ((caster.castsThisTurn[spell.spellId] ?? 0) > 0 && (caster.castsOnTarget[`${spell.spellId}:${occT}`] ?? 0) >= lvl.maxCastPerTarget) return out
     perTarget = true
   }
   if (start >= 0 && reach.apLeft[start] >= cost && castGeometryOk(s, caster, spell, lvl, g, start, target, los, nextTurn, perTarget)) {

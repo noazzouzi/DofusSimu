@@ -65,6 +65,34 @@ describe('rembobinage', () => {
     expect(found).toBeGreaterThanOrEqual(1)
   }, 600_000)
 
+  it('Œil de Vortex : un point de contrôle par round (fin de timeline morte ou corrompue comprise), reprise identique depuis chacun', () => {
+    // Régression : seul « dernier index de la timeline » ouvrait un point de contrôle ; un round dont les derniers
+    // combattants de la timeline étaient morts (ou corrompus : tour passé) n'en avait pas (rounds 5 et 8 manquants sur
+    // ces graines).
+    const vortex: FightSpec = { ...spec, scenarioId: 'vortex' }
+    for (const seed of [1, 2]) {
+      const ref = runOne(DATA, vortex, seed).summary
+      const r = rewindFight(DATA, vortex, seed, { maxResumes: 0, robustSeeds: 0, placements: 0, checkAll: true })
+      expect(r.original.eventsHash).toBe(ref.eventsHash)
+      expect(r.checkpoints).toEqual(Array.from({ length: ref.rounds }, (_, i) => i + 1))
+      expect(r.deterministic).toBe(true)
+      expect(r.attempts).toEqual([])
+    }
+    // Placements alternatifs construits sur les cases de DÉPART (régression : le combat terminé n'a que des cases
+    // finales, −1 pour les morts ⇒ aucune alternative au Vortex).
+    const p = rewindFight(DATA, vortex, 1, { modes: [], jitters: 0, placements: 3, maxResumes: 3, robustSeeds: 0 })
+    expect(p.original.win).toBe(false)
+    expect(p.attempts.length).toBeGreaterThanOrEqual(1)
+    for (const a of p.attempts) {
+      expect(a.from).toBe(1)
+      expect(a.alternative.kind).toBe('placementAlt')
+      const cells = (a.alternative as { placement: number[] }).placement
+      expect(cells.length).toBe(4)
+      expect(new Set(cells).size).toBe(4)
+      expect(cells.every(c => c >= 0)).toBe(true)
+    }
+  }, 600_000)
+
   it('outils : θ perturbé ±20 % (jamais les monstres), round d’échec', () => {
     const t = jitterTheta(spec.theta, 1)
     expect(t.monster).toEqual(spec.theta.monster)

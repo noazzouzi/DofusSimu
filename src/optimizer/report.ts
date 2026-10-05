@@ -94,6 +94,8 @@ export interface ReportReplay {
   file: string
   win: boolean
   rounds: number
+  /** Le combat rejoué (`record: true`) est-il exactement celui du lot (même empreinte `eventsHash`) ? */
+  reproduced?: boolean
 }
 
 export interface OptimizationReport {
@@ -497,7 +499,11 @@ export async function generateReport(data: GameDataStore, spec: FightSpec, pool:
       const run = runOne(data, spec, seed, { record: true, explain: true })
       const file = `${opts.id}/replay-${seed}.json`
       replays.set(file, toReplay(data, spec, run, { title: `${report.title} — ${label}`, generator: 'dofussimu-report', createdAt: opts.createdAt }))
-      report.replays.push({ label, seed, file, win: run.summary.win, rounds: run.summary.rounds })
+      // Le replay doit montrer LE combat compté dans le lot (§13.2 : record on/off ⇒ même combat).
+      const counted = evaluation.summaries.find(x => x.seed === seed)
+      const reproduced = !!counted && counted.eventsHash === run.summary.eventsHash
+      if (!reproduced) report.notes.push(`Replay de la graine ${seed} : le combat rejoué diffère de celui du lot (empreintes différentes) — déterminisme à vérifier.`)
+      report.replays.push({ label, seed, file, win: run.summary.win, rounds: run.summary.rounds, reproduced })
     }
   }
   if (opts.rewind?.winningLine?.replay) {

@@ -12,9 +12,14 @@
  *  - `calibrateT0` : ajuste les deux paramètres libres du modèle T0 (efficacité des dégâts, exposition) sur des
  *    scores de combats observés (moindres carrés sur une grille) — le modèle analytique suit ainsi l'IA réellement
  *    utilisée (bouchons compris) ;
- *  - `runCompositionCampaign` : T0 → halving → co-optimisation → validation (mode final, ex. `standard`).
+ *  - `calibrateT0OnFights` : la même calibration sur des équipes du classement T0 jouées en vrais combats ;
+ *  - `evolveTeams` (option `evolve`, §15.6 point 6) : mutation d'un membre et croisement de stuffs, acceptation
+ *    appariée sur graines communes — explore hors du top T0 ;
+ *  - `runCompositionCampaign` : T0 → calibration de T0 sur combats (défaut) → T0 recalculé → halving → (evolve) →
+ *    co-optimisation → validation (mode final, ex. `standard`).
  */
 import type { AIMode } from '../../ai/types'
+import { Rng } from '../../core/rng'
 import type { GameDataStore } from '../../data/store'
 import type { FightCache } from '../cache'
 import type { FightExecutor } from '../montecarlo'
@@ -22,10 +27,10 @@ import { campaignSeeds } from '../seeds'
 import { rankKey, summarizeBatch, wilson } from '../stats'
 import { optimizeStuff, type StuffResult, type StuffSearchOptions } from '../stuff/search'
 import { validateStuffs, type StuffValidation } from '../stuff/validate'
-import { evaluateSpecs, tuneThetaByFights, type ConfigEval, type Objective, type TuneOptions, type TuneResult } from '../tune'
+import { evaluateSpecs, pairedVectors, tuneThetaByFights, type ConfigEval, type Objective, type TuneOptions, type TuneResult } from '../tune'
 import type { BatchResult, FightSpec, FightSummary, MemberSpec, WorkerTask } from '../types'
 import { optimizeVariants, type VariantSearchOptions, type VariantSearchResult } from '../variants'
-import { findPreset, presetMember, resolvePreset, type Preset } from './presets'
+import { findPreset, presetMember, PRESETS, resolvePreset, type Preset } from './presets'
 import { archetypeKey, archetypeOf } from './prior'
 import { defaultT0Params, t0Evaluate, t0Rank, type PresetCapability, type T0Params, type T0RankOptions, type T0Result } from './t0model'
 
@@ -198,6 +203,197 @@ export function calibrateT0(observations: readonly T0Observation[], base: T0Para
   return { ...best, grid }
 }
 
+export interface T0FightCalibrationOptions {
+  /** Équipes jouées (réparties sur le classement T0 non calibré, défaut 12). */
+  teams?: number
+  /** Graines par équipe (défaut 8, CRN). */
+  seeds?: number
+  masterSeed?: number
+  cache?: FightCache
+}
+
+export interface T0FightCalibration {
+  params: T0Params
+  mse: number
+  observations: { id: string; observed: number; predictedBefore: number; predictedAfter: number }[]
+  fights: number
+}
+
+/**
+ * Calibre T0 sur de VRAIS combats (`calibrateT0`) : `teams` équipes réparties régulièrement sur le classement T0
+ * (rang 1, …, dernier rang du classement fourni), jouées sur des graines communes avec la spécification de base
+ * (mode, θ, variantes) ; score observé = score de combat moyen (§15.2, même format que `T0Result.predicted`). Sans
+ * cela, T0 (efficacité 0,5, exposition 1) prédit la victoire de presque toutes les équipes alors que l'IA réellement
+ * utilisée peut toutes les faire perdre : le classement ne discrimine plus.
+ */
+export async function calibrateT0OnFights(data: GameDataStore, base: Omit<FightSpec, 'team'>, pool: FightExecutor, ranking: { top: readonly T0Result[]; capabilities: readonly PresetCapability[] }, presets: readonly Preset[], params: T0Params, opts: T0FightCalibrationOptions = {}): Promise<T0FightCalibration> {
+  const n = Math.max(1, Math.min(opts.teams ?? 12, ranking.top.length))
+  const picks: T0Result[] = []
+  for (let k = 0; k < n; k++) {
+    const r = ranking.top[n === 1 ? 0 : Math.round((k * (ranking.top.length - 1)) / (n - 1))]
+    if (!picks.includes(r)) picks.push(r)
+  }
+  const seeds = campaignSeeds(opts.masterSeed ?? 0x70ca1, opts.seeds ?? 8)
+  const cands = candidatesFromT0(data, picks)
+  const evals = await evaluateSpecs(cands.map(c => ({ ...base, team: c.team })), seeds, pool, { cache: opts.cache })
+  const capOf = (id: string) => ranking.capabilities[presets.findIndex(p => p.id === id)]
+  const obs: T0Observation[] = picks.map((r, i) => ({
+    capabilities: r.presetIds.map(capOf),
+    presets: r.presetIds.map(id => presets.find(p => p.id === id)!),
+    observed: evals[i].summaries.reduce((a, s) => a + s.score, 0) / Math.max(1, evals[i].summaries.length),
+  }))
+  const fit = calibrateT0(obs, params)
+  return {
+    params: fit.params,
+    mse: fit.mse,
+    observations: obs.map((o, i) => ({
+      id: cands[i].id,
+      observed: o.observed,
+      predictedBefore: t0Evaluate(o.capabilities, params, o.presets).predicted,
+      predictedAfter: t0Evaluate(o.capabilities, fit.params, o.presets).predicted,
+    })),
+    fights: picks.length * seeds.length,
+  }
+}
+
+// ───────────────────────────── option evolve ─────────────────────────────
+
+export interface EvolveOptions {
+  /** Générations (défaut 2). */
+  generations?: number
+  /** Mutants essayés par équipe et par génération (défaut 8). */
+  mutants?: number
+  /** Graines par génération (défaut 32, renouvelées à chaque génération, CRN entre parent et mutants). */
+  seeds?: number
+  kind?: WorkerTask['kind']
+  masterSeed?: number
+  rngSeed?: number
+  /** Presets candidats aux mutations (défaut : tous les presets). */
+  presets?: readonly Preset[]
+  /** Croisement de stuffs entre équipes (même classe) ; défaut vrai. */
+  crossover?: boolean
+  /** Seuil de significativité de l'acceptation d'un mutant (défaut 2). */
+  minZ?: number
+  maxSameClass?: number
+  cache?: FightCache
+  objective?: Objective
+}
+
+export interface EvolveStep {
+  generation: number
+  parent: string
+  child: string
+  kind: 'mutation' | 'crossover'
+  detail: string
+  diff: number
+  z: number
+  accepted: boolean
+}
+
+export interface EvolveResult {
+  teams: TeamCandidate[]
+  steps: EvolveStep[]
+  fights: number
+  log: string[]
+}
+
+/** Équipe renommée (noms uniques par classe : « Iop », « Iop 2 »), identifiant et archétype recalculés. */
+function teamCandidate(team: MemberSpec[], tag = ''): TeamCandidate {
+  const names = new Map<number, number>()
+  const renamed = team.map(m => {
+    const preset = findPreset(m.presetId)
+    const cls = preset?.className ?? m.name.replace(/ \d+$/, '')
+    const k = (names.get(m.breedId) ?? 0) + 1
+    names.set(m.breedId, k)
+    const name = k > 1 ? `${cls} ${k}` : cls
+    return { ...m, name, build: { ...m.build, name } }
+  })
+  const presets = renamed.map(m => findPreset(m.presetId)).filter((p): p is Preset => !!p)
+  return { id: `${teamId(renamed)}${tag}`, team: renamed, archetype: archetypeKey(archetypeOf(presets)) }
+}
+
+/**
+ * Option `evolve` (§15.6 point 6) : explore HORS du top T0 par mutation d'un membre (un preset remplacé par un autre
+ * preset, stuff du preset, ≤ `maxSameClass` par classe, jamais deux fois le même preset) et croisement de stuffs (un
+ * membre reprend le build d'un membre de même classe d'une autre équipe de la population). À chaque génération, chaque
+ * équipe et ses mutants sont joués sur les mêmes graines (CRN, renouvelées par génération) ; le meilleur mutant
+ * remplace l'équipe si le gain apparié est significatif (Δ objectif > 0, z ≥ `minZ`). Déterministe (`Rng` graine).
+ */
+export async function evolveTeams(data: GameDataStore, base: Omit<FightSpec, 'team'>, population: readonly TeamCandidate[], pool: FightExecutor, opts: EvolveOptions = {}): Promise<EvolveResult> {
+  const rng = new Rng(opts.rngSeed ?? 0xe401)
+  const presets = opts.presets ?? PRESETS
+  const maxSame = opts.maxSameClass ?? 2
+  const nSeeds = opts.seeds ?? 32
+  const steps: EvolveStep[] = []
+  const log: string[] = []
+  let fights = 0
+  let current = population.slice()
+  for (let g = 0; g < (opts.generations ?? 2); g++) {
+    const seeds = campaignSeeds(opts.masterSeed ?? 0xe401, nSeeds, g * nSeeds)
+    const next: TeamCandidate[] = []
+    for (const [pi, parent] of current.entries()) {
+      // Mutations possibles (membre i → preset q), tirées sans remise.
+      const options: { child: TeamCandidate; kind: EvolveStep['kind']; detail: string }[] = []
+      const pairs: [number, Preset][] = []
+      parent.team.forEach((m, i) => {
+        for (const q of presets) {
+          if (q.id === m.presetId || parent.team.some(x => x.presetId === q.id)) continue
+          const sameClass = parent.team.filter((x, k) => k !== i && x.breedId === q.breedId).length
+          if (sameClass >= maxSame) continue
+          pairs.push([i, q])
+        }
+      })
+      for (let k = pairs.length - 1; k > 0; k--) {
+        const j = rng.int(0, k)
+        ;[pairs[k], pairs[j]] = [pairs[j], pairs[k]]
+      }
+      for (const [i, q] of pairs.slice(0, opts.mutants ?? 8)) {
+        const team = parent.team.map((m, k) => (k === i ? presetMember(q, data, { name: q.className }) : m))
+        options.push({ child: teamCandidate(team), kind: 'mutation', detail: `${parent.team[i].name} (${parent.team[i].presetId}) → ${q.id}` })
+      }
+      // Croisement de stuffs : même classe dans une autre équipe de la population, build différent.
+      if (opts.crossover ?? true) {
+        current.forEach((other, oi) => {
+          if (oi === pi) return
+          parent.team.forEach((m, i) => {
+            const donor = other.team.find(x => x.breedId === m.breedId && JSON.stringify(x.build.items) !== JSON.stringify(m.build.items))
+            if (!donor) return
+            const team = parent.team.map((x, k) => (k === i ? { ...x, build: { ...donor.build, name: x.name, spellVariants: x.build.spellVariants ?? donor.build.spellVariants } } : x))
+            options.push({ child: teamCandidate(team, `@x${g}.${oi}.${i}`), kind: 'crossover', detail: `${m.name} reprend le stuff de ${donor.name} (${other.id})` })
+          })
+        })
+      }
+      if (!options.length) {
+        next.push(parent)
+        continue
+      }
+      const specs = [parent, ...options.map(o => o.child)].map(c => ({ ...base, team: c.team }))
+      const evals = await evaluateSpecs(specs, seeds, pool, { kind: opts.kind, cache: opts.cache, objective: opts.objective })
+      fights += specs.length * seeds.length
+      let best = -1
+      let bestObj = evals[0].objective
+      options.forEach((o, k) => {
+        const p = pairedVectors(evals[0].perSeed, evals[k + 1].perSeed)
+        const accepted = p.diff > 0 && p.z >= (opts.minZ ?? 2)
+        steps.push({ generation: g, parent: parent.id, child: o.child.id, kind: o.kind, detail: o.detail, diff: p.diff, z: p.z, accepted })
+        if (accepted && evals[k + 1].objective > bestObj) {
+          best = k
+          bestObj = evals[k + 1].objective
+        }
+      })
+      if (best >= 0) {
+        next.push(options[best].child)
+        log.push(`evolve g${g} : ${parent.id} → ${options[best].child.id} (${options[best].kind} : ${options[best].detail}), objectif ${evals[0].objective.toFixed(3)} → ${bestObj.toFixed(3)}`)
+      } else {
+        next.push(parent)
+        log.push(`evolve g${g} : ${parent.id} conservée (${options.length} variantes, aucune significativement meilleure)`)
+      }
+    }
+    current = next
+  }
+  return { teams: current, steps, fights, log }
+}
+
 // ───────────────────────────── co-optimisation ─────────────────────────────
 
 export interface CoOptOptions {
@@ -272,9 +468,16 @@ export async function coOptimizeTeam(data: GameDataStore, base: FightSpec, pool:
 
 export interface CampaignOptions {
   t0?: T0RankOptions
+  /**
+   * Calibration de T0 sur de vrais combats avant le classement définitif (`calibrateT0OnFights`) ; défaut : activée
+   * (12 équipes × 8 graines) quand les candidats viennent de T0 ; `false` pour la désactiver.
+   */
+  calibrate?: T0FightCalibrationOptions | false
   /** Candidats imposés (sinon top T0). */
   candidates?: readonly TeamCandidate[]
   halving?: HalvingOptions
+  /** Option `evolve` (§15.6 point 6) appliquée aux finalistes du halving avant la co-optimisation ; défaut : non. */
+  evolve?: EvolveOptions | false
   coopt?: CoOptOptions | false
   /** Finalistes co-optimisés (défaut 4). */
   finalists?: number
@@ -285,8 +488,9 @@ export interface CampaignOptions {
 }
 
 export interface CampaignResult {
-  t0?: { evaluated: number; ms: number; top: T0Result[] }
+  t0?: { evaluated: number; ms: number; top: T0Result[]; params?: T0Params; calibration?: T0FightCalibration }
   halving: HalvingResult
+  evolve?: EvolveResult
   finalists: { candidate: TeamCandidate; coopt?: CoOptResult; spec: FightSpec; validation: ConfigEval }[]
   best: { candidate: TeamCandidate; spec: FightSpec; validation: ConfigEval }
   log: string[]
@@ -302,20 +506,37 @@ export async function runCompositionCampaign(data: GameDataStore, base: Omit<Fig
   let t0: CampaignResult['t0']
   let candidates = opts.candidates?.slice()
   if (!candidates) {
-    const r = t0Rank(data, opts.t0)
-    t0 = { evaluated: r.evaluated, ms: r.ms, top: r.top }
+    let r = t0Rank(data, opts.t0)
+    const presets = opts.t0?.presets ?? PRESETS
+    let params: T0Params = { ...defaultT0Params(data, opts.t0?.size ?? 4), ...opts.t0?.params }
+    let calibration: T0FightCalibration | undefined
+    say(`T0 : ${r.evaluated} équipes notées en ${(r.ms / 1000).toFixed(1)} s`)
+    if (opts.calibrate !== false) {
+      calibration = await calibrateT0OnFights(data, base, pool, r, presets, params, { cache: opts.cache, ...(opts.calibrate || {}) })
+      params = calibration.params
+      say(`T0 calibré sur ${calibration.fights} combats (${calibration.observations.length} équipes) : efficacité ${params.efficiency}, exposition ${params.exposure}, EQM ${calibration.mse.toFixed(4)}`)
+      r = t0Rank(data, { ...opts.t0, presets, capabilities: r.capabilities, params })
+    }
+    t0 = { evaluated: r.evaluated, ms: r.ms, top: r.top, params, calibration }
     candidates = candidatesFromT0(data, r.top)
-    say(`T0 : ${r.evaluated} équipes notées en ${(r.ms / 1000).toFixed(1)} s, ${candidates.length} candidates`)
+    say(`T0 : ${candidates.length} candidates`)
   }
   const halving = await successiveHalving(base, candidates, pool, { cache: opts.cache, objective: opts.objective, ...opts.halving })
   for (const st of halving.stages) {
     const kept = st.entries.filter(e => e.kept).sort((a, b) => a.rank - b.rank)
     say(`${st.name} : ${st.entries.length} équipes → ${kept.length} (meilleure ${kept[0]?.id ?? '—'}, objectif ${kept[0]?.objective.toFixed(3) ?? '—'})`)
   }
+  let winners = halving.winners.slice(0, opts.finalists ?? 4)
+  let evolve: EvolveResult | undefined
+  if (opts.evolve) {
+    evolve = await evolveTeams(data, base, winners, pool, { cache: opts.cache, objective: opts.objective, ...opts.evolve })
+    winners = evolve.teams
+    for (const l of evolve.log) say(l)
+  }
   const finalists: CampaignResult['finalists'] = []
   const vMode = opts.validation?.mode ?? base.mode
   const vSeeds = campaignSeeds(0x7a11, opts.validation?.seeds ?? 24)
-  for (const c of halving.winners.slice(0, opts.finalists ?? 4)) {
+  for (const c of winners) {
     let spec: FightSpec = { ...base, team: c.team }
     let coopt: CoOptResult | undefined
     if (opts.coopt !== false) {
@@ -330,7 +551,7 @@ export async function runCompositionCampaign(data: GameDataStore, base: Omit<Fig
     finalists.push({ candidate: c, coopt, spec: { ...spec, mode: vMode }, validation })
   }
   const best = finalists.slice().sort((a, b) => stageKey(b.validation.result, b.validation.objective) - stageKey(a.validation.result, a.validation.objective) || b.validation.objective - a.validation.objective || a.candidate.id.localeCompare(b.candidate.id))[0]
-  return { t0, halving, finalists, best: { candidate: best.candidate, spec: best.spec, validation: best.validation }, log }
+  return { t0, halving, evolve, finalists, best: { candidate: best.candidate, spec: best.spec, validation: best.validation }, log }
 }
 
 /** Paramètres T0 par défaut (ré-export pratique). */

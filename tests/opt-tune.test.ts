@@ -12,7 +12,7 @@ import { mix32 } from '../src/core/hash'
 import { loadDataStore } from '../src/data/node'
 import { createLocalPool } from '../src/optimizer/pool/pool'
 import { parseTeam } from '../src/optimizer/team/presets'
-import { cemTheta, isTunablePath, pairedObjective, screenTheta, shapedScore, tunableParams, tuneTheta, tuneThetaByFights, validateTheta, type ThetaEvaluator } from '../src/optimizer/tune'
+import { cemTheta, fightThetaEvaluator, isTunablePath, pairedObjective, panelThetaEvaluator, screenTheta, shapedScore, tunableParams, tuneTheta, tuneThetaByFights, validateTheta, type ThetaEvaluator } from '../src/optimizer/tune'
 import type { FightSpec, FightSummary } from '../src/optimizer/types'
 
 const THETA0 = loadTheta()
@@ -122,6 +122,20 @@ describe('boucle L2 sur combats réels', () => {
     expect(r.accepted).toBe(false)
     expect(r.theta).toEqual(THETA0)
     expect(r.evaluations).toBe(2 * 3 * 3 + 2 * 6)
+  }, 300_000)
+
+  it('panel d’équipes (θ global, §15.3) : objectif par graine = moyenne du panel, aligné sur les graines', async () => {
+    const DATA = loadDataStore('data')
+    const pool = createLocalPool(DATA)
+    const mk = (t: string): FightSpec => ({ scenarioId: 'control:143393281:3834,3838', team: parseTeam(t, DATA), mode: 'scripted', theta: THETA0, variantPolicy: 'default', monsterNoise: 0 })
+    const panel = [mk('iop:killer,cra:feu,enutrof:mpLock,eniripsa:healer'), mk('sacrieur:tank,cra:feu,xelor:zoneDps,sadida:healer')]
+    const thetas = [THETA0, loadTheta({ value: { incoming: 1.2 } })]
+    const seeds = [11, 12, 13]
+    const got = await panelThetaEvaluator(panel, pool)(thetas, seeds)
+    const each = await Promise.all(panel.map(b => fightThetaEvaluator(b, pool)(thetas, seeds)))
+    expect(got.length).toBe(2)
+    for (let t = 0; t < 2; t++) for (let k = 0; k < seeds.length; k++) expect(got[t][k]).toBeCloseTo((each[0][t][k] + each[1][t][k]) / 2, 12)
+    expect(() => panelThetaEvaluator([], pool)).toThrow()
   }, 300_000)
 
   it('objectif façonné et comparaison appariée', () => {

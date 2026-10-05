@@ -198,20 +198,31 @@ export function generateCasts(view: AIView, s: FightState, me: Fighter, opts: Ge
 
     // C4 : case libre nécessaire (invocation, téléportation, glyphe, piège).
     if (lvl.needFreeCell) {
-      const enemies = fighters.filter(x => x.f.team !== me.team)
-      const near = (c: number) => enemies.reduce((m, x) => Math.min(m, distance(c, x.cell)), 99)
-      const cand: { c: number; d: number }[] = []
+      const enemyCells: number[] = []
+      for (const x of fighters) if (x.f.team !== me.team) enemyCells.push(x.cell)
+      // Cases libres à portée de marche + lancer, classées par distance à l'ennemi le plus proche puis par id (tri
+      // par paquets de distance : linéaire).
       const bound = g.max + Math.floor(me.mp)
-      for (let c = 0; c < CELL_COUNT; c++) {
-        if (occ[c] >= 0 || !s.map.cells[c]?.walkable || distance(meCell, c) > bound) continue
-        cand.push({ c, d: near(c) })
+      const walk = walkableOf(s)
+      const ring = inverseRange({ min: 0, max: bound, line: false, diag: false }, meCell)
+      const buckets: number[][] = []
+      for (let k = 0; k < ring.length; k++) {
+        const c = ring[k]
+        if (occ[c] >= 0 || !walk[c]) continue
+        let d = 99
+        for (let e = 0; e < enemyCells.length; e++) {
+          const de = distance(c, enemyCells[e])
+          if (de < d) d = de
+        }
+        ;(buckets[d] ??= []).push(c)
       }
+      const cand: number[] = []
+      for (const b of buckets) if (b) for (const c of b.sort((x, y) => x - y)) cand.push(c)
       const selfMove = prof.moves.some(mv => mv.onCaster)
-      cand.sort((a, b) => a.d - b.d || a.c - b.c)
       const order = selfMove ? [...cand.slice(0, maxFree), ...cand.slice(-2).reverse()] : cand
       let kept = 0
       const seen = new Set<number>()
-      for (const { c } of order) {
+      for (const c of order) {
         if (kept >= maxFree + (selfMove ? 2 : 0)) break
         if (seen.has(c)) continue
         seen.add(c)
@@ -240,34 +251,47 @@ export function generateCasts(view: AIView, s: FightState, me: Fighter, opts: Ge
     const zc = prof.zone ? compileZone(prof.zone) : null
     const directional = !!zc && (zc.orientation !== 0 || zc.shape === 'l')
     const useful = fighters.filter(x => usefulTarget(prof, me, x.f) > 0)
-    const centers = new Map<number, number>()
+    // Centres candidats (ordre d'insertion déterministe) ; marqueur par case réutilisé entre les sorts.
+    const centerList = CENTER_LIST
+    centerList.length = 0
+    const walk = walkableOf(s)
+    // Zones diagonales (« + », carrés…) : une case à r diagonales est à 2r pas ; l'appartenance est vérifiée ensuite.
+    // Grandes zones (« toute la carte », lignes de 63) : centres limités à 8 pas de la cible (au-delà, aucun centre
+    // n'apporte de cible de plus et l'énumération coûtait ~600 centres par cible).
+    const span = Math.min(2 * r, 8)
     for (const { cell } of useful) {
-      // Zones diagonales (« + », carrés…) : une case à r diagonales est à 2r pas ; l'appartenance est vérifiée ensuite.
-      const around = inverseRange({ min: 0, max: 2 * r, line: false, diag: false }, cell)
+      const around = inverseRange({ min: 0, max: span, line: false, diag: false }, cell)
       for (let k = 0; k < around.length; k++) {
         const c = around[k]
-        if (centers.has(c) || !s.map.cells[c]?.walkable) continue
+        if (CENTER_SEEN[c] || !walk[c]) continue
         if (!directional && !zoneMembership(prof.zone!, c, meCell)(cell)) continue
-        centers.set(c, directional ? 0 : zoneWeight(prof, me, c, meCell, fighters, i, p))
+        CENTER_SEEN[c] = 1
+        centerList.push(c)
       }
     }
-    // Options : (centre, case de lancer, poids, cibles utiles touchées). Zone non orientée : la case de lancer est
-    // choisie ensuite par `castFrom` (C7/C8).
-    const options: { c: number; from: number; w: number; touched: number[] }[] = []
-    for (const [c, w0] of centers) {
+    // Options : (centre, case de lancer, poids ; cibles utiles touchées calculées à la demande). Zone non orientée :
+    // la case de lancer est choisie ensuite par `castFrom` (C7/C8).
+    const options: { c: number; from: number; w: number; touched: number[] | null }[] = []
+    for (const c of centerList) {
+      CENTER_SEEN[c] = 0
       if (!directional) {
-        if (w0 <= 0) continue
-        const inZone = zoneMembership(prof.zone!, c, meCell)
-        options.push({ c, from: -1, w: w0, touched: useful.filter(x => inZone(x.cell)).map(x => x.f.id) })
+        const w0 = zoneWeight(prof, me, c, meCell, fighters, i, p)
+        if (w0 > 0) options.push({ c, from: -1, w: w0, touched: null })
         continue
       }
       castCellsFor(s, me, ks, lvl, c, reach, los, Math.max(12, maxCells * 4), cells)
       for (const from of cells) {
         const w = zoneWeight(prof, me, c, from, fighters, i, p)
-        if (w <= 0) continue
-        const inZone = zoneMembership(prof.zone!, c, from)
-        options.push({ c, from, w, touched: useful.filter(x => x.f.id !== me.id && inZone(x.cell)).map(x => x.f.id) })
+        if (w > 0) options.push({ c, from, w, touched: null })
       }
+    }
+    const touchedOf = (o: { c: number; from: number; touched: number[] | null }): number[] => {
+      if (!o.touched) {
+        const inZone = zoneMembership(prof.zone!, o.c, o.from < 0 ? meCell : o.from)
+        o.touched = []
+        for (const x of useful) if ((o.from < 0 || x.f.id !== me.id) && inZone(x.cell)) o.touched.push(x.f.id)
+      }
+      return o.touched
     }
     options.sort((a, b) => b.w - a.w || a.c - b.c || a.from - b.from)
     // Couverture d'abord : chaque cible utile touchée par au moins une option retenue, puis complément par poids.
@@ -278,19 +302,34 @@ export function generateCasts(view: AIView, s: FightState, me: Fighter, opts: Ge
       for (let oi = 0; oi < options.length && kept < maxCenters; oi++) {
         const o = options[oi]
         if (chosen.has(oi)) continue
-        if (pass === 0 && !o.touched.some(id => !covered.has(id))) continue
+        if (pass === 0 && !touchedOf(o).some(id => !covered.has(id))) continue
         const before = out.length
         if (o.from < 0) castFrom(ks, prof, o.c)
         else emit(ks, prof, o.c, o.from)
         if (out.length > before) {
           chosen.add(oi)
           kept++
-          for (const id of o.touched) covered.add(id)
+          for (const id of touchedOf(o)) covered.add(id)
         }
       }
     }
   }
   return out
+}
+
+/** Marqueurs des centres de zone (C3), remis à zéro après chaque sort. */
+const CENTER_SEEN = new Uint8Array(CELL_COUNT)
+const CENTER_LIST: number[] = []
+/** Cases marchables d'une carte (1 = marchable), calculées une fois par carte. */
+const WALKABLE = new WeakMap<object, Uint8Array>()
+function walkableOf(s: FightState): Uint8Array {
+  let w = WALKABLE.get(s.map)
+  if (!w) {
+    w = new Uint8Array(CELL_COUNT)
+    for (let c = 0; c < CELL_COUNT; c++) w[c] = s.map.cells[c]?.walkable ? 1 : 0
+    WALKABLE.set(s.map, w)
+  }
+  return w
 }
 
 /** Poids rapide d'un centre de zone : cibles utiles touchées (dégâts par lancer si disponibles), tir ami soustrait. */

@@ -51,7 +51,10 @@ describe('rapport', () => {
       const replay = JSON.parse(readFileSync(join(dir, r.file), 'utf8'))
       expect(replay.events[0].t).toBe('fightStart')
       expect(replay.meta.seed).toBe(r.seed)
+      // Le replay est exactement le combat compté dans le lot.
+      expect(r.reproduced).toBe(true)
     }
+    expect(report.notes.some(n => n.includes('diffère de celui du lot'))).toBe(false)
     expect(files.replays.length).toBe(report.replays.length)
   }, 300_000)
 

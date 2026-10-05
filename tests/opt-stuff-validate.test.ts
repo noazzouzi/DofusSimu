@@ -10,7 +10,7 @@ import { loadTheta } from '../src/ai'
 import { loadDataStore } from '../src/data/node'
 import { createNodePool } from '../src/optimizer/pool/node'
 import { optimizeStuff } from '../src/optimizer/stuff/search'
-import { validateStuffs } from '../src/optimizer/stuff/validate'
+import { defaultValidationKinds, validateStuffs } from '../src/optimizer/stuff/validate'
 import { getPreset, parseTeam, presetMember } from '../src/optimizer/team/presets'
 import type { FightSpec } from '../src/optimizer/types'
 
@@ -19,6 +19,11 @@ const pool = createNodePool(4)
 afterAll(() => pool.close())
 
 describe('validation des stuffs par combats', () => {
+  it('types de combats par défaut : T1 prefix12 + phase2 au Vortex (§15.4 point 7), combat complet sinon', () => {
+    expect(defaultValidationKinds('vortex')).toEqual(['prefix12', 'phase2'])
+    expect(defaultValidationKinds('control:143393281:3834,3838')).toEqual(['full'])
+  })
+
   it('membre nu : un build optimisé est retenu, bat le personnage nu et le stuff méta du preset', async () => {
     const team = parseTeam('iop:killer,cra:feu,enutrof:mpLock,eniripsa:healer', DATA)
     const meta = team[1].build

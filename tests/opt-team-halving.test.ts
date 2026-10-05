@@ -70,6 +70,35 @@ describe('successive halving', () => {
     for (const e of r.stages[1].entries) expect(best.key).toBeGreaterThanOrEqual(e.key)
   }, 600_000)
 
+  it('campagne depuis T0 : T0 calibré sur de vrais combats (EQM non dégradée), classement recalculé, journal', async () => {
+    const subset = ['cra_feu_zone', 'enutrof_retrait_pm_eau', 'iop_terre_burst', 'eniripsa_soin_feu', 'pandawa_placement', 'sacrieur_tank'].map(resolvePreset)
+    const lines: string[] = []
+    const r = await runCompositionCampaign(DATA, base, pool, {
+      t0: { presets: subset, top: 6 },
+      calibrate: { teams: 3, seeds: 3 },
+      halving: { stages: [{ name: 'T1', kinds: ['full'], seeds: 2, keep: 1 }] },
+      finalists: 1,
+      coopt: false,
+      validation: { seeds: 2 },
+      onLog: l => lines.push(l),
+    })
+    const cal = r.t0!.calibration!
+    expect(cal.observations.length).toBe(3)
+    expect(cal.fights).toBe(9)
+    const mse = (k: 'predictedBefore' | 'predictedAfter') => cal.observations.reduce((a, o) => a + (o[k] - o.observed) ** 2, 0) / cal.observations.length
+    expect(mse('predictedAfter')).toBeLessThanOrEqual(mse('predictedBefore') + 1e-12)
+    expect(cal.mse).toBeCloseTo(mse('predictedAfter'), 12)
+    for (const o of cal.observations) {
+      expect(o.observed).toBeGreaterThanOrEqual(0)
+      expect(o.observed).toBeLessThanOrEqual(1.1)
+    }
+    expect(r.t0!.params).toEqual(cal.params)
+    expect(r.t0!.top.length).toBe(6)
+    expect(r.halving.stages[0].entries.length).toBe(6)
+    expect(lines.some(l => l.startsWith('T0 calibré'))).toBe(true)
+    expect(r.best.validation.summaries.length).toBe(2)
+  }, 600_000)
+
   it('campagne réduite : halving → co-optimisation (stuff validé par combats, variantes) → validation', async () => {
     const cands = [
       candidateFromPresets(DATA, ['iop_terre_burst', 'cra_feu_zone', 'enutrof_retrait_pm_eau', 'eniripsa_soin_feu'].map(resolvePreset)),

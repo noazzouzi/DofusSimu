@@ -678,6 +678,8 @@ export class ProxyContext {
    */
   statWeights(): Partial<Record<StatKey, number>> {
     if (this.weightsCache) return this.weightsCache
+    // Les évaluations des différences finies ne comptent pas dans les statistiques de recherche.
+    const calls = this.surrogateCalls
     const base = this.surrogate(this.refStats, this.refMaxHp).logJ
     const out: Partial<Record<StatKey, number>> = {}
     for (const k of Object.keys(RUNE_WEIGHT_PER_POINT) as StatKey[]) {
@@ -697,7 +699,7 @@ export class ProxyContext {
       if (k === 'vitality' || k === 'lifePoints') hp += step
       out[k] = (this.surrogate(s, hp).logJ - base) / step
     }
-    this.surrogateCalls -= Object.keys(RUNE_WEIGHT_PER_POINT).length + 1
+    this.surrogateCalls = calls
     this.weightsCache = out
     return out
   }

@@ -9,8 +9,8 @@
  *     « changer un objet », « poser/retirer un bloc de panoplie », « échanger un Dofus », « déplacer l'exo
  *     PA/PM/PO ») sur la forme fermée du proxy (`surrogate`) ; forgemagie re-planifiée à chaque évaluation
  *     (`exos.ts`) ; tout build invalide (conditions, doublons, prysmaradites…) vaut −∞ ;
- *  4. re-notation EXACTE (`ProxyContext.exact`) des `topExact` (50) meilleurs builds distincts, puis des répartitions
- *     de points (`points.ts`) sur les meilleurs ;
+ *  4. re-notation EXACTE (`ProxyContext.exact`, caractéristiques recalculées par `computeBuildStats`) des `topExact`
+ *     (50) meilleurs builds distincts, puis des répartitions de points (`points.ts`) sur les meilleurs ;
  *  5. front de Pareto (DPT, EHP, UTIL) : `diversity` (5) builds diversifiés pour la validation par combats (L3 point 7,
  *     `validateStuffs`).
  * Déterministe : `Rng` graine, départages par logJ puis clé ; aucun `Math.random`/`Date.now` dans une décision
@@ -148,11 +148,30 @@ interface Evaluated {
   build?: CharacterBuild
 }
 
+/**
+ * L'objet porte-t-il un plafond de caractéristique (effet 2897), sur ses lignes OU dans un palier de sa panoplie
+ * (ex. Malédiction de Cire Momore, 6 objets : PM/PO/invocations max 2) ? Ces plafonds ne sont appliqués que par
+ * `computeBuildStats` : le chemin rapide de la forgemagie ne les connaît pas.
+ */
+function carriesStatCap(data: GameDataStore, item: ItemData, cache: WeakMap<ItemData, boolean>): boolean {
+  let v = cache.get(item)
+  if (v === undefined) {
+    v = item.effects.some(e => e.effectId === EFFECT_STAT_CAP)
+    if (!v && item.setId !== null) {
+      const set = data.itemSet(item.setId)
+      if (set) v = Object.values(set.bonuses).some(lines => lines.some(l => l.effectId === EFFECT_STAT_CAP))
+    }
+    cache.set(item, v)
+  }
+  return v
+}
+
 class Evaluator {
   readonly memo = new Map<string, Evaluated>()
   /** Meilleurs builds distincts (clé canonique), pour la re-notation exacte. */
   readonly hall = new Map<string, Evaluated>()
   readonly forge: ForgePlanner
+  private readonly capCache = new WeakMap<ItemData, boolean>()
 
   constructor(
     readonly data: GameDataStore,
@@ -201,11 +220,20 @@ class Evaluator {
         if (s.hosts[i] >= 0) hosts[st] = s.hosts[i]
       })
       const items = this.items(s)
-      forge = this.forge.plan(items, r0.stats, hosts)
+      // Un PA/PM/PO déjà au-delà de son plafond EFFECTIF (plafond 2897 d'un objet ou d'une panoplie, sous 12/6/6) :
+      // l'exo serait perdu, il n'est pas posé (la ligne de forgemagie sert alors à une transcendance).
+      let planStats = r0.stats
+      if (r0.wasted.ap || r0.wasted.mp || r0.wasted.range) {
+        planStats = copyStats(r0.stats)
+        if (r0.wasted.ap) planStats.ap = Number.MAX_SAFE_INTEGER
+        if (r0.wasted.mp) planStats.mp = Number.MAX_SAFE_INTEGER
+        if (r0.wasted.range) planStats.range = Number.MAX_SAFE_INTEGER
+      }
+      forge = this.forge.plan(items, planStats, hosts)
       if (forge.lines.some(l => l.length)) {
         build = this.build(s, forge, points)
-        if (!r0.valid || items.some(it => it && it.effects.some(e => e.effectId === EFFECT_STAT_CAP))) {
-          // Plafonds 2897 : recalcul complet par src/stats.
+        if (!r0.valid || items.some(it => it !== null && carriesStatCap(this.data, it, this.capCache))) {
+          // Plafonds 2897 (objet ou panoplie) : recalcul complet par src/stats.
           r = computeBuildStats(build, this.data)
         } else {
           // Chemin rapide (≈ 10× moins cher que le chemin « forgemagie » de computeBuildStats) : lignes ajoutées aux
@@ -439,13 +467,17 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
   // Re-notation exacte des meilleurs builds distincts.
   const passiveIds = new Set<number>()
   for (const slot of Object.keys(pools.bySlot) as EquipmentSlot[]) for (const p of pools.bySlot[slot]) if (p.passive) passiveIds.add(p.item.id)
-  const toCandidate = (e: Evaluated, pointsId: string): StuffCandidate => {
+  // Re-notation (§15.4 point 4 : « computeBuildStats sur les 50 meilleurs ») : les caractéristiques du build RENDU sont
+  // recalculées par src/stats (garde-fou du chemin rapide de la forgemagie) ; un build que src/stats refuse est écarté.
+  const toCandidate = (e: Evaluated, pointsId: string): StuffCandidate | undefined => {
     const build = e.build!
-    const exact = ctx.exact(e.stats!, e.maxHp!)
+    const full = computeBuildStats(build, data)
+    if (!full.valid) return undefined
+    const exact = ctx.exact(full.stats, full.maxHp)
     return {
       build,
       score: exact,
-      surrogate: e.score!,
+      surrogate: ctx.surrogate(full.stats, full.maxHp),
       key: `${canonicalKey(e.state)}|${pointsId}`,
       forge: e.forge ?? { lines: [], exos: {}, transcendences: [] },
       pointsId,
@@ -453,7 +485,8 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
     }
   }
   const top = [...ev.hall.values()].sort((a, b) => b.logJ - a.logJ || (canonicalKey(a.state) < canonicalKey(b.state) ? -1 : 1)).slice(0, topExact)
-  let cands = top.map(e => toCandidate(e, 'start'))
+  const isCand = (c: StuffCandidate | undefined): c is StuffCandidate => c !== undefined
+  let cands = top.map(e => toCandidate(e, 'start')).filter(isCand)
 
   // Répartitions de points sur les 5 meilleurs (notées exactement).
   if (opts.points ?? true) {
@@ -466,7 +499,8 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
       for (const o of options) {
         const e = ev.evaluate(state, o.points)
         if (e.logJ === -Infinity) continue
-        cands.push(toCandidate(e, o.id))
+        const cand = toCandidate(e, o.id)
+        if (cand) cands.push(cand)
       }
     }
   }
@@ -505,6 +539,17 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
     pools: { examined: pools.examined, kept: Object.values(pools.bySlot).reduce((a, l) => a + l.length, 0), setBlocks: pools.setBlocks.length },
     ms: performance.now() - t0,
   }
+}
+
+/**
+ * Évaluation d'un stuff telle que la recherche la voit (objets rangés par position, forgemagie planifiée par
+ * `ForgePlanner`, caractéristiques par le chemin rapide quand il s'applique) : build forgé, caractéristiques, PV max,
+ * logJ de la forme fermée (−∞ si invalide). Sert aux tests de cohérence avec `computeBuildStats` et aux outils.
+ */
+export function evaluateStuff(data: GameDataStore, ctx: ProxyContext, build: CharacterBuild, profile: ForgeProfile = 'thlOptimized'): { build: CharacterBuild; stats?: Stats; maxHp?: number; logJ: number } {
+  const ev = new Evaluator(data, ctx, build, profile, 1)
+  const e = ev.evaluate(stateFromItems(data, build.items))
+  return { build: e.build ?? ev.build(e.state, null), stats: e.stats, maxHp: e.maxHp, logJ: e.logJ }
 }
 
 /** Membre avec un autre build (variantes conservées). */

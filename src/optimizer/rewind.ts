@@ -132,11 +132,31 @@ export interface Checkpoint {
   spellUse: Record<number, number>
 }
 
-/** Joue jusqu'à la fin en posant un point de contrôle avant le premier tour de chaque round. */
+/**
+ * Plus aucun combattant ne jouera (contrôleur) avant le round suivant : ceux qui suivent dans la timeline sont morts,
+ * sautent leur tour (`skipTurns`) ou le passent (`passesTurn`, ex. monstres corrompus du Vortex). `nextTurn` les
+ * traverse (de façon déterministe) puis ouvre le round suivant : l'état courant est le point de contrôle de ce round.
+ * (Tester seulement « dernier index de la timeline » manquait tous les rounds dont la fin de timeline est morte ou
+ * corrompue — fréquent au Vortex.)
+ */
+function atRoundBoundary(engine: Engine, fight: FightState): boolean {
+  if (fight.round === 0) return true
+  for (let i = fight.turnIndex + 1; i < fight.timeline.length; i++) {
+    const f = fight.fighters[fight.timeline[i]]
+    if (!f || !f.alive) continue
+    const skip = f.tags.skipTurns
+    if (typeof skip === 'number' && skip > 0) continue
+    if (engine.passesTurn(f)) continue
+    return false
+  }
+  return true
+}
+
+/** Joue jusqu'à la fin en posant un point de contrôle avant le premier tour (joué) de chaque round. */
 function playWithCheckpoints(s: Session, checkpoints?: Map<number, Checkpoint>, maxTurns = 5000): void {
   const { engine, fight } = s
   for (let i = 0; i < maxTurns && !fight.ended; i++) {
-    if (checkpoints && (fight.round === 0 || fight.turnIndex + 1 >= fight.timeline.length)) {
+    if (checkpoints && atRoundBoundary(engine, fight)) {
       const round = fight.round + 1
       if (!checkpoints.has(round)) {
         checkpoints.set(round, { round, fight: engine.cloneFight(fight, fight.options.record), brain: s.controllers.snapshot(), spellUse: { ...s.spellUse } })
@@ -233,6 +253,8 @@ export interface RewindOptions {
   robustSeeds?: number
   /** Enregistrer la ligne gagnante (replay). */
   record?: boolean
+  /** Vérifier la reprise à l'identique depuis CHAQUE point de contrôle (défaut : seulement celui du tour 2). */
+  checkAll?: boolean
 }
 
 export interface RewindAttempt {
@@ -255,7 +277,7 @@ export interface RewindResult {
   winningLine?: RewindAttempt & { replay?: Replay }
   /** Sortie « robuste » : au point de contrôle de la ligne (ou du meilleur essai), alternatives × dés différents. */
   robust?: { from: number; seeds: number; results: { label: string; winRate: number; meanScore: number }[]; best: string }
-  /** Vérification : reprise « à l'identique » du premier point de contrôle = combat original (déterminisme). */
+  /** Vérification : reprise « à l'identique » d'un point de contrôle (tous si `checkAll`) = combat original. */
   deterministic: boolean
 }
 
@@ -272,6 +294,7 @@ export function failureRound(fight: FightState, playerTeam: TeamId = 0): number 
 function placementAlternatives(fight: FightState, team: TeamId, count: number): number[][] {
   const players = fight.fighters.filter(f => f.team === team && f.kind === 'player' && f.summonerId === undefined)
   const cells = players.map(f => f.cell)
+  if (cells.some(c => c < 0)) return []
   const red = (fight.map.redCells?.length ? fight.map.redCells : fight.map.cells.filter(c => c.placement === 1).map(c => c.id)).filter(c => fight.map.cells[c]?.walkable)
   const out: number[][] = []
   const seen = new Set<string>([cells.join(',')])
@@ -297,9 +320,10 @@ export function rewindFight(data: GameDataStore, spec: FightSpec, seed: number, 
   const original = summarize(base, seed)
   const cpRounds = [...checkpoints.keys()].sort((a, b) => a - b)
 
-  // Contrôle de déterminisme : reprise à l'identique depuis le point de contrôle du tour 2 (ou 1).
-  const cpCheck = checkpoints.get(Math.min(2, cpRounds[cpRounds.length - 1] ?? 1)) ?? checkpoints.get(1)
-  const deterministic = cpCheck ? summarize(resume(data, spec, seed, base, cpCheck, { kind: 'none' }, false), seed).eventsHash === original.eventsHash : true
+  // Contrôle de déterminisme : reprise à l'identique depuis le point de contrôle du tour 2 (ou 1), ou depuis TOUS les
+  // points de contrôle (`checkAll`).
+  const toCheck = opts.checkAll ? cpRounds.map(r => checkpoints.get(r)!) : [checkpoints.get(Math.min(2, cpRounds[cpRounds.length - 1] ?? 1)) ?? checkpoints.get(1)].filter((c): c is Checkpoint => !!c)
+  const deterministic = toCheck.every(cp => summarize(resume(data, spec, seed, base, cp, { kind: 'none' }, false), seed).eventsHash === original.eventsHash)
 
   const failRound = failureRound(base.fight, base.playerTeam)
   const result: RewindResult = { optimistic: true, original, failRound, checkpoints: cpRounds, attempts: [], deterministic }
@@ -340,8 +364,10 @@ export function rewindFight(data: GameDataStore, spec: FightSpec, seed: number, 
     }
   }
   if (!found) {
-    // Placement initial (reprise au tour 1).
-    for (const placement of placementAlternatives(base.fight, base.playerTeam, opts.placements ?? 4)) {
+    // Placement initial (reprise au tour 1) : alternatives construites sur les cases de DÉPART (point de contrôle du
+    // tour 1) — le combat terminé n'a plus que les cases finales (−1 pour les morts : aucune alternative valide).
+    const start = checkpoints.get(1)?.fight ?? base.fight
+    for (const placement of placementAlternatives(start, base.playerTeam, opts.placements ?? 4)) {
       if (result.attempts.length >= maxResumes) break
       const a = tryOne(1, { kind: 'placementAlt', placement }, null)
       if (a.summary.win) {

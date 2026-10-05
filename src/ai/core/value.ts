@@ -311,11 +311,14 @@ export function valueOf(view: AIView, s: FightState, perception: Perception, opt
     if (root) {
       const m0 = root.fighters[meId]
       if (m0) {
-        for (let i = 0; i < me.spells.length; i++) {
-          const ks = me.spells[i]
-          const cast = (me.castsThisTurn[ks.spellId] ?? 0) - (m0.castsThisTurn[ks.spellId] ?? 0)
-          if (cast <= 0) continue
-          const cd = levelFor(me, ks).minCastInterval
+        // Sorts lancés depuis la racine (clés des lancers du tour : quelques entrées, pas la liste des sorts).
+        for (const k in me.castsThisTurn) {
+          const cast = me.castsThisTurn[k] - (m0.castsThisTurn[k] ?? 0)
+          if (!(cast > 0)) continue
+          const spellId = Number(k)
+          const i = me.spells.findIndex(x => x.spellId === spellId)
+          if (i < 0) continue
+          const cd = levelFor(me, me.spells[i]).minCastInterval
           if (cd > 0) out.resources -= tv.cdCost * cd * meanSpellValue(dpt, m0, i, root)
         }
       }

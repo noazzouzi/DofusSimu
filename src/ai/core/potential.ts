@@ -191,7 +191,7 @@ export class PotentialModelImpl implements PotentialModel {
     g.ok = true
     g.ap = am.ap
     const rank = order.rank(a.id)
-    g.roundOffset = rank < order.count ? order.slots[rank].round - Math.max(1, s.round) : 1
+    g.roundOffset = rank < order.count ? order.rounds[rank] - Math.max(1, s.round) : 1
     g.reach = cachedReach(engine, s, a, this.side, Math.floor(am.mp), am.ap, this.occ)
     // L'oracle lit `this.occ`, identique à chaque réutilisation (même clé de position).
     g.los = new LosOracle(s, this.side, a.id, this.occ)

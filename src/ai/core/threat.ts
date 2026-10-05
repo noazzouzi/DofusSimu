@@ -171,7 +171,7 @@ const DEFAULT_PARAMS: ThreatParams = { tauFrac: 0.25, zoneFactor: 0.6, laterEnem
 /** Hash de l'ordre des prochains tours (combattants et tours passés). */
 export function orderKey(order: SlotOrder): number {
   let h = 0x811c9dc5
-  for (const sl of order.slots) h = fnvInt(h, sl.fighterId * 2 + (sl.passes ? 1 : 0))
+  for (let i = 0; i < order.count; i++) h = fnvInt(h, order.ids[i] * 2 + (order.flags[i] & 1))
   return h
 }
 
@@ -273,8 +273,8 @@ export class ThreatModelImpl implements ThreatModel {
   private build(s: FightState, sig: number): void {
     const side = this.side
     this.s = s
-    this.cellMemo.clear()
-    this.deltaMemo.clear()
+    if (this.cellMemo.size) this.cellMemo.clear()
+    if (this.deltaMemo.size) this.deltaMemo.clear()
     buildOccupancy(s, side, this.occ)
     const fr = geoFrame(this.view.engine, s, side, sig)
     const order = (this.order = fr.order)

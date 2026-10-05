@@ -13,7 +13,8 @@ import { canHostExo, ForgePlanner, planForgemagie } from '../src/optimizer/stuff
 import { pointsOptions } from '../src/optimizer/stuff/points'
 import { buildPools, itemStatDelta, STUFF_POSITIONS, STUFF_SLOTS } from '../src/optimizer/stuff/pools'
 import { createProxyContext, ROLE_EXPONENTS } from '../src/optimizer/stuff/proxy'
-import { optimizeStuff } from '../src/optimizer/stuff/search'
+import { evaluateStuff, optimizeStuff } from '../src/optimizer/stuff/search'
+import { STAT_ORDER } from '../src/stats/fastStats'
 import { getPreset, presetMember, STUFFS } from '../src/optimizer/team/presets'
 
 const DATA = loadDataStore('data')
@@ -211,6 +212,74 @@ describe('recherche de stuff', () => {
       // Déterminisme (même graine ⇒ même build).
       const r2 = optimizeStuff(DATA, m, { iterations: 600, seed: 7, perSlot: 16, dofusPool: 14, topExact: 20 })
       expect(JSON.stringify(r2.best.build)).toBe(JSON.stringify(r.best.build))
+    }
+  }, 120_000)
+
+  it('chemin rapide de la forgemagie = computeBuildStats (plafonds 2897 de panoplie compris) ; exo inutile non posé', () => {
+    // Malédiction de Cire Momore (6 objets) : « PM/PO/invocations max 2 » porté par le BONUS de panoplie (aucun objet
+    // n'a de ligne 2897). Régression : le chemin rapide ignorait ce plafond (6 PM crus au lieu de 2).
+    const { p, m } = contextOf('sacrieur_tank')
+    const cire = [27513, 27515, 27514, 27511, 27512, 27510].map(id => DATA.item(id)!)
+    expect(cire.every(it => it.setId === 507)).toBe(true)
+    const kept: { itemId: number }[] = []
+    const replaced = new Set<string>()
+    for (const eq of m.build.items) {
+      const slot = DATA.item(eq.itemId)!.slot
+      if (cire.some(c => c.slot === slot) && !replaced.has(slot)) {
+        replaced.add(slot)
+        continue
+      }
+      kept.push({ itemId: eq.itemId })
+    }
+    const build: CharacterBuild = { ...m.build, items: [...kept, ...cire.map(c => ({ itemId: c.id }))] }
+    const ref = computeBuildStats(m.build, DATA)
+    const ctx = createProxyContext(DATA, { breedId: p.breedId, level: 200, variants: p.variants, role: p.role, presetId: p.id, element: p.element }, ref)
+    const e = evaluateStuff(DATA, ctx, build)
+    expect(e.logJ).toBeGreaterThan(-Infinity)
+    const full = computeBuildStats(e.build, DATA)
+    expect(full.valid).toBe(true)
+    expect(full.sets.find(x => x.setId === 507)?.tier).toBe(6)
+    expect(full.stats.mp).toBeLessThanOrEqual(2)
+    expect(e.stats!.mp).toBe(full.stats.mp)
+    expect(e.stats!.range).toBe(full.stats.range)
+    expect(e.maxHp).toBe(full.maxHp)
+    // PM au-delà du plafond effectif : pas d'exo PM (il serait perdu).
+    if (full.wasted.mp) expect(e.build.items.flatMap(i => i.exos ?? []).some(x => x.stat === 'mp' && x.kind !== 'transcendence')).toBe(false)
+    expect(e.logJ).toBeCloseTo(ctx.surrogate(full.stats, full.maxHp).logJ, 9)
+
+    // Propriété : stuffs aléatoires réels (viviers) — caractéristiques du chemin rapide = computeBuildStats du build forgé.
+    const pools = buildPools(DATA, ctx, { reference: m.build, perSlot: 20, include: cire.map(c => c.id) })
+    const rng = new Rng(9)
+    let checked = 0
+    for (let k = 0; k < 400 && checked < 40; k++) {
+      const items: number[] = []
+      for (const slot of STUFF_POSITIONS) {
+        const list = pools.bySlot[slot]
+        const it = list[rng.int(0, list.length - 1)]?.item
+        if (it && !items.includes(it.id)) items.push(it.id)
+      }
+      const r = evaluateStuff(DATA, ctx, { ...m.build, items: items.map(itemId => ({ itemId })) })
+      if (r.logJ === -Infinity) continue
+      const f = computeBuildStats(r.build, DATA)
+      expect(f.valid).toBe(true)
+      for (const key of STAT_ORDER) expect(r.stats![key]).toBe(f.stats[key])
+      expect(r.maxHp).toBe(f.maxHp)
+      checked++
+    }
+    expect(checked).toBeGreaterThanOrEqual(20)
+  }, 120_000)
+
+  it('scores rendus = proxy exact des caractéristiques de computeBuildStats (tank, toutes répartitions de points)', () => {
+    const m = presetMember(getPreset('sacrieur_tank'), DATA)
+    const r = optimizeStuff(DATA, m, { iterations: 800, seed: 1, perSlot: 16, dofusPool: 14, topExact: 20, diversity: 8 })
+    const ctx = createProxyContext(DATA, { breedId: m.breedId, level: 200, variants: m.variants, role: r.role, presetId: m.presetId, element: r.element }, computeBuildStats(m.build, DATA))
+    for (const c of [r.best, ...r.front]) {
+      const f = computeBuildStats(c.build, DATA)
+      expect(f.valid).toBe(true)
+      expect(c.score.mp).toBe(f.stats.mp)
+      expect(c.score.ap).toBe(f.stats.ap)
+      expect(c.score.logJ).toBeCloseTo(ctx.exact(f.stats, f.maxHp).logJ, 9)
+      expect(c.surrogate.logJ).toBeCloseTo(ctx.surrogate(f.stats, f.maxHp).logJ, 9)
     }
   }, 120_000)
 
