@@ -15,6 +15,7 @@ import type { FightState } from '../../engine/types'
 import type { ScenarioParams, UncertainParam } from '../types'
 import {
   BLUE_START_CELLS,
+  bossGradeFor,
   VORTEX_DEFAULT_PARAMS,
   VORTEX_STATE_KEY,
   VORTEX_UNCERTAIN,
@@ -78,10 +79,12 @@ export function validateVortexParams(p: VortexParams): string[] {
 export function resolveVortexParams(params: ScenarioParams | Partial<VortexParams> = {}): VortexParams {
   const r = params as Record<string, unknown>
   const d = VORTEX_DEFAULT_PARAMS
+  const players = num(r.players, d.players)
   const p: VortexParams = {
-    players: num(r.players, d.players),
+    players,
     monsterGrade: num(r.monsterGrade, d.monsterGrade),
-    bossGrade: num(r.bossGrade, d.bossGrade),
+    // Rang du boss dérivé du nombre de personnages s'il n'est pas imposé (rang 1 à 4 joueurs).
+    bossGrade: num(r.bossGrade, Number.isFinite(players) ? bossGradeFor(players) : d.bossGrade),
     vortexCell: num(r.vortexCell, d.vortexCell),
     startingTeamRule: r.startingTeamRule === 'best' || r.startingTeamRule === 'average' ? r.startingTeamRule : r.startingTeamRule === undefined ? d.startingTeamRule : (r.startingTeamRule as 'best'),
     arrivalRounds: nums(r.arrivalRounds, d.arrivalRounds),

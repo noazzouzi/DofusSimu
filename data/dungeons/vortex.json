@@ -687,11 +687,11 @@
    "default": [
     1,
     7,
-    12,
-    17,
-    22
+    13,
+    19,
+    25
    ],
-   "defaultSource": "dofuspourlesnoobs (m.à.j. 24/08/2024) : 'la deuxième vague arrive tour 7', vague 1 a un tour de plus",
+   "defaultSource": "Notes de version 2.42 (Égarés) : 'Le nombre de tours entre 2 vagues de monstres est augmenté : 5 tours -> 6 tours' ; DPLN (24/08/2024) : 'la deuxième vague arrive tour 7' (docs/research/vortex-audit.md §1.1)",
    "alternative": [
     1,
     6,
@@ -699,7 +699,7 @@
     16,
     21
    ],
-   "alternativeSource": "JOL (2016/2019) : 'La vague 2 arrivera donc au tour 6. La vague 3 au tour 11'"
+   "alternativeSource": "JOL (2016/2019) : 'La vague 2 arrivera donc au tour 6. La vague 3 au tour 11' — cadence d'avant la 2.42, historique"
   },
   "earlySpawnIfWaveCleared": true,
   "earlySpawnNote": "Règle générale des donjons de dimension : si tous les monstres d'une vague sont tués avant le timer, la suivante arrive immédiatement. Dans le Vortex les monstres sont ressuscités (puis corrompus mais restent sur la carte) : comportement exact INCERTAIN ; en pratique les vagues arrivent au timer.",

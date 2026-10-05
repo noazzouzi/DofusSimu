@@ -150,9 +150,9 @@ describe('coûts des heures (§12.4, T-hours)', () => {
       expect(measured.cVx(h)).toBeLessThan(300)
       for (const id of [IKARGN, MEJAIRE, HARPILLE, BUBOXOR, BRABUZAR]) expect(measured.cMon(id, h)).toBeLessThan(300)
     }
-    // V : ×75 % de dommages subis sur 22 000 PV (λ_burst 0,5) ≈ 3 667 PVe ; XI : +30 % de PV ≈ 3 300.
-    expect(measured.cVx(5)).toBeCloseTo(0.5 * 22000 * (1 / 0.75 - 1), 0)
-    expect(measured.cVx(11)).toBeCloseTo(0.5 * 0.3 * 22000, 0)
+    // V : ×75 % de dommages subis sur 15 000 PV (rang 1, λ_burst 0,5) ≈ 2 500 PVe ; XI : +30 % de PV ≈ 2 250.
+    expect(measured.cVx(5)).toBeCloseTo(0.5 * 15000 * (1 / 0.75 - 1), 0)
+    expect(measured.cVx(11)).toBeCloseTo(0.5 * 0.3 * 15000, 0)
     for (let h = 1; h <= 12; h++) {
       expect(measured.cVx(h)).toBeGreaterThanOrEqual(0)
       expect(Number.isFinite(measured.cVx(h))).toBe(true)

@@ -41,9 +41,17 @@ export const WAVE_MONSTER_IDS: readonly number[] = [IKARGN, MEJAIRE, HARPILLE, B
 /** Invocation-horloge (statique : 0 PA / 0 PM, invulnérable, indéplaçable). */
 export const SUMMON_IDS: readonly number[] = [AURORAIRE]
 
-/** Grades : niveau 200/203/206/209/212 (vague) ; boss niveau 220. Grade retenu par défaut : 5 (INCERTAIN). */
+/** Grades : niveau 200/203/206/209/212 (vague) ; boss niveau 220. Grade des monstres de vague par défaut : 5 (niveau 212,
+ * 6 600 PV — confirmé, docs/research/vortex-audit.md). */
 export const DEFAULT_MONSTER_GRADE = 5
-export const DEFAULT_BOSS_GRADE = 5
+/**
+ * Rang du boss selon le nombre de personnages (donjons modulaires, devblog 2.7 : malus de PV du boss sous 8 joueurs ;
+ * DPLN, bestiaire 3.7 : « à 4, le boss sera de rang 1 ») : joueurs − 3, borné à 1..5 (docs/research/vortex-audit.md §3).
+ */
+export function bossGradeFor(players: number): number {
+  return Math.max(1, Math.min(5, Math.floor(players) - 3))
+}
+export const DEFAULT_BOSS_GRADE = bossGradeFor(4)
 /** PV du Vortex par grade (1..5). */
 export const VORTEX_HP_BY_GRADE: readonly number[] = [0, 15000, 17000, 18000, 20000, 22000]
 /** PA/PM du Vortex en phase 2 (vulnérable). */
@@ -289,8 +297,13 @@ export const EXTRA_MONSTER_PER_PLAYER: Readonly<Record<number, readonly number[]
   7: [IKARGN, IKARGN, MEJAIRE, BUBOXOR, BRABUZAR],
   8: [HARPILLE, MEJAIRE, HARPILLE, MEJAIRE, MEJAIRE],
 }
-/** Tours d'arrivée des vagues : DPLN 2024 (défaut) et JOL 2016 (variante). */
-export const ARRIVAL_ROUNDS_DEFAULT: readonly number[] = [1, 7, 12, 17, 22]
+/**
+ * Tours d'arrivée des vagues : tous les 6 tours depuis la 2.42 (notes de version : « Le nombre de tours entre 2 vagues de
+ * monstres est augmenté : 5 tours -> 6 tours » ; DPLN 2024 : « la deuxième vague arrive tour 7 ») —
+ * docs/research/vortex-audit.md §1.1.
+ */
+export const ARRIVAL_ROUNDS_DEFAULT: readonly number[] = [1, 7, 13, 19, 25]
+/** Cadence d'AVANT la 2.42 (tous les 5 tours, JOL 2016) : historique, plus échantillonnée. */
 export const ARRIVAL_ROUNDS_ALT: readonly number[] = [1, 6, 11, 16, 21]
 
 /** Composition des vagues pour `players` personnages (≤ 4 : derniers monstres retirés — INCERTAIN). */
@@ -340,7 +353,8 @@ export const VORTEX_DEFAULT_PARAMS: Readonly<VortexParams> = {
   wave1Invulnerable: false,
   earlySpawnIfCleared: false,
   rezHpPct: [20, 30],
-  rezMinusOneMp: false,
+  // 2.42 : « Les monstres ressuscités ont désormais 1 PM en moins » (docs/research/vortex-audit.md §1.2).
+  rezMinusOneMp: true,
   rezAllPerTurn: true,
   deadPlayerAdvancesClock: false,
   unlockVortexTurn: 26,
@@ -349,17 +363,18 @@ export const VORTEX_DEFAULT_PARAMS: Readonly<VortexParams> = {
   maxRounds: 60,
 }
 
-/** Règles INCERTAINES échantillonnées par graine (§12.1) ; `values[0]` = défaut. */
+/**
+ * Règles INCERTAINES échantillonnées par graine (§12.1) ; `values[0]` = défaut. Les variantes d'avant la 2.42 (vagues
+ * tous les 5 tours, ressuscités à 50 % sans −1 PM) ont été retirées (docs/research/vortex-audit.md §1.5).
+ */
 export const VORTEX_UNCERTAIN: readonly UncertainParam[] = [
   { key: 'startingTeamRule', values: ['average', 'best'], weights: [0.5, 0.5] },
-  { key: 'arrivalRounds', values: [[...ARRIVAL_ROUNDS_DEFAULT], [...ARRIVAL_ROUNDS_ALT]], weights: [0.7, 0.3] },
   { key: 'wave1Invulnerable', values: [false, true], weights: [0.8, 0.2] },
   { key: 'earlySpawnIfCleared', values: [false, true], weights: [0.9, 0.1] },
-  { key: 'rezHpPct', values: [[20, 30], [50, 50]], weights: [0.75, 0.25] },
-  { key: 'rezMinusOneMp', values: [false, true], weights: [0.7, 0.3] },
   { key: 'rezAllPerTurn', values: [true, false], weights: [0.9, 0.1] },
   { key: 'deadPlayerAdvancesClock', values: [false, true], weights: [0.8, 0.2] },
-  { key: 'unlockVortexTurn', values: [26, 25, 27], weights: [0.8, 0.1, 0.1] },
+  // 25 retiré : la dernière vague arrive au tour 25 (invariant « dernière vague avant le déverrouillage »).
+  { key: 'unlockVortexTurn', values: [26, 27], weights: [0.9, 0.1] },
   { key: 'actionDelay', values: [1, 0], weights: [0.6, 0.4] },
   { key: 'glyphTrigger', values: ['enter', 'turnEnd'], weights: [0.9, 0.1] },
 ]

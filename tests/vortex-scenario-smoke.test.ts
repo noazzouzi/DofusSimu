@@ -52,7 +52,7 @@ describe('runVortexSmoke : 30 tours du vrai scénario, replay valide', () => {
       expect(summary.rounds).toBe(30)
       expect(fight.round).toBe(31)
       const vx = vortexState(fight)!
-      expect(vx.waveRounds).toEqual([1, 7, 12, 17, 22])
+      expect(vx.waveRounds).toEqual([1, 7, 13, 19, 25])
       expect(vx.vortexTurns).toBe(30)
       expect(fight.unknownEffects ?? 0).toBe(0)
       expect(summary.corruptedByRound).toHaveLength(30)
@@ -103,15 +103,15 @@ function playMicro(fight: FightState, engine: ReturnType<typeof createEngine>, d
 }
 
 describe('micro-scénarios', () => {
-  it('prefix12 : s’arrête après le tour 12, vagues 1-3 apparues, P(victoire) dans [0, 1]', () => {
+  it('prefix12 : s’arrête après le tour 12, vagues 1-2 apparues (vagues tous les 6 tours), P(victoire) dans [0, 1]', () => {
     const engine = createEngine(data, vortexHooks)
     const team = createSmokeTeam(data, undefined, { hp: 60_000 })
     const fight = prefix12Micro.createFight(engine, team, { params: VORTEX_DEFAULT_PARAMS, seed: 3, rollMode: 'random', record: false, rngRekey: 'perTurn' })
     playMicro(fight, engine, prefix12Micro.done)
     expect(prefix12Micro.done(fight)).toBe(true)
-    expect(vortexState(fight)!.waveRounds).toEqual([1, 7, 12])
+    expect(vortexState(fight)!.waveRounds).toEqual([1, 7])
     const res = prefix12Micro.evaluate(fight)
-    expect(res.metrics.spawned).toBe(11)
+    expect(res.metrics.spawned).toBe(7)
     expect(res.pWin).toBeGreaterThan(0)
     expect(res.pWin).toBeLessThan(1)
     expect(res.rounds).toBe(12)
@@ -239,7 +239,7 @@ describe('modèle stratégique de base du Vortex', () => {
     expect(ref.targets.map(t => [t.fighter.monsterId, t.weight])).toEqual(VORTEX_TARGET_MIX.map(m => [m.monsterId, m.weight]))
     for (const t of ref.targets) {
       expect(t.fighter.id).toBeLessThan(0)
-      expect(t.fighter.grade).toBe(t.fighter.monsterId === VORTEX ? 5 : 3)
+      expect(t.fighter.grade).toBe(t.fighter.monsterId === VORTEX ? VORTEX_DEFAULT_PARAMS.bossGrade : 3)
       expect(t.fighter.maxHp).toBeGreaterThan(0)
       expect(fight.fighters.includes(t.fighter)).toBe(false)
     }

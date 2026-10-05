@@ -75,11 +75,11 @@ describe('tracker', () => {
     expect(snap.pending).toBe(16)
     expect(snap.tracks.filter(t => t.status === 'alive')).toHaveLength(3)
     const pending = snap.tracks.filter(t => t.status === 'pending')
-    expect(new Set(pending.map(t => t.arrivesRound))).toEqual(new Set([7, 12, 17, 22]))
+    expect(new Set(pending.map(t => t.arrivesRound))).toEqual(new Set([7, 13, 19, 25]))
     expect(pending.every(t => t.fighterId < 0)).toBe(true)
     expect(snap.hour).toBe(12)
     expect(snap.unlocked).toBe(false)
-    expect(snap.vortexMaxHp).toBe(22000)
+    expect(snap.vortexMaxHp).toBe(15000)
   })
 
   it('mort → heures, résurrection → zombie, étoile, mort sous étoile → corrompu', () => {

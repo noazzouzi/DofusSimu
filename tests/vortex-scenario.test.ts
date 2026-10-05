@@ -105,7 +105,7 @@ describe('registre', () => {
 })
 
 describe('mise en place (createFight)', () => {
-  it('carte, cases rouges, vague 1 = Vortex + 3 monstres au grade 5 sur les cases bleues, sorts de départ réussis', () => {
+  it('carte, cases rouges, vague 1 = Vortex (rang 1 à 4 joueurs) + 3 monstres au grade 5 sur les cases bleues, sorts de départ réussis', () => {
     const { fight, players } = setup({ record: true })
     expect(fight.map.id).toBe(VORTEX_MAP_ID)
     for (const p of players) expect(RED_START_CELLS).toContain(p.cell)
@@ -116,12 +116,12 @@ describe('mise en place (createFight)', () => {
     expect(monsters.map(m => m.monsterId).sort()).toEqual([VORTEX, IKARGN, MEJAIRE, HARPILLE].sort())
     for (const m of monsters) {
       expect(BLUE_START_CELLS).toContain(m.cell)
-      expect(m.grade).toBe(5)
+      expect(m.grade).toBe(m.monsterId === VORTEX ? 1 : 5)
       expect(m.wave).toBe(1)
     }
     const vortex = vortexOf({ fight } as Setup)
     expect(vortex.cell).toBe(VORTEX_DEFAULT_PARAMS.vortexCell)
-    expect(vortex.maxHp).toBe(22000)
+    expect(vortex.maxHp).toBe(15000) // rang 1 (4 personnages) : docs/research/vortex-audit.md §3
     // Vortexiphan (5006) : Auroraire en 255 (heure XII), Vortex invulnérable, indéplaçable, Marginal, −100 PM.
     const aur = fight.fighters.find(f => f.monsterId === AURORAIRE)!
     expect(aur.cell).toBe(255)
@@ -196,14 +196,14 @@ describe('équipe qui commence (startingTeamRule, INCERTAIN)', () => {
 })
 
 describe('vagues', () => {
-  it('tours 1/7/12/17/22 (défaut), composition JOL, cases bleues, invulnérables le tour d’arrivée', () => {
+  it('tours 1/7/13/19/25 (défaut, 2.42), composition JOL, cases bleues, invulnérables le tour d’arrivée', () => {
     const s = setup()
     const seen: number[] = []
-    toRound(s, 23, f => {
+    toRound(s, 26, f => {
       if (isWaveMonster(f) && f.wave === 2 && !seen.includes(s.fight.round)) seen.push(s.fight.round)
     })
     const vx = vortexState(s.fight)!
-    expect(vx.waveRounds).toEqual([1, 7, 12, 17, 22])
+    expect(vx.waveRounds).toEqual([1, 7, 13, 19, 25])
     expect(vx.wavesSpawned).toBe(5)
     const byWave = (w: number) => s.fight.fighters.filter(f => isWaveMonster(f) && f.wave === w).map(f => f.monsterId).sort()
     expect(byWave(2)).toEqual([HARPILLE, HARPILLE, BUBOXOR, BRABUZAR].sort())
@@ -272,8 +272,8 @@ describe('mort, heure de mort, résurrection', () => {
     expect(ika.stats.critical).toBe(crit + 10) // heure I : +10 % critique (5002)
     expect(ika.hp).toBeGreaterThanOrEqual(Math.floor(ika.maxHp * 0.2))
     expect(ika.hp).toBeLessThanOrEqual(Math.floor(ika.maxHp * 0.3))
-    // rezMinusOneMp = false (défaut) : PM intacts.
-    expect(ika.stats.mp).toBe(5)
+    // rezMinusOneMp = vrai (défaut, 2.42 : « 1 PM en moins ») : 5 → 4 PM.
+    expect(ika.stats.mp).toBe(4)
   })
 
   // Défaut du moteur diagnostiqué (rapport WP3a) : la chaîne des données 5002 (X) → 5001 → 5000 ne pose pas l'état
@@ -358,7 +358,8 @@ function corruptAll(s: Setup, round: number, keep?: (m: Fighter) => boolean): vo
 }
 
 describe('déverrouillage et Action ! (5060)', () => {
-  for (const [unlock, delay] of [[26, 1], [25, 1], [27, 0]] as const) {
+  // Déverrouillage après la corruption de la vague 5 (arrivée au tour 25) : seul le délai de déverrouillage borne Action !.
+  for (const [unlock, delay] of [[28, 1], [29, 0]] as const) {
     it(`tout corrompu tôt : Action ! au tour ${unlock} du Vortex (unlockVortexTurn = ${unlock}, actionDelay = ${delay})`, () => {
       const s = setup({ params: { unlockVortexTurn: unlock, actionDelay: delay }, seed: 5 })
       corruptAll(s, unlock + 2)
@@ -401,15 +402,21 @@ describe('déverrouillage et Action ! (5060)', () => {
     }
   })
 
+  it('défaut : Action ! au tour 27 du Vortex, borné par la vague 5 (arrivée au tour 25, invulnérable, corrompue au tour 26 du Vortex)', () => {
+    const s = setup({ seed: 5 })
+    corruptAll(s, 28)
+    expect(vortexState(s.fight)!.actionRound).toBe(27)
+  })
+
   it('après Action ! : le Vortex passe son tour, puis devient vulnérable et joue', () => {
     const s = setup({ seed: 5 })
-    corruptAll(s, 26)
-    toRound(s, 27)
+    corruptAll(s, 27)
+    toRound(s, 28)
     const vortex = vortexOf(s)
-    expect(vortexState(s.fight)!.actionRound).toBe(26)
-    // Tour 27 avant son créneau : encore invulnérable (56, 1 tour) ; à son créneau du tour 27, il joue.
+    expect(vortexState(s.fight)!.actionRound).toBe(27)
+    // Tour 28 avant son créneau : encore invulnérable (56, 1 tour) ; à son créneau du tour 28, il joue.
     expect(vortex.states).toContain(56)
-    turnOf(s, vortex, 27)
+    turnOf(s, vortex, 28)
     expect(vortex.states).not.toContain(56)
     expect(vortex.states).not.toContain(236)
   })
@@ -471,10 +478,10 @@ describe('délais de relance initiaux (initialCooldown, ignoré par le moteur)',
     // Vague 1 (début de combat) : l'Ikargn ne peut pas lancer Attraction ailée à son 1er tour.
     const ika1 = s.fight.fighters.find(f => f.monsterId === IKARGN)!
     expect(ika1.cooldowns[5015]).toBe(2)
-    toRound(s, 17)
+    toRound(s, 19)
     const ika4 = s.fight.fighters.find(f => isWaveMonster(f) && f.wave === 4 && f.monsterId === IKARGN)!
     expect(ika4.cooldowns[5015]).toBe(2)
-    turnOf(s, ika4, 17)
+    turnOf(s, ika4, 19)
     expect(canCast(s.engine, s.fight, ika4, ika4.spells.find(x => x.spellId === 5015)!, s.players[0].cell)).toBe('cooldown')
   })
 })

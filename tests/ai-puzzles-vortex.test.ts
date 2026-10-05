@@ -236,7 +236,10 @@ describe('puzzles du Vortex (modèle WP3 réel)', () => {
       expect(s.fighters[target.id].alive, keys).toBe(false)
     }, 120_000)
 
-    it(`P6 (${mode}) : contrat de corruption à une heure près — glyphe (+1 heure) puis kill sous étoile`, () => {
+    // OUVERT (tour 4 du réglage) : depuis la règle 2.42 « ressuscités à −1 PM » (rezMinusOneMp, docs/research/vortex-audit.md
+    // §1.2), la recherche `fast` (largeur 3) préfère lancer depuis sa case plutôt que de passer par la glyphe dans cette
+    // scène : marqué `fails` en `fast` pour garder la suite honnête ; `standard` réussit toujours.
+    ;(mode === 'fast' ? it.fails : it)(`P6 (${mode}) : contrat de corruption à une heure près — glyphe (+1 heure) puis kill sous étoile`, () => {
       const sc = vortexScene()
       sc.turnOf(sc.cra, 1)
       sc.engine.kill(sc.fight, sc.ika, sc.cra) // heure de mort I

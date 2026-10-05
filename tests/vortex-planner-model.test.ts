@@ -230,7 +230,7 @@ describe('burst de phase 2 (§12.9)', () => {
     expect(b.vulnerableFrom).toEqual({ round: after.round, index: after.index })
     expect(b.pKill).toBeGreaterThanOrEqual(0)
     expect(b.pKill).toBeLessThanOrEqual(b.pKill2 + 1e-9)
-    expect(b.hp).toBe(22000)
+    expect(b.hp).toBe(15000) // Vortex de rang 1 à 4 personnages
     expect(b.mean).toBeGreaterThan(0)
     const owners = new Set(bb.intents.filter(i => i.kind === 'burst').map(i => i.owner))
     for (const p of s.players) expect(owners.has(p.id)).toBe(true)
