@@ -14,8 +14,11 @@
  *  P12 Vortex vulnérable, kill d'équipe possible avant son tour (alliés placés à portée, PV = 35 % de leur potentiel)
  *      → la séquence des alliés le tue avant qu'il ne joue, à au moins deux
  *  P14 cible interdite (kill à −3000) à 10 % PV, zone du Crâ → la cible survit ; la voisine (kill payé) est frappée
- *      (exigé en `standard` seulement)
+ *      (dans les deux modes depuis la ligne de kill de `fast`, tuning-log tour 2)
  *  P16 corruption : 2 sorts sûrs contre 1 sort incertain   → les 2 sorts sûrs (le plan tue même en jets minimaux)
+ *  P17 monstre étoilé à deux lancers, à 4 cases            → corrompu dans sa fenêtre (ligne de kill en `fast` ; prix
+ *      de l'étoile positif en `standard` : la référence « sans tuer m » du `SearchPricer` exclut les morts improbables)
+ *  P18 monstre neuf à 900 PV à 3 cases, kill payé ≥ seuil à l'heure courante, sans contrat → indice `kill`, marqué
  *
  * Prix : P4, P5 (fast), P7 et P12 utilisent les prix publiés par le modèle. Là où le puzzle suppose une décision
  * stratégique donnée (contrat de corruption de P5 et P16 en `standard`, contrat « glyphe puis kill » de P6, interdiction
@@ -34,7 +37,7 @@ import {
   currentHour, deathHours, forecastHours, hasStar, isWaveMonster, lineCells, nextVortexSlot,
 } from '../src/dungeons/vortex/clock'
 import { createPhase2Fight } from '../src/dungeons/vortex/micro'
-import { createVortexAIModel, type VortexAIModel } from '../src/dungeons/vortex/model'
+import { createVortexAIModel, PAID_KILL_HINT, type VortexAIModel } from '../src/dungeons/vortex/model'
 import { vortexState } from '../src/dungeons/vortex/params'
 import { vortexVulnerableAt } from '../src/dungeons/vortex/scenario'
 import { createVortexFight, vortexHooks } from '../src/dungeons/vortex/setup'
@@ -190,6 +193,48 @@ describe('puzzles du Vortex (modèle WP3 réel)', () => {
       expect(hasStar(ika)).toBe(true) // mort sous l'étoile = corruption à la résurrection
     }, 120_000)
 
+    it(`P17 (${mode}) : monstre étoilé à deux lancers, à distance — corrompu (pas de kill remis à plus tard)`, () => {
+      const sc = vortexScene()
+      sc.turnOf(sc.cra, 1)
+      sc.engine.kill(sc.fight, sc.ika, sc.cra) // mort à I : étoile au prochain I (tour 4 du Crâ)
+      sc.turnOf(sc.cra, 4)
+      expect(sc.ika.alive && hasStar(sc.ika)).toBe(true)
+      // À 4 cases du Crâ, PV au-delà d'un seul lancer : il faut enchaîner deux tirs dans la fenêtre de l'étoile. En `fast`
+      // (largeur 1), le terme `continuation` créditait déjà le kill encore faisable : le faisceau glouton jouait d'abord
+      // d'autres coups puis n'avait plus les PA (tuning-log, tour 2 : ligne de kill).
+      sc.ika.cell = sc.ring(sc.cra.cell, 4)[0]
+      sc.ika.hp = 1500
+      const d = decide(sc.as(sc.cra), mode, { scenario: vortexModel(), seed: 5 })
+      const keys = d.plan.actions.map(a => a.key).join(' | ')
+      // Prix de l'étoile positif dans les deux pricers (le `SearchPricer` le mettait à −3 000 : il comparait la
+      // corruption au meurtre « supposé réalisé » d'un monstre neuf à 6 600 PV), d'où l'indice `kill`.
+      expect(d.ctx.bb.prices.kill.get(sc.ika.id)![0], keys).toBeGreaterThan(0)
+      expect(d.ctx.hints?.some(h => h.kind === 'kill' && h.targetId === sc.ika.id), keys).toBe(true)
+      const s = play(sc, sc.cra, d.plan.actions, 'average')
+      const ika = s.fighters[sc.ika.id]
+      expect(ika.alive, keys).toBe(false)
+      expect(hasStar(ika), keys).toBe(true)
+      expect(castsOf(d.plan.actions).length, keys).toBeGreaterThanOrEqual(2)
+    }, 120_000)
+
+    it(`P18 (${mode}) : monstre neuf à portée de kill, bien payé à l'heure courante — marqué (indice kill hors contrat)`, () => {
+      const sc = vortexScene()
+      sc.turnOf(sc.cra, 3)
+      const hour = currentHour(sc.fight)
+      const target = sc.fight.fighters.find(f => isWaveMonster(f) && f.alive && deathHours(f) === 0 && f.monsterId !== IKARGN)!
+      target.cell = sc.ring(sc.cra.cell, 3)[0]
+      target.hp = 900
+      const d = decide(sc.as(sc.cra), mode, { scenario: vortexModel(), seed: 5 })
+      const keys = d.plan.actions.map(a => a.key).join(' | ')
+      const price = d.ctx.bb.prices.kill.get(target.id)![hour]
+      console.info(`[P18 ${mode}] heure ${hour}, prix ${price} ; indices ${JSON.stringify(d.ctx.hints?.filter(h => h.kind === 'kill'))} ; plan ${keys}`)
+      // Prémisse : le kill à l'heure courante est payé au-dessus du seuil des indices.
+      expect(price).toBeGreaterThanOrEqual(PAID_KILL_HINT)
+      expect(d.ctx.hints?.some(h => h.kind === 'kill' && h.targetId === target.id), keys).toBe(true)
+      const s = play(sc, sc.cra, d.plan.actions, 'average')
+      expect(s.fighters[target.id].alive, keys).toBe(false)
+    }, 120_000)
+
     it(`P6 (${mode}) : contrat de corruption à une heure près — glyphe (+1 heure) puis kill sous étoile`, () => {
       const sc = vortexScene()
       sc.turnOf(sc.cra, 1)
@@ -268,9 +313,9 @@ describe('puzzles du Vortex (modèle WP3 réel)', () => {
       for (const rm of ['average', 'max'] as const) {
         const s = play(sc, sc.cra, d.plan.actions, rm)
         expect(s.fighters[target.id].alive, `${rm} : ${keys}`).toBe(true)
-        // `fast` (glouton, largeur 1) : seule l'interdiction est exigée — il ouvre ici par une Balise Tactique (+40
-        // Puissance par ennemi en vue, proposée par `bodyBlock`) et ne voit pas le kill payé qui demande deux lancers.
-        if (mode === 'standard') expect(s.fighters[other.id].hp, `${rm} : ${keys}`).toBeLessThan(400)
+        // Les deux modes : en `fast` (glouton, largeur 1), la ligne de kill (indice `kill` du contrat) enchaîne les deux
+        // lancers du kill payé — avant elle, il ouvrait par une Balise Tactique et ne le voyait pas (tuning-log, tour 2).
+        expect(s.fighters[other.id].hp, `${rm} : ${keys}`).toBeLessThan(400)
       }
     }, 120_000)
   }

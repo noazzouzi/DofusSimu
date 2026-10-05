@@ -6,16 +6,21 @@
  * événements du replay (logs et annotations compris), hash hors log/aiNote, nombre d'événements, tours, nœuds.
  * `--turns N` : s'arrête après N tours de combattants (mode standard : quelques tours seulement).
  * `--norecord` : même combat sans enregistrement (l'empreinte d'état doit être identique).
+ * `--deepclone` : `Engine.cloneFight` ramené à l'ancienne sémantique (combattants copiés en profondeur, métriques
+ * copiées) — référence du partage copie-sur-écriture (src/engine/cow.ts) : sorties identiques avec et sans, sur le
+ * même arbre (aucune autre différence de code nécessaire, contrairement à une comparaison entre deux commits).
  *
  *   npx tsx scripts/perf-digest.ts --mode fast --seeds 1-10 > before.jsonl
  *   npx tsx scripts/perf-digest.ts --mode standard --turns 12 --seeds 1-3
+ *   npx tsx scripts/perf-digest.ts --seeds 1-10 --deepclone > deep.jsonl   # puis : cmp before.jsonl deep.jsonl
  */
 import { createControllers, defaultAIConfig, loadTheta } from '../src/ai'
 import type { AIMode, StrategyParams } from '../src/ai/types'
 import { fnv1a32 } from '../src/core/hash'
 import { loadDataStore } from '../src/data/node'
 import { createEngine } from '../src/engine'
-import type { FightEvent } from '../src/engine/types'
+import { cloneFighter, Engine } from '../src/engine/engine'
+import type { FightEvent, FighterMetrics, FightState } from '../src/engine/types'
 import { buildTeam, eventsHash, fightDigest, fightParams, resolveScenario, runOne } from '../src/optimizer/runner'
 import { parseTeam } from '../src/optimizer/team/presets'
 import type { FightSpec } from '../src/optimizer/types'
@@ -42,6 +47,19 @@ const scenarioId = arg('scenario', 'vortex')
 const record = !process.argv.includes('--norecord')
 const seeds = seedsOf(arg('seeds', '1-10'))
 const data = loadDataStore('data')
+
+if (process.argv.includes('--deepclone')) {
+  const shared = Engine.prototype.cloneFight
+  Engine.prototype.cloneFight = function (this: Engine, fight: FightState, rec = false): FightState {
+    const c = shared.call(this, fight, rec)
+    c.fighters = c.fighters.map(cloneFighter)
+    const m: Record<number, FighterMetrics> = {}
+    for (const k in c.metrics) m[k] = { ...c.metrics[k] }
+    c.metrics = m
+    return c
+  }
+  process.stderr.write('cloneFight : copie profonde (--deepclone)\n')
+}
 const spec: FightSpec = { scenarioId, team: parseTeam(arg('team', META), data), mode, theta: loadTheta(), variantPolicy: 'default', monsterNoise: 0 }
 
 function strictHash(events: readonly FightEvent[]): number {

@@ -128,7 +128,10 @@ export interface Fighter {
   level: number
   /** Caractéristiques permanentes (stuff + base, ou grade de monstre). */
   baseStats: Stats
-  /** Caractéristiques effectives = baseStats + somme des statDelta des buffs. */
+  /**
+   * Caractéristiques effectives = baseStats + somme des statDelta des buffs. Objet REMPLACÉ par
+   * `Engine.recomputeStats`, jamais modifié en place : partagé entre clones de combat (`Engine.cloneFight`).
+   */
   stats: Stats
   hp: number
   /** PV max courants (réduits par l'érosion). */
@@ -141,6 +144,7 @@ export interface Fighter {
   mp: number
   cell: number
   alive: boolean
+  /** États actifs : tableau REMPLACÉ par `Engine.recomputeStats`, jamais modifié en place (partagé entre clones). */
   states: number[]
   /**
    * Buffs actifs. Tableau ET objets partagés entre clones de combat (`Engine.cloneFight`) en copie-sur-écriture : le

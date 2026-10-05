@@ -10,7 +10,13 @@
  *  - `ownBuffs` AVANT de prendre une référence (tableau ou buff) qui sera modifiée ensuite : une fois privé, le tableau
  *    (et l'identité de ses buffs) reste stable jusqu'au prochain clonage — jamais pendant une opération du moteur ;
  *  - un remplacement filtré du tableau garde la propriété (`keepOwnership`) pour préserver l'identité des buffs ;
- *  - hors du moteur, les buffs se lisent librement mais ne se modifient JAMAIS en place (remplacer le tableau).
+ *  - hors du moteur, les buffs se lisent librement mais ne se modifient JAMAIS en place (remplacer le tableau) ;
+ *  - l'époque est GLOBALE (tous les combats) : `cloneFight` — de n'importe quel combat — ne doit jamais être appelé
+ *    PENDANT une opération du moteur (crochet, effet, rappel de scénario), sans quoi les références prises par les
+ *    appelants (candidats de `fireTriggers`, instantané de `decrementCastedBuffs`…) ne désigneraient plus les buffs
+ *    du combattant après la copie suivante ;
+ *  - un parcours d'un instantané NON possédé (`f.buffs.slice()`) qui appelle le moteur ne relit, après le premier
+ *    appel, que des champs jamais modifiés en place (le buff peut avoir été copié entre-temps) : sinon `ownBuffs` d'abord.
  *
  * Relances et compteurs de lancers (`cooldowns`, `castsThisTurn`, `castsOnTarget`) : objets partagés par `cloneFight`,
  * REMPLACÉS à chaque écriture (`setRecord`), jamais modifiés en place (même convention que `spellMods` et
@@ -18,6 +24,12 @@
  *
  * Métriques (`FightState.metrics`) : la table est copiée par `cloneFight`, les objets par combattant sont partagés et
  * REMPLACÉS à chaque écriture (`addMetric`).
+ *
+ * Caractéristiques et états (`Fighter.stats`, `Fighter.states`) : partagés tels quels par `cloneFight`, REMPLACÉS par
+ * `Engine.recomputeStats`, jamais modifiés en place (vérifié en gelant ces objets sur 10 combats Vortex et toute la
+ * suite : seuls des tests les modifient en place, sur des combattants non clonés). Les empreintes des relances et
+ * lancers du tour sont mémoïsées par identité (src/ai/core/hash.ts) : ces enregistrements ne doivent jamais être
+ * modifiés en place une fois le combat lancé.
  */
 import type { Buff, Fighter, FighterMetrics, FightState } from './types'
 

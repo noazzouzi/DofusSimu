@@ -144,13 +144,20 @@ const LATE_CODES = new Set(['U', 'u', 'T', 'W'])
 
 const cache = new Map<string, CompiledMask>()
 
+/** Dernier masque compilé (appels consécutifs sur le même masque : une cible après l'autre, sans recherche). */
+let lastMask: string | null = null
+let lastCompiled: CompiledMask | undefined
+
 /** Compile un masque (résultat partagé et mis en cache : ne pas le modifier). */
 export function compileTargetMask(mask: string): CompiledMask {
+  if (mask === lastMask) return lastCompiled!
   let m = cache.get(mask)
   if (!m) {
     m = buildMask(mask)
     cache.set(mask, m)
   }
+  lastMask = mask
+  lastCompiled = m
   return m
 }
 
@@ -423,7 +430,11 @@ export function casterPassesMask(mask: string, caster: Fighter, ctx: MaskContext
  * hors zone (voir `CompiledMask.addsCaster` / `addsTriggering` / `addsCarried`).
  */
 export function matchesTargetMask(mask: string, caster: Fighter, target: Fighter, ctx: MaskContext = NO_CONTEXT): boolean {
-  const m = compileTargetMask(mask)
+  return matchesCompiledMask(compileTargetMask(mask), caster, target, ctx)
+}
+
+/** `matchesTargetMask` sur un masque déjà compilé (`compileTargetMask`). */
+export function matchesCompiledMask(m: CompiledMask, caster: Fighter, target: Fighter, ctx: MaskContext = NO_CONTEXT): boolean {
   if (m.empty) return true
   if (m.casterConditions.length && !conditionsHold(m.casterConditions, caster, caster, ctx)) return false
   if (!included(m, caster, target)) return false

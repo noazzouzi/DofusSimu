@@ -504,9 +504,11 @@ function runSummonOwned(
     })
     // Décompte sur les tours de l'invocateur : la Pelle de Fortune est détruite au moment où son soin différé (1109,
     // porté par le lanceur, même délai) soigne l'Enutrof ; l'interception du Sac dure jusqu'à sa destruction.
-    // Buffs créés à l'instant (uid ≥ uid0) : tableaux déjà possédés (cow.ts), modification sur place sans risque.
+    // Écriture en place : `ownBuffs` d'abord, comme toute modification d'un buff (cow.ts). Les buffs créés à l'instant
+    // (uid ≥ uid0) sont déjà dans des tableaux possédés (`addBuff`) : aucune copie en pratique.
     for (const f of fight.fighters) {
-      for (const b of f.buffs) if (b.uid >= uid0 && b.sourceId === s.id) b.aliveSourceId = caster.id
+      if (!f.buffs.some(b => b.uid >= uid0 && b.sourceId === s.id)) continue
+      for (const b of ownBuffs(f)) if (b.uid >= uid0 && b.sourceId === s.id) b.aliveSourceId = caster.id
     }
   }
 }
@@ -549,6 +551,31 @@ function occupantAt(engine: Engine, fight: FightState, c: number, dying: boolean
   return undefined
 }
 
+/** Cases occupées (1) au sens d'`Engine.fighterAt` (vivant, non porté), le temps d'un `zoneCellsInSight`. */
+const LOS_OCC = new Uint8Array(560)
+
+/**
+ * `zoneCells` d'une zone « seulement en LdV » : une case bloque si elle est opaque ou occupée (`Engine.fighterAt`),
+ * sauf le centre. L'occupation est marquée une fois dans `LOS_OCC` (au lieu d'un `fighterAt` par case testée), puis
+ * effacée : le rappel n'appelle pas le moteur (positions figées pendant `zoneCells`).
+ */
+function zoneCellsInSight(fight: FightState, zone: EffectData['zone'], cell: number, casterCell: number): number[] {
+  const fs = fight.fighters
+  for (let i = 0; i < fs.length; i++) {
+    const f = fs[i]
+    if (f.alive && f.carriedBy === undefined && f.cell >= 0 && f.cell < 560) LOS_OCC[f.cell] = 1
+  }
+  try {
+    const mapCells = fight.map.cells
+    return zoneCells(zone, cell, casterCell, { blocksLos: c => !mapCells[c]?.los || (c !== cell && LOS_OCC[c] === 1) })
+  } finally {
+    for (let i = 0; i < fs.length; i++) {
+      const c = fs[i].cell
+      if (c >= 0 && c < 560) LOS_OCC[c] = 0
+    }
+  }
+}
+
 /**
  * Calcule la zone et les cibles d'un effet. Avec `opts` (ajout effects/summons|marks|castspell) : contexte de masque
  * (O/o = déclencheur, U/u = entités apparues, Q/q = invocations), cibles hors zone du port
@@ -565,11 +592,7 @@ export function target(
   opts?: ApplyOptions,
 ): PreparedEffect {
   // Zones « seulement en LdV » : obstacles et entités bloquent depuis le centre de la zone.
-  const cells = effect.zone.onlyIfInSight
-    ? zoneCells(effect.zone, cell, casterCell, {
-        blocksLos: c => !fight.map.cells[c]?.los || (c !== cell && !!engine.fighterAt(fight, c)),
-      })
-    : zoneCells(effect.zone, cell, casterCell)
+  const cells = effect.zone.onlyIfInSight ? zoneCellsInSight(fight, effect.zone, cell, casterCell) : zoneCells(effect.zone, cell, casterCell)
   const targets: Fighter[] = []
   const efficiency = new Map<number, number>()
   const dying = opts?.fromDeath === true
@@ -601,8 +624,18 @@ export function target(
       if (!picked.some(o => o.cell === f.cell)) picked.push(f)
     }
   }
-  // Ordre des cases de la zone conservé (tri final par distance de toute façon).
-  if (picked.length > 1) picked.sort((a, b) => mark[a.cell] - mark[b.cell])
+  // Ordre des cases de la zone conservé (tri final par distance de toute façon). Rangs distincts (une case par
+  // combattant retenu) : ordre total, tri par insertion (petites listes, sans fermeture).
+  for (let i = 1; i < picked.length; i++) {
+    const f = picked[i]
+    const k = mark[f.cell]
+    let j = i - 1
+    while (j >= 0 && mark[picked[j].cell] > k) {
+      picked[j + 1] = picked[j]
+      j--
+    }
+    picked[j + 1] = f
+  }
   for (let i = 0; i < nCells; i++) mark[cells[i]] = 0
   for (const f of picked) {
     if (force && f !== force) continue
@@ -628,8 +661,38 @@ export function target(
   if (force && opts?.forceAnywhere === true) {
     addOutOfArea(targets, efficiency, force, force.cell >= 0 ? zoneEfficiency(effect.zone, cell, force.cell, casterCell) : 1, mask, caster, mctx, dying)
   }
-  targets.sort((a, b) => distance(cell, a.cell) - distance(cell, b.cell) || a.id - b.id)
+  sortByDistanceThenId(targets, cell)
   return { effect, cells, targets, efficiency }
+}
+
+/**
+ * `targets.sort((a, b) => distance(cell, a.cell) - distance(cell, b.cell) || a.id - b.id)`. Clés (distance, id)
+ * distinctes (ids uniques) : ordre total, donc tri par insertion (petites listes, sans fermeture) au même résultat ;
+ * une case hors carte (distance NaN : comparaison non transitive) garde le tri natif.
+ */
+function sortByDistanceThenId(targets: Fighter[], cell: number): void {
+  const n = targets.length
+  if (n < 2) return
+  for (let i = -1; i < n; i++) {
+    const c = i < 0 ? cell : targets[i].cell
+    if (!(c >= 0 && c < 560)) {
+      targets.sort((a, b) => distance(cell, a.cell) - distance(cell, b.cell) || a.id - b.id)
+      return
+    }
+  }
+  for (let i = 1; i < n; i++) {
+    const t = targets[i]
+    const d = distance(cell, t.cell)
+    let j = i - 1
+    while (j >= 0) {
+      const u = targets[j]
+      const du = distance(cell, u.cell)
+      if (du < d || (du === d && u.id < t.id)) break
+      targets[j + 1] = u
+      j--
+    }
+    targets[j + 1] = t
+  }
 }
 
 export interface RunEffectArgs extends Omit<EffectContext, 'engine' | 'fight'> {

@@ -45,6 +45,55 @@ function recordDigest2(seedA: number, seedB: number, r: Readonly<Record<string, 
   return PAIR
 }
 
+// ───────────────────────────── empreintes mémoïsées des enregistrements ─────────────────────────────
+//
+// Relances et lancers du tour (`Fighter.cooldowns`, `castsThisTurn`) : objets REMPLACÉS à chaque écriture, jamais
+// modifiés en place une fois le combat lancé (src/engine/cow.ts `setRecord`) — leur empreinte se mémoïse donc par
+// identité (le parcours `for…in` d'un objet à clés entières coûte ~150 ns, la mémoïsation ~10 ns). Les enregistrements
+// VIDES ne sont jamais mémoïsés : un objet `{}` neuf de la fabrique peut encore être rempli en place avant le combat
+// (src/dungeons/waves.ts `applyInitialCooldowns`), et leur parcours est de toute façon immédiat.
+
+type Rec = Readonly<Record<string, number>>
+interface Pair2 { a: number; b: number }
+const CD_PAIR_MEMO = new WeakMap<Rec, Pair2>()
+const CT_PAIR_MEMO = new WeakMap<Rec, Pair2>()
+
+/** `recordDigest2(seedA, seedB, r)` mémoïsé dans `memo` (résultat dans `PAIR`). */
+function recordDigest2Memo(memo: WeakMap<Rec, Pair2>, seedA: number, seedB: number, r: Rec): typeof PAIR {
+  const e = memo.get(r)
+  if (e !== undefined) {
+    PAIR.a = e.a
+    PAIR.b = e.b
+    return PAIR
+  }
+  recordDigest2(seedA, seedB, r)
+  if (hasKey(r)) memo.set(r, { a: PAIR.a, b: PAIR.b })
+  return PAIR
+}
+
+function hasKey(r: Rec): boolean {
+  for (const _ in r) return true
+  return false
+}
+
+/** Couples (sort, relance) des relances > 1, dans l'ordre de `for…in` : [k0, v0, k1, v1…] (mémoïsé, cf. ci-dessus). */
+const CD_GT1_MEMO = new WeakMap<Rec, readonly number[]>()
+const NO_PAIRS: readonly number[] = []
+function cooldownsAbove1(r: Rec): readonly number[] {
+  let list = CD_GT1_MEMO.get(r)
+  if (list !== undefined) return list
+  let out: number[] | undefined
+  let any = false
+  for (const k in r) {
+    any = true
+    const v = r[k]
+    if (v > 1) (out ??= []).push(Number(k), v)
+  }
+  list = out ?? NO_PAIRS
+  if (any) CD_GT1_MEMO.set(r, list)
+  return list
+}
+
 /** `buffsDigest` pour deux graines en un seul parcours (résultats dans `PAIR`). */
 function buffsDigest2(f: Fighter, seedA: number, seedB: number): typeof PAIR {
   let sa = 0
@@ -137,10 +186,10 @@ export function stateHash(s: FightState): bigint {
     const bd = buffsDigest2(f, 0x811c9dc5, 0x050c5d1f)
     a = fnvInt(a, bd.a)
     b = fnvInt(b, bd.b)
-    const cd = recordDigest2(0x811c9dc5, 0x050c5d1f, f.cooldowns)
+    const cd = recordDigest2Memo(CD_PAIR_MEMO, 0x811c9dc5, 0x050c5d1f, f.cooldowns)
     const cdA = cd.a
     const cdB = cd.b
-    const ct = recordDigest2(0x01000193, 0x2545f491, f.castsThisTurn)
+    const ct = recordDigest2Memo(CT_PAIR_MEMO, 0x01000193, 0x2545f491, f.castsThisTurn)
     a = fnvInt(fnvInt(a, cdA), ct.a)
     b = fnvInt(fnvInt(b, cdB), ct.b)
   }
@@ -184,10 +233,8 @@ export function geometryKey(s: FightState, believed: (f: Fighter) => number): ty
     const cell = f.carriedBy !== undefined ? -3 - f.carriedBy : believed(f)
     const rk = revKey(f)
     let cd = 0
-    for (const k in f.cooldowns) {
-      const v = f.cooldowns[k]
-      if (v > 1) cd = (cd + fnvInt(fnvInt(0x9747b28c, Number(k)), v)) | 0
-    }
+    const cds = cooldownsAbove1(f.cooldowns)
+    for (let j = 0; j < cds.length; j += 2) cd = (cd + fnvInt(fnvInt(0x9747b28c, cds[j]), cds[j + 1])) | 0
     a = fnvInt(fnvInt(fnvInt(fnvInt(a, f.id), cell), rk), cd)
     b = fnvInt(fnvInt(fnvInt(fnvInt(b, f.id), cell), rk), cd)
   }
@@ -327,10 +374,8 @@ export function mobilityDigest(f: Fighter): number {
     if (apmp) h = fnvInt(fnvInt(h, Math.round((sd!.ap ?? 0) * 16)), Math.round((sd!.mp ?? 0) * 16))
     if (b.passTurn) h = fnvInt(h, 0x7a55)
   }
-  for (const k in f.cooldowns) {
-    const v = f.cooldowns[k]
-    if (v > 1) h = fnvInt(fnvInt(h, Number(k)), v)
-  }
+  const cds = cooldownsAbove1(f.cooldowns)
+  for (let j = 0; j < cds.length; j += 2) h = fnvInt(fnvInt(h, cds[j]), cds[j + 1])
   const t = f.tags
   h = fnvInt(h, (t.rooted ? 1 : 0) | (t.cantTackle ? 2 : 0) | (t.static === true ? 4 : 0) | (t.canPlay === false ? 8 : 0)
     | (t.cannotPlay === true ? 16 : 0) | (typeof t.skipTurns === 'number' && t.skipTurns > 0 ? 32 : 0))

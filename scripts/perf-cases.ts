@@ -6,7 +6,10 @@
  * Chaque cas micro est `fn(i)` sur l'élément i (modulo `n`) d'une liste préparée hors mesure.
  */
 import { createControllers, defaultAIConfig, loadTheta } from '../src/ai'
-import { applyMacro, computeReachFor, createPerception, createView, generateCasts, simClone } from '../src/ai/core'
+import { applyMacro, buildOccupancy, cachedReach, castCellsFor, computeReachFor, createPerception, createView, generateCasts, levelFor, LosOracle, simClone } from '../src/ai/core'
+import { geometryKey, mobilityDigest, stateHash } from '../src/ai/core/hash'
+import { prepareDamage, meanPrepared, type DamageInput } from '../src/damage/damage'
+import { parseZoneString, zoneMembership } from '../src/map/zones'
 import { fightAISeed } from '../src/ai/core/rng'
 import { createMonsterBrain } from '../src/ai/monster'
 import { TeamController } from '../src/ai/team/controller'
@@ -168,6 +171,59 @@ export function createPerfCases(dataDir = 'data'): PerfCases {
       add('computeReach (combattant courant)', corpus.length, i => {
         const s = corpus[i]
         computeReachFor(s.engine, s.fight, s.fight.fighters[s.meId], s.team as 0 | 1)
+      })
+      {
+        // Cases de lancer : chaque sort du combattant courant sur chaque combattant (accessibilité et LdV préparées).
+        const prep = corpus.map(s => {
+          const me = s.fight.fighters[s.meId]
+          const occ = buildOccupancy(s.fight, s.team as 0 | 1)
+          return { s, me, reach: cachedReach(s.engine, s.fight, me, s.team as 0 | 1, me.mp, me.ap, occ), los: new LosOracle(s.fight, s.team as 0 | 1, me.id, occ) }
+        })
+        const out: number[] = []
+        add('castCellsFor (sorts × combattants)', prep.length, i => {
+          const { s, me, reach, los } = prep[i]
+          for (const ks of me.spells) {
+            const lvl = levelFor(me, ks)
+            for (const t of s.fight.fighters) if (t.alive && t.cell >= 0) castCellsFor(s.fight, me, ks, lvl, t.cell, reach, los, 12, out)
+          }
+        })
+      }
+      add('cachedReach (tous les combattants)', corpus.length, i => {
+        const s = corpus[i]
+        for (const f of s.fight.fighters) if (f.alive) cachedReach(s.engine, s.fight, f, s.team as 0 | 1, f.mp, f.ap)
+      })
+      add('stateHash', corpus.length, i => {
+        stateHash(corpus[i].fight)
+      })
+      add('mobilityDigest + geometryKey', corpus.length, i => {
+        const s = corpus[i]
+        for (const f of s.fight.fighters) mobilityDigest(f)
+        geometryKey(s.fight, f => f.cell)
+      })
+      {
+        const zones = ['C3', 'X4', 'G2', 'L5', 'T3', '+3', 'V2', 'P1'].map(z => parseZoneString(z))
+        add('zoneMembership (8 zones × combattants)', corpus.length, i => {
+          const s = corpus[i]
+          const me = s.fight.fighters[s.meId]
+          for (const z of zones) {
+            for (const t of s.fight.fighters) {
+              if (!t.alive || t.cell < 0) continue
+              const inZone = zoneMembership(z, t.cell, me.cell)
+              for (const o of s.fight.fighters) if (o.cell >= 0) inZone(o.cell)
+            }
+          }
+        })
+      }
+      add('prepareDamage + meanPrepared (paires × 5 éléments)', corpus.length, i => {
+        const s = corpus[i]
+        const me = s.fight.fighters[s.meId]
+        for (const t of s.fight.fighters) {
+          if (!t.alive) continue
+          for (let el = 0; el < 5; el++) {
+            const input = { attacker: me.stats, defender: t.stats, element: el, crit: (el & 1) === 1, isWeapon: false, isMelee: el === 2, defenderIsPlayer: t.kind === 'player' } as DamageInput
+            meanPrepared(prepareDamage(input), 20, 30)
+          }
+        }
       })
 
       // Buffs nombreux (cas des tourelles du Steamer) : 40 buffs de caractéristiques / états sur un combattant.

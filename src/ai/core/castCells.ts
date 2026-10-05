@@ -86,9 +86,10 @@ export function inverseRange(g: CastGeom, target: number): Int16Array {
   if (!ring) {
     if (target >= 0 && target < CELL_COUNT) {
       // Parcours des cases par (distance, id) croissants depuis la cible (ordre précalculé) : déjà trié. Une case à
-      // portée est à une distance de Manhattan ≤ 2 × max (diagonale : r pas = 2r) : arrêt au-delà.
+      // portée est à une distance de Manhattan ≤ max, ou ≤ 2 × max pour un lancer en diagonale (r pas = 2r) : arrêt
+      // au-delà (`isInCastRange` : hors diagonale, r = |dx| + |dy|).
       const order = cellsByDistance(target)
-      const bound = 2 * g.max
+      const bound = g.diag ? 2 * g.max : g.max
       let n = 0
       for (let i = 0; i < CELL_COUNT; i++) {
         const c = order[i]
@@ -218,7 +219,7 @@ export function castGeometryOk(s: FightState, caster: Fighter, spell: KnownSpell
  */
 export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, target: number,
                              reach: ReachInfo, los: LosOracle, limit = CELL_COUNT, out: number[] = [], nextTurn = false): number[] {
-  out.length = 0
+  if (out.length !== 0) out.length = 0
   const g = castGeomInto(caster, lvl, GEOM_CCF)
   const cost = lvl.apCost
   const start = reach.count > 0 ? reach.cells[0] : caster.cell
@@ -395,7 +396,7 @@ export function hitCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, l
   const g = castGeom(caster, lvl)
   if (prof && g.max === 0 && prof.zone && prof.zoneRadius > 0) {
     // Portée 0 à zone (Cri de Guerre, Glacier, Tibia…) : lancé sur sa propre case, la zone autour du lanceur touche.
-    out.length = 0
+    if (out.length !== 0) out.length = 0
     const cost = lvl.apCost
     for (let i = 0; i < reach.count && out.length < limit; i++) {
       const c = reach.cells[i]
@@ -406,7 +407,7 @@ export function hitCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, l
     return out
   }
   if (!prof || prof.aim === 'direct') return castCellsFor(s, caster, spell, lvl, target, reach, los, limit, out, nextTurn)
-  out.length = 0
+  if (out.length !== 0) out.length = 0
   if (prof.aim === 'ring' && prof.ringZone) {
     const zone = prof.ringZone
     const start = reach.count > 0 ? reach.cells[0] : caster.cell

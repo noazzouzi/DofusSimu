@@ -71,18 +71,24 @@ const REACH_TEMPLATE = (() => {
  */
 class Slab {
   private buf: ArrayBuffer | null = null
+  private u8: Uint8Array | null = null
   private next = 0
   constructor(private readonly bytes: number, private readonly perSlab: number) {}
   /** Décalage (octets) d'un bloc neuf de `bytes` octets dans `this.current`. */
   take(): number {
     if (this.buf === null || this.next >= this.perSlab) {
       this.buf = new ArrayBuffer(this.bytes * this.perSlab)
+      this.u8 = null
       this.next = 0
     }
     return this.bytes * this.next++
   }
   get current(): ArrayBuffer {
     return this.buf!
+  }
+  /** Vue octets de toute la tranche courante (créée une fois par tranche). */
+  get bytesView(): Uint8Array {
+    return (this.u8 ??= new Uint8Array(this.buf!))
   }
 }
 const REACH_SLAB = new Slab(REACH_BYTES, 32)
@@ -98,7 +104,7 @@ function newOccupancy(): Int16Array {
 export function createReachInfo(): ReachInfo {
   const off = REACH_SLAB.take()
   const b = REACH_SLAB.current
-  new Uint8Array(b, off, REACH_BYTES).set(REACH_TEMPLATE)
+  REACH_SLAB.bytesView.set(REACH_TEMPLATE, off)
   return {
     mpLeft: new Float32Array(b, off, CELL_COUNT),
     apLeft: new Float32Array(b, off + 4 * CELL_COUNT, CELL_COUNT),
@@ -131,9 +137,28 @@ const OCC = new Int16Array(CELL_COUNT)
 const FINAL = new Uint8Array(CELL_COUNT)
 const EVENT = new Uint8Array(CELL_COUNT)
 const EVENT_LIST: number[] = []
-/** Tacle des tacleurs par case (−1 = pas de tacleur). */
+/** Tacle des tacleurs par case (−1 = pas de tacleur ; un tacle négatif est inscrit mais ignoré). */
 const LOCK = new Float64Array(CELL_COUNT).fill(-1)
+/**
+ * Ratio de fuite du marcheur face au tacleur de chaque case (`tackleRatio(fuite, LOCK[c])`), calculé une fois par
+ * tacleur au lieu d'une fois par case visitée ; lu seulement si `LOCK[c] >= 0`. Produit des voisins dans le même
+ * ordre qu'avant : mêmes flottants.
+ */
+const RATIO = new Float64Array(CELL_COUNT)
 const LOCK_LIST: number[] = []
+
+/** Cases marchables d'une carte (1 = marchable), calculées une fois par carte (cases statiques). */
+const WALKABLE = new WeakMap<object, Uint8Array>()
+function walkableOf(s: FightState): Uint8Array {
+  let w = WALKABLE.get(s.map)
+  if (!w) {
+    w = new Uint8Array(CELL_COUNT)
+    const cells = s.map.cells
+    for (let c = 0; c < CELL_COUNT; c++) w[c] = cells[c]?.walkable ? 1 : 0
+    WALKABLE.set(s.map, w)
+  }
+  return w
+}
 /** PA restants en double précision (les sorties sont en Float32 : PA fractionnaires des clones 'average'). */
 const AP64 = new Float64Array(CELL_COUNT)
 const HEAP_CELL = new Int16Array(4 * CELL_COUNT + 8)
@@ -222,7 +247,7 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
     return out
   }
   const occ = opts.occupancy ?? buildOccupancy(s, team, OCC)
-  const cells = s.map.cells
+  const walkable = walkableOf(s)
 
   // Cases-événements : pièges connus (tout piège arrête la marche), glyphes « à l'entrée » et portails.
   for (const t of s.traps) {
@@ -233,24 +258,33 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
     if (g.trigger !== 'enter' && g.markType !== 'portal') continue
     for (const c of g.cells) if (c >= 0 && c < CELL_COUNT && !EVENT[c]) (EVENT[c] = 1), EVENT_LIST.push(c)
   }
-  // Tacleurs (ennemis du marcheur, vivants, non portés).
+  // Tacleurs (ennemis du marcheur, vivants, non portés) : ratio de fuite précalculé par tacleur.
+  const evade = f.stats.tackleEvade
   const tackled = !engine.stateFlag(f, 'cantBeTackled')
   if (tackled) {
     for (const e of s.fighters) {
       if (!e.alive || e.team === f.team || e.carriedBy !== undefined) continue
       const c = believedCell(e, team)
       if (c < 0 || c >= CELL_COUNT || occ[c] !== e.id || !canTackleNow(engine, e)) continue
-      LOCK[c] = e.stats.tackleBlock
+      const lock = e.stats.tackleBlock
+      LOCK[c] = lock
+      if (lock >= 0) RATIO[c] = tackleRatio(evade, lock)
       LOCK_LIST.push(c)
     }
     const x = opts.extraTackler
     if (x && x.cell >= 0 && x.cell < CELL_COUNT && LOCK[x.cell] < 0) {
       LOCK[x.cell] = x.tackle
+      if (x.tackle >= 0) RATIO[x.cell] = tackleRatio(evade, x.tackle)
       LOCK_LIST.push(x.cell)
     }
   }
-  const evade = f.stats.tackleEvade
   const allow = opts.allowEventCells
+  const mpLeft = out.mpLeft
+  const apLeft = out.apLeft
+  const prevOut = out.prev
+  const viaEvent = out.viaEvent
+  const outCells = out.cells
+  const anyLock = LOCK_LIST.length > 0
   const apFirst = opts.priority === 'ap'
 
   heapSize = 0
@@ -260,18 +294,18 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
     const c = heapPop()
     if (FINAL[c]) continue
     FINAL[c] = 1
-    out.cells[count++] = c
+    outCells[count++] = c
     if (c !== start && EVENT[c]) continue // case-événement admise : terminale
-    const mp = out.mpLeft[c]
+    const mp = mpLeft[c]
     if (mp <= 0) continue
     let ap = AP64[c]
     let mpAfter = mp
-    if (LOCK_LIST.length) {
+    const ns = neighborsOf(c)
+    if (anyLock) {
       let ratio = 1
-      const ns = neighborsOf(c)
       for (let i = 0; i < ns.length; i++) {
-        const lock = LOCK[ns[i]]
-        if (lock >= 0) ratio *= tackleRatio(evade, lock)
+        const n = ns[i]
+        if (LOCK[n] >= 0) ratio *= RATIO[n]
       }
       if (ratio < 1) {
         ap = apMpAfterTackle(ap, ratio)
@@ -281,23 +315,20 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
     if (mpAfter <= 0) continue
     const nmp = mpAfter - 1
     const k = key(ap, nmp, apFirst)
-    const ns = neighborsOf(c)
     for (let i = 0; i < ns.length; i++) {
       const n = ns[i]
-      if (FINAL[n] || occ[n] >= 0) continue
-      const mc = cells[n]
-      if (!mc || !mc.walkable) continue
+      if (FINAL[n] || occ[n] >= 0 || walkable[n] === 0) continue
       if (EVENT[n] && !(allow && allow.has(n))) continue
-      if (out.mpLeft[n] >= 0) {
+      const prevMp = mpLeft[n]
+      if (prevMp >= 0) {
         const prevAp = AP64[n]
-        const prevMp = out.mpLeft[n]
         if (apFirst ? prevAp > ap || (prevAp === ap && prevMp >= nmp) : prevMp > nmp || (prevMp === nmp && prevAp >= ap)) continue
       }
-      out.mpLeft[n] = nmp
-      out.apLeft[n] = ap
+      mpLeft[n] = nmp
+      apLeft[n] = ap
       AP64[n] = ap
-      out.prev[n] = c
-      out.viaEvent[n] = EVENT[n]
+      prevOut[n] = c
+      viaEvent[n] = EVENT[n]
       heapPush(n, k)
     }
   }
@@ -305,9 +336,9 @@ export function computeReachFor(engine: Engine, s: FightState, f: Fighter, team:
   // Nettoyage des tampons.
   for (let i = 0; i < count; i++) FINAL[out.cells[i]] = 0
   for (const c of EVENT_LIST) EVENT[c] = 0
-  EVENT_LIST.length = 0
+  if (EVENT_LIST.length !== 0) EVENT_LIST.length = 0
   for (const c of LOCK_LIST) LOCK[c] = -1
-  LOCK_LIST.length = 0
+  if (LOCK_LIST.length !== 0) LOCK_LIST.length = 0
   return out
 }
 

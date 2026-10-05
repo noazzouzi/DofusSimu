@@ -6,7 +6,8 @@
  *   npx tsx scripts/perf-ab.ts --a /chemin/ref --b /chemin/new [--micro] [--fights 1-6] [--rounds 15] [--slice 25]
  *
  *  - micro : pour chaque cas, `--rounds` tours de A puis B (tranches de `--slice` ms, ordre alterné) ; rapporte le
- *    MINIMUM et la MÉDIANE des tranches (µs/op) et le rapport B/A.
+ *    MINIMUM et la MÉDIANE des tranches (µs/op), le temps CPU du fil cumulé (µs/op, moins sensible à la charge d'une
+ *    machine partagée) et les rapports B/A. `--cases <regex>` : seulement ces cas.
  *  - combats : graines `--fights`, A puis B puis B puis A… (temps réel et CPU), après un combat de préchauffage chacun ;
  *    vérifie aussi que les empreintes (`eventsHash`) sont identiques. `--mode standard` ; `--turns N` : seulement les N
  *    premiers tours de combattants de chaque combat (mode standard : un combat complet dure plusieurs minutes).
@@ -43,6 +44,12 @@ const cpu = (): number => {
   const u = process.cpuUsage()
   return (u.user + u.system) / 1000
 }
+/** Temps CPU (ms) du fil principal (`process.threadCpuUsage`, Node ≥ 22.20 ; à défaut celui du processus). */
+const threadCpu = (): number => {
+  const p = process as unknown as { threadCpuUsage?: () => NodeJS.CpuUsage }
+  const u = p.threadCpuUsage ? p.threadCpuUsage() : process.cpuUsage()
+  return (u.user + u.system) / 1000
+}
 const med = (xs: number[]): number => {
   const s = [...xs].sort((a, b) => a - b)
   return s[Math.floor(s.length / 2)]
@@ -58,9 +65,11 @@ if (process.argv.includes('--micro')) {
   const ma = A.micro()
   const mb = B.micro()
   console.log(`A ${ma.info}\nB ${mb.info}`)
-  console.log(`${'cas'.padEnd(40)} ${'A min'.padStart(9)} ${'B min'.padStart(9)} ${'B/A'.padStart(6)}   ${'A méd'.padStart(9)} ${'B méd'.padStart(9)} ${'B/A'.padStart(6)}`)
+  console.log(`${'cas'.padEnd(40)} ${'A min'.padStart(9)} ${'B min'.padStart(9)} ${'B/A'.padStart(6)}   ${'A méd'.padStart(9)} ${'B méd'.padStart(9)} ${'B/A'.padStart(6)}   ${'A CPU'.padStart(9)} ${'B CPU'.padStart(9)} ${'B/A'.padStart(6)}`)
+  const only = arg('cases', '') ? new RegExp(arg('cases', '')) : null
   for (let ci = 0; ci < ma.cases.length; ci++) {
     const ca = ma.cases[ci]
+    if (only && !only.test(ca.name)) continue
     const cb = mb.cases.find(c => c.name === ca.name)
     if (!cb || !ca.n || !cb.n) continue
     for (let i = 0; i < Math.min(ca.n, 100); i++) (ca.fn(i), cb.fn(i))
@@ -68,8 +77,12 @@ if (process.argv.includes('--micro')) {
     const tb: number[] = []
     let ka = 0
     let kb = 0
-    const slice = (c: typeof ca, k: number): [number, number] => {
+    // Temps CPU du fil (granularité ~4 ms : cumulé sur toutes les tranches, moins sensible à la charge que le temps réel).
+    let cpuA = 0
+    let cpuB = 0
+    const slice = (c: typeof ca, k: number): [number, number, number] => {
       let ops = 0
+      const c0 = threadCpu()
       const t0 = performance.now()
       let t = t0
       while (t - t0 < SLICE) {
@@ -77,19 +90,21 @@ if (process.argv.includes('--micro')) {
         ops += 8
         t = performance.now()
       }
-      return [((t - t0) * 1000) / ops, ops]
+      return [((t - t0) * 1000) / ops, ops, threadCpu() - c0]
     }
     for (let r = 0; r < ROUNDS; r++) {
       const order = r & 1 ? ['b', 'a'] : ['a', 'b']
       for (const w of order) {
         if (w === 'a') {
-          const [us, ops] = slice(ca, ka)
+          const [us, ops, cpu] = slice(ca, ka)
           ta.push(us)
           ka += ops
+          cpuA += cpu
         } else {
-          const [us, ops] = slice(cb, kb)
+          const [us, ops, cpu] = slice(cb, kb)
           tb.push(us)
           kb += ops
+          cpuB += cpu
         }
       }
     }
@@ -97,7 +112,9 @@ if (process.argv.includes('--micro')) {
     const minB = Math.min(...tb)
     const mdA = med(ta)
     const mdB = med(tb)
-    console.log(`${ca.name.padEnd(40)} ${fmt(minA).padStart(9)} ${fmt(minB).padStart(9)} ${(minB / minA).toFixed(2).padStart(6)}   ${fmt(mdA).padStart(9)} ${fmt(mdB).padStart(9)} ${(mdB / mdA).toFixed(2).padStart(6)}`)
+    const cA = (cpuA * 1000) / Math.max(1, ka)
+    const cB = (cpuB * 1000) / Math.max(1, kb)
+    console.log(`${ca.name.padEnd(40)} ${fmt(minA).padStart(9)} ${fmt(minB).padStart(9)} ${(minB / minA).toFixed(2).padStart(6)}   ${fmt(mdA).padStart(9)} ${fmt(mdB).padStart(9)} ${(mdB / mdA).toFixed(2).padStart(6)}   ${fmt(cA).padStart(9)} ${fmt(cB).padStart(9)} ${(cB / cA).toFixed(2).padStart(6)}`)
   }
 }
 

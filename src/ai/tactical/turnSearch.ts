@@ -36,7 +36,7 @@ import {
   applyMacro, hpEff, lethalSplit, simClone, simSalt, stateHash, viewOn, type PerceptionX,
 } from '../core'
 import type { CandidateCat, MacroAction, TacticId, TurnBudget } from '../types'
-import { profileOf } from './cands'
+import { hitsTarget, profileOf } from './cands'
 import { evalLeaf, hourOf, rootInfo } from './evaluate'
 import { finalize } from './finalMove'
 import { generate, selectForSim } from './generate'
@@ -321,6 +321,62 @@ function extractPlan(ctx: TacticalContext, f: FinalLeaf, pass: FinalLeaf): Searc
   }
 }
 
+/**
+ * Cible de la LIGNE DE KILL (réglage, tour 2 : docs/tuning-log.md) : indice `kill` du scénario (contrat du créneau
+ * courant, étoile) de plus fort prix. En `fast` (faisceau de largeur 1), le terme `continuation` crédite déjà 80 % d'un
+ * kill encore faisable avec les PA restants : le premier lancer sur la cible rapporte peu de plus qu'un autre coup, le
+ * faisceau glouton remet le kill à plus tard… jusqu'à ne plus avoir les PA (corruptions manquées à portée).
+ */
+function killLineTarget(ctx: TacticalContext): number | undefined {
+  let best: number | undefined
+  let w = 0
+  for (const h of ctx.hints ?? []) {
+    if (h.kind !== 'kill' || h.targetId === undefined || !(h.weight > w)) continue
+    const t = ctx.view.fight.fighters[h.targetId]
+    if (!t || !t.alive) continue
+    best = h.targetId
+    w = h.weight
+  }
+  return best
+}
+
+/**
+ * Ligne de kill (faisceau de largeur 1) : depuis la racine, à chaque profondeur, le meilleur candidat OBLIGATOIRE qui
+ * touche la cible (un enfant qui la tue l'emporte), jusqu'à sa mort ou faute de candidat. Ses nœuds rejoignent les
+ * feuilles ; la feuille finale est finalisée et comparée aux autres plans en V terminale (le kill réalisé y compte,
+ * la continuation non). Renvoie la dernière feuille de la ligne (undefined si aucune).
+ */
+function killLine(ctx: TacticalContext, root: SearchNode, target: number, b: TurnBudget, seen: Map<bigint, number>, leaves: SearchNode[]): SearchNode | undefined {
+  let line = root
+  let last: SearchNode | undefined
+  for (let depth = 0; depth < b.maxDepth && !ctx.nodes.exhausted(); depth++) {
+    const t = line.s.fighters[target]
+    const me = line.s.fighters[ctx.view.me.id]
+    if (!t || !t.alive || !me || !me.alive || line.s.ended || me.ap <= 0) break
+    const salt = simSalt(line.hash, depth)
+    let best: SearchNode | null = null
+    let bestDead = false
+    for (const c of generate(ctx, line).mandatory) {
+      if (ctx.nodes.exhausted()) break
+      if (!hitsTarget(ctx, line.s, me, c, target)) continue
+      const child = expand(ctx, line, c, salt)
+      if (!child) continue
+      ctx.trace?.({ t: 'expand', depth, key: 'kl:' + c.key, v: child.v, cat: c.cat, mandatory: true, b: child.breakdown })
+      const dead = !child.s.fighters[target]?.alive
+      if (!best || (dead && !bestDead) || (dead === bestDead && child.v > best.v)) {
+        best = child
+        bestDead = dead
+      }
+    }
+    if (!best) break
+    const prev = seen.get(best.hash)
+    if (prev === undefined || prev < best.v) seen.set(best.hash, best.v)
+    leaves.push(best)
+    line = last = best
+  }
+  return last
+}
+
 /** Meilleur plan du tour pour `ctx.view.me` (§8.2). */
 export function searchTurn(ctx: TacticalContext): SearchPlan {
   const mode = ctx.mode ?? ctx.cfg.mode
@@ -337,6 +393,9 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   const rolloutsWanted = ctx.nested || ctx.noRollouts ? 0 : b.rollouts
   const reserve = Math.min(Math.floor(ctx.nodes.remaining() / 3), b.endCells * Math.min(nFinals + 1, 5) + rolloutsWanted * 14)
   const bctx: TacticalContext = { ...ctx, nodes: subBudget(ctx.nodes, ctx.nodes.remaining() - reserve) }
+  // Ligne de kill (fast) : explorée d'abord, sa feuille finale est toujours finalisée.
+  const killTarget = b.width <= 1 && !ctx.nested ? killLineTarget(ctx) : undefined
+  const killLeaf = killTarget !== undefined ? killLine(bctx, rootNode, killTarget, b, seen, leaves) : undefined
   for (let depth = 0; depth < b.maxDepth && beam.length && !bctx.nodes.exhausted(); depth++) {
     const children: SearchNode[] = []
     for (const node of beam) {
@@ -369,6 +428,7 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   const cont = (n: SearchNode): number => n.v - (n.breakdown?.continuation ?? 0)
   const settled = leaves.slice().sort((a, b) => cont(b) - cont(a) || keyOf(a).localeCompare(keyOf(b)))
   for (const n of settled.slice(0, Math.max(1, Math.ceil(nFinals / 2)))) if (!ranked.includes(n)) ranked.push(n)
+  if (killLeaf && !ranked.includes(killLeaf)) ranked.push(killLeaf)
   const finals = ranked.map(n => finalize(ctx, n))
   finals.sort(finalOrder)
   let pool = finals

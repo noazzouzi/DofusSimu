@@ -749,15 +749,16 @@ export function cloneFighter(f: Fighter): Fighter {
   const src = f.buffs
   const buffs: Buff[] = new Array(src.length)
   for (let i = 0; i < src.length; i++) buffs[i] = cloneBuff(src[i])
-  return cloneFighterWith(f, buffs, { ...f.cooldowns }, { ...f.castsThisTurn }, { ...f.castsOnTarget })
+  return cloneFighterWith(f, buffs, { ...f.cooldowns }, { ...f.castsThisTurn }, { ...f.castsOnTarget }, { ...f.stats }, f.states.slice())
 }
 
 /**
  * Copie d'un combattant pour `cloneFight` : buffs, relances et compteurs de lancers PARTAGÉS en copie-sur-écriture
- * (src/engine/cow.ts) ; le reste comme `cloneFighter`.
+ * (src/engine/cow.ts) ; caractéristiques (`stats`) et états (`states`) partagés tels quels (objets REMPLACÉS par
+ * `recomputeStats`, jamais modifiés en place) ; le reste comme `cloneFighter`.
  */
 function cloneFighterShared(f: Fighter): Fighter {
-  return cloneFighterWith(f, f.buffs, f.cooldowns, f.castsThisTurn, f.castsOnTarget)
+  return cloneFighterWith(f, f.buffs, f.cooldowns, f.castsThisTurn, f.castsOnTarget, f.stats, f.states)
 }
 
 function cloneFighterWith(
@@ -766,6 +767,8 @@ function cloneFighterWith(
   cooldowns: Fighter['cooldowns'],
   castsThisTurn: Fighter['castsThisTurn'],
   castsOnTarget: Fighter['castsOnTarget'],
+  stats: Fighter['stats'],
+  states: Fighter['states'],
 ): Fighter {
   return {
     id: f.id,
@@ -777,7 +780,7 @@ function cloneFighterWith(
     grade: f.grade,
     level: f.level,
     baseStats: f.baseStats, // immuable pendant le combat
-    stats: { ...f.stats },
+    stats,
     hp: f.hp,
     maxHp: f.maxHp,
     baseMaxHp: f.baseMaxHp,
@@ -786,7 +789,7 @@ function cloneFighterWith(
     mp: f.mp,
     cell: f.cell,
     alive: f.alive,
-    states: f.states.slice(),
+    states,
     buffs,
     spells: f.spells,
     cooldowns,

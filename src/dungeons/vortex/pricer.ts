@@ -270,15 +270,26 @@ export function searchPrices(inp: PricerInput): PriceTable {
   const h1 = nextHour(h0, 1)
   const canAct = ctx.slots[0]?.isPlayer === true && (ctx.slots[0]?.index ?? -1) >= 0
   const scores = new Map<string, number>()
+  /**
+   * Actions chiffrées mais improbables maintenant (mort à P(kill) < `minKillP`) : une racine imposée est SUPPOSÉE
+   * réalisée ; son score ne sert pas de référence « sans tuer m » au prix d'une mort PROBABLE — sinon une corruption
+   * sûre était comparée au meurtre imaginaire d'un monstre neuf à 6 600 PV et tombait à `killMin` (réglage, tour 2 :
+   * puzzle P17 en `standard`). Une mort improbable reste comparée à toutes les actions (hypothèse contre hypothèse,
+   * puzzle P4).
+   */
+  const unlikelyKeys = new Set<string>()
   if (inp.replan && canAct) {
     const budget = Math.max(1, inp.maxReplans ?? 6)
-    const run = (a: AbsAction): void => {
+    const run = (a: AbsAction, unlikely = false): void => {
       const key = actionKey(a)
       if (scores.has(key) || scores.size >= budget) return
       const r = inp.replan!(a)
       // Action impossible dans le modèle abstrait (faisceau vide) : pas de score, le prix heuristique reste.
       const v = r.priceScores.get(key)
-      if (v !== undefined) scores.set(key, v)
+      if (v !== undefined) {
+        scores.set(key, v)
+        if (unlikely) unlikelyKeys.add(key)
+      }
     }
     run({ t: 'none' })
     const reachable = root.monsters
@@ -295,8 +306,8 @@ export function searchPrices(inp: PricerInput): PriceTable {
       for (const { m } of likely) run({ t: 'kill', m: [m.id], glyph: 'before' })
       if (ctx.glyphsNow >= 2) run({ t: 'glyph', count: 2 })
     }
-    for (const { m } of reachable) run({ t: 'kill', m: [m.id], glyph: 'none' })
-    if (ctx.glyphsNow >= 1) for (const { m } of reachable) run({ t: 'kill', m: [m.id], glyph: 'before' })
+    for (const { m, p } of reachable) run({ t: 'kill', m: [m.id], glyph: 'none' }, p < inp.cfg.minKillP)
+    if (ctx.glyphsNow >= 1) for (const { m, p } of reachable) run({ t: 'kill', m: [m.id], glyph: 'before' }, p < inp.cfg.minKillP)
     // Budget restant : pente de PV des monstres atteignables sans contrat (mêmes pré-dégâts que le planificateur).
     for (const { m, e } of reachable) {
       if (table.hp.get(m.id)?.bandMax !== undefined) continue
@@ -304,10 +315,13 @@ export function searchPrices(inp: PricerInput): PriceTable {
       if (amount > 0) run({ t: 'damage', m: m.id, amount, glyph: 'none' })
     }
   } else for (const [k, v] of inp.result.priceScores) scores.set(k, v)
-  /** Meilleur score parmi les actions chiffrées qui ne tuent pas `m`, avec `g` heures de glyphe. */
-  const bestWithout = (m: number, g: number): number => {
+  /**
+   * Meilleur score parmi les actions chiffrées qui ne tuent pas `m`, avec `g` heures de glyphe ; `real` : seulement les
+   * actions non improbables (référence du prix d'une mort probable).
+   */
+  const bestWithout = (m: number, g: number, real: boolean): number => {
     let b = -Infinity
-    for (const [k, v] of scores) if (glyphOfKey(k) === g && !killsOfKey(k).includes(m)) b = Math.max(b, v)
+    for (const [k, v] of scores) if (glyphOfKey(k) === g && !killsOfKey(k).includes(m) && !(real && unlikelyKeys.has(k))) b = Math.max(b, v)
     return b
   }
   for (const m of root.monsters) {
@@ -318,7 +332,7 @@ export function searchPrices(inp: PricerInput): PriceTable {
       const key = actionKey({ t: 'kill', m: [m.id], glyph })
       const v = scores.get(key)
       if (v === undefined) continue
-      const base = bestWithout(m.id, glyph === 'none' ? 0 : 1)
+      const base = bestWithout(m.id, glyph === 'none' ? 0 : 1, !unlikelyKeys.has(key))
       if (!Number.isFinite(base)) continue
       const star = glyph === 'none' ? m.star : maskHas(m.hours, h1)
       row[star ? 0 : glyph === 'none' ? h0 : h1] = clamp(v - base, tv.killMin, star ? Math.max(tv.killMax, tv.corruptKill) : tv.killMax)

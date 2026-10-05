@@ -489,6 +489,8 @@ const DIAG_DIRS = [0, 2, 4, 6]
 const ALL_DIRS = [0, 1, 2, 3, 4, 5, 6, 7]
 /** Clés de tri (aucun rappel extérieur pendant son utilisation). */
 const sortScratch = new Int32Array(CELL_COUNT)
+/** Vues `sortScratch[0, n)` (une par longueur, créées une fois). */
+const SCRATCH_VIEWS: (Int32Array | undefined)[] = []
 
 /**
  * Formes « en rayons » (lignes, croix, étoiles, demi-cercles) : candidats générés le long des directions (O(r))
@@ -562,14 +564,16 @@ function sortByOrigin(f: Frame, out: number[]): void {
   const oy = CELL_Y[f.origin]
   const n = out.length
   for (let i = 0; i < n; i++) sortScratch[i] = (Math.abs(CELL_X[out[i]] - ox) + Math.abs(CELL_Y[out[i]] - oy)) * 1024 + out[i]
-  const keys = sortScratch.subarray(0, n).sort()
-  out.length = 0
+  const keys = (SCRATCH_VIEWS[n] ??= sortScratch.subarray(0, n)).sort()
+  // Réécriture en place (clés triées sans doublons), troncature seulement s'il y en avait.
+  let m = 0
   let prev = -1
   for (let i = 0; i < n; i++) {
-    const c = keys[i] & 1023
-    if (keys[i] !== prev) out.push(c)
-    prev = keys[i]
+    const k = keys[i]
+    if (k !== prev) out[m++] = k & 1023
+    prev = k
   }
+  if (m !== n) out.length = m
 }
 
 /** Distance de Manhattan maximale possible d'une cellule de la zone à son origine (balayage). */
@@ -656,7 +660,7 @@ export function zoneCells(zone: ZoneSpec, center: number, casterCell: number, op
 
 /** Comme `zoneCells` mais remplit `out` (vidé au préalable) pour éviter une allocation. */
 export function zoneCellsInto(zone: ZoneSpec, center: number, casterCell: number, out: number[], opts?: ZoneOptions): number[] {
-  out.length = 0
+  if (out.length !== 0) out.length = 0
   if (center < 0 || center >= CELL_COUNT) return out
   const f = acquireFrame(compileZone(zone), center, casterCell, opts)
   try {

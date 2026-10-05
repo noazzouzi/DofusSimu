@@ -197,3 +197,242 @@ reproduction `it.fails`) :
 - **Recalcul des cibles après une apparition** (invocation ou résurrection) dans le même sort, à la manière du port
   après une résurrection. Effet de bord corrigé : la Musette Animée (141 `a,A` P1, pré-ciblé sur une case vide) n'était
   jamais détruite. Le contournement M1 du preset (Musette au lieu de Sac) est donc à re-mesurer au tour 2.
+
+---
+
+## Tour 2
+
+### Protocole (mises à jour)
+
+- Harnais déplacé dans `.cache/tuning/` (ignoré par git) : `run2.mts` (= `run1` + `--variant membre:paire=valeur` pour
+  changer une variante de sort d'un preset, + sorts lancés par personnage), `batch.sh` (**2 processus**), `snap.sh`
+  (instantané figé de `src/` et `data/ai/` ; les variantes d'une expérience reprennent le moteur de l'instantané
+  `base` et n'écrasent que les fichiers réglables : l'autre agent modifie le moteur en parallèle).
+- Lot : 32 graines `fast` (`masterSeed` 1, mêmes graines qu'au tour 1). Un changement candidat est confirmé sur 32
+  graines de plus (`masterSeed` 2) : **n = 64** (IC 95 % ≈ ±0,3 corrompu, ±0,7 tour).
+- Diagnostics (scripts du dossier) : `rounds.cjs` (par tour de jeu : dégâts infligés par personnage, subis, soins,
+  monstres vivants), `marks.cjs` (marquage / corruption par vague et par monstre), `stars2.mts` (fenêtres d'étoile et
+  cause de l'échec), `killkind.cjs` (morts de monstres : marquage, re-marquage, étoile ; source), `pacif.cjs`
+  (Pacifiste au début du tour), `deaths.cjs`, `taken.cjs`, `contracts.cjs`, `calib2.mts` (calibration de la menace :
+  incoming prévu à la fin du tour d'un personnage contre dégâts réellement subis jusqu'à son tour suivant, par source ;
+  reproduit `runOne` à l'identique), `probe.mts`/`probe2.mts` (prix, plan, candidats d'un tour).
+
+### Mesure de référence (code du tour 1 + correctif moteur 81430e2)
+
+| Métrique | `masterSeed` 1 (n = 32) | `masterSeed` 2 (n = 32) |
+|---|---|---|
+| Victoires | 0 | 0 |
+| Tours survécus | 14,47 | 13,69 |
+| Corrompus au tour 7 / 12 / 17 | 1,13 / 2,41 / 2,53 | 1,03 / 1,91 / 1,94 |
+| Premier mort (tour) | 10,6 | 9,7 |
+| Dégâts subis / infligés aux monstres de vague | 32 300 / 54 000 | 31 700 / 48 600 |
+| Causes d'échec | submersion 17, défaite 15 | submersion 23, défaite 8, croix 1 |
+
+`standard`, 4 graines : 18,0 tours (`fast` 14,0 sur les mêmes graines), 3,0 corrompus (1,75).
+
+### E0 — Enutrof : Sac Animé ou Musette Animée (re-mesure après le correctif moteur)
+
+Apparié, 32 graines, `--variant 1:4=0` (Sac) contre le preset (Musette) : tours **+0,75 ± 0,87** (+16 / −9),
+corrompus au tour 12 **−0,25 ± 0,28**, total −0,16 ± 0,38. Aucune différence significative, tendance opposée sur les
+deux métriques ; la corruption (prioritaire) penche pour la Musette. **Preset inchangé (Musette)** ; le contournement
+M1 n'a plus de raison d'être mais la Musette est une variante valide (« groupe serré ») et ne fait pas moins bien.
+
+### Diagnostics
+
+1. **La vague 2 n'est presque jamais traitée** : 1,44 monstre sur 4 marqué (tour moyen 10,9), 0,16 corrompu. Vague 1 :
+   3 marqués (tour 3,5), 2,38 corrompus (tour 7,5) ; la **Méjaire** est la dernière (corrompue dans 19 combats sur 32,
+   tour 8,6 ; l'Ikargn 31 / 32, tour 6,5). Les dégâts de l'équipe chutent de 5,8-7 k (tours 1-2) à 2-4 k (tours 3-7 :
+   monstres marqués en attente de leur étoile, paliers de PV), puis 4-5 k contre la vague 2 alors qu'il en faudrait
+   ≈ 6,6 k par tour pour marquer 4 × 6 600 PV et corrompre 4 zombies avant la vague 3.
+2. **Fenêtres d'étoile** : 83 converties sur 195 (43 %). Échecs : tueur à portée (≤ 7 cases) mais pas de kill 39,
+   loin (> 7 cases) 43, sous Pacifiste 26 (dont l'Iop 16), mort 4. L'Enutrof (exclu des contrats) hérite de 38
+   étoiles (9 converties) : monstres tués à « ses » heures par un poison, une invocation ou une zone.
+3. **Kill remis à plus tard** (cause des échecs « à portée ») : en `fast` (faisceau de largeur 1), le terme
+   `continuation` crédite déjà 0,8 × (dégâts + prix du kill) d'un kill encore faisable avec les PA restants ; le
+   premier tir sur le zombie étoilé rapporte donc à peine plus qu'un autre coup, le faisceau glouton joue d'autres
+   actions puis n'a plus les PA. Sonde (graine 1212895563, tour 9, Crâ, Harpille étoilée à 1 100 PV, contrat
+   « corrompt ») : continuation 3 904 à la racine, plan final sans le kill.
+4. **Pacifiste** (Rayonirique de la Méjaire, non désenvoûtable) au début du tour : Iop 10 % (vague 1), 22 % (vague 2),
+   48 % (vague 3+) ; 4-6 % pour les autres en vagues 1-2, ≈ 20 % ensuite. 62 tours de l'Iop sans dégâts sur 180 aux
+   tours 7-12, la plupart sous Pacifiste.
+5. **Le soigneur meurt le premier** dans 20 combats sur 32 (Eniripsa : sorts de soin et de dégâts à 4-5 PO, au
+   contact des monstres : 83 % de ses fins de tour à ≤ 4 cases d'un monstre en vague 2).
+6. **Menace sous-estimée** (`calib2.mts`, 6 graines) : en vague 2, dégâts réellement subis jusqu'au tour suivant ≈ 1,5
+   à 2,8 × l'incoming prévu (Iop 392 → 1 114, Eniripsa 405 → 808, Crâ 552 → 931) ; par source (tours 7-12, par tour
+   d'allié) : Brabuzar prévu 34, réel 116 + 90 de poussée ; Buboxor 58 → 112 ; poison des Harpilles 182 (hors
+   incoming, terme `pendingDot`) ; la Méjaire est surestimée (valeur du Pacifiste comptée). Les morts ne sont pas
+   prévues (risque moyen 0,03-0,14 avant une mort).
+7. **Oracle de kill optimiste** : DPT analytique (sans contrainte de position) Iop/Méjaire 4 725, Crâ/Ikargn 3 200-4 100,
+   contre ≈ 1,1-1,4 k réalisés par tour ; 32 % des marquages prévus au créneau courant ont lieu.
+8. **Diagnostic « monstres à 50 % de dégâts »** (instantané modifié, hors dépôt) : 21,9 tours survécus, mais 3,4
+   corrompus seulement (vague 2 : 0,75 sur 4 ; 253 étoiles, 22 % converties). **La survie n'est pas le seul verrou :
+   le rythme de marquage et la conversion des étoiles plafonnent la progression.** Monstres au grade 1 : aucun effet
+   (6 000 PV au lieu de 6 600).
+9. **Changements du tour 1 absents du dépôt** : l'oracle `canKillNow` en `fast` (O1) et l'intention de placement du
+   tueur d'une corruption (Q1/Q2), donnés comme gardés au tour 1 (point 3), ne sont pas dans le commit 1887df6 (ils
+   n'existaient que dans l'instantané de mesure). Re-mesurés plus bas (KQ).
+10. **`SearchPricer` (`standard`/`deep`) : prix d'une corruption à `killMin`** quand un monstre neuf est à portée. Les
+   morts improbables (P(kill) < `minKillP`) sont chiffrées par une relance FORCÉE, où l'action est supposée réalisée ;
+   leur score servait de référence « meilleur plan sans tuer m » pour les autres monstres. Puzzle P17 en `standard` :
+   Ikargn étoilé (1 500 PV, à 4 cases du Crâ) payé **−3 000** (« tuer maintenant » −52 145 contre « tuer la Méjaire
+   neuve à 6 600 PV », impossible, −47 466), aucun indice `kill`, corruption manquée.
+
+### Modes d'échec retenus pour ce tour
+
+1. **Conversion des étoiles et kills différés** (diagnostics 2, 3) : levier direct sur la corruption.
+2. **Rythme de marquage de la vague 2** (1, 7) : dispersion des dégâts, oracle optimiste.
+3. **Survie à l'arrivée de la vague 2** (5, 6) : monstres neufs apparus au contact de l'équipe (distance moyenne des
+   personnages à la case bleue la plus proche à l'arrivée de la vague 2 : 4,2), menace sous-estimée.
+4. **Pacifiste sur l'Iop** (4).
+
+### Expériences (appariées ; référence indiquée ; 32 graines `masterSeed` 1 sauf mention)
+
+| Essai | Changement | Réf. | Tours | Corr. t7 / t12 / total | Δ apparié (corr. total ; tours) | Verdict |
+|---|---|---|---|---|---|---|
+| B0 | référence (Musette) | — | 14,47 | 1,13 / 2,41 / 2,53 | — | — |
+| E0 | Sac Animé (`--variant 1:4=0`) | B0 | 15,22 | 1,09 / 2,16 / 2,38 | −0,16 ± 0,38 ; +0,75 ± 0,87 | neutre, preset inchangé |
+| F1 | cible focale de vague : pente de PV 1,2 sur le monstre neuf de plus grande menace / PV (`model.ts`) | B0 | 14,16 | 1,09 / 2,16 / 2,19 | −0,34 ± 0,43 ; −0,31 ± 0,97 | rejeté |
+| S1 | danger des cases bleues au tour qui précède une vague (`extraIncoming`, 800 PVe à distance 0 → 0 à 8) | B0 | 15,00 | 1,22 / 2,25 / 2,31 | −0,22 ± 0,41 ; +0,53 ± 0,88 | rejeté (neutre) |
+| **K1** | **ligne de kill** (`turnSearch.ts`, `fast`) **+ indices `kill` des monstres étoilés** (`model.ts`) | B0 | 14,31 | 1,34 / 2,34 / 2,63 | +0,09 ± 0,53 ; −0,16 ± 1,11 | confirmé sur n = 64 ↓ |
+| K1 (`masterSeed` 2) | idem | B0 | 14,88 | 1,28 / 2,50 / 2,69 | **+0,75 ± 0,46** (+18 / −5) ; +1,19 ± 1,05 | |
+| **K1 (n = 64)** | idem | B0 | 14,59 | 1,31 / 2,42 / 2,66 | **+0,42 ± 0,36** (+31 / −16) ; +0,52 ± 0,77 ; t7 +0,23 ± 0,26, t12 +0,27 ± 0,28 | **gardé** |
+| K1+S1 | K1 + danger des cases bleues | K1 | 14,41 | 1,38 / 2,19 / 2,41 | −0,22 ± 0,50 ; +0,09 ± 1,11 | rejeté |
+| T1 | K1 + θ `value.incoming` 1,2 (menace sous-estimée) | K1 | 15,00 | 1,38 / 2,34 / 2,50 | −0,13 ± 0,56 ; +0,69 ± 1,05 | rejeté (neutre) |
+| T2 | K1 + θ `threat.deathSigmaFrac` 0,5 | K1 | 14,34 | 1,38 / 2,34 / 2,53 | −0,09 ± 0,45 ; +0,03 ± 0,85 | rejeté |
+| KQ (n = 64) | K1 + O1 (`canKillNow` en `fast`) + Q2 (placement du tueur), changements du tour 1 absents du dépôt | K1 | 14,44 | 1,28 / 2,33 / 2,50 | −0,16 ± 0,28 ; −0,16 ± 0,75 | rejeté |
+| R+ | K1 + re-marquage d'un zombie mieux payé (0,6 × exposition au lieu de 0,3, `pricer.ts`) | K1 | 14,69 | 1,38 / 2,53 / 2,69 | +0,06 ± 0,45 ; +0,38 ± 0,93 | neutre, rejeté |
+| R0 | K1 + re-marquage sans valeur d'exposition (0) | K1 | 14,56 | 1,38 / 2,50 / 2,72 | +0,09 ± 0,38 ; +0,25 ± 0,82 | neutre, rejeté |
+| P1 | K1 + θ `threat.pacifistFactor` 1,5 | K1 | 13,81 | 1,38 / 2,22 / 2,44 | −0,19 ± 0,49 ; −0,50 ± 1,16 | rejeté |
+| **KH (n = 64)** | K1 + **indices `kill` des kills payés** (≥ 1 000 PVe à l'heure courante, hors étoile et hors contrat, monstre à portée de kill selon l'oracle) : la ligne de kill marque aussi un monstre neuf achevable | K1 | 14,83 | 1,45 / 2,56 / 2,77 | +0,11 ± 0,36 (+26 / −17) ; +0,23 ± 0,88 ; t7 +0,14 ± 0,23, t12 +0,14 ± 0,26 | **gardé** (tendance + sur les deux jeux de graines) |
+| KH contre B0 (n = 64) | K1 + KH | B0 | 14,83 | 1,45 / 2,56 / 2,77 | **+0,53 ± 0,34** (+36 / −13) ; +0,75 ± 0,81 ; t7 **+0,38 ± 0,24**, t12 **+0,41 ± 0,29** | |
+| EC (n = 64) | K1 + contrats de **corruption** permis au joueur exclu des contrats (Enutrof « full retrait » : ses alliés pré-dégâtent le zombie étoilé jusqu'à sa portée de kill ; jamais de marquage) (`planner.ts`) | K1 | 14,47 | 1,39 / 2,39 / 2,45 | −0,20 ± 0,32 ; −0,13 ± 0,67 | rejeté |
+
+Effet de K1 sur les mécanismes visés (`masterSeed` 1) : fenêtres d'étoile converties 83 / 195 (43 %) → 85 / 174
+(49 %), échecs « à portée » 39 → 22 ; contrats du créneau courant tenus : corruptions 44 % → 58 %, marquages 32 % →
+36 %. Avec KH : 90 / 172 (52 %), échecs à portée 20, loin 31 (43), sous Pacifiste 25 (26).
+
+### Diagnostics : puissance de l'équipe, composition (hors dépôt, IA K1)
+
+Instantané modifié (`Engine.applyDamage` × facteur, **diagnostic seulement**, jamais dans `src/`), 16 graines `fast` :
+
+| Diagnostic | Victoires | Tours | Corr. t7 / t12 / t17 / total | Vague 2 marqués / corrompus | Premier mort |
+|---|---|---|---|---|---|
+| Équipe méta, IA K1 (16 graines de référence) | 0 | 13,8 | 1,13 / 2,25 / 2,50 / 2,50 | — | 9,5 |
+| Dégâts infligés × 2 | 0 | 16,3 | 1,88 / 3,56 / 4,56 / 4,56 | 3,75 / 1,63 | 10,0 |
+| Dégâts subis × 0,5 (IA du début du tour) | 0 | 21,9 | 1,19 / 2,25 / 3,31 / 3,44 | 2,06 / 0,75 | 16,9 |
+| Infligés × 2 **et** subis × 0,5 | **1 / 16** | 27,4 | 2,56 / 4,00 / 6,50 / 8,81 | 4,00 / 3,75 | 20,3 |
+
+La victoire (graine 456638276) : 19 corrompus au tour 36, *Action !*, Vortex (22 000 PV) tué en ≈ 7 tours de phase 2,
+aucun mort. **Le pipeline complet (marquage, corruption, déverrouillage, burst) fonctionne** ; il faut une équipe
+≈ 4 fois plus forte (×2 en attaque et en défense) pour gagner une fois sur 16, et même alors 8,8 corrompus sur 19 en
+moyenne : les vagues 3-5 ne sont pas tenues (vague 3 : 1,19 corrompu sur 4, vague 5 : 0,25).
+
+Compositions (16 graines, IA K1, mêmes graines) : Huppermage quadra à la place de l'Enutrof : corrompus au tour 7
+1,69 (1,13) mais 12,0 tours (13,8), premier mort 8,4 (9,5) — le retrait de PM de l'Enutrof vaut ≈ 2 tours de survie ;
+Roublard artificier + Pandawa + Iop + Crâ (méthode JOL n° 1) : 10,3 tours, 1,19 corrompu (bombes et porter mal
+exploités par l'IA). L'équipe méta reste la meilleure des trois.
+
+### Changements gardés (tour 2)
+
+1. `src/ai/tactical/turnSearch.ts` — **ligne de kill** (faisceau de largeur 1, `fast`) : avant le faisceau, une ligne
+   qui joue à chaque profondeur le meilleur candidat obligatoire touchant la cible de l'indice `kill` le mieux payé
+   (un enfant qui la tue l'emporte), jusqu'à sa mort ; sa feuille finale est toujours finalisée et comparée en V
+   terminale aux autres plans. Corrige le kill remis à plus tard par le terme `continuation`.
+2. `src/dungeons/vortex/model.ts` (`hints`) — indices `kill` supplémentaires : (a) tout monstre étoilé vivant au
+   créneau courant (prix `kill[m][0]` > 0), même hors contrat du plan ; (b) **kills payés** : monstre non étoilé,
+   vulnérable, dont le prix de mort à l'heure courante est ≥ `PAID_KILL_HINT` (1 000 PVe) et que l'oracle juge à
+   portée de kill (espérance ≥ PV) — la ligne de kill marque aussi un monstre neuf achevable.
+3. `src/dungeons/vortex/pricer.ts` (`searchPrices`, `standard`/`deep`) — pour le prix d'une mort PROBABLE, la
+   référence « meilleur plan sans tuer m » exclut les morts improbables (P(kill) < `minKillP`), chiffrées par une
+   relance forcée qui les suppose réalisées : une corruption sûre n'est plus payée `killMin` (−3 000) parce qu'un
+   monstre neuf hors de portée de kill est à portée de tir. Une mort improbable reste comparée à toutes les actions
+   (hypothèse contre hypothèse) : exclure aussi ces références rendait positif le kill à V du puzzle P4 (+2 311, il
+   doit rester négatif). Sans effet en `fast` (vérifié : 16 graines identiques).
+4. Tests : `tests/ai-puzzles-vortex.test.ts` — P17 (monstre étoilé à deux lancers, à 4 cases : corrompu en `fast` et
+   en `standard`, prix de l'étoile positif, indice `kill`), P18 (monstre neuf à 900 PV à 3 cases, kill payé à
+   l'heure courante : indice `kill` hors contrat, marqué), P14 durci (le kill payé à deux lancers est exigé aussi en
+   `fast`, la ligne de kill le trouve).
+
+Rejetés et retirés du code : cible focale (F1), danger des cases bleues (S1), O1 + Q2 du tour 1 (KQ), contrats de
+corruption de l'Enutrof (EC), réglages θ T1, T2, P1, prix de re-marquage R+ / R0. Preset Enutrof inchangé (E0).
+
+Vérifications : `npx tsc --noEmit` vert ; `npx vitest run tests/ai-* tests/vortex-* tests/engine-summon-owned.test.ts` :
+332 réussis, 1 échec **hors de ce tour** — `ai-monster-fidelity` M-R20 (critiques en espérance : `mid.p` vaut 1),
+dû à la modification en cours de `src/damage/damage.ts` par l'agent « performances » (non commitée) : le même test
+passe avec le code IA final de ce tour sur le moteur de début de tour (instantané `final`, 13 / 13).
+
+### Mesure finale du tour 2
+
+`fast`, n = 64 (`masterSeed` 1 et 2), apparié, même moteur (instantané `base`) : code de début de tour (B0) contre
+code final (K1 + KH ; le correctif du `SearchPricer` est sans effet en `fast`).
+
+| Métrique | Avant (B0) | Après | Δ apparié (IC 95 %) |
+|---|---|---|---|
+| Victoires | 0 / 64 | 0 / 64 | — |
+| Tours survécus | 14,08 | 14,83 | +0,75 ± 0,81 (+36 / −21) |
+| Corrompus au tour 7 | 1,08 | **1,45** | **+0,38 ± 0,24** (+32 / −14) |
+| Corrompus au tour 12 | 2,16 | **2,56** | **+0,41 ± 0,29** (+31 / −13) |
+| Corrompus au tour 17 / total | 2,23 / 2,23 | **2,75 / 2,77** | **+0,52 ± 0,33 / +0,53 ± 0,34** (+36 / −13) |
+| Premier mort (tour) | 10,1 | 10,5 | +0,34 ± 0,85 |
+| Dégâts infligés aux monstres de vague | 51 300 | 54 100 | +2 800 ± 4 600 |
+| Fenêtres d'étoile converties (`masterSeed` 1) | 83 / 195 (43 %) | 90 / 172 (52 %) | |
+| Corruptions prévues au créneau courant et tenues | 44 % | 58 % | |
+| Vague 1 corrompue (sur 3, `masterSeed` 1) | 2,38 (tour 7,5) | 2,47 (tour 7,1) | |
+| Vague 2 marquée / corrompue (sur 4, `masterSeed` 1) | 1,44 / 0,16 | 1,31 / 0,31 | |
+
+`standard`, 16 graines (`masterSeed` 1), apparié, code final contre B0 : tours 16,75 → 16,69 (−0,06 ± 1,79),
+corrompus au tour 7 1,13 → 1,38 (+0,25 ± 0,46), au tour 12 2,44 → 2,25 (−0,19 ± 0,57), total 2,94 → 2,81
+(−0,13 ± 1,01) : **neutre** (aucune victoire). En `standard`, la ligne de kill n'est pas active (faisceau de largeur 6)
+et 26 % des étoiles sont manquées « à portée » (32 sur 123, contre 12 % en `fast` avec la ligne de kill). Essai
+« ligne de kill aussi en `standard` » (16 graines) : échecs à portée 32 → 18, vague 2 marquée 1,88 → 2,75, mais
+métriques principales neutres (corrompus +0,06 ± 1,07, tours −0,50 ± 1,93) : non retenu, la ligne reste réservée au
+faisceau de largeur 1 (seule configuration mesurée positive, n = 64).
+
+### Modes d'échec restants
+
+1. **Débit de dégâts insuffisant contre la vague 2** : ≈ 4-5 k par tour de jeu aux tours 8-11 (Crâ ≈ 1,9 k par tour,
+   Iop ≈ 1,4 k hors Pacifiste, Eniripsa ≈ 1,2 k, Enutrof ≈ 0,7 k), quand il faudrait ≈ 6,6 k pour marquer les 4
+   monstres neufs (4 × 6 600 PV) et corrompre leurs zombies avant la vague 3 ; la vague 2 reste à 1,3 marqué et
+   0,3 corrompu sur 4. Le DPT analytique de l'oracle (sans contrainte de position) vaut ≈ 3 fois le réalisé.
+2. **Pacifiste** : l'Iop commence 20-25 % de ses tours de vague 2 sous Pacifiste (40-65 % en vague 3, deux
+   Méjaires) ; la Méjaire de la vague 1 est le monstre corrompu le plus tard (21 / 32, tour ≈ 9,3), elle joue
+   encore pendant la vague 2.
+3. **Survie** : premier mort au tour ≈ 10,5 (Crâ, Eniripsa, Iop) ; la menace sous-estime les dégâts réels d'un facteur
+   1,5 à 2,8 en vague 2 (Brabuzar : poussées et collisions non comptées ; Buboxor ; poison des Harpilles hors
+   incoming) ; les morts ne sont presque jamais prévues (risque 0,03-0,14 au tour qui précède).
+4. **Fenêtres d'étoile encore manquées à 48 %** : tueur à plus de 7 cases 31, sous Pacifiste 25, à portée sans kill
+   20 (`masterSeed` 1, KH). L'Enutrof reçoit des étoiles à « ses » heures (poisons, invocations) et n'en convertit
+   qu'un tiers.
+5. **`standard`** : neutre sur 16 graines (voir ci-dessous) ; la recherche plus large y survit 2-3 tours de plus que
+   `fast`, mais la conversion des étoiles n'y est pas meilleure.
+
+### Ce qui bloque la victoire (preuves)
+
+- **Pas le moteur** : aucune infidélité trouvée ce tour (le correctif Sac / Musette fonctionne : la Musette meurt
+  après 2 tours, le Sac intercepte).
+- **L'IA** reste le verrou principal du côté « stratégie » : avec des monstres deux fois moins forts, l'équipe survit
+  22 tours mais ne corrompt que 3,4 monstres sur 19 (vague 2 : 0,75) ; même ×2 en attaque et ×0,5 en défense, 8,8
+  corrompus en moyenne et 1 victoire sur 16 (les vagues 3-5 ne sont pas tenues). Le pipeline complet
+  (corruption des 19, *Action !*, burst du Vortex) fonctionne (victoire de la graine 456638276 dans ce diagnostic).
+- **La puissance de l'équipe (stuff)** est le second verrou : personnages à 3 600-4 250 PV, ≈ 4-5 k de dégâts
+  réalisés par tour de jeu ; il faudrait environ deux fois plus de dégâts ET deux fois moins de dégâts subis pour
+  qu'une victoire apparaisse. Aucune des compositions essayées ne fait mieux que l'équipe méta (Huppermage au lieu de
+  l'Enutrof : corruption plus rapide en vague 1 mais 2 tours de survie en moins ; Roublard + Pandawa : bien pire).
+
+### Pistes pour le tour 3
+
+- **Menace** (`threat.ts`, `dpt.ts`) : dommages de poussée et collisions (Brabuzar *Mise en situation*,
+  *Neutralisation*), cumul *Bouclier absorbant* du Buboxor, poison des Harpilles dans le risque de mort ; calibrer
+  contre `calib2.mts` (objectif : prévu ≈ réel par source).
+- **Méjaires** : retrait de PM ciblé par l'Enutrof (*Maladresse* 1 PA, 1-12 PO, −2 PM ; *Tamisage*) pour garder l'Iop
+  hors de portée de *Rayonirique* ; corrompre la Méjaire de la vague 1 en premier (intention dédiée plutôt que pente).
+- **Arrivée des vagues** : *Retraite Anticipée* de l'Enutrof (−100 PM à tous, 1 tour) au tour d'apparition (les 4
+  monstres neufs, invulnérables, ne peuvent pas avancer), placement des alliés qui jouent après l'apparition.
+- **Rythme de marquage de la vague 2** : coordination des pré-dégâts sur une cible (bandes du planificateur) avec un
+  oracle réaliste (DPT réalisé par tour quand le joueur attaque, pas DPT analytique) ; la pente focale seule (F1) ne
+  suffit pas.
+- **Étoiles manquées « loin »** : placement du tueur au tour qui précède sa fenêtre en tenant compte du déplacement
+  du zombie (Q2 seul était neutre) ; étoiles de l'Enutrof : éviter les morts « accidentelles » (poisons, invocations)
+  à ses heures.
+- **Budget de recherche** : `standard` survit plus longtemps que `fast` ; mesurer un `fast` de largeur 2 avec la ligne
+  de kill (coût ≈ ×2).

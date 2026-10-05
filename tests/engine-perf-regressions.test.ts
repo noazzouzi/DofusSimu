@@ -32,6 +32,9 @@ import { data, randomScene, yieldToEventLoop } from './ai-core-helpers'
 import { cellAt, effect, fight, has, monster, newEngine, player, turnOf } from './effects-summons-helpers'
 import { applyEffects } from '../src/engine/effects/core'
 import type { EffectData } from '../src/data/model'
+import { createSmokeTeam } from '../src/dungeons/vortex/scenario'
+import { createVortexFight, spawnVortexWave, vortexHooks } from '../src/dungeons/vortex/setup'
+import { VORTEX_DEFAULT_PARAMS } from '../src/dungeons/vortex/constants'
 
 // ───────────────────────────── anneaux : clé exacte ─────────────────────────────
 
@@ -568,5 +571,94 @@ describe('cloneFight COW : écritures en place du moteur (une par une)', () => {
         engine.nextTurn(s)
       }
     }, 'fin de l’aura')
+  })
+})
+
+// ───────────────────────────── COW : invocations, résurrections, vagues (vérification adverse, tour 2) ─────────────
+
+/**
+ * Chemins du moteur ajoutés ou touchés APRÈS le premier tour d'optimisation, ou peu couverts par les combats « chaos » :
+ * effets portés par l'invocation (`aliveSourceId` posé en place sur les buffs créés, décompte sur les tours de
+ * l'invocateur, effet différé exécuté par l'invocation), résurrections 780 / 1034 (buffs conservés par le mort puis
+ * Zombi), vague du Vortex apparue dans un clone (fabrique, invulnérabilité d'arrivée, sorts de départ, relances
+ * initiales posées en place sur les arrivants). Chaque opération : parent intact, clone COW ≡ copie profonde, clone
+ * intact après le parent (`cowCheck`).
+ */
+describe('cloneFight COW : invocations, résurrections et vagues', () => {
+  const ENUTROF = 3
+  /** [sort, id, tours de vie, effets portés par l'invocation (sinon : cibles recalculées après l'invocation)]. */
+  const SUMMON_OWNED: [string, number, number, boolean][] = [
+    ['Sac Animé', 13328, 3, true],
+    ['Musette Animée', 13354, 2, false],
+    ['Pelle de Fortune', 29755, 2, true],
+  ]
+
+  for (const [name, spellId, life, owned] of SUMMON_OWNED) {
+    it(`${name} : invocation et effets portés par l’invocation dans un clone, puis ses ${life} tours de vie`, () => {
+      const engine = newEngine()
+      const enu = player({ name: 'Enu', breedId: ENUTROF, spellIds: [spellId], cell: cellAt(10, 0), hp: 4000, stats: { summons: 3, initiative: 5000 } })
+      const enemy = monster(3834, cellAt(20, 0), { grade: 1 })
+      const fs = fight(engine, [enu, enemy])
+      turnOf(engine, fs, enu)
+      // Buffs déjà portés (tableaux partagés par le clone) : la pose des buffs de l'invocation les copie.
+      applyEffects(engine, fs, enu, null, 999002, [effect(128, { diceNum: 1, duration: 4, dispellable: 1 })], enu.cell, enu.cell, false, false, 0)
+      applyEffects(engine, fs, enu, null, 999003, [effect(128, { diceNum: 1, duration: 4, dispellable: 1 })], enemy.cell, enu.cell, false, false, 0)
+      cowCheck(engine, fs, s => {
+        expect(castSpell(engine, s, s.fighters[enu.id], spellId, cellAt(11, 0)).ok).toBe(true)
+      }, `${name} : invocation`)
+      const summon = fs.fighters.find(f => f.kind === 'summon' && f.summonerId === enu.id)!
+      expect(summon.alive).toBe(true)
+      // Buffs « portés par l'invocation » : source = l'invocation, décompte sur les tours de l'Enutrof.
+      expect(fs.fighters.some(f => f.buffs.some(b => b.sourceId === summon.id && b.aliveSourceId === enu.id))).toBe(owned)
+      for (let k = 1; k <= life; k++) cowCheck(engine, fs, s => turnOf(engine, s, s.fighters[enu.id]), `${name} : tour ${k} de l’Enutrof`)
+      expect(summon.alive).toBe(false)
+      expect(enu.alive).toBe(true)
+    })
+  }
+
+  it('780 / 1034 : résurrections dans un clone (buffs conservés par le mort, état Zombi, timeline)', () => {
+    const engine = newEngine()
+    const healer = monster(3836, cellAt(10, 0), { grade: 1, initiative: 9000 })
+    const ally = monster(3834, cellAt(12, 0), { grade: 1 })
+    const ally2 = monster(3834, cellAt(12, 2), { grade: 1 })
+    const enemy = player({ name: 'P', breedId: 8, spellIds: [], cell: cellAt(16, 0) })
+    const fs = fight(engine, [healer, ally, ally2, enemy], { rollMode: 'average' })
+    turnOf(engine, fs, healer)
+    // Buff indésenvoûtable (conservé à la mort) + buff ordinaire (retiré à la mort).
+    applyEffects(engine, fs, enemy, null, 999004, [effect(128, { diceNum: 1, duration: 5, dispellable: 4 })], ally.cell, enemy.cell, false, false, 0)
+    applyEffects(engine, fs, enemy, null, 999005, [effect(128, { diceNum: 1, duration: 5, dispellable: 1 })], ally2.cell, enemy.cell, false, false, 0)
+    cowCheck(engine, fs, s => engine.kill(s, s.fighters[ally.id], s.fighters[enemy.id]), 'mort (buffs conservés)')
+    cowCheck(engine, fs, s => applyEffects(engine, s, s.fighters[healer.id], null, 0, [effect(780, { diceNum: 50 })], cellAt(11, 3), s.fighters[healer.id].cell, false, false, 0), '780')
+    expect(fs.fighters[ally.id].alive).toBe(true)
+    cowCheck(engine, fs, s => engine.kill(s, s.fighters[ally2.id], s.fighters[enemy.id]), 'mort (buffs retirés)')
+    cowCheck(engine, fs, s => applyEffects(engine, s, s.fighters[healer.id], null, 0, [effect(1034, { diceNum: 25 })], cellAt(11, 3), s.fighters[healer.id].cell, false, false, 0), '1034')
+    expect(fs.fighters.some(f => f.alive && f.summonerId === healer.id && f.monsterId === 3834)).toBe(true)
+    cowCheck(engine, fs, s => {
+      for (let k = 0; k < 4 && !s.ended; k++) {
+        const cur = engine.current(s)
+        if (cur && cur.alive) engine.endTurn(s, cur)
+        engine.nextTurn(s)
+      }
+    }, 'tours suivants')
+  })
+
+  it('vague du Vortex apparue dans un clone, puis les tours suivants', () => {
+    const engine = createEngine(data, vortexHooks)
+    const players = createSmokeTeam(data, undefined, { initiative: 4000, hp: 1_000_000 })
+    const fs = createVortexFight(engine, players, { params: VORTEX_DEFAULT_PARAMS, seed: 3, rollMode: 'random', record: true, rngRekey: 'perTurn' })
+    engine.nextTurn(fs)
+    const before = fs.fighters.length
+    cowCheck(engine, fs, s => void spawnVortexWave(engine, s, 2), 'vague 2')
+    const arrived = fs.fighters.slice(before)
+    expect(arrived.length).toBeGreaterThan(0)
+    // Arrivants : invulnérabilité d'arrivée (buff) et relances initiales (relances posées en place à l'arrivée).
+    expect(arrived.every(f => f.buffs.length > 0)).toBe(true)
+    cowCheck(engine, fs, s => {
+      for (let k = 0; k < 12 && !s.ended; k++) {
+        const cur = engine.current(s)
+        if (cur && cur.alive) engine.endTurn(s, cur)
+        engine.nextTurn(s)
+      }
+    }, 'tours après la vague')
   })
 })

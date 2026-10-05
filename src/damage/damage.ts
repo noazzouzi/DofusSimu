@@ -213,6 +213,72 @@ export function prepareDamage(input: DamageInput, out: PreparedDamage = createPr
   return prepareWithCrit(input, input.crit, out)
 }
 
+// Lectures des caractéristiques d'un élément (0..4, vérifié par `assertResolvedElement`) par accès NOMMÉS : mêmes
+// valeurs que `s[ELEMENT_MAIN_STAT[el]]` & co., sans accès indexés par une clé calculée (mégamorphes, chemin chaud
+// du DPT et du moteur).
+
+/** `s[ELEMENT_MAIN_STAT[el]]`. */
+function mainStatOf(s: Stats, el: Element): number {
+  switch (el) {
+    case Element.Fire:
+      return s.intelligence
+    case Element.Water:
+      return s.chance
+    case Element.Air:
+      return s.agility
+    default:
+      return s.strength
+  }
+}
+
+/** `s[ELEMENT_FIXED_DAMAGE[el]]`. */
+function fixedDamageOf(s: Stats, el: Element): number {
+  switch (el) {
+    case Element.Neutral:
+      return s.neutralDamage
+    case Element.Earth:
+      return s.earthDamage
+    case Element.Fire:
+      return s.fireDamage
+    case Element.Water:
+      return s.waterDamage
+    default:
+      return s.airDamage
+  }
+}
+
+/** `s[ELEMENT_RES_FIXED[el]]`. */
+function fixedResOf(s: Stats, el: Element): number {
+  switch (el) {
+    case Element.Neutral:
+      return s.neutralRes
+    case Element.Earth:
+      return s.earthRes
+    case Element.Fire:
+      return s.fireRes
+    case Element.Water:
+      return s.waterRes
+    default:
+      return s.airRes
+  }
+}
+
+/** `s[ELEMENT_RES_PCT[el]]`. */
+function resPctOf(s: Stats, el: Element): number {
+  switch (el) {
+    case Element.Neutral:
+      return s.neutralResPct
+    case Element.Earth:
+      return s.earthResPct
+    case Element.Fire:
+      return s.fireResPct
+    case Element.Water:
+      return s.waterResPct
+    default:
+      return s.airResPct
+  }
+}
+
 /** `prepareDamage` avec le drapeau critique imposé (évite de copier l'entrée pour la variante critique). */
 function prepareWithCrit(input: DamageInput, crit: boolean, out: PreparedDamage): PreparedDamage {
   const a = input.attacker
@@ -231,14 +297,14 @@ function prepareWithCrit(input: DamageInput, crit: boolean, out: PreparedDamage)
   // ── Lanceur ──
   const power =
     a.power +
-    a[ELEMENT_MAIN_STAT[el]] +
+    mainStatOf(a, el) +
     (weapon ? (input.weaponPower ?? 0) : (input.spellPower ?? 0)) +
     (input.extraPower ?? 0) +
     (input.isTrap ? a.trapPower : 0)
   out.power = power > 0 ? power : 0
   out.baseBonus = (input.baseDamageBonus ?? 0) + (crit && weapon ? (input.weaponCritBonus ?? 0) : 0)
   out.fixedDamage =
-    a[ELEMENT_FIXED_DAMAGE[el]] +
+    fixedDamageOf(a, el) +
     a.damage +
     (crit ? a.criticalDamage : 0) +
     (input.extraFixedDamage ?? 0) +
@@ -271,8 +337,8 @@ function prepareWithCrit(input: DamageInput, crit: boolean, out: PreparedDamage)
   out.portalPct = 100 + (cells > 0 ? 2 * cells : 0) + portalBonus
 
   // ── Cible ──
-  out.fixedRes = d[ELEMENT_RES_FIXED[el]] + (crit ? d.criticalRes : 0) + (input.armorReduction ?? 0)
-  const rawRes = d[ELEMENT_RES_PCT[el]] + (input.allResPct ?? 0)
+  out.fixedRes = fixedResOf(d, el) + (crit ? d.criticalRes : 0) + (input.armorReduction ?? 0)
+  const rawRes = resPctOf(d, el) + (input.allResPct ?? 0)
   out.rawResPct = rawRes
   out.resPct = effectiveResistPercent(rawRes, input.defenderIsPlayer, input.monsterResCap ?? MONSTER_RES_CAP)
   out.sustainedPct = input.sustainedPct ?? 100
