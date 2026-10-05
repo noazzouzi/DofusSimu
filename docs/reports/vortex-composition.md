@@ -106,3 +106,103 @@ Tous les builds sont valides (`computeBuildStats` : conditions, panoplies, un se
 | `forgelance_zone_terre_vortex` (`vortex_forgelance_zone_terre`) | équilibré | 1622 / 5125 / 0.00 → 1794 / 7503 / 0.00 | 4153 → **4603** | 12/6/6 | 17/36/32/35/25 | 160 | Vi 3, Fo 992 | Panoplie Volcanique(2), Panoplie du Roi Joueur(3), Panoplie de Corruption(2) |
 | `sadida_terre_vortex` (`vortex_sadida_terre`) | équilibré | 2274 / 5125 / 0.00 → 2484 / 7857 / 0.00 | 4153 → **4503** | 12/6/6 | 15/34/22/36/22 | 130 | Vi 3, Fo 992 | Panoplie du Cœur Saignant(3), Panoplie de Corruption(2), Panoplistik(2), Panoplie du Vénérable Endormi(2) |
 | `iop_multi_zone_vortex` (`vortex_iop_multi_zone`) | équilibré | 1953 / 4293 / 0.00 → 2468 / 6330 / 0.00 | 3603 → **4403** | 12/6/6 | 14/21/14/38/27 | 100 | Vi 3, Int 992 | Panoplie d'Otomaï(3), Panoplie de Guerre(2), Panoplie Séculaire(2) |
+
+## Criblage (`masterSeed` 51, 32 graines, appariées avec R)
+
+Chaque cellule : moyenne de l'équipe, puis entre parenthèses la différence APPARIÉE avec R (mêmes graines) ± la
+demi-largeur de l'IC 95 % (1,96·σ/√n). Victoires : IC de Wilson. « Corr. » = monstres corrompus cumulés (19 à corrompre) ;
+« Pacifiste » = part des tours de personnage commencés sous *Pacifiste* aux tours ≥ 13 ; poussées, dégâts infligés aux
+monstres de vague et dégâts subis : moyennes par combat. Tri par différence de corrompus au total.
+
+| Équipe | n | Victoires [IC 95 % Wilson] | Corr. t13 | Corr. t19 | Corr. total | Tours survécus | 1er mort | Pacifiste (t ≥ 13) | Poussées subies | Dégâts infligés (vagues) | Dégâts subis |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Iop → Éliotrope | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,63 (+0,44 ± 0,45) | 6,47 (+0,34 ± 0,49) | 8,00 (+0,06 ± 1,10) | 28,19 (−0,75 ± 2,26) | 20,75 (−0,28 ± 2,11) | 29,3 % | 11 606 | 127 761 | 51 316 |
+| **R** (Crâ / Enutrof / Iop déf. / Eniripsa) | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,19 | 6,13 | 7,94 | 28,94 | 21,03 | 30,5 % | 11 188 | 132 859 | 54 535 |
+| Iop → Osamodas invocateur | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,53 (+0,34 ± 0,54) | 6,56 (+0,44 ± 0,65) | 7,78 (−0,16 ± 1,38) | 28,41 (−0,53 ± 2,54) | 21,31 (+0,28 ± 2,05) | 31,6 % | 10 660 | 136 038 | 49 612 |
+| Eniripsa → Osamodas soin | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,47 (+0,28 ± 0,46) | 6,38 (+0,25 ± 0,71) | 7,66 (−0,28 ± 1,59) | 26,25 (−2,69 ± 2,83) | 19,78 (−1,25 ± 2,27) | 31,0 % | 7 456 | 121 412 | 44 467 |
+| Iop → Huppermage quadra | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,41 (+0,22 ± 0,47) | 6,28 (+0,16 ± 0,59) | 7,59 (−0,34 ± 1,39) | 26,47 (−2,47 ± 2,67) | 18,38 (−2,66 ± 2,49) | 29,3 % | 9 644 | 121 814 | 47 850 |
+| Eniripsa → Steamer soutien | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,00 (−0,19 ± 0,36) | 6,00 (−0,13 ± 0,52) | 7,44 (−0,50 ± 1,10) | 26,66 (−2,28 ± 2,70) | 19,41 (−1,63 ± 2,28) | 29,0 % | 7 430 | 126 559 | 45 257 |
+| Iop → Steamer artillerie | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,22 (+0,03 ± 0,50) | 6,13 (+0,00 ± 0,62) | 7,44 (−0,50 ± 1,15) | 28,09 (−0,84 ± 2,65) | 20,66 (−0,38 ± 1,98) | 32,7 % | 10 996 | 136 256 | 46 953 |
+| Iop → Sadida Terre | 32 | 1 / 32 [0,6 % – 15,7 %] | 3,75 (−0,44 ± 0,47) | 5,84 (−0,28 ± 0,67) | 7,34 (−0,59 ± 1,80) | 27,16 (−1,78 ± 3,25) | 21,28 (+0,25 ± 5,75) | 26,0 % | 9 682 | 124 665 | 48 577 |
+| R, Eniripsa en stuff défensif | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,09 (−0,09 ± 0,38) | 5,94 (−0,19 ± 0,59) | 7,25 (−0,69 ± 1,17) | 28,44 (−0,50 ± 2,28) | 21,31 (+0,28 ± 1,88) | 33,7 % | 10 592 | 124 913 | 52 800 |
+| Crâ → Huppermage quadra | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,25 (+0,06 ± 0,57) | 5,72 (−0,41 ± 0,68) | 7,00 (−0,94 ± 1,38) | 27,69 (−1,25 ± 3,15) | 19,25 (−1,78 ± 3,10) | 34,9 % | 10 780 | 118 997 | 51 805 |
+| Enutrof → Crâ Air entrave | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,06 (−0,13 ± 0,50) | 5,66 (−0,47 ± 0,54) | 7,00 (−0,94 ± 1,19) | 25,72 (−3,22 ± 2,36) | 17,34 (−3,69 ± 2,19) | 32,9 % | 9 568 | 113 741 | 53 736 |
+| Enutrof → Sram utilitaire | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,09 (−0,09 ± 0,42) | 5,66 (−0,47 ± 0,74) | 6,94 (−1,00 ± 1,62) | 26,25 (−2,69 ± 3,68) | 18,09 (−2,94 ± 2,57) | 37,8 % | 10 376 | 108 648 | 57 220 |
+| Eniripsa → Zobal rempart | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,31 (+0,13 ± 0,45) | 6,00 (−0,13 ± 0,71) | 6,94 (−1,00 ± 1,41) | 25,69 (−3,25 ± 2,52) | 19,53 (−1,50 ± 2,20) | 38,4 % | 6 800 | 106 985 | 35 605 |
+| R, Crâ en stuff défensif | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,06 (−0,13 ± 0,43) | 6,03 (−0,09 ± 0,67) | 6,91 (−1,03 ± 1,25) | 27,22 (−1,72 ± 2,66) | 22,78 (+1,75 ± 2,04) | 37,6 % | 13 191 | 120 355 | 54 693 |
+| Iop → 2ᵉ Crâ Feu | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,16 (−0,03 ± 0,46) | 5,94 (−0,19 ± 0,68) | 6,84 (−1,09 ± 1,42) | 25,75 (−3,19 ± 2,77) | 17,69 (−3,34 ± 2,29) | 30,5 % | 8 916 | 116 511 | 50 182 |
+| Iop Terre → Iop zone (Feu) | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,47 (+0,28 ± 0,46) | 6,00 (−0,13 ± 0,61) | 6,81 (−1,13 ± 1,27) | 26,78 (−2,16 ± 2,75) | 18,31 (−2,72 ± 2,50) | 36,0 % | 8 305 | 113 684 | 49 240 |
+| Eniripsa → Sadida soin | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,13 (−0,06 ± 0,41) | 6,00 (−0,13 ± 0,58) | 6,75 (−1,19 ± 1,26) | 24,69 (−4,25 ± 2,71) | 18,25 (−2,78 ± 1,85) | 29,5 % | 8 431 | 113 291 | 50 300 |
+| Iop → Ecaflip | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,41 (+0,22 ± 0,40) | 5,91 (−0,22 ± 0,68) | 6,75 (−1,19 ± 1,24) | 27,03 (−1,91 ± 2,62) | 18,69 (−2,34 ± 2,41) | 28,8 % | 9 963 | 120 134 | 50 104 |
+| Enutrof → Féca entrave | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,03 (−0,16 ± 0,43) | 5,63 (−0,50 ± 0,54) | 6,56 (−1,38 ± 1,36) | 25,28 (−3,66 ± 2,64) | 18,63 (−2,41 ± 2,28) | 37,1 % | 9 899 | 115 620 | 53 493 |
+| Enutrof → Sadida infection | 32 | 0 / 32 [0,0 % – 10,7 %] | 3,94 (−0,25 ± 0,46) | 5,50 (−0,63 ± 0,67) | 6,03 (−1,91 ± 1,41) | 24,44 (−4,50 ± 2,62) | 17,25 (−3,78 ± 2,40) | 29,3 % | 11 321 | 105 170 | 52 819 |
+| Iop → Xélor zone | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,03 (−0,16 ± 0,39) | 5,44 (−0,69 ± 0,73) | 6,00 (−1,94 ± 1,25) | 25,44 (−3,50 ± 2,36) | 15,06 (−5,97 ± 2,26) | 34,9 % | 8 134 | 106 896 | 47 643 |
+| Iop → Sram pièges | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,03 (−0,16 ± 0,51) | 5,34 (−0,78 ± 0,65) | 5,75 (−2,19 ± 1,16) | 24,41 (−4,53 ± 2,34) | 16,00 (−5,03 ± 2,07) | 33,5 % | 9 465 | 104 530 | 48 870 |
+| Iop → Roublard artificier | 32 | 0 / 32 [0,0 % – 10,7 %] | 3,91 (−0,28 ± 0,44) | 5,19 (−0,94 ± 0,68) | 5,69 (−2,25 ± 1,18) | 24,91 (−4,03 ± 2,55) | 15,88 (−5,16 ± 1,98) | 33,9 % | 8 640 | 102 385 | 50 741 |
+| Enutrof → Xélor retrait PA | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,09 (−0,09 ± 0,45) | 5,28 (−0,84 ± 0,66) | 5,63 (−2,31 ± 1,35) | 23,41 (−5,53 ± 2,51) | 16,75 (−4,28 ± 2,27) | 42,0 % | 7 195 | 95 944 | 53 305 |
+| Iop → Ouginak Terre (déf.) | 32 | 0 / 32 [0,0 % – 10,7 %] | 3,69 (−0,50 ± 0,48) | 4,91 (−1,22 ± 0,72) | 5,63 (−2,31 ± 1,36) | 26,47 (−2,47 ± 2,76) | 20,03 (−1,00 ± 2,22) | 33,6 % | 10 545 | 116 083 | 49 213 |
+| R, Enutrof en stuff défensif | 32 | 0 / 32 [0,0 % – 10,7 %] | 3,47 (−0,72 ± 0,44) | 4,91 (−1,22 ± 0,54) | 5,38 (−2,56 ± 1,26) | 26,03 (−2,91 ± 2,65) | 17,63 (−3,41 ± 2,35) | 34,6 % | 11 602 | 113 978 | 56 417 |
+| Eniripsa → Féca protecteur | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,19 (+0,00 ± 0,54) | 5,19 (−0,94 ± 0,68) | 5,25 (−2,69 ± 1,23) | 20,59 (−8,34 ± 2,56) | 14,97 (−6,06 ± 1,78) | 38,1 % | 4 812 | 83 789 | 37 642 |
+| Iop → Pandawa placement | 32 | 0 / 32 [0,0 % – 10,7 %] | 3,63 (−0,56 ± 0,51) | 4,81 (−1,31 ± 0,73) | 5,09 (−2,84 ± 1,28) | 24,28 (−4,66 ± 2,40) | 16,72 (−4,31 ± 2,06) | 38,6 % | 9 725 | 96 245 | 50 987 |
+| Enutrof → Roublard contrôleur | 32 | 0 / 32 [0,0 % – 10,7 %] | 3,66 (−0,53 ± 0,46) | 4,56 (−1,56 ± 0,54) | 4,97 (−2,97 ± 1,07) | 23,09 (−5,84 ± 2,39) | 15,78 (−5,25 ± 1,64) | 42,8 % | 6 901 | 94 198 | 53 236 |
+| Guide Hardi : Sadida Terre / Pandawa / Crâ / Eniripsa | 32 | 0 / 32 [0,0 % – 10,7 %] | 3,78 (−0,41 ± 0,46) | 4,53 (−1,59 ± 0,58) | 4,81 (−3,13 ± 1,28) | 21,75 (−7,19 ± 2,72) | 14,78 (−6,25 ± 1,99) | 37,8 % | 5 978 | 85 517 | 46 305 |
+| Iop → Forgelance zone | 32 | 0 / 32 [0,0 % – 10,7 %] | 3,00 (−1,19 ± 0,50) | 4,00 (−2,13 ± 0,81) | 4,19 (−3,75 ± 1,38) | 22,81 (−6,13 ± 2,96) | 14,66 (−6,38 ± 2,25) | 34,6 % | 7 217 | 86 176 | 45 974 |
+| Enutrof → Pandawa (équipe guide Pandawa/Crâ/Eni/Iop) | 32 | 0 / 32 [0,0 % – 10,7 %] | 3,34 (−0,84 ± 0,58) | 4,00 (−2,13 ± 0,78) | 4,16 (−3,78 ± 1,43) | 21,13 (−7,81 ± 2,92) | 13,44 (−7,59 ± 2,33) | 43,7 % | 7 244 | 76 090 | 52 831 |
+| Guide Hardi : Pandawa / Sram / Crâ / Iop | 32 | 0 / 32 [0,0 % – 10,7 %] | 2,75 (−1,44 ± 0,56) | 2,78 (−3,34 ± 0,70) | 2,78 (−5,16 ± 1,33) | 13,63 (−15,31 ± 2,66) | 9,13 (−11,91 ± 1,80) | 25,2 % | 1 398 | 52 663 | 30 591 |
+| Guide JOL : Roublard / Pandawa / Crâ / Iop | 32 | 0 / 32 [0,0 % – 10,7 %] | 2,75 (−1,44 ± 0,49) | 2,78 (−3,34 ± 0,63) | 2,78 (−5,16 ± 1,22) | 13,47 (−15,47 ± 2,44) | 8,25 (−12,78 ± 2,02) | 33,8 % | 1 579 | 52 144 | 30 292 |
+
+### Lecture du criblage
+
+- **Aucun remplacement ne bat R** au-delà du bruit (IC ≈ ± 1,1-1,6 corrompu sur 32 graines). Les meilleurs (Iop →
+  Éliotrope, Iop → Osamodas invocateur, Eniripsa → Osamodas soin, Iop → Huppermage, Iop → Steamer) sont à ± 0,5
+  corrompu de R et perdent tous du temps de survie (−0,5 à −2,7 tours).
+- **L'Enutrof est irremplaçable** : chaque entraveur de rechange perd 0,9 à 3,8 corrompus et 2,7 à 7,8 tours (Sram
+  utilitaire −1,0, Crâ Air −0,9, Féca −1,4, Sadida infection −1,9, Xélor −2,3, Roublard −3,0, Pandawa −3,8). Il est le
+  2ᵉ en dégâts de R (32 000 par combat, objets animés compris), soigne 5 800 et retire les PM.
+- **Les équipes des guides s'effondrent** avec l'IA actuelle (Pandawa / Crâ / Eniripsa / Iop : −3,8 corrompus, −7,8 tours ;
+  sans Enutrof NI soigneur — Roublard / Pandawa / Crâ / Iop, Pandawa / Sram / Crâ / Iop — : 2,8 corrompus, 13,5 tours) :
+  l'IA ne sait pas jouer le porter du Pandawa (8 000 de dégâts par combat) ni les bombes du Roublard (*Explobombe* jamais
+  lancée, 0,5 *Détonation* par combat, 17 000 de dégâts). Ce sont des limites de l'IA, pas des classes.
+- **Soigneur** : l'Eniripsa reste le meilleur ; Osamodas soin et Steamer soutien corrompent autant mais vivent 2,3 à
+  2,7 tours de moins ; Féca et Zobal (boucliers) font chuter les dégâts de l'équipe (84 000-107 000 contre 133 000).
+- **Pacifiste** : la part des tours pacifiés bouge peu avec la composition (29-44 % aux tours ≥ 13). Remplacer l'Iop
+  (42 % de ses tours pacifié) par un personnage à distance réduit la part de ce membre (Sadida Terre 17 %, Éliotrope,
+  Huppermage ≈ 25-30 %) mais pas celle des autres, et les invocations (Osamodas, Steamer) ne compensent pas.
+- **Stuffs par membre** : seul l'Iop gagne au stuff défensif (tour 4) ; Crâ, Eniripsa ou Enutrof défensifs font moins bien
+  (−0,7 à −2,6 corrompus).
+
+### Combinaisons à deux et trois membres (criblage, `masterSeed` 51)
+
+Les remplacements isolés les plus prometteurs étaient des **invocateurs** (Osamodas invocateur à la place de l'Iop,
+Osamodas soin ou Steamer soutien à la place de l'Eniripsa, Steamer artillerie) : neutres seuls, ils ont été combinés
+(même protocole, mêmes graines).
+
+| Équipe | n | Victoires [IC 95 % Wilson] | Corr. t13 | Corr. t19 | Corr. total | Tours survécus | 1er mort | Pacifiste (t ≥ 13) | Poussées subies | Dégâts infligés (vagues) | Dégâts subis |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **Steamer artillerie / Enutrof / Osamodas invocateur / Steamer soutien** | 32 | 3 / 32 [3,2 % – 24,2 %] | 4,91 (+0,72 ± 0,41) | 7,16 (+1,03 ± 0,62) | 11,44 (+3,50 ± 1,84) | 33,25 (+4,31 ± 3,65) | 27,56 (+6,53 ± 5,13) | 22,0 % | 8 536 | 167 631 | 40 311 |
+| Crâ → Steamer artillerie, Iop → Osamodas invocateur | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,84 (+0,66 ± 0,50) | 6,94 (+0,81 ± 0,59) | 9,69 (+1,75 ± 1,59) | 32,31 (+3,38 ± 3,55) | 26,22 (+5,19 ± 3,15) | 29,7 % | 13 875 | 162 521 | 50 326 |
+| Crâ → Steamer artillerie, Iop → Osamodas invocateur, Eniripsa → Osamodas soin | 32 | 1 / 32 [0,6 % – 15,7 %] | 5,19 (+1,00 ± 0,51) | 6,81 (+0,69 ± 0,67) | 9,59 (+1,66 ± 1,48) | 30,16 (+1,22 ± 3,11) | 25,59 (+4,56 ± 5,56) | 29,7 % | 8 258 | 147 868 | 39 457 |
+| **Iop → Osamodas invocateur, Eniripsa → Steamer soutien** | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,66 (+0,47 ± 0,47) | 6,84 (+0,72 ± 0,59) | 9,25 (+1,31 ± 1,60) | 29,22 (+0,28 ± 3,09) | 20,50 (−0,53 ± 2,14) | 25,3 % | 8 523 | 148 151 | 43 447 |
+| Iop → Osamodas invocateur, Eniripsa → Osamodas soin | 32 | 0 / 32 [0,0 % – 10,7 %] | 5,03 (+0,84 ± 0,51) | 7,13 (+1,00 ± 0,54) | 8,63 (+0,69 ± 1,48) | 27,94 (−1,00 ± 2,82) | 21,44 (+0,41 ± 2,06) | 27,8 % | 9 354 | 134 143 | 41 604 |
+| Iop → Steamer artillerie, Eniripsa → Steamer soutien | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,47 (+0,28 ± 0,53) | 6,44 (+0,31 ± 0,67) | 8,00 (+0,06 ± 1,41) | 27,38 (−1,56 ± 2,81) | 19,59 (−1,44 ± 2,48) | 26,7 % | 7 252 | 135 895 | 40 306 |
+| **R** (Crâ / Enutrof / Iop déf. / Eniripsa) | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,19 | 6,13 | 7,94 | 28,94 | 21,03 | 30,5 % | 11 188 | 132 859 | 54 535 |
+| Iop → Éliotrope, Eniripsa → Osamodas soin | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,63 (+0,44 ± 0,47) | 6,63 (+0,50 ± 0,61) | 7,75 (−0,19 ± 1,35) | 26,50 (−2,44 ± 2,72) | 19,50 (−1,53 ± 1,69) | 29,3 % | 7 459 | 116 961 | 41 044 |
+| Iop → Sadida Terre, Eniripsa → Osamodas soin | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,34 (+0,16 ± 0,56) | 6,34 (+0,22 ± 0,81) | 7,50 (−0,44 ± 1,76) | 25,13 (−3,81 ± 3,47) | 18,09 (−2,94 ± 2,53) | 27,2 % | 6 491 | 119 880 | 40 337 |
+| Iop → Steamer artillerie, Eniripsa → Osamodas soin | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,06 (−0,13 ± 0,53) | 6,22 (+0,09 ± 0,69) | 7,06 (−0,88 ± 1,49) | 25,78 (−3,16 ± 2,86) | 19,00 (−2,03 ± 2,42) | 32,5 % | 6 852 | 122 634 | 38 078 |
+| Iop → Sadida Terre (déf.) | 32 | 0 / 32 [0,0 % – 10,7 %] | 4,03 (−0,16 ± 0,47) | 5,81 (−0,31 ± 0,55) | 7,00 (−0,94 ± 1,11) | 26,75 (−2,19 ± 2,52) | 19,38 (−1,66 ± 2,07) | 27,2 % | 11 816 | 124 733 | 50 767 |
+
+## Halving successif
+
+### Étape 2 — 64 graines (`masterSeed` 51 + 52)
+
+Les 6 meilleures équipes du criblage (plus R) ; même lecture que le tableau précédent.
+
+| Équipe | n | Victoires [IC 95 % Wilson] | Corr. t13 | Corr. t19 | Corr. total | Tours survécus | 1er mort | Pacifiste (t ≥ 13) | Poussées subies | Dégâts infligés (vagues) | Dégâts subis |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Iop → Éliotrope | 64 | 0 / 64 [0,0 % – 5,7 %] | 4,53 (+0,31 ± 0,31) | 6,48 (+0,44 ± 0,40) | 7,80 (+0,31 ± 0,69) | 27,58 (−0,63 ± 1,31) | 20,44 (−0,63 ± 1,38) | 29,0 % | 10 792 | 124 030 | 49 612 |
+| Iop → Osamodas invocateur | 64 | 0 / 64 [0,0 % – 5,7 %] | 4,47 (+0,25 ± 0,32) | 6,52 (+0,47 ± 0,44) | 7,78 (+0,30 ± 0,87) | 28,17 (−0,03 ± 1,53) | 21,52 (+0,45 ± 1,42) | 31,7 % | 11 411 | 135 878 | 50 124 |
+| **R** (Crâ / Enutrof / Iop déf. / Eniripsa) | 64 | 0 / 64 [0,0 % – 5,7 %] | 4,22 | 6,05 | 7,48 | 28,20 | 21,06 | 32,3 % | 10 727 | 127 644 | 53 326 |
+| Iop → Huppermage quadra | 64 | 0 / 64 [0,0 % – 5,7 %] | 4,27 (+0,05 ± 0,30) | 6,16 (+0,11 ± 0,41) | 7,48 (+0,00 ± 0,86) | 26,86 (−1,34 ± 1,62) | 18,23 (−2,83 ± 1,70) | 29,5 % | 9 997 | 121 451 | 48 031 |
+| Eniripsa → Osamodas soin | 64 | 0 / 64 [0,0 % – 5,7 %] | 4,44 (+0,22 ± 0,34) | 6,38 (+0,33 ± 0,45) | 7,34 (−0,14 ± 0,87) | 25,66 (−2,55 ± 1,56) | 18,97 (−2,09 ± 1,46) | 30,6 % | 7 486 | 116 411 | 44 441 |
+| Iop → Steamer artillerie | 64 | 0 / 64 [0,0 % – 5,7 %] | 4,16 (−0,06 ± 0,33) | 5,97 (−0,08 ± 0,44) | 7,22 (−0,27 ± 0,76) | 27,64 (−0,56 ± 1,50) | 20,41 (−0,66 ± 1,40) | 31,8 % | 11 407 | 131 981 | 47 279 |
+| Iop → Sadida Terre | 64 | 1 / 64 [0,3 % – 8,3 %] | 3,91 (−0,31 ± 0,31) | 5,70 (−0,34 ± 0,45) | 6,81 (−0,67 ± 1,00) | 26,58 (−1,63 ± 1,81) | 19,58 (−1,48 ± 3,00) | 26,9 % | 9 691 | 120 003 | 49 255 |
