@@ -181,3 +181,19 @@ changent.) `standard`, 3 graines (code avant ce correctif) : 13,7 → 16,0 tours
   le personnage qui joue après la nouvelle vague (P4).
 - Menace des Harpilles : le poison (≈ 6 000 par combat) n'entre pas dans `threat` ; prioriser Harpilles et Méjaires
   dans l'exposition du planificateur.
+
+### Correctif moteur entre les tours 1 et 2 : Sac Animé
+
+Corrigé dans `src/engine/effects/core.ts` (tests : `tests/engine-summon-owned.test.ts`, qui remplace le test de
+reproduction `it.fails`) :
+
+- **Effets portés par l'invocation** : dans un sort d'invocation, le 765 (interception) et le 141 « tue » à masque `C`
+  qui suivent l'invocation sont exécutés par l'invocation créée. Le Sac Animé intercepte donc les dommages des alliés
+  de sa zone (et non l'Enutrof), puis le Sac est détruit. Seuls deux sorts de tout le corpus sont concernés : Sac
+  Animé et Pelle de Fortune.
+- **Décompte sur les tours de l'invocateur** : nouveau champ `Buff.aliveSourceId`, l'`aliveSource` du client. Le Sac
+  est détruit au début du 3e tour suivant de l'Enutrof, au moment où son interception expire. La Pelle de Fortune est
+  détruite au moment où son soin différé soigne l'Enutrof, comme le dit sa description.
+- **Recalcul des cibles après une apparition** (invocation ou résurrection) dans le même sort, à la manière du port
+  après une résurrection. Effet de bord corrigé : la Musette Animée (141 `a,A` P1, pré-ciblé sur une case vide) n'était
+  jamais détruite. Le contournement M1 du preset (Musette au lieu de Sac) est donc à re-mesurer au tour 2.

@@ -391,13 +391,27 @@ function applyEffectsInner(
     prepared.push(effect.targetMask && LATE_MASK.test(effect.targetMask) ? { effect, cells: [], targets: [], efficiency: new Map() } : target(engine, fight, caster, effect, cell, casterCell, opts))
   }
 
+  // Entités apparues (invocations, résurrections) pendant CET appel : après l'une d'elles, les cibles des effets
+  // suivants sont recalculées (le port régénère les cibles après une résurrection, `GenerateTargets` sur `IsRevive` ;
+  // étendu aux invocations : « 141 a,A P1 » de la Musette Animée, « 1160 a,A P1 » posé juste après l'invocation de la
+  // Lanterne du Berger ou de la Pelle de Fortune visent l'invocation qui vient d'occuper la case).
+  const appearedFrom = appearing.length
+  let refresh = false
+  let summonSeen = false
   for (const p of prepared) {
     if (fight.ended) break
     if (!caster.alive && depth === 0 && p.effect.effectId !== 0) {
       // Un lanceur mort en cours de sort n'applique plus d'effets (sauf déclenchements de mort gérés ailleurs).
       break
     }
-    const late = p.effect.targetMask && LATE_MASK.test(p.effect.targetMask)
+    // Jamais appliqué au lanceur, même si l'invocation a échoué (l'effet est alors sans cible).
+    if (summonSeen && isSummonOwned(p.effect)) {
+      runSummonOwned(engine, fight, caster, spell, spellId, p.effect, cell, crit, indirect, depth, opts, appearedFrom)
+      continue
+    }
+    if (SUMMON_EFFECTS.has(p.effect.effectId)) summonSeen = true
+    const late = refresh || (p.effect.targetMask && LATE_MASK.test(p.effect.targetMask))
+    const appearedBefore = appearing.length
     const prep = late ? target(engine, fight, caster, p.effect, cell, casterCell, opts) : p
     // Les cibles mortes ou déplacées hors du jeu entre-temps sont ignorées (sauf le mourant d'un déclenchement X).
     // Toutes retenues (cas courant) : la liste préparée (propre à cet effet, plus lue ensuite) est passée telle quelle.
@@ -427,6 +441,73 @@ function applyEffectsInner(
       indirect,
       depth,
     })
+    if (appearing.length > appearedBefore) refresh = true
+  }
+}
+
+/**
+ * Effets « portés par l'invocation » : dans un sort d'invocation, l'effet qui suit l'invocation est exécuté par
+ * l'invocation créée (elle en devient le lanceur : masques, source du buff, décompte des durées et délais sur SES
+ * tours). Seuls deux sorts sont concernés dans tout le corpus (vérifié sur les 40 000 ids, .cache/scan-141c.ts) :
+ *  - Sac Animé (13328) : « intercepte les dommages des alliés situés dans sa zone d'invocation » (765 `g` C2) et « est
+ *    détruit 3 tours après son invocation » (141 `C` délai 3) ;
+ *  - Pelle de Fortune (29755) : « détruite 2 tours après son invocation » (141 `C` délai 2 ; le soin 1109 `C` du même
+ *    délai reste au lanceur : « en soignant le lanceur »).
+ * Avec le lanceur pour source, l'Enutrof intercepterait les dommages et se tuerait lui-même 3 tours plus tard.
+ * INCERTAIN : le mécanisme exact du serveur n'est pas documenté (absent du port D3, qui ne simule pas les
+ * invocations) ; la règle est déduite des descriptions des sorts.
+ */
+function isSummonOwned(effect: EffectData): boolean {
+  return effect.effectId === 765 || (effect.effectId === 141 && CASTER_TOKEN.test(effect.targetMask))
+}
+
+/** Effets d'invocation (effects/summons.ts) après lesquels un effet « porté par l'invocation » vise celle-ci. */
+const SUMMON_EFFECTS = new Set([181, 1011, 1008, 180, 1189, 405, 2796])
+
+/** Jeton `C` / `c` isolé (le lanceur) dans un masque. */
+const CASTER_TOKEN = /(^|,)[Cc](,|$)/
+
+function runSummonOwned(
+  engine: Engine,
+  fight: FightState,
+  caster: Fighter,
+  spell: KnownSpell | null,
+  spellId: number,
+  effect: EffectData,
+  cell: number,
+  crit: boolean,
+  indirect: boolean,
+  depth: number,
+  opts: ApplyOptions | undefined,
+  appearedFrom: number,
+): void {
+  for (let i = appearedFrom; i < appearing.length; i++) {
+    const s = appearing[i]
+    if (!s.alive || s.cell < 0 || s.summonerId !== caster.id || fight.ended) continue
+    const prep = target(engine, fight, s, effect, cell, s.cell, opts)
+    const uid0 = fight.nextUid
+    runEffect(engine, fight, {
+      trigger: opts?.trigger,
+      mark: opts?.mark,
+      caster: s,
+      spell,
+      spellId,
+      effect,
+      targetCell: cell,
+      casterCell: s.cell,
+      cells: prep.cells,
+      targets: prep.targets,
+      efficiency: prep.efficiency,
+      crit,
+      indirect,
+      depth,
+    })
+    // Décompte sur les tours de l'invocateur : la Pelle de Fortune est détruite au moment où son soin différé (1109,
+    // porté par le lanceur, même délai) soigne l'Enutrof ; l'interception du Sac dure jusqu'à sa destruction.
+    // Buffs créés à l'instant (uid ≥ uid0) : tableaux déjà possédés (cow.ts), modification sur place sans risque.
+    for (const f of fight.fighters) {
+      for (const b of f.buffs) if (b.uid >= uid0 && b.sourceId === s.id) b.aliveSourceId = caster.id
+    }
   }
 }
 
@@ -665,15 +746,18 @@ export function resolveDelayedEffects(engine: Engine, fight: FightState, caster:
   for (const holder of fight.fighters) {
     if (!holder.alive) continue
     for (const b of holder.buffs.slice()) {
-      if (b.kind !== 'delayed' || b.sourceId !== caster.id || b.delay > 0) continue
+      if (b.kind !== 'delayed' || (b.aliveSourceId ?? b.sourceId) !== caster.id || b.delay > 0) continue
       engine.removeBuff(fight, holder, b.uid)
+      // Effet porté par une invocation : exécuté par elle (source), seulement si elle est encore en jeu.
+      const source = b.aliveSourceId === undefined ? caster : fight.fighters[b.sourceId]
+      if (!source || !source.alive) continue
       runEffect(engine, fight, {
-        caster,
-        spell: caster.spells.find(s => s.spellId === b.spellId) ?? null,
+        caster: source,
+        spell: source.spells.find(s => s.spellId === b.spellId) ?? null,
         spellId: b.spellId,
         effect: { ...b.effect, delay: 0 },
         targetCell: holder.cell,
-        casterCell: caster.cell,
+        casterCell: source.cell,
         cells: [holder.cell],
         targets: [holder],
         efficiency: new Map([[holder.id, 1]]),

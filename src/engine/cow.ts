@@ -89,6 +89,7 @@ export function cloneBuff(b: Buff): Buff {
     passTurn: b.passTurn,
     markUid: b.markUid,
     targetCell: b.targetCell,
+    aliveSourceId: b.aliveSourceId,
   }
 }
 

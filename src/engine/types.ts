@@ -65,6 +65,12 @@ export interface Buff {
    * `buff.TargetedCell`), transmise à l'exécution dans `EffectContext.originCell` (effects/core.ts).
    */
   targetCell?: number
+  /**
+   * Combattant au début du tour duquel la durée et le délai du buff sont décomptés, s'il diffère de la source
+   * (`aliveSource` du client, BuffManager). Effets portés par une invocation (effects/core.ts `isSummonOwned`) : la
+   * source est l'invocation (intercepteur, lanceur des masques), le décompte suit les tours de l'invocateur.
+   */
+  aliveSourceId?: number
 }
 
 /**

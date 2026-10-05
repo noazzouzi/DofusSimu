@@ -641,14 +641,14 @@ export class Engine {
       // Seuls les buffs lancés par `caster` changent : aucune copie (cow.ts) si la cible n'en porte pas.
       let any = false
       for (const b of target.buffs) {
-        if (b.sourceId === caster.id) {
+        if ((b.aliveSourceId ?? b.sourceId) === caster.id) {
           any = true
           break
         }
       }
       if (!any) continue
       for (const b of ownBuffs(target).slice()) {
-        if (b.sourceId !== caster.id) continue
+        if ((b.aliveSourceId ?? b.sourceId) !== caster.id) continue
         if (b.delay > 0) {
           b.delay--
           if (b.delay === 0 && b.kind !== 'delayed') this.recomputeStats(target)

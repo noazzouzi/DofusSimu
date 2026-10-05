@@ -49,7 +49,8 @@ export function hpEff(f: Fighter): number {
  */
 export function buffActiveAtNextTurn(b: Buff, holder: Fighter, order: SlotOrder): boolean {
   if (b.remaining < 0) return true
-  const dec = b.sourceId === holder.id || order.before(b.sourceId, holder.id) ? 1 : 0
+  const owner = b.aliveSourceId ?? b.sourceId
+  const dec = owner === holder.id || order.before(owner, holder.id) ? 1 : 0
   return b.remaining - dec > 0
 }
 
