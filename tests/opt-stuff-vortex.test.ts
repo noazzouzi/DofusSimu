@@ -200,7 +200,8 @@ describe('vérification adverse des stuffs Vortex (docs/reports/vortex-stuffs.md
   })
 
   it('stuffs vortex_* : classe du stuff = classe du preset dérivé, une ligne de forgemagie par objet, exo jamais sur une ligne native', () => {
-    const derived = PRESETS.filter(p => p.extends && p.stuff.startsWith('vortex_'))
+    // Les 12 presets de la campagne de stuffs (la campagne de composition en ajoute d'autres : tests/opt-compo-vortex.test.ts).
+    const derived = PRESETS.filter(p => p.extends && p.stuff.startsWith('vortex_') && p.source?.includes('vortex-stuffs.md'))
     expect(derived.length).toBe(12)
     for (const d of derived) {
       const tpl = STUFFS[d.stuff]
