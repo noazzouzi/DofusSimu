@@ -18,9 +18,10 @@ import type { Engine } from '../../engine/engine'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
 import { CELL_COUNT, distance, isInCastRange } from '../../map/geometry'
 import { zoneMembership } from '../../map/zones'
-import { losLine } from '../../map/los'
+import { hasLineOfSightOnMap } from '../../map/los'
 import type { ReachInfo } from '../types'
 import { buildOccupancy } from './reach'
+import type { SpellProfileX } from './spellProfile'
 
 // ───────────────────────────── portée inverse ─────────────────────────────
 
@@ -85,26 +86,22 @@ export class LosOracle {
   readonly occ: Int16Array
   /** 1 = case opaque. */
   private readonly opaque: Uint8Array
+  /** Case intermédiaire occupée par une autre entité que le lanceur (fermeture unique : aucune allocation par requête). */
+  private readonly blocked: (c: number) => boolean
 
   constructor(readonly s: FightState, team: TeamId, readonly casterId: number, occ?: Int16Array) {
-    this.occ = occ ?? buildOccupancy(s, team)
+    const o = (this.occ = occ ?? buildOccupancy(s, team))
     this.opaque = opaqueOf(s)
+    this.blocked = c => {
+      const id = o[c]
+      return id >= 0 && id !== casterId
+    }
   }
 
   los(from: number, to: number): boolean {
-    const op = this.opaque
-    if (from === to) return op[to] === 0
-    const line = losLine(from, to)
-    const end = line.length - 1
-    const o = this.occ
-    const me = this.casterId
-    for (let i = 0; i < end; i++) {
-      const c = line[i]
-      if (op[c]) return false
-      const id = o[c]
-      if (id >= 0 && id !== me) return false
-    }
-    return end >= 0 && op[to] === 0
+    if (from === to) return this.opaque[to] === 0
+    // Lecture directe des lignes précalculées du client (sans vue `subarray` par requête).
+    return hasLineOfSightOnMap(this.opaque, from, to, this.blocked)
   }
 }
 
@@ -154,7 +151,7 @@ export function occupantAfterMove(occ: Int16Array, casterId: number, casterCell:
  * avant, cf. `castFailureStatic`.)
  */
 export function castGeometryOk(s: FightState, caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, g: CastGeom,
-                               from: number, target: number, los: LosOracle, nextTurn = false): boolean {
+                               from: number, target: number, los: LosOracle, nextTurn = false, perTargetChecked = false): boolean {
   const mc = s.map.cells[target]
   if (!mc) return false
   if (!isInCastRange(from, target, g.min, g.max, g.line, g.diag)) return false
@@ -164,7 +161,7 @@ export function castGeometryOk(s: FightState, caster: Fighter, spell: KnownSpell
   if (lvl.needFreeCell && occId >= 0 && occId !== caster.id) return false
   if (lvl.needFreeCell && from !== caster.cell && target === from) return false
   if (lvl.needTakenCell && occId < 0) return false
-  if (!nextTurn && lvl.maxCastPerTarget > 0 && occId >= 0) {
+  if (!nextTurn && !perTargetChecked && lvl.maxCastPerTarget > 0 && occId >= 0) {
     if ((caster.castsOnTarget[`${spell.spellId}:${occId}`] ?? 0) >= lvl.maxCastPerTarget) return false
   }
   if (lvl.castTestLos && distance(from, target) > 1 && !los.los(from, target)) return false
@@ -183,7 +180,14 @@ export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, 
   const start = reach.count > 0 ? reach.cells[0] : caster.cell
   // Rejet rapide : toute case atteignable est à ≤ PM du départ, toute case de lancer à ≤ PO de la cible.
   if (start >= 0 && reach.count > 0 && distance(start, target) > reach.mpLeft[start] + g.max) return out
-  if (start >= 0 && reach.apLeft[start] >= cost && castGeometryOk(s, caster, spell, lvl, g, start, target, los, nextTurn)) {
+  // Lancers par cible (C1) : une autre entité sur la cible est la même pour toutes les cases de lancer — testé une fois.
+  let perTarget = false
+  const occT = target >= 0 && target < CELL_COUNT ? los.occ[target] : -1
+  if (!nextTurn && lvl.maxCastPerTarget > 0 && occT >= 0 && occT !== caster.id) {
+    if ((caster.castsOnTarget[`${spell.spellId}:${occT}`] ?? 0) >= lvl.maxCastPerTarget) return out
+    perTarget = true
+  }
+  if (start >= 0 && reach.apLeft[start] >= cost && castGeometryOk(s, caster, spell, lvl, g, start, target, los, nextTurn, perTarget)) {
     out.push(start)
     if (out.length >= limit) return out
   }
@@ -192,7 +196,7 @@ export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, 
     for (let i = 0; i < ring.length; i++) {
       const c = ring[i]
       if (c === start || reach.mpLeft[c] < 0 || reach.apLeft[c] < cost) continue
-      if (!castGeometryOk(s, caster, spell, lvl, g, c, target, los, nextTurn)) continue
+      if (!castGeometryOk(s, caster, spell, lvl, g, c, target, los, nextTurn, perTarget)) continue
       out.push(c)
       if (out.length >= limit) break
     }
@@ -200,7 +204,7 @@ export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, 
     for (let i = 0; i < reach.count; i++) {
       const c = reach.cells[i]
       if (c === start || reach.apLeft[c] < cost) continue
-      if (!castGeometryOk(s, caster, spell, lvl, g, c, target, los, nextTurn)) continue
+      if (!castGeometryOk(s, caster, spell, lvl, g, c, target, los, nextTurn, perTarget)) continue
       out.push(c)
       if (out.length >= limit) break
     }
@@ -223,9 +227,16 @@ export function selfZoneHits(zone: ZoneSpec, radius: number, from: number, targe
  * lanceur contient `target`. −1 si aucune. `zone`/`radius` : zone principale du profil (null/0 si monocible).
  */
 export function hitCastCell(s: FightState, caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, zone: ZoneSpec | null,
-                            radius: number, target: number, reach: ReachInfo, los: LosOracle, nextTurn = false): number {
+                            radius: number, target: number, reach: ReachInfo, los: LosOracle, nextTurn = false,
+                            prof?: SpellProfileX | null): number {
   const g = castGeom(caster, lvl)
-  if (g.max > 0 || !zone || radius <= 0) return firstCastCell(s, caster, spell, lvl, target, reach, los, nextTurn)
+  if (g.max > 0 || !zone || radius <= 0) {
+    if (prof && prof.aim !== 'direct') {
+      hitCellsFor(s, caster, spell, lvl, prof, target, reach, los, 1, FIRST, nextTurn)
+      return FIRST.length ? FIRST[0] : -1
+    }
+    return firstCastCell(s, caster, spell, lvl, target, reach, los, nextTurn)
+  }
   const cost = lvl.apCost
   for (let i = 0; i < reach.count; i++) {
     const c = reach.cells[i]
@@ -233,6 +244,109 @@ export function hitCastCell(s: FightState, caster: Fighter, spell: KnownSpell, l
     return c
   }
   return -1
+}
+
+/** Cases visées autour d'une entité pour un sort « couronne » (distance 1-2, triées) : mémo par case. */
+const RING_AIMS = new Map<number, Int16Array>()
+function ringAims(target: number): Int16Array {
+  let a = RING_AIMS.get(target)
+  if (!a) {
+    const list: number[] = []
+    for (let c = 0; c < CELL_COUNT; c++) {
+      const d = distance(c, target)
+      if (d >= 1 && d <= 2) list.push(c)
+    }
+    list.sort((x, y) => distance(x, target) - distance(y, target) || x - y)
+    RING_AIMS.set(target, (a = Int16Array.from(list)))
+  }
+  return a
+}
+const AIM_CELLS: number[] = []
+
+/**
+ * Cases de `reach` d'où le sort INFLIGE ses dégâts à l'entité sur `target`, selon la visée du profil (`prof.aim`,
+ * spellProfile.ts) — dans l'ordre de découverte, au plus `limit` :
+ *  - 'direct' : cases de lancer sur `target` (`castCellsFor`) ;
+ *  - 'ring' : cases de lancer sur une case voisine t (distance 1-2 de `target`) dont la zone « couronne » (`ringZone`,
+ *    orientée depuis la case de lancer) couvre `target` (Fourvoiement, Brimade, Souffle, Vajra, Propulsion…) ;
+ *  - 'around' : cases d'où un lancer sur sa PROPRE case est valide et dont la zone « autour du lanceur »
+ *    (`aroundZone`) couvre `target` (Jormun).
+ * Les sorts de portée 0 à zone passent par `hitCastCell` (zone autour du lanceur).
+ */
+export function hitCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, prof: SpellProfileX | null | undefined,
+                            target: number, reach: ReachInfo, los: LosOracle, limit = CELL_COUNT, out: number[] = [], nextTurn = false): number[] {
+  const g = castGeom(caster, lvl)
+  if (prof && g.max === 0 && prof.zone && prof.zoneRadius > 0) {
+    // Portée 0 à zone (Cri de Guerre, Glacier, Tibia…) : lancé sur sa propre case, la zone autour du lanceur touche.
+    out.length = 0
+    const cost = lvl.apCost
+    for (let i = 0; i < reach.count && out.length < limit; i++) {
+      const c = reach.cells[i]
+      if (reach.apLeft[c] < cost || !selfZoneHits(prof.zone, prof.zoneRadius, c, target)) continue
+      if (!castGeometryOk(s, caster, spell, lvl, g, c, c, los, nextTurn)) continue
+      out.push(c)
+    }
+    return out
+  }
+  if (!prof || prof.aim === 'direct') return castCellsFor(s, caster, spell, lvl, target, reach, los, limit, out, nextTurn)
+  out.length = 0
+  if (prof.aim === 'ring' && prof.ringZone) {
+    const zone = prof.ringZone
+    const start = reach.count > 0 ? reach.cells[0] : caster.cell
+    if (start >= 0 && reach.count > 0 && distance(start, target) > reach.mpLeft[start] + g.max + 2) return out
+    const aims = ringAims(target)
+    for (let k = 0; k < aims.length && out.length < limit; k++) {
+      const t = aims[k]
+      const mc = s.map.cells[t]
+      if (!mc || (!mc.walkable && los.occ[t] < 0)) continue
+      castCellsFor(s, caster, spell, lvl, t, reach, los, CELL_COUNT, AIM_CELLS, nextTurn)
+      for (let i = 0; i < AIM_CELLS.length && out.length < limit; i++) {
+        const c = AIM_CELLS[i]
+        if (out.includes(c) || !zoneMembership(zone, t, c)(target)) continue
+        out.push(c)
+      }
+    }
+    return out
+  }
+  if (prof.aim === 'around' && prof.aroundZone) {
+    const zone = prof.aroundZone
+    const cost = lvl.apCost
+    for (let i = 0; i < reach.count && out.length < limit; i++) {
+      const c = reach.cells[i]
+      if (reach.apLeft[c] < cost || !zoneMembership(zone, c, c)(target)) continue
+      if (!castGeometryOk(s, caster, spell, lvl, g, c, c, los, nextTurn)) continue
+      out.push(c)
+    }
+    return out
+  }
+  return castCellsFor(s, caster, spell, lvl, target, reach, los, limit, out, nextTurn)
+}
+
+/**
+ * Un lancer de `spell` depuis `from` (lanceur supposé déjà sur `from`, PA non testés) inflige-t-il ses dégâts à
+ * l'entité sur `target` ? Même visée que `hitCellsFor` (directe, couronne, autour du lanceur, portée 0 à zone).
+ */
+export function hitsFrom(s: FightState, caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, prof: SpellProfileX | null | undefined,
+                         from: number, target: number, los: LosOracle, nextTurn = false): boolean {
+  const g = castGeom(caster, lvl)
+  if (prof && g.max === 0 && prof.zone && prof.zoneRadius > 0) {
+    return selfZoneHits(prof.zone, prof.zoneRadius, from, target) && castGeometryOk(s, caster, spell, lvl, g, from, from, los, nextTurn)
+  }
+  if (!prof || prof.aim === 'direct') return castGeometryOk(s, caster, spell, lvl, g, from, target, los, nextTurn)
+  if (prof.aim === 'ring' && prof.ringZone) {
+    const aims = ringAims(target)
+    for (let k = 0; k < aims.length; k++) {
+      const t = aims[k]
+      if (!isInCastRange(from, t, g.min, g.max, g.line, g.diag)) continue
+      if (!zoneMembership(prof.ringZone, t, from)(target)) continue
+      if (castGeometryOk(s, caster, spell, lvl, g, from, t, los, nextTurn)) return true
+    }
+    return false
+  }
+  if (prof.aim === 'around' && prof.aroundZone) {
+    return zoneMembership(prof.aroundZone, from, from)(target) && castGeometryOk(s, caster, spell, lvl, g, from, from, los, nextTurn)
+  }
+  return castGeometryOk(s, caster, spell, lvl, g, from, target, los, nextTurn)
 }
 
 /** Première case de `reach` d'où `spell` peut toucher `target` (−1 si aucune). */

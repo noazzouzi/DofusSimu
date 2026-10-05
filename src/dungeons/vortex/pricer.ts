@@ -2,12 +2,12 @@
  * Du plan aux prix (docs/design/ai.md §9.6, §12.7) — WP3b : `PriceTable` du combattant courant (PVe).
  *
  *  - `heuristicPrices` (`HeuristicPricer`, mode `fast`) : formules fermées du §12.7, constantes de θ.vortex ;
- *  - `searchPrices` (`SearchPricer`, modes `standard`/`deep`) : prix CONTREFACTUELS lus sur les scores par action
- *    racine du `HourPlanner` (`priceScores`) : `kill[m][x] = best(tuer m à x) − best(sans tuer m)`,
- *    `clock[k] = best(glyphe +k) − best(0) − k·détour`, `hp[m].slope = (best(dégâts E sur m) − best(rien))/E` bornée à
- *    [0 ; 1,2] ; une racine absente du faisceau final est relancée (`replan`, faisceau 8, horizon 8, ≤ 6 relances, comparée
- *    à une relance « rien » de même réglage). Les prix de kill restent bornés à [killMin ; killMax] ; les heures non
- *    accessibles maintenant gardent le prix heuristique.
+ *  - `searchPrices` (`SearchPricer`, modes `standard`/`deep`) : prix CONTREFACTUELS du `HourPlanner` :
+ *    `kill[m][x] = best(tuer m à x) − best(sans tuer m)`, `clock[k] = best(glyphe +k) − best(0) − k·détour`,
+ *    `hp[m].slope = (best(dégâts E sur m) − best(rien))/E` bornée à [0,5·pente par défaut ; 1,2]. Écart au §9.6 : chaque
+ *    action chiffrée est rejouée par une relance FORCÉE de même réglage (faisceau θ/4, horizon 8, ≤ `maxReplans`), et non
+ *    lue sur le faisceau principal où l'action dominante reçoit l'essentiel des nœuds (prix biaisés). Les prix de kill
+ *    restent bornés à [killMin ; killMax] ; les heures non accessibles maintenant gardent le prix heuristique.
  *
  * Tableaux `kill` : index 0 = mort sous l'étoile (corruption), 1..12 = mort pendant l'heure h. `hp` : pente (valeur
  * d'un PV retiré), plancher (pente nulle en dessous), bande [bandMin ; bandMax] avant le créneau du tueur prévu
@@ -20,7 +20,7 @@ import type { AbsAction, ClockSlot, ScenarioPlan } from '../types'
 import { resurrection, type AbsMonster, type AbsState } from './abstract'
 import { maskHas } from './clock'
 import { HOUR_CELL, HOUR_COUNT, nextHour } from './constants'
-import { actionKey, glyphCount, killedBy, type PlanResult, type PlannerConfig, type PlannerContext } from './planner'
+import { actionKey, followUpRoundsFor, pKillOf, type PlanResult, type PlannerConfig, type PlannerContext } from './planner'
 
 /** Entrée commune des pricers. */
 export interface PricerInput {
@@ -36,7 +36,7 @@ export interface PricerInput {
    * attente) ; défaut 0 (pas de plancher).
    */
   floorOf?(m: AbsMonster): number
-  /** Relance forcée du planificateur (SearchPricer) : action racine imposée, faisceau 8, horizon 8. */
+  /** Relance forcée du planificateur (SearchPricer) : action racine imposée, faisceau réduit, horizon 8. */
   replan?(force: AbsAction): PlanResult
   /** Relances autorisées (défaut 6). */
   maxReplans?: number
@@ -62,7 +62,8 @@ function turnsBeforeRez(slots: readonly ClockSlot[], id: number): number {
 
 /**
  * Fenêtre de re-kill : après la résurrection qui suit le créneau courant, un tueur vivant (contrat autorisé) verra-t-il
- * l'heure h (sans glyphe) dans `followUpRounds` tours, avec assez de dégâts pour retuer le zombie ?
+ * l'heure h (sans glyphe) dans `followUpRoundsFor` tours (au moins un cycle d'horloge), avec assez de dégâts pour
+ * retuer le zombie ?
  */
 export function reKillWindow(ctx: PlannerContext, cfg: PlannerConfig, m: AbsMonster, hours: number, abs = ctx.abs): boolean {
   const slots = ctx.slots
@@ -72,7 +73,7 @@ export function reKillWindow(ctx: PlannerContext, cfg: PlannerConfig, m: AbsMons
     break
   }
   if (v < 0) return true
-  const maxRound = slots[0].round + cfg.followUpRounds
+  const maxRound = slots[0].round + followUpRoundsFor(cfg, ctx.players)
   const zHp = resurrection({ ...m, hours }, abs).hp
   const z: AbsMonster = { ...m, hours, status: 'alive', hp: zHp }
   for (let j = v + 1; j < slots.length && slots[j].round <= maxRound; j++) {
@@ -82,6 +83,38 @@ export function reKillWindow(ctx: PlannerContext, cfg: PlannerConfig, m: AbsMons
     if (ctx.expected(j, sl.fighterId, z) >= 0.6 * zHp) return true
   }
   return false
+}
+
+/**
+ * Masque des heures h (bit h − 1) qui ont une fenêtre de re-kill pour un monstre NEUF tué maintenant à h : même règle
+ * que `reKillWindow(ctx, cfg, m, bit(h))` pour les 12 heures, en un seul parcours de la prévision.
+ */
+export function reKillMask(ctx: PlannerContext, cfg: PlannerConfig, m: AbsMonster, abs = ctx.abs): number {
+  const slots = ctx.slots
+  let v = -1
+  for (let i = 1; i < slots.length; i++) if (slots[i].isVortex) {
+    v = i
+    break
+  }
+  if (v < 0) return (1 << HOUR_COUNT) - 1
+  const maxRound = slots[0].round + followUpRoundsFor(cfg, ctx.players)
+  // Zombie marqué à une seule heure h : PV identiques pour toutes les heures sauf XI (+30 % de PV de base).
+  const zOf = (h: number): AbsMonster => {
+    const hours = 1 << (h - 1)
+    return { ...m, hours, status: 'alive', hp: resurrection({ ...m, hours }, abs).hp }
+  }
+  const zBase = zOf(1)
+  const zXI = zOf(11)
+  let mask = 0
+  for (let j = v + 1; j < slots.length && slots[j].round <= maxRound; j++) {
+    const sl = slots[j]
+    if (!sl.isPlayer || sl.index < 0 || sl.hour < 1 || sl.hour > HOUR_COUNT) continue
+    const bit = 1 << (sl.hour - 1)
+    if (mask & bit || !ctx.canContract(sl.fighterId)) continue
+    const z = sl.hour === 11 ? zXI : { ...zBase, hours: bit }
+    if (ctx.expected(j, sl.fighterId, z) >= 0.6 * z.hp) mask |= bit
+  }
+  return mask
 }
 
 /** Ligne de prix de kill heuristique d'un monstre (§12.7), index 0..12. */
@@ -97,6 +130,7 @@ export function heuristicKillRow(inp: PricerInput, m: AbsMonster): Float32Array 
   const turnsAvoided = planned !== undefined ? Math.max(0, planned - (now?.round ?? root.round)) : HOUR_COUNT / N
   row[0] = clamp(Math.max(tv.corruptKill, cfg.corruptBonus + m.threat * turnsAvoided), tv.killMin, Math.max(tv.killMax, tv.corruptKill))
   const exposure = m.threat * turnsBeforeRez(ctx.slots, m.id)
+  const windows = m.hours === 0 ? reKillMask(ctx, cfg, m) : 0
   for (let h = 1; h <= HOUR_COUNT; h++) {
     const fresh = !maskHas(root.hoursUsed, h)
     const vx = fresh ? costs.cVx(h) : 0
@@ -104,7 +138,7 @@ export function heuristicKillRow(inp: PricerInput, m: AbsMonster): Float32Array 
     let v: number
     if (m.hours === 0) {
       const contract = result.plan.contracts.some(c => c.m === m.id && c.kind === 'mark' && c.hour === h)
-      if (contract || reKillWindow(ctx, cfg, m, 1 << (h - 1))) v = tv.plannedFirstKill - cm - vx
+      if (contract || maskHas(windows, h)) v = tv.plannedFirstKill - cm - vx
       else v = -(tv.unplannedKillBase + cm + vx)
     } else if (maskHas(m.hours, h)) v = 0.3 * exposure
     else v = 0.3 * exposure - cm - vx
@@ -175,11 +209,19 @@ export function heuristicPrices(inp: PricerInput): PriceTable {
     hp.set(m.id, hpEntry(inp, m, row, now?.hour ?? root.hour))
   }
   let clock = clockFrom(result.priceScores, theta)
-  if (inp.replan && (!result.priceScores.has('glyph+1') || !result.priceScores.has('glyph+2'))) {
-    const s0 = inp.replan({ t: 'none' })
-    const scores = new Map<string, number>([['none', s0.best]])
-    for (const k of [1, 2] as const) scores.set(`glyph+${k}`, inp.replan({ t: 'glyph', count: k }).best)
-    clock = clockFrom(scores, theta)
+  if (inp.replan) {
+    // Relances de même réglage (comparaison à effort égal) ; scores « pour les prix » (`priceScores` : sans le coût de
+    // glyphe du planificateur, remplacé par le détour), comme le SearchPricer. +2 heures seulement si deux glyphes sont
+    // atteignables maintenant (sinon −2·détour : impossible ce tour-ci).
+    const scores = new Map<string, number>()
+    const run = (a: AbsAction): void => {
+      const v = inp.replan!(a).priceScores.get(actionKey(a))
+      if (v !== undefined) scores.set(actionKey(a), v)
+    }
+    run({ t: 'none' })
+    run({ t: 'glyph', count: 1 })
+    if (ctx.glyphsNow >= 2) run({ t: 'glyph', count: 2 })
+    clock = clockFrom(scores, theta) ?? clock
   }
   const out: PriceTable = { kill, hp, clock: clock ?? [0, -tv.shiftDetour, -2 * tv.shiftDetour] }
   const cell = swapCellPrices(ctx.slots, inp.me, theta)
@@ -213,10 +255,12 @@ function hpEntry(inp: PricerInput, m: AbsMonster, row: Float32Array, hourNow: nu
  * Prix contrefactuels (§9.6). Pour que deux actions racines soient comparées à effort égal, chaque action chiffrée est
  * rejouée par une relance FORCÉE de même réglage (`replan` : faisceau réduit, horizon 8) plutôt que lue sur le faisceau
  * principal (où l'action dominante reçoit l'essentiel des nœuds et serait sur-évaluée) : « rien », puis la mort de
- * chaque monstre atteignable maintenant (P(kill) décroissante), puis glyphe +1 / mort avec glyphe avant / glyphe +2 si
- * une glyphe est atteignable, dans la limite de `maxReplans`. Prix = score de l'action − meilleur score des actions
- * relancées qui ne tuent pas ce monstre (même nombre d'heures de glyphe) ; horloge = score(glyphe +k) − score(rien) −
- * k·détour. Les entrées non relancées gardent le prix heuristique ; sans `replan`, lecture du faisceau principal.
+ * chaque monstre atteignable maintenant avec P(kill) ≥ `minKillP` (décroissante), puis glyphe +1 / mort avec glyphe
+ * avant / glyphe +2 si une glyphe est atteignable, puis les morts improbables, puis des pré-dégâts (pente de PV), dans
+ * la limite de `maxReplans`. Une racine imposée est supposée réalisée (jamais hypothétique). Prix = score de l'action −
+ * meilleur score des actions relancées qui ne tuent pas ce monstre (même nombre d'heures de glyphe) ; horloge =
+ * score(glyphe +k) − score(rien) − k·détour. Les entrées non relancées (ou impossibles dans le modèle abstrait)
+ * gardent le prix heuristique ; sans `replan`, lecture du faisceau principal.
  */
 export function searchPrices(inp: PricerInput): PriceTable {
   const table = heuristicPrices({ ...inp, replan: undefined })
@@ -232,18 +276,32 @@ export function searchPrices(inp: PricerInput): PriceTable {
       const key = actionKey(a)
       if (scores.has(key) || scores.size >= budget) return
       const r = inp.replan!(a)
-      scores.set(key, r.priceScores.get(key) ?? r.best)
+      // Action impossible dans le modèle abstrait (faisceau vide) : pas de score, le prix heuristique reste.
+      const v = r.priceScores.get(key)
+      if (v !== undefined) scores.set(key, v)
     }
     run({ t: 'none' })
     const reachable = root.monsters
       .filter(m => m.id >= 0 && m.status === 'alive' && ctx.expected(0, inp.me, m) > 0)
-      .map(m => ({ m, p: ctx.pKillNow?.(m) ?? 0, e: ctx.expected(0, inp.me, m) }))
+      .map(m => ({ m, p: ctx.pKillNow?.(m) ?? pKillOf(ctx.expected(0, inp.me, m), m.hp), e: ctx.expected(0, inp.me, m) }))
       .sort((a, b) => b.p - a.p || b.e / b.m.hp - a.e / a.m.hp || a.m.id - b.m.id)
-    for (const { m } of reachable) run({ t: 'kill', m: [m.id], glyph: 'none' })
+    // Ordre du budget : morts plausibles (P(kill) ≥ minKillP), levier d'horloge (glyphe +1, mort après glyphe, +2),
+    // puis morts improbables : avec 7 monstres à portée, le budget ne doit pas s'épuiser sur des morts à 5 % avant
+    // d'avoir chiffré la glyphe.
+    const likely = reachable.filter(x => x.p >= inp.cfg.minKillP)
+    for (const { m } of likely) run({ t: 'kill', m: [m.id], glyph: 'none' })
     if (ctx.glyphsNow >= 1) {
       run({ t: 'glyph', count: 1 })
-      for (const { m } of reachable) run({ t: 'kill', m: [m.id], glyph: 'before' })
+      for (const { m } of likely) run({ t: 'kill', m: [m.id], glyph: 'before' })
       if (ctx.glyphsNow >= 2) run({ t: 'glyph', count: 2 })
+    }
+    for (const { m } of reachable) run({ t: 'kill', m: [m.id], glyph: 'none' })
+    if (ctx.glyphsNow >= 1) for (const { m } of reachable) run({ t: 'kill', m: [m.id], glyph: 'before' })
+    // Budget restant : pente de PV des monstres atteignables sans contrat (mêmes pré-dégâts que le planificateur).
+    for (const { m, e } of reachable) {
+      if (table.hp.get(m.id)?.bandMax !== undefined) continue
+      const amount = Math.min(Math.floor(0.9 * e), m.hp - 1)
+      if (amount > 0) run({ t: 'damage', m: m.id, amount, glyph: 'none' })
     }
   } else for (const [k, v] of inp.result.priceScores) scores.set(k, v)
   /** Meilleur score parmi les actions chiffrées qui ne tuent pas `m`, avec `g` heures de glyphe. */
@@ -267,6 +325,17 @@ export function searchPrices(inp: PricerInput): PriceTable {
     }
   }
   const none = scores.get('none')
+  // Pente de PV : (best(dégâts E sur m) − best(rien)) / E, bornée à [0,5·pente par défaut ; 1,2] (l'écart de deux
+  // relances reste bruité ; les monstres à ne pas toucher passent par le plancher de PV, pas par une pente nulle).
+  if (none !== undefined) {
+    for (const m of root.monsters) {
+      const entry = table.hp.get(m.id)
+      const dmg = scores.get(`damage:${m.id}`)
+      if (!entry || entry.bandMax !== undefined || dmg === undefined) continue
+      const amount = Math.min(Math.floor(0.9 * ctx.expected(0, inp.me, m)), m.hp - 1)
+      if (amount > 0) entry.slope = clamp((dmg - none) / amount, 0.5 * tv.waveHpSlope, 1.2)
+    }
+  }
   if (none !== undefined) {
     for (const k of [1, 2] as const) {
       const g = scores.get(`glyph+${k}`)
@@ -292,4 +361,3 @@ export function rootPredictedDamage(result: PlanResult, root: AbsState, slot0: C
   return 0
 }
 
-export { glyphCount, killedBy }

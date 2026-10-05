@@ -10,6 +10,8 @@ import { skirmishScenario } from './generic/skirmish'
 import type { DungeonScenario, ScenarioParams } from './types'
 import { sampleUncertain } from './vortex/params'
 import { vortexScenario } from './vortex/scenario'
+// Modèle d'IA complet du Vortex (planificateur d'heures, prix, burst) : s'enregistre à l'import.
+import './vortex/model'
 
 export type * from './types'
 
@@ -52,3 +54,4 @@ export { resolveVortexParams, sampleVortexVariant, variantKey, vortexState } fro
 export { forecastHours, starWindows, lineCells, currentHour, deathHours } from './vortex/clock'
 export { trackVortex, VortexTracker } from './vortex/tracker'
 export { rankVortexPlacements, defaultVortexPlacement } from './vortex/placement'
+export { createVortexAIModel, registerVortexAIModel, vortexPlanOf } from './vortex/model'

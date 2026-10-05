@@ -20,10 +20,12 @@ import { canCast, castSpell } from '../../engine/cast'
 import type { Engine } from '../../engine/engine'
 import { createMonsterFighter } from '../../engine/factory'
 import type { Fighter, FightState } from '../../engine/types'
+import { matchesTargetMask } from '../../engine/targetMask'
 import { CELL_COUNT, distance } from '../../map/geometry'
+import { zoneMembership } from '../../map/zones'
 import { levelFor, selfZoneHits } from './castCells'
-import { createDptTable } from './dpt'
-import { createSpellProfileIndex } from './spellProfile'
+import { castDamage, createDptTable } from './dpt'
+import { createSpellProfileIndex, zoneRadius } from './spellProfile'
 
 /** Bornes de la calibration (§6.4). */
 export const CALIBRATION_BOUNDS: readonly [number, number] = [0.5, 2]
@@ -48,6 +50,8 @@ export interface CalibrationMeasure {
   /** simulated / analytic, borné ; 1 si analytique nul. */
   ratio: number
   casts: number
+  /** Lancers prévus par le sac à dos analytique (`casts` < `planned` : lancers impossibles à placer ou refusés). */
+  planned: number
 }
 
 /** Case libre et marchable la plus proche de `to` à distance ≥ `minDist`. */
@@ -63,23 +67,38 @@ function nearestFree(fight: FightState, to: number, minDist: number): number {
 }
 
 /**
- * Place `me` (case modifiée directement : placement libre) d'où `spellId` touche `target` et renvoie la case à viser,
- * −1 si aucune. Sort à distance : lancé à distance ≥ 2 si possible (le moteur applique les modificateurs de mêlée selon
- * la distance réelle ; le DPT suppose « mêlée » ⇔ portée ≤ 1). Sort de portée 0 à zone : case du lanceur, cible dans
- * la zone.
+ * Place `me` (case modifiée directement : placement libre) d'où `spellId` touche l'entité sur `target` et renvoie la
+ * case à viser, −1 si aucune. Même placement que celui que suppose le DPT « sans contrainte de position »
+ * (`castDamage`) :
+ *  - sort dont les dégâts portent sur la case d'impact : la case de l'entité est visée ;
+ *  - sort dont les dégâts ne portent que sur la COURONNE de la zone (« croix sans centre » de Fourvoiement, Brimade,
+ *    Souffle ; cercles « hors centre » de Vajra, Lance du Lac) ou qui exige une case LIBRE (Propulsion du Pandawa) :
+ *    une case voisine est visée, de sorte qu'une ligne de dégâts de rayon ≥ 1 (masque accepté) couvre l'entité. Viser
+ *    l'entité elle-même ne lui infligeait rien (ou était refusé) et faussait la calibration (0,5 pour la Forgelance,
+ *    0,53 pour l'Éliotrope, 0,56 pour le Sram « air poisons »).
+ * Distance lanceur → entité : 1 pour un sort de mêlée (portée ≤ 1), ≥ 2 sinon si possible (le moteur applique les
+ * modificateurs de mêlée selon la distance réelle ; le DPT suppose « mêlée » ⇔ portée ≤ 1). Sort de portée 0 à zone :
+ * case du lanceur, entité dans la zone.
  */
 export function placeForCast(engine: Engine, fight: FightState, me: Fighter, spellId: number, target: number): number {
   const ks = me.spells.find(s => s.spellId === spellId)
   if (!ks) return -1
   const lvl = levelFor(me, ks)
   const prof = createSpellProfileIndex(engine).ofSpell(me, ks.level)
-  const free: number[] = []
-  for (let c = 0; c < CELL_COUNT; c++) {
-    if (fight.map.cells[c]?.walkable && !fight.fighters.some(f => f.alive && f.cell === c && f.id !== me.id)) free.push(c)
+  // Cases libres (calculées à la demande : le cas courant — case actuelle valide — n'en a pas besoin).
+  let freeCells: number[] | null = null
+  const freeList = (): number[] => {
+    if (!freeCells) {
+      const occupied = new Set<number>()
+      for (const f of fight.fighters) if (f.alive && f.id !== me.id) occupied.add(f.cell)
+      freeCells = []
+      for (let c = 0; c < CELL_COUNT; c++) if (fight.map.cells[c]?.walkable && !occupied.has(c)) freeCells.push(c)
+    }
+    return freeCells
   }
   const max = lvl.range + (lvl.rangeBoostable ? me.stats.range : 0)
   if (max === 0 && prof.zone && prof.zoneRadius > 0) {
-    free.sort((a, b) => distance(a, target) - distance(b, target) || a - b)
+    const free = freeList().sort((a, b) => distance(a, target) - distance(b, target) || a - b)
     for (const c of free) {
       if (!selfZoneHits(prof.zone, prof.zoneRadius, c, target)) continue
       me.cell = c
@@ -88,16 +107,65 @@ export function placeForCast(engine: Engine, fight: FightState, me: Fighter, spe
     return -1
   }
   const want = max <= 1 ? 1 : 2
+  // Distance lanceur → entité conforme à l'hypothèse « mêlée ⇔ portée ≤ 1 » du DPT.
   const ok = (c: number) => (want === 1 ? distance(c, target) <= 1 : distance(c, target) >= 2 || lvl.range < 2)
-  if (ok(me.cell) && canCast(engine, fight, me, ks, target) === null) return target
-  free.sort((a, b) => Math.abs(distance(a, target) - want) - Math.abs(distance(b, target) - want) || a - b)
-  for (const c of free) {
-    if (canCast(engine, fight, me, ks, target, { fromCell: c }) === null) {
-      me.cell = c
-      return target
+  const victim = fight.fighters.find(f => f.alive && f.cell === target && f.carriedBy === undefined)
+  let ring = lvl.needFreeCell
+  if (!ring && victim && prof.damage.some(l => l.aroundCaster || zoneRadius(l.zone) > 0)) {
+    const cd = castDamage(me, victim, prof, ks.isWeapon === true)
+    if ((cd.ringMean ?? 0) > (cd.centerMean ?? 0)) ring = true
+  }
+  let sorted = false
+  const free = (): number[] => {
+    const list = freeList()
+    if (!sorted) list.sort((a, b) => Math.abs(distance(a, target) - want) - Math.abs(distance(b, target) - want) || a - b)
+    sorted = true
+    return list
+  }
+  const atCenter = (): number => {
+    if (lvl.needFreeCell) return -1
+    if (ok(me.cell) && canCast(engine, fight, me, ks, target) === null) return target
+    for (const c of free()) {
+      if (canCast(engine, fight, me, ks, target, { fromCell: c }) === null) {
+        me.cell = c
+        return target
+      }
+    }
+    return -1
+  }
+  if (!ring) return atCenter()
+  // Couronne : case visée t ≠ entité, une ligne de dégâts de rayon ≥ 1 (masque accepté) couvre l'entité ; une ligne
+  // « autour du lanceur » (sous-sort lancé sur sa case) la couvre depuis la case du lanceur, éventuellement visée
+  // elle-même (Jormun). À défaut (sort à case occupée sans autre entité : Tempête de Puissance), l'entité est visée.
+  const lines = victim ? prof.damage.filter(l => zoneRadius(l.zone) > 0 && matchesTargetMask(l.mask, me, victim)) : []
+  if (!lines.length) return atCenter()
+  const hits = (t: number, c: number): boolean => lines.some(l => (l.aroundCaster ? zoneMembership(l.zone, c, c) : zoneMembership(l.zone, t, c))(target))
+  // Rayon utile borné (zones « toute la carte » : une case voisine suffit).
+  let R = 0
+  for (const l of lines) if (!l.aroundCaster) R = Math.max(R, Math.min(6, zoneRadius(l.zone)))
+  const aims: number[] = []
+  for (let c = 0; c < CELL_COUNT; c++) {
+    const d = distance(c, target)
+    if (d >= 1 && d <= R && fight.map.cells[c]?.walkable) aims.push(c)
+  }
+  aims.sort((a, b) => distance(a, target) - distance(b, target) || a - b)
+  const around = lines.some(l => l.aroundCaster)
+  const old = me.cell
+  for (const pass of [0, 1]) {
+    for (const c of free()) {
+      if (pass === 0 && !ok(c)) continue
+      // Cases visées : sa propre case (lignes « autour du lanceur »), l'entité, puis les cases voisines de l'entité.
+      const tries = around ? [c, target, ...aims] : aims
+      for (const t of tries) {
+        if ((t === c && !around) || !hits(t, c)) continue
+        // Lanceur déjà sur `c` pendant le test (sinon sa case d'origine compterait comme occupée).
+        me.cell = c
+        if (canCast(engine, fight, me, ks, t) === null) return t
+        me.cell = old
+      }
     }
   }
-  return -1
+  return atCenter()
 }
 
 /**
@@ -119,6 +187,7 @@ export function measureCalibration(engine: Engine, attacker: Fighter, opts: Cali
   const start = dummy.hp + dummy.shield
   let analytic = 0
   let casts = 0
+  let planned = 0
   const turns = opts.turns ?? 3
   const total = turns + (opts.settleTurns ?? 3)
   for (let t = 0; t < total && !fight.ended; t++) {
@@ -131,6 +200,7 @@ export function measureCalibration(engine: Engine, attacker: Fighter, opts: Cali
     if (t < turns) {
       const plan = dpt.turn(me, dummy, me.ap, 'now')
       analytic += plan.mean
+      planned += plan.casts.length
       for (const spellId of plan.casts) {
         const cell = placeForCast(engine, fight, me, spellId, dummy.cell)
         if (cell < 0) continue
@@ -142,5 +212,5 @@ export function measureCalibration(engine: Engine, attacker: Fighter, opts: Cali
   const simulated = start - (dummy.hp + dummy.shield)
   const raw = analytic > 0 ? simulated / analytic : 1
   const ratio = raw < CALIBRATION_BOUNDS[0] ? CALIBRATION_BOUNDS[0] : raw > CALIBRATION_BOUNDS[1] ? CALIBRATION_BOUNDS[1] : raw
-  return { analytic, simulated, ratio, casts }
+  return { analytic, simulated, ratio, casts, planned }
 }

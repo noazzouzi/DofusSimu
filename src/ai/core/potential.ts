@@ -281,7 +281,7 @@ export class PotentialModelImpl implements PotentialModel {
     const lvl = levelFor(a, ks)
     if (!nextTurnStaticOk(this.view.engine, a, ks, lvl, ap)) return -1
     const p = this.dpt.profiles.ofFighter(a)[i]
-    return hitCastCell(s, a, ks, lvl, p?.zone ?? null, p?.zoneRadius ?? 0, cell, reach, los, true)
+    return hitCastCell(s, a, ks, lvl, p?.zone ?? null, p?.zoneRadius ?? 0, cell, reach, los, true, p)
   }
 }
 

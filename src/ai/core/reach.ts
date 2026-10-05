@@ -8,7 +8,8 @@
  *    exactement l'ensemble atteignable (test T-reach) ; les PA sont les meilleurs parmi ces chemins (optimaux dans
  *    > 99,5 % des cas : un chemin plus long qui évite un tacleur peut garder plus de PA avec moins de PM).
  *  - 'ap' : PA d'abord, puis PM — meilleur pour lancer depuis la case, mais une case atteignable seulement par un
- *    chemin tacleur (plus court) peut manquer. Les candidats de lancer (candidates.ts) combinent les deux arbres.
+ *    chemin tacleur (plus court) peut manquer. Les candidats de lancer (candidates.ts) utilisent l'arbre 'mp' : sur
+ *    300 scènes du Vortex (fuite/tacle THL), aucune case n'y a moins de PA que dans l'arbre 'ap' (revue WP1-core).
  * Un arbre à un seul label par case ne peut pas être exact pour les deux critères à la fois (front de Pareto).
  * Quitter une case adjacente à des tacleurs applique la règle
  * DÉTERMINISTE de Dofus 3 exactement comme `move` (src/engine/move.ts) : ratio = Π tackleRatio(fuite, tacle) des

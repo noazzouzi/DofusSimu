@@ -27,7 +27,7 @@ import { matchesTargetMask } from '../src/engine/targetMask'
 import type { Fighter, FightState } from '../src/engine/types'
 import { CELL_COUNT, isInCastRange } from '../src/map/geometry'
 import { zoneMembership } from '../src/map/zones'
-import { engineFor, randomScene } from './ai-core-helpers'
+import { engineFor, randomScene, yieldToEventLoop } from './ai-core-helpers'
 
 /** Clone, chemin exécuté réellement : renvoie le clone et le lanceur, ou null si le chemin n'aboutit pas. */
 function afterPath(engine: Engine, fight: FightState, meId: number, path: number[] | undefined): { c: FightState; me: Fighter } | null {
@@ -53,13 +53,14 @@ function usefulFor(engine: Engine, prof: ReturnType<ReturnType<typeof createSpel
 }
 
 describe('T-cand : générateur de candidats (§8.1 C1-C8)', () => {
-  it('50 positions : tout candidat passe canCast après son chemin réel ; couverture 100 % de la force brute', () => {
+  it('50 positions : tout candidat passe canCast après son chemin réel ; couverture 100 % de la force brute', async () => {
     const engine = engineFor()
     let candidates = 0
     let brutePairs = 0
     let zoneTargets = 0
     let freeSpells = 0
     for (let seed = 1; seed <= 50; seed++) {
+      if (seed % 5 === 0) await yieldToEventLoop()
       const { fight, me } = randomScene(seed, { engine })
       const view = createView(engine, fight, me, 7)
       const p = createPerception(view)
@@ -201,7 +202,7 @@ function selectByQuota(cands: MacroAction[], K: number): Set<MacroAction> {
 }
 
 describe('T-prefilter : quickEstimate trie les enfants (§8.1)', () => {
-  it('corpus de 500 nœuds : meilleur enfant simulé dans le top-12 du préfiltre ≥ 95 % (quotas : garde-fous)', () => {
+  it('corpus de 500 nœuds : meilleur enfant simulé dans le top-12 du préfiltre ≥ 95 % (quotas : garde-fous)', async () => {
     const engine = engineFor()
     const K = 12
     let nodes = 0
@@ -235,6 +236,9 @@ describe('T-prefilter : quickEstimate trie les enfants (§8.1)', () => {
       return cands[bestI]
     }
     for (seed = 1; nodes < 500 && seed <= 400; seed++) {
+      // Rend la main à la boucle d'événements : un test synchrone de plus de 60 s fait expirer le RPC du worker
+      // vitest (« Timeout calling onTaskUpdate », erreur non gérée qui fait échouer la suite sous charge).
+      if (seed % 4 === 0) await yieldToEventLoop()
       const { fight, me } = randomScene(seed, { engine })
       const view = createView(engine, fight, me, 1234)
       const best = evalNode(view, fight, me)

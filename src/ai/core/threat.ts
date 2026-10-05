@@ -123,6 +123,13 @@ export interface EnemyThreat {
   hitsFromStart: boolean
   /** L'ennemi peut poser Pacifiste (cantDealDamage) sur un allié. */
   pacifist: boolean
+  /**
+   * Amplification du PROCHAIN coup reçu par sa cible (« dommages subis » > 100 % consommés au prochain dommage :
+   * Plumière ×1,5 de la Méjaire, Tirs optiques ×2 de la Harpille) : excès (pct/100 − 1), 0 si aucun sort lançable.
+   */
+  amp: number
+  /** Meilleur lancer unique (calibré) sur chaque allié : le « prochain coup » amplifié. */
+  single: Float64Array
   /** Mémo interne : clé de la ligne, un coup léthal sur un allié, nombre d'alliés. */
   sig: number
   lethal: boolean
@@ -204,6 +211,14 @@ export class ThreatModelImpl implements ThreatModel {
   inc = new Float64Array(0)
   /** Part « dégâts » de l'incoming (sans la valeur Pacifiste ni `extraIncoming`), par id : diagnostic, T-threat. */
   incDmg = new Float64Array(0)
+  /**
+   * Part « coups amplifiés » de l'incoming, par id : un ennemi qui pose un « dommages subis » consommé au prochain coup
+   * (Plumière, Tirs optiques) rend plus fort le coup de l'ennemi suivant sur la même cible (espérance, ordre de la
+   * timeline). Comptée dans `incoming` et `incomingDamage` ; les recalculs locaux la gardent fixe (second ordre).
+   */
+  incAmp = new Float64Array(0)
+  /** Part « zone » (allié pris dans la zone du coup destiné à un autre) de l'incoming, par id. */
+  incZone = new Float64Array(0)
   /** Diagnostic (bancs) : lignes « PV » réutilisées / recalculées. */
   hpReuse = 0
   hpBuilt = 0
@@ -269,6 +284,8 @@ export class ThreatModelImpl implements ThreatModel {
     if (this.inc.length < n) {
       this.inc = new Float64Array(n)
       this.incDmg = new Float64Array(n)
+      this.incAmp = new Float64Array(n)
+      this.incZone = new Float64Array(n)
       this.allyIndex = new Int16Array(n)
       this.enemyIndex = new Int16Array(n)
     }
@@ -276,6 +293,8 @@ export class ThreatModelImpl implements ThreatModel {
     const potential = this.perception?.potential
     this.inc.fill(0)
     this.incDmg.fill(0)
+    this.incAmp.fill(0)
+    this.incZone.fill(0)
     this.allyIndex.fill(-1)
     this.enemyIndex.fill(-1)
     // Alliés : empreinte « défenseurs » (PV, bouclier, PV max, PA, empreinte dégâts) et « attaquants » (relances).
@@ -336,10 +355,45 @@ export class ThreatModelImpl implements ThreatModel {
         const z = this.zoneShare(row, i)
         this.inc[a.id] += row.weight * (row.pi[i] * row.dmg[i] + z)
         this.incDmg[a.id] += row.weight * (row.pi[i] * row.full[i] * row.hit[i] + z)
+        this.incZone[a.id] += row.weight * z
       }
     }
+    this.amplifiedHits(order)
     if (this.scenario?.extraIncoming) {
       for (const a of this.allies) this.inc[a.id] += this.scenario.extraIncoming(s, a, a.cell)
+    }
+  }
+
+  /**
+   * Coups amplifiés (voir `incAmp`) : pour chaque allié, ennemis pris dans l'ordre de la timeline (ceux qui jouent avant
+   * lui) ; un amplificateur qui le vise (probabilité π·min(1, hit)) porte l'excès attendu du prochain coup à
+   * (1 + excès)·(1 + p·amp) − 1 ; l'ennemi suivant qui le frappe (probabilité p) ajoute ω·excès·p·(meilleur lancer
+   * unique) et consomme l'amplification avec la même probabilité.
+   */
+  private amplifiedHits(order: SlotOrder): void {
+    let anyAmp = false
+    for (const row of this.enemies) if (row.active && row.amp > 0) anyAmp = true
+    if (!anyAmp) return
+    const rows = this.enemies.filter(r => r.active).sort((x, y) => order.rank(x.e.id) - order.rank(y.e.id) || x.e.id - y.e.id)
+    for (let i = 0; i < this.allies.length; i++) {
+      const a = this.allies[i]
+      let pending = 0
+      let extra = 0
+      for (const row of rows) {
+        if (!order.before(row.e.id, a.id)) continue
+        const p = row.pi[i] * Math.min(1, row.hit[i])
+        if (p <= 0) continue
+        if (pending > 0) {
+          extra += row.weight * pending * p * row.single[i]
+          pending *= 1 - p
+        }
+        if (row.amp > 0) pending = (1 + pending) * (1 + p * row.amp) - 1
+      }
+      if (extra > 0) {
+        this.incAmp[a.id] = extra
+        this.inc[a.id] += extra
+        this.incDmg[a.id] += extra
+      }
     }
   }
 
@@ -440,9 +494,10 @@ export class ThreatModelImpl implements ThreatModel {
         e: undefined as unknown as Fighter, active: false, ap: 0, mp: 0, reachLo: null, reachHi: null, frac: 0, weight: 1,
         hit: new Float64Array(m), apAt: new Float64Array(m), dmg: new Float64Array(m), full: new Float64Array(m),
         score: new Float64Array(m), pi: new Float64Array(m), best: new Int16Array(m), threat: 0, target: -1,
-        hitsFromStart: false, pacifist: false, sig: 0, lethal: false, nA: 0,
+        hitsFromStart: false, pacifist: false, amp: 0, single: new Float64Array(m), sig: 0, lethal: false, nA: 0,
       }
     }
+    row.single.fill(0)
     row.hit.fill(0)
     row.apAt.fill(0)
     row.dmg.fill(0)
@@ -467,6 +522,7 @@ export class ThreatModelImpl implements ThreatModel {
     row.frac = g.frac
     row.weight = g.weight
     row.pacifist = g.pacifist
+    row.amp = 0
     row.hitsFromStart = false
     row.threat = 0
     row.target = -1
@@ -487,6 +543,7 @@ export class ThreatModelImpl implements ThreatModel {
       row.apAt[i] = ph.apAt
       const full = frame.dpt(e, a, ph.apAt)
       row.full[i] = full
+      row.single[i] = frame.bestMean(e, a) * frame.calibration(e)
       let dmg = full * hit
       if (g.pacifist && hit > 0 && potential) dmg += P.pacifistFactor * potential.potential(a.id) * Math.min(1, hit)
       row.dmg[i] = dmg
@@ -494,8 +551,26 @@ export class ThreatModelImpl implements ThreatModel {
       if (dmg >= he && dmg > 0) row.lethal = true
       row.score[i] = scoreOf(dmg, a, dmg >= he && dmg > 0 ? frame.dpt(a, e) : 0)
     }
+    row.amp = this.ampOf(e, g)
     this.finishRow(row)
     return row
+  }
+
+  /** Excès d'amplification du prochain coup reçu (« dommages subis » > 100 %) que `e` peut poser à son prochain tour. */
+  private ampOf(e: Fighter, g: GeoRow): number {
+    const profiles = this.dpt.profiles.ofFighter(e)
+    let amp = 0
+    for (let k = 0; k < profiles.length; k++) {
+      const p = profiles[k]
+      if (!p.received.length) continue
+      let pct = 0
+      for (const r of p.received) if (r.sides.enemy && r.pct > pct) pct = r.pct
+      if (pct <= 100) continue
+      const ks = e.spells[k]
+      if (!nextTurnStaticOk(this.view.engine, e, ks, levelFor(e, ks), g.ap)) continue
+      if (pct / 100 - 1 > amp) amp = pct / 100 - 1
+    }
+    return amp
   }
 
   /** π, cible prédite et menace propre d'une ligne (à partir de `score` et `dmg`). */
@@ -523,7 +598,7 @@ export class ThreatModelImpl implements ThreatModel {
     const lvl = levelFor(e, ks)
     if (!nextTurnStaticOk(this.view.engine, e, ks, lvl, ap)) return -1
     const p = this.dpt.profiles.ofFighter(e)[i]
-    return hitCastCell(s, e, ks, lvl, p?.zone ?? null, p?.zoneRadius ?? 0, cell, reach, los, true)
+    return hitCastCell(s, e, ks, lvl, p?.zone ?? null, p?.zoneRadius ?? 0, cell, reach, los, true, p)
   }
 
   incoming(id: number): number {
@@ -625,23 +700,44 @@ export class ThreatModelImpl implements ThreatModel {
       let hit = 0
       let apAt = row.ap
       const reach = row.reachLo
-      const p = this.dpt.profiles.ofFighter(e)[bi]
-      const ks = e.spells[bi]
-      const lvl = levelFor(e, ks)
-      if (nextTurnStaticOk(engine, e, ks, lvl, row.ap)) {
+      const profiles = this.dpt.profiles.ofFighter(e)
+      const p = profiles[bi]
+      const mp0 = reach.mpLeft[reach.cells[0]]
+      /** PA restants sur la meilleure case de lancer du sort `k` vers `cell` (PM ≤ mpBudget), −1 si aucune. */
+      const scan = (k: number): number => {
+        const ks = e.spells[k]
+        const lvl = levelFor(e, ks)
+        if (!nextTurnStaticOk(engine, e, ks, lvl, row.ap)) return -1
         const g = castGeom(e, lvl)
-        const selfZone = g.max === 0 && p && p.zone && p.zoneRadius > 0 ? p : null
-        const mp0 = reach.mpLeft[reach.cells[0]]
+        const pk = profiles[k]
+        const selfZone = g.max === 0 && pk && pk.zone && pk.zoneRadius > 0 ? pk : null
+        let best = -1
         // Case de lancer gardant le plus de PA (le tacle peut en coûter).
-        for (let k = 0; k < reach.count; k++) {
-          const c = reach.cells[k]
+        for (let j = 0; j < reach.count; j++) {
+          const c = reach.cells[j]
           if (mp0 - reach.mpLeft[c] > mpBudget) continue
-          if (reach.apLeft[c] < lvl.apCost || (hit > 0 && reach.apLeft[c] <= apAt)) continue
+          if (reach.apLeft[c] < lvl.apCost || reach.apLeft[c] <= best) continue
           if (c === cell) continue
           if (selfZone ? !selfZoneHits(selfZone.zone!, selfZone.zoneRadius, c, cell) : !inRangeLos(s, g, c, cell, lvl.castTestLos, this.occ, e.id, f.id)) continue
-          hit = 1
-          apAt = reach.apLeft[c]
-          if (apAt >= row.ap) break
+          best = reach.apLeft[c]
+          if (best >= row.ap) break
+        }
+        return best
+      }
+      const a1 = scan(bi)
+      if (a1 >= 0) {
+        hit = 1
+        apAt = a1
+      } else {
+        // Comme `pairHit` : un sort plus faible qui porte vaut `hitWeak`, sinon tour d'après.
+        for (let k = 0; k < profiles.length; k++) {
+          if (k === bi || !profiles[k].damage.length) continue
+          const ak = scan(k)
+          if (ak >= 0) {
+            hit = P.hitWeak
+            apAt = ak
+            break
+          }
         }
       }
       if (hit === 0) hit = distance(eCell, cell) <= 2 * row.mp + p.maxRange + 1 ? P.hitNextTurn : 0
@@ -661,6 +757,16 @@ export class ThreatModelImpl implements ThreatModel {
         teamDelta += row.weight * (after - before)
         if (i === ai) own += row.weight * after
       }
+    }
+    // Parts « zone » et « coups amplifiés » de l'incoming de f (non recalculées case par case) : suivent la part
+    // directe (rapport nouvelle / actuelle, borné à 2) — sinon toute autre case paraîtrait plus sûre que la sienne.
+    const side = this.incZone[f.id] + this.incAmp[f.id]
+    if (side > 0) {
+      let cur = 0
+      for (const row of this.enemies) if (row.active && this.order.before(row.e.id, f.id)) cur += row.weight * row.pi[ai] * row.dmg[ai]
+      const scaled = side * (cur > 1e-9 ? Math.min(2, own / cur) : 1)
+      own += scaled
+      teamDelta += scaled - side
     }
     if (this.scenario?.extraIncoming) {
       const extra = this.scenario.extraIncoming(s, f, cell)
@@ -828,7 +934,7 @@ export class ThreatModelImpl implements ThreatModel {
         let c1 = -1
         if (nextTurnStaticOk(engine, e, ks, lvl, row.ap)) {
           const pr = this.dpt.profiles.ofFighter(e)[bi]
-          c1 = hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, a.cell, reach, los, true)
+          c1 = hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, a.cell, reach, los, true, pr)
         }
         const before = row.full[i] * row.hit[i]
         const after = c1 >= 0 ? Math.min(before, dt.dpt(e, a, reach.apLeft[c1])) : row.full[i] * this.params.hitNextTurn
@@ -845,7 +951,7 @@ export class ThreatModelImpl implements ThreatModel {
         const ks = e.spells[row.best[t]]
         const lvl = levelFor(e, ks)
         const pr = this.dpt.profiles.ofFighter(e)[row.best[t]]
-        if (nextTurnStaticOk(engine, e, ks, lvl, row.ap) && hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, cell, reach, los, true) >= 0) dmgC = row.full[t]
+        if (nextTurnStaticOk(engine, e, ks, lvl, row.ap) && hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, cell, reach, los, true, pr) >= 0) dmgC = row.full[t]
       }
       scores[nA] = Math.min(dmgC, hp) + (dmgC >= hp && dmgC > 0 ? 0.5 * hp : 0)
       let max = 0
@@ -926,7 +1032,7 @@ export class ThreatModelImpl implements ThreatModel {
       let c1 = -1
       if (nextTurnStaticOk(engine, e, ks, lvl, row.ap)) {
         const pr = this.dpt.profiles.ofFighter(e)[bi]
-        c1 = hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, a.cell, reach, los, true)
+        c1 = hitCastCell(s, e, ks, lvl, pr?.zone ?? null, pr?.zoneRadius ?? 0, a.cell, reach, los, true, pr)
       }
       // Écart appliqué à la ligne (dégâts « avant » = ceux de la ligne sans la partie Pacifiste) : sort principal
       // lançable ⇒ coup plein avec les PA de la case ; sinon tour d'après (si à distance), ou ligne inchangée si le

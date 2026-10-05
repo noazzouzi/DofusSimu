@@ -287,7 +287,9 @@ describe('puzzles du planificateur (§16.3)', () => {
     const ctx = ctxOf(slots, { E: { [P1]: 9000, [P2]: 2000, [P3]: 2000, [P4]: 9000 }, noContract: [P2, P3] })
     const r = planHours(root, ctx, plannerConfig('standard', theta))
     const hours = marks(r).map(c => c.hour)
-    expect(hours).toContain(9)
+    // « Accepte IX/VI plutôt que V/XI » (§16.3) : au moins une marque à IX ou VI (VI atteinte par une glyphe qu'un
+    // joueur sans contrat déclenche pour décaler l'horloge des tueurs), aucune à V/XI/VIII.
+    expect(hours.some(h => h === 9 || h === 6), `${hours}`).toBe(true)
     for (const bad of [5, 11, 8]) expect(hours).not.toContain(bad)
     expect(r.plan.contracts.every(c => c.killer === P1 || c.killer === P4)).toBe(true)
   })

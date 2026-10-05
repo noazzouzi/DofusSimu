@@ -28,15 +28,25 @@ describe('calibration du DPT (data/ai/calibration.json)', () => {
     const presets: Record<string, number> = {}
     const breeds: Record<string, number> = {}
     const lines: string[] = []
+    // Les lancers prévus par le sac à dos doivent être JOUÉS (placement du DPT : centre, couronne, case libre, sous-sort
+    // autour du lanceur) : un lancer impossible à placer fausse le rapport (Forgelance, Éliotrope, Sram « air » mesurés
+    // à 0,5 avant la visée « couronne »). Seules exceptions : sorts dont la lançabilité change au premier lancer
+    // (Gueule de Bois du Pandawa : état d'ivresse du lanceur).
+    const placed = (name: string, m: { casts: number; planned: number }) => {
+      if (m.casts < m.planned) lines.push(`${name} : ${m.casts}/${m.planned} lancers joués`)
+      expect(m.casts, `${name} : lancers joués`).toBeGreaterThanOrEqual(Math.floor(0.75 * m.planned))
+    }
     for (const preset of PRESETS) {
       const [f] = buildTeam(data, [presetMember(preset, data)])
       const m = measureCalibration(engine, f, { map })
       presets[preset.id] = round3(m.ratio)
+      placed(`preset ${preset.id}`, m)
       if (Math.abs(m.ratio - 1) > 0.05) lines.push(`preset ${preset.id} : ${m.ratio.toFixed(3)} (analytique ${Math.round(m.analytic)}, simulé ${Math.round(m.simulated)}, ${m.casts} lancers)`)
     }
     for (const b of data.listBreeds()) {
       const m = measureCalibration(engine, player(b.id, { extra: THL }), { map })
       breeds[String(b.id)] = round3(m.ratio)
+      placed(`classe ${b.id} ${b.name}`, m)
       if (Math.abs(m.ratio - 1) > 0.05) lines.push(`classe ${b.id} ${b.name} : ${m.ratio.toFixed(3)} (analytique ${Math.round(m.analytic)}, simulé ${Math.round(m.simulated)})`)
     }
     console.log(`calibration : ${Object.keys(presets).length} presets, ${Object.keys(breeds).length} classes ; écarts > 5 % :\n${lines.join('\n')}`)

@@ -17,7 +17,9 @@
  * `kill[m][h]` pour une mort à l'heure h LUE dans ses états (jamais supposée), `θ.vortex.vortexKill` pour le Vortex ;
  * `extraIncoming` = croix d'*En temps et en heure* (modèle de base) + Heuristique depuis la case d'arrivée d'Heurage
  * en phase 2 (lignes ≤ 8 sans LdV) ; `allyDeathExtra` = perte de score du plan si l'allié meurt (son créneau ne fait
- * plus avancer l'horloge, ses contrats tombent).
+ * plus avancer l'horloge, ses contrats tombent). Hors contrat (ajout WP3b, à brancher par WP2 dans le terme `scenario`
+ * de `evaluate.ts`) : `revivedValue(root, leaf, bb)` = prix des morts que `deathValue` ne voit pas, monstres tués PUIS
+ * ressuscités (corrompus ou zombies) dans un rollout qui traverse le tour du Vortex.
  *
  * Honnêteté (§6.1) : lit l'état public (états, PV, cases, buffs, timeline, `deaths`) et les métriques de SON équipe
  * (dégâts infligés : calibration) ; jamais `fight.events` ni les dés.
@@ -25,6 +27,8 @@
  * `vortexScenario.aiModel` (`setVortexAIModelFactory`, scenario.ts).
  */
 import { createDptTable, type DptTableImpl } from '../../ai/core/dpt'
+import { damageDigest } from '../../ai/core/hash'
+import { mix32 } from '../../core/hash'
 import { canKillNow } from '../../ai/core/kill'
 import type { PerceptionX } from '../../ai/core/perception'
 import { computeReach } from '../../ai/core/reach'
@@ -36,12 +40,12 @@ import { createMonsterFighter } from '../../engine/factory'
 import type { ControllerProvider } from '../../engine/runner'
 import type { Fighter, FightState } from '../../engine/types'
 import { CELL_COUNT, CELL_X, CELL_Y, distance } from '../../map/geometry'
-import type { AbsAction, CandidateHint, KeyDecisionReason, MicroResult, ScenarioAIModel, ScenarioParams, ScenarioPlan } from '../types'
+import type { AbsAction, CandidateHint, ClockSlot, KeyDecisionReason, MicroResult, ScenarioAIModel, ScenarioParams, ScenarioPlan } from '../types'
 import { absFromFight, absParamsOf, type AbsMonster, type AbsState } from './abstract'
 import { planBurst, type VortexBurstPlan } from './burst'
-import { currentHour, deathHours, forecastHours, hasStar, isCorrupted, isWaveMonster, lineCells, nextVortexSlot } from './clock'
-import { GLYPH_PLANNER_BONUS, HOUR_CELL, HOUR_COUNT, MEJAIRE, SPELL, VORTEX, VORTEX_SCENARIO_ID, WAVE_MONSTER_IDS, type VortexParams } from './constants'
-import { fallbackHourCosts, HIT_FACTOR, measureHourCosts, teamTurnDamage, waveMonsterElements, type HourCostModel } from './hourCost'
+import { checkForecast, currentHour, deathHours, forecastHours, hasStar, isCorrupted, isWaveMonster, lineCells, nextVortexSlot } from './clock'
+import { GLYPH_PLANNER_BONUS, HOUR_CELL, HOUR_COUNT, MEJAIRE, nextHour, SPELL, VORTEX, VORTEX_SCENARIO_ID, WAVE_MONSTER_IDS, type VortexParams } from './constants'
+import { fallbackHourCosts, HIT_FACTOR, HourCostModel, measureHourCosts, teamTurnDamage, waveMonsterElements } from './hourCost'
 import { prefix12Micro } from './micro'
 import { resolveVortexParams, vortexState } from './params'
 import { rankVortexPlacements } from './placement'
@@ -70,11 +74,20 @@ export function vortexPlanOf(bb: Blackboard): VortexBlackboardPlan | undefined {
   return p && (p.kind === 'hours' || p.kind === 'burst') ? p : undefined
 }
 
-/** État pur du modèle (rembobinage, §15.8). */
+/**
+ * État pur du modèle (rembobinage, §15.8) : tout ce qui influence une décision future et ne se recalcule pas à
+ * l'identique depuis l'état du combat — calibration de l'oracle, coûts d'heures (mesurés UNE fois, avec l'équipe
+ * vivante d'alors : un modèle neuf restauré après une mort les mesurerait autrement), fin de la première fenêtre de
+ * burst (décision clé), prévision précédente (auto-contrôle de l'horloge).
+ */
 export interface VortexModelSnapshot {
   oracle: ReturnType<KillOracle['snapshot']>
   tracker: { version: number; sig: number }
   version: number
+  costs?: { key: string; source: 'measured' | 'fallback'; mon: [number, number[]][]; vx: number[] }
+  burstWindowEnd?: { round: number; index: number }
+  lastSlots?: ClockSlot[]
+  forecastMismatches?: number
 }
 
 // ───────────────────────────── outils ─────────────────────────────
@@ -83,6 +96,11 @@ const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > 
 
 /** Plafond du coût « horloge » d'une mort d'allié (PVe, s'ajoute au coût de mort de V(s), ≈ 10 000). */
 export const DEATH_EXTRA_MAX = 4000
+
+const STATUS_BITS: Record<AbsMonster['status'], number> = { pending: 1, invulnerable: 2, alive: 3, dead: 4, corrupt: 5 }
+
+/** Clé d'un créneau (tour de jeu, combattant). */
+const slotKey = (round: number, fighterId: number): number => round * 65536 + fighterId
 
 /** Personnages vivants (racines) d'une équipe. */
 function livingPlayers(s: FightState, team: number): Fighter[] {
@@ -139,9 +157,17 @@ export class VortexAIModel implements ScenarioAIModel {
   private cache?: { key: string; prices: PriceTable; plan: PlanResult; root: AbsState }
   private refs = new Map<number, Fighter>()
   private refThreat = new Map<number, number>()
+  /** DPT d'un joueur sur un monstre de référence, par (joueur, empreinte « dégâts », monstre). */
+  private refDpt = new Map<string, number>()
   private engine?: Engine
   private meId = -1
   private deathKey = ''
+  private lastSlots?: ReturnType<typeof forecastHours>
+  /** Menace intrinsèque (dégâts d'un tour répartis sur l'équipe) par (monstre, révision), pour une équipe donnée. */
+  private intrinsicCache = new Map<string, number>()
+  private intrinsicTeam = ''
+  /** Créneaux où l'heure lue différait de la prévision précédente (auto-contrôle §12.2). */
+  forecastMismatches = 0
   /** Fin de la première fenêtre de burst (tour du Vortex qui la clôt). */
   private burstWindowEnd?: { round: number; index: number }
 
@@ -164,6 +190,7 @@ export class VortexAIModel implements ScenarioAIModel {
     this.engine = view.engine
     this.meId = view.me.id
     this.lastPhase = bb.phase
+    this.refreshHeuristiqueLines(s)
     if (!vx) return
     const px = perception as Partial<PerceptionX> | undefined
     const dpt: DptTableImpl = px?.dpt && typeof px.dpt.dpt === 'function' ? (px.dpt as DptTableImpl) : createDptTable(view.engine)
@@ -247,18 +274,45 @@ export class VortexAIModel implements ScenarioAIModel {
     const N = Math.max(1, players.length)
     const rounds = Math.ceil(cfg.horizonPlayerSlots / N) + Math.ceil(HOUR_COUNT / N) + 2
     const slots = forecastHours(s, rounds, this.params)
+    // Auto-contrôle (§12.2) : l'heure lue doit être celle que la prévision précédente annonçait pour ce créneau ;
+    // sinon le cache est invalidé (diagnostic `forecastMismatches`).
+    if (this.lastSlots && checkForecast(this.lastSlots, s) === false) {
+      this.forecastMismatches++
+      this.cache = undefined
+    }
+    this.lastSlots = slots
     // Menace propre des monstres : perception (distance comprise), plancher 60 % de la menace intrinsèque.
     const threatFn = px?.threat && typeof px.threat.threatOf === 'function' ? px.threat : undefined
-    const intrinsic = (m: Fighter): number => HIT_FACTOR * teamTurnDamage(dpt, m, players)
+    // Clés « dégâts » (empreintes de caractéristiques, pas `rev` : un simple déplacement change `rev` et viderait les
+    // caches à chaque tour).
+    const teamKey = players.map(p => `${p.id}:${damageDigest(p)}`).join(',')
+    if (teamKey !== this.intrinsicTeam) {
+      this.intrinsicCache.clear()
+      this.refThreat.clear()
+      this.intrinsicTeam = teamKey
+    }
+    const intrinsic = (m: Fighter): number => {
+      const k = `${m.id}:${damageDigest(m)}`
+      let v = this.intrinsicCache.get(k)
+      if (v === undefined) {
+        if (this.intrinsicCache.size > 512) this.intrinsicCache.clear()
+        this.intrinsicCache.set(k, (v = HIT_FACTOR * teamTurnDamage(dpt, m, players)))
+      }
+      return v
+    }
     const threatOf = (m: Fighter): number => Math.max(threatFn ? threatFn.threatOf(m) : 0, 0.6 * intrinsic(m))
+    const refThreat = (monsterId: number): number => {
+      let t = this.refThreat.get(monsterId)
+      if (t === undefined) this.refThreat.set(monsterId, (t = 0.6 * intrinsic(this.refOf(engine, monsterId))))
+      return t
+    }
     this.tracker.observe(s)
     const root = absFromFight(s, slots, { threatOf })
-    // Menace des vagues à venir : monstre de référence.
+    // Menace des monstres sans menace observable : vagues à venir et morts en attente de résurrection (le tracker leur
+    // donne 0) — monstre de référence, sinon un monstre tué plus tôt dans le tour de jeu serait sans coût d'exposition
+    // après sa résurrection (et sa corruption sans urgence).
     for (const m of root.monsters as AbsMonster[]) {
-      if (m.id >= 0) continue
-      let t = this.refThreat.get(m.monsterId)
-      if (t === undefined) this.refThreat.set(m.monsterId, (t = 0.6 * intrinsic(this.refOf(engine, m.monsterId))))
-      m.threat = t
+      if (m.id < 0 || (m.status === 'dead' && !m.corruptOnWake)) m.threat = refThreat(m.monsterId)
     }
     // Glyphes atteignables par le joueur courant.
     const glyphs = monsterGlyphs(s)
@@ -288,7 +342,18 @@ export class VortexAIModel implements ScenarioAIModel {
     const alive = s.fighters.filter(f => f.alive && isWaveMonster(f))
     for (const p of players) {
       for (const m of alive) oracle.setDpt(p.id, { id: m.id }, dpt.dpt(p, m), deathHours(m))
-      for (const id of WAVE_MONSTER_IDS) oracle.setDpt(p.id, { monsterId: id }, dpt.dpt(p, this.refOf(engine, id)))
+      // Monstres de référence (vagues à venir, morts) : DPT mis en cache par empreinte « dégâts » du joueur (relances
+      // ignorées : créneaux futurs).
+      const pk = damageDigest(p)
+      for (const id of WAVE_MONSTER_IDS) {
+        const k = `${p.id}:${pk}:${id}`
+        let v = this.refDpt.get(k)
+        if (v === undefined) {
+          if (this.refDpt.size > 256) this.refDpt.clear()
+          this.refDpt.set(k, (v = dpt.dpt(p, this.refOf(engine, id))))
+        }
+        oracle.setDpt(p.id, { monsterId: id }, v)
+      }
     }
     if (meNow) {
       const reach = strikeReach(dpt, me)
@@ -336,7 +401,7 @@ export class VortexAIModel implements ScenarioAIModel {
     const replan = (force: AbsAction): PlanResult =>
       planHours(root, ctx, cfg, { forceRoot: force, beamWidth: replanBeam, horizonPlayerSlots: Math.min(8, cfg.horizonPlayerSlots), version })
     const floorOf = (m: AbsMonster): number => this.floorOf(s, m, players, dpt)
-    const inp = { result, root, ctx, cfg, theta, me: me.id, floorOf, replan: glyphsNow > 0 || mode !== 'fast' ? replan : undefined, maxReplans: mode === 'deep' ? 10 : 6 }
+    const inp = { result, root, ctx, cfg, theta, me: me.id, floorOf, replan: glyphsNow > 0 || mode !== 'fast' ? replan : undefined, maxReplans: mode === 'deep' ? 12 : 8 }
     const prices = mode === 'standard' || mode === 'deep' ? searchPrices(inp) : heuristicPrices(inp)
     // Calibration : dégâts prévus de MON action racine.
     if (meNow) oracle.expect(me.id, rootPredictedDamage(result, root, slot0), s.metrics[me.id]?.damageDealt ?? 0, s.metrics[me.id]?.turnsPlayed ?? 0)
@@ -359,8 +424,12 @@ export class VortexAIModel implements ScenarioAIModel {
 
   /** Coût de mort de chaque allié : écart de score du plan sans son créneau (standard/deep), forme close en fast. */
   private computeDeathExtra(root: AbsState, ctx: PlannerContext, cfg: PlannerConfig, result: PlanResult, players: Fighter[], mode: AIMode): void {
-    // Recalcul à chaque événement symbolique ou nouveau tour de jeu seulement (coût : N + 1 plans `fast`).
-    const key = `${this.tracker.version}|${root.round}|${players.map(p => p.id).join(',')}|${mode}`
+    // Recalcul à chaque événement symbolique ou nouveau tour de jeu seulement (coût : N + 1 plans `fast`). La version
+    // du tracker change à CHAQUE tour de joueur (l'heure est dans son empreinte) : la clé lit les faits symboliques
+    // seuls (statuts, heures de mort, étoiles), sans l'heure courante.
+    let sig = root.round
+    for (const m of root.monsters) sig = mix32(mix32(sig, m.id), (STATUS_BITS[m.status] << 16) ^ (m.hours << 2) ^ (m.star ? 2 : 0) ^ (m.corruptOnWake ? 1 : 0))
+    const key = `${sig >>> 0}|${root.round}|${players.map(p => p.id).join(',')}|${mode}`
     if (key === this.deathKey) return
     this.deathKey = key
     this.deathExtra.clear()
@@ -403,9 +472,40 @@ export class VortexAIModel implements ScenarioAIModel {
     if (star) return row ? row[0] : this.theta.vortex.corruptKill
     const h = newDeathHour(r0, victim) || currentHour(leaf)
     if (row && h >= 1 && h <= HOUR_COUNT) return row[h]
-    // Monstre sans prix (apparu depuis la mise à jour) : mort non planifiée.
+    // Monstre sans prix (apparu depuis la mise à jour) : mort non planifiée (coût zombie + Vortex si l'heure est neuve).
+    return this.unplannedDeath(root, victim, h)
+  }
+
+  /** Mort non planifiée d'un monstre à l'heure h : −(base + C_mon + [h neuve]·C_vx), heures posées lues à la racine. */
+  private unplannedDeath(root: FightState, victim: Fighter, h: number): number {
     const tv = this.theta.vortex
-    return -(tv.unplannedKillBase + (this.costs ? this.costs.cMon(victim.monsterId!, h) : 0))
+    if (!this.costs || h < 1 || h > HOUR_COUNT) return -tv.unplannedKillBase
+    let used = 0
+    for (const f of root.fighters) if (isWaveMonster(f)) used |= deathHours(f)
+    return Math.max(tv.killMin, -(tv.unplannedKillBase + this.costs.markCost(victim.monsterId!, h, used)))
+  }
+
+  /**
+   * Morts INVISIBLES à `deathValue` (V(s) ne l'appelle que pour un mort) : monstres de vague vivants à la racine ET
+   * dans `leaf`, tués puis ressuscités entre les deux — rollouts qui traversent le tour du Vortex (§8.6). Corrompu
+   * depuis la racine ⇒ `kill[m][0]` ; heure de mort nouvelle h (masque agrandi) ⇒ `kill[m][h]`. Somme à ajouter au
+   * terme `scenario` de l'évaluation (WP2, `tactical/evaluate.ts`) pour que la corruption d'un rollout garde sa valeur.
+   */
+  revivedValue(root: FightState, leaf: FightState, bb: Blackboard): number {
+    let v = 0
+    for (const f of leaf.fighters) {
+      if (!f.alive || !isWaveMonster(f)) continue
+      const r0 = root.fighters[f.id]
+      if (!r0 || !r0.alive) continue
+      const row = bb.prices.kill.get(f.id)
+      if (isCorrupted(f) && !isCorrupted(r0)) {
+        v += row ? row[0] : this.theta.vortex.corruptKill
+        continue
+      }
+      const h = newDeathHour(r0, f)
+      if (h) v += row ? row[h] : this.unplannedDeath(root, f, h)
+    }
+    return v
   }
 
   extraIncoming(s: FightState, a: Fighter, cell: number): number {
@@ -423,22 +523,60 @@ export class VortexAIModel implements ScenarioAIModel {
     if (!vx || vx.actionRound === 0 || cell < 0) return 0
     const v = s.fighters[vx.vortexId]
     if (!v || !v.alive || (v.cooldowns[SPELL.HEURAGE] ?? 0) > 1) return 0
-    // Heure de l'Auroraire au prochain tour du Vortex (prévision faite à la mise à jour, sinon heure courante).
-    const slots = this.burstSlots(s)
-    const vi = nextVortexSlot(slots, 1)
-    if (vi < 0) return 0
-    for (let i = 1; i < vi; i++) if (slots[i].fighterId === a.id) return 0
-    const target = HOUR_CELL[slots[vi].hour]
+    // Heure de l'Auroraire au prochain tour du Vortex : heure LUE dans `s` (une glyphe simulée la décale) + heures
+    // restantes jusqu'au créneau du Vortex (prévision faite par `update`, indexée par créneau : valable dans les clones
+    // et les rollouts des 2 tours suivants, sans prévision par appel). Un allié qui rejoue avant peut encore bouger.
+    const cur = s.turnIndex >= 0 ? s.fighters[s.timeline[s.turnIndex]] : undefined
+    const line = cur ? this.heurLines.get(slotKey(s.round, cur.id)) : undefined
+    if (!line || line.movers.has(a.id)) return 0
+    const h = currentHour(s)
+    if (!h) return 0
+    const target = HOUR_CELL[nextHour(h, line.offset)]
     if (!(target > 0)) return 0
     let aligned = false
-    for (let c = 0; c < CELL_COUNT && !aligned; c++) {
-      if (distance(c, target) !== 1 || !s.map.cells[c]?.walkable) continue
-      if ((CELL_X[c] === CELL_X[cell] || CELL_Y[c] === CELL_Y[cell]) && distance(c, cell) <= 8 && c !== cell) aligned = true
+    for (const c of this.contactCells(s, target)) {
+      if (c !== cell && (CELL_X[c] === CELL_X[cell] || CELL_Y[c] === CELL_Y[cell]) && distance(c, cell) <= 8) {
+        aligned = true
+        break
+      }
     }
     if (!aligned || !this.engine) return 0
     const dpt = createDptTable(this.engine)
     const idx = v.spells.findIndex(k => k.spellId === SPELL.HEURISTIQUE)
     return idx >= 0 ? dpt.perCast(v, idx, a).mean : 0
+  }
+
+  /** Phase 2 : heures restantes jusqu'au prochain créneau du Vortex et alliés qui jouent avant lui, par créneau. */
+  private heurLines = new Map<number, { offset: number; movers: ReadonlySet<number> }>()
+
+  /** Recalcule `heurLines` depuis l'état réel (début du tour d'un joueur) ; vide avant *Action !*. */
+  private refreshHeuristiqueLines(s: FightState): void {
+    this.heurLines = new Map()
+    const vx = vortexState(s)
+    if (!vx || vx.actionRound === 0) return
+    const slots = forecastHours(s, 3, this.params).filter(sl => sl.index >= 0)
+    for (let i = 0; i < slots.length; i++) {
+      let j = i + 1
+      while (j < slots.length && !slots[j].isVortex) j++
+      if (j >= slots.length) continue
+      const key = slotKey(slots[i].round, slots[i].fighterId)
+      if (this.heurLines.has(key)) continue
+      const movers = new Set<number>()
+      for (let k = i + 1; k < j; k++) movers.add(slots[k].fighterId)
+      this.heurLines.set(key, { offset: (((slots[j].hour - slots[i].hour) % 12) + 12) % 12, movers })
+    }
+  }
+
+  /** Cases marchables au contact d'une case (arrivée d'Heurage), par carte. */
+  private contactCache = new Map<number, number[]>()
+  private contactCells(s: FightState, target: number): number[] {
+    let out = this.contactCache.get(target)
+    if (!out) {
+      out = []
+      for (let c = 0; c < CELL_COUNT; c++) if (distance(c, target) === 1 && s.map.cells[c]?.walkable) out.push(c)
+      this.contactCache.set(target, out)
+    }
+    return out
   }
 
   private slotsCache?: { s: FightState; round: number; turn: number; slots: ReturnType<typeof forecastHours> }
@@ -535,7 +673,14 @@ export class VortexAIModel implements ScenarioAIModel {
   // ── rembobinage, journal ──
 
   snapshot(): VortexModelSnapshot {
-    return { oracle: this.oracle.snapshot(), tracker: this.tracker.snapshot(), version: this.version }
+    const out: VortexModelSnapshot = { oracle: this.oracle.snapshot(), tracker: this.tracker.snapshot(), version: this.version }
+    if (this.costs) {
+      out.costs = { key: this.costsKey, source: this.costs.source, mon: [...this.costs.mon].map(([id, row]) => [id, Array.from(row)]), vx: Array.from(this.costs.vx) }
+    }
+    if (this.burstWindowEnd) out.burstWindowEnd = { ...this.burstWindowEnd }
+    if (this.lastSlots) out.lastSlots = this.lastSlots.map(sl => ({ ...sl }))
+    if (this.forecastMismatches) out.forecastMismatches = this.forecastMismatches
+    return out
   }
 
   restore(snap: VortexModelSnapshot): void {
@@ -543,6 +688,18 @@ export class VortexAIModel implements ScenarioAIModel {
     this.tracker.restore(snap.tracker)
     this.version = snap.version
     this.cache = undefined
+    this.deathKey = ''
+    if (snap.costs) {
+      const mon = new Map<number, Float64Array>(snap.costs.mon.map(([id, row]) => [id, Float64Array.from(row)]))
+      this.costs = new HourCostModel(mon, Float64Array.from(snap.costs.vx), snap.costs.source)
+      this.costsKey = snap.costs.key
+    } else {
+      this.costs = undefined
+      this.costsKey = ''
+    }
+    this.burstWindowEnd = snap.burstWindowEnd ? { ...snap.burstWindowEnd } : undefined
+    this.lastSlots = snap.lastSlots?.map(sl => ({ ...sl }))
+    this.forecastMismatches = snap.forecastMismatches ?? 0
   }
 
   /** Résumé FR du plan courant (aiNote 'plan'). */

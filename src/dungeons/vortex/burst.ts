@@ -259,8 +259,8 @@ export function planBurst(view: AIView, o: BurstOptions): VortexBurstPlan | unde
       if (!ks) continue
       const p = dpt.profiles.ofFighter(f)[f.spells.indexOf(ks)]
       if (!p || p.cooldown < 2) continue
-      reserve.push({ fighterId: f.id, spellId })
-      addIntent({ id: `reserve:${f.id}:${spellId}`, kind: 'reserve', owner: f.id, window: winOf(i), params: { spellId }, price: Math.round(Math.min(3000, dpt.perCast(f, f.spells.indexOf(ks), vPred).mean * zDensity * vortexKill)), source: 'burst', explain: `Garder le sort ${spellId} pour le burst` })
+      if (!reserve.some(r => r.fighterId === f.id && r.spellId === spellId)) reserve.push({ fighterId: f.id, spellId })
+      addIntent({ id: `reserve:${f.id}:${spellId}:${sl.round}.${sl.index}`, kind: 'reserve', owner: f.id, window: winOf(i), params: { spellId }, price: Math.round(Math.min(3000, dpt.perCast(f, f.spells.indexOf(ks), vPred).mean * zDensity * vortexKill)), source: 'burst', explain: `Garder le sort ${spellId} pour le burst` })
     }
     const profs = dpt.profiles.ofFighter(f)
     if (profs.some(p => p.allyBuff || p.enemyDebuff)) {

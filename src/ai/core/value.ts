@@ -36,7 +36,7 @@ import type { Fighter, FightState } from '../../engine/types'
 import { distance } from '../../map/geometry'
 import type { ThetaJson } from '../theta'
 import type { AIView, Blackboard, EvalBreakdown, Perception, RoleId } from '../types'
-import { castFailureStatic, castGeom, castGeometryOk, firstCastCell, LosOracle, levelFor } from './castCells'
+import { castFailureStatic, hitCellsFor, hitsFrom, LosOracle, levelFor } from './castCells'
 import { calibrationOf, lineDamage, type DptTableImpl } from './dpt'
 import { killProbability } from './kill'
 import type { PerceptionX } from './perception'
@@ -166,7 +166,9 @@ export function restOfTurn(view: AIView, s: FightState, me: Fighter, p: Percepti
     const seen = new Set<number>()
     for (const i of usable) {
       const ks = me.spells[i]
-      const c = firstCastCell(s, me, ks, levelFor(me, ks), cell, reach, los)
+      // Case d'où ce sort inflige ses dégâts à e (visée directe, couronne, zone autour du lanceur, portée 0 à zone).
+      hitCellsFor(s, me, ks, levelFor(me, ks), profiles[i], cell, reach, los, 1, HIT_CELLS)
+      const c = HIT_CELLS.length ? HIT_CELLS[0] : -1
       if (c < 0 || seen.has(c)) continue
       seen.add(c)
       const filter = (k: number) => {
@@ -174,7 +176,7 @@ export function restOfTurn(view: AIView, s: FightState, me: Fighter, p: Percepti
         if (k === i) return true
         const kk = me.spells[k]
         const lvl = levelFor(me, kk)
-        return reach.apLeft[c] >= lvl.apCost && castGeometryOk(s, me, kk, lvl, castGeom(me, lvl), c, cell, los)
+        return reach.apLeft[c] >= lvl.apCost && hitsFrom(s, me, kk, lvl, profiles[k], c, cell, los)
       }
       const t = dpt.turn(me, e, reach.apLeft[c], 'now', filter)
       const mean = t.mean * calib
@@ -325,5 +327,6 @@ export function valueOf(view: AIView, s: FightState, perception: Perception, opt
   return out
 }
 
+const HIT_CELLS: number[] = []
 const AM0 = { ap: 0, mp: 0 }
 const AM1 = { ap: 0, mp: 0 }

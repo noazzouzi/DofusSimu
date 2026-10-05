@@ -20,13 +20,14 @@ import type { TriggerEvent } from '../../engine/effects/core'
 import { buffApplies, DAMAGE_SPECS, resolveElement, unerodedMaxHp } from '../../engine/effects/damage/pipeline'
 import type { Engine } from '../../engine/engine'
 import { checkStatesCriterion } from '../../engine/criteria'
-import { matchesTargetMask } from '../../engine/targetMask'
+import { compileTargetMask, matchesTargetMask } from '../../engine/targetMask'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
 import type { ZoneSpec } from '../../data/model'
-import { compileZone } from '../../map/zones'
+import { CELL_COUNT, distance } from '../../map/geometry'
+import { zoneMembership } from '../../map/zones'
 import type { DptTable } from '../types'
 import { damageDigest, fnvInt } from './hash'
-import { createSpellProfileIndex, zoneRadius, type DamageLineX, type SpellProfileIndexX, type SpellProfileX } from './spellProfile'
+import { createSpellProfileIndex, zoneHitsCenter, zoneRadius, type DamageLineX, type SpellProfileIndexX, type SpellProfileX } from './spellProfile'
 
 // ───────────────────────────── calibration ─────────────────────────────
 
@@ -119,24 +120,30 @@ function uniformVar(spread: number, n: number): number {
   return n > 1 ? (spread * spread * (n * n - 1)) / (12 * (n - 1) * (n - 1)) : 0
 }
 
-/** La zone touche-t-elle sa propre case d'impact (anneaux, « tout sauf » exclus) ? */
-export function zoneHitsCenter(zone: ZoneSpec): boolean {
-  const z = compileZone(zone)
-  switch (z.shape) {
-    case 'O':
-    case 'Z':
-      return z.radius <= 0
-    case 'Q':
-    case '#':
-    case 'W':
-      return false
-    case 'C':
-    case 'D':
-    case 'I':
-      return z.minRadius < 1
-    default:
-      return true
+export { zoneHitsCenter }
+
+const COVER = new WeakMap<ZoneSpec, { min: number; max: number } | null>()
+
+/**
+ * Distances au lanceur couvertes par une zone CENTRÉE sur le lanceur (sous-sorts « autour du lanceur »), hors sa
+ * propre case : [min, max] (null si la zone ne touche que le lanceur). Mesurée sur une case centrale de la grille.
+ */
+export function casterZoneCover(zone: ZoneSpec): { min: number; max: number } | null {
+  let c = COVER.get(zone)
+  if (c !== undefined) return c
+  const center = 300
+  const inZone = zoneMembership(zone, center, center)
+  let min = Infinity
+  let max = -1
+  for (let cell = 0; cell < CELL_COUNT; cell++) {
+    if (cell === center || !inZone(cell)) continue
+    const d = distance(cell, center)
+    if (d < min) min = d
+    if (d > max) max = d
   }
+  c = max >= 1 ? { min, max } : null
+  COVER.set(zone, c)
+  return c
 }
 
 /**
@@ -272,11 +279,27 @@ export function castDamage(a: Fighter, d: Fighter, p: SpellProfileX, isWeapon: b
   const rp = RP
   cp.fill(0)
   rp.fill(0)
+  // Gains du lanceur qui précèdent les dégâts du lancer (vols, buffs « soi ») : caractéristiques augmentées.
+  if (p.preBoost.length) a = boosted(a, p)
   const critPct = p.damage.length ? spellCritPct(a, p) : 0
   if (p.damage.length) {
+    // Sort à case libre (Propulsion, Vajra…) : aucune entité sur la case d'impact, seule la couronne compte.
+    const centerOk = !p.needFreeCell
     for (const line of p.damage) {
-      const center = zoneHitsCenter(line.zone)
-      const ring = zoneRadius(line.zone) > 0
+      let center: boolean
+      let ring: boolean
+      if (line.aroundCaster) {
+        // Zone centrée sur le LANCEUR (sous-sort lancé sur sa case) : la cible n'est pas sur la case d'impact, elle
+        // est touchée si elle est assez proche du lanceur — placement « couronne » seulement (un parent « c » ne
+        // vise le lanceur que s'il est dans la zone, c.-à-d. un lancer sur sa propre case : Jormun ; un sort qui
+        // déplace le lanceur avant le sous-sort ne cumule pas les deux placements : Pendule).
+        if (!casterZoneCover(line.zone)) continue
+        center = false
+        ring = true
+      } else {
+        center = centerOk && zoneHitsCenter(line.zone)
+        ring = zoneRadius(line.zone) > 0
+      }
       if (!center && !ring) continue
       if (!matchesTargetMask(line.mask, a, d)) continue
       if (line.gates && !line.gates.every(g => matchesTargetMask(g, a, d))) continue
@@ -335,6 +358,14 @@ export function castDamage(a: Fighter, d: Fighter, p: SpellProfileX, isWeapon: b
 }
 const CP = new Float64Array(4)
 const RP = new Float64Array(4)
+
+/** Copie superficielle de `a` aux caractéristiques augmentées des gains `preBoost` du profil (sorts rares ; le
+ * résultat de `castDamage` est mis en cache par `perCast`). */
+function boosted(a: Fighter, p: SpellProfileX): Fighter {
+  const st = { ...a.stats } as unknown as Record<string, number>
+  for (const x of p.preBoost) st[x.stat] = (st[x.stat] ?? 0) + x.value
+  return { ...a, stats: st as unknown as Stats }
+}
 
 // ───────────────────────────── tour complet (sac à dos) ─────────────────────────────
 
@@ -469,8 +500,8 @@ export class DptTableImpl implements DptTable {
         }
       }
       if (hpDependent(this.profiles.ofFighter(a))) {
-        h = fnvInt(fnvInt(h, a.hp), d.hp)
-        h2 = fnvInt(fnvInt(h2, a.hp), d.hp)
+        h = fnvInt(fnvInt(h, hpKeyOf(a)), hpKeyOf(d))
+        h2 = fnvInt(fnvInt(h2, hpKeyOf(a)), hpKeyOf(d))
       }
       const hit = this.turnCache.get(h)
       if (hit && hit.k2 === h2) return hit.r
@@ -572,8 +603,8 @@ export class DptTableImpl implements DptTable {
         h2 = fnvInt(fnvInt(h2, Number(k)), v)
       }
       if (hpDependent(this.profiles.ofFighter(a))) {
-        h = fnvInt(fnvInt(h, a.hp), d.hp)
-        h2 = fnvInt(fnvInt(h2, a.hp), d.hp)
+        h = fnvInt(fnvInt(h, hpKeyOf(a)), hpKeyOf(d))
+        h2 = fnvInt(fnvInt(h2, hpKeyOf(a)), hpKeyOf(d))
       }
       const hit = this.bestCache.get(h)
       if (hit && hit.k2 === h2) return hit.r
@@ -607,20 +638,43 @@ export class DptTableImpl implements DptTable {
   }
 }
 
-/** Le sort a-t-il une ligne « % PV » (dégâts dépendant des PV du lanceur ou de la cible) ? */
+/** Conditions de masque lues sur les PV ou le bouclier (V/v : PV sous un %, PB/pb : bouclier), cible ou lanceur. */
+const HP_MASK_CODES = new Set(['V', 'v', 'PB', 'pb'])
+
+/**
+ * La ligne dépend-elle des PV ou du bouclier du lanceur ou de la cible ? Famille « % PV », ou masque conditionné par
+ * les PV (Attaque Mortelle du Sram « V50 », Mascarade du Zobal « *V50 ») ou par le bouclier (Flèche Perforante du
+ * Crâ « PB »/« pb ») : ces lignes ne peuvent pas être mises en cache par les seules empreintes « dégâts ».
+ */
+export function lineHpDependent(l: DamageLineX): boolean {
+  if (l.family === 'hp') return true
+  for (const m of l.gates ? [l.mask, ...l.gates] : [l.mask]) {
+    const c = compileTargetMask(m)
+    for (const x of c.targetConditions) if (HP_MASK_CODES.has(x.code)) return true
+    for (const x of c.casterConditions) if (HP_MASK_CODES.has(x.code)) return true
+  }
+  return false
+}
+
+/** Le sort a-t-il une ligne dépendant des PV / du bouclier (`lineHpDependent`) ? */
 function hpDependentProfile(p: SpellProfileX): boolean {
   let v = HP_DEP_P.get(p)
-  if (v === undefined) HP_DEP_P.set(p, (v = p.damage.some(l => l.family === 'hp')))
+  if (v === undefined) HP_DEP_P.set(p, (v = p.damage.some(lineHpDependent)))
   return v
 }
 const HP_DEP_P = new WeakMap<SpellProfileX, boolean>()
 
 const HP_DEP = new WeakMap<readonly SpellProfileX[], boolean>()
-/** Un des sorts dépend-il des PV (famille « % PV ») ? */
+/** Un des sorts dépend-il des PV ou du bouclier (`lineHpDependent`) ? */
 function hpDependent(list: readonly SpellProfileX[]): boolean {
   let v = HP_DEP.get(list)
-  if (v === undefined) HP_DEP.set(list, (v = list.some(p => p.damage.some(l => l.family === 'hp'))))
+  if (v === undefined) HP_DEP.set(list, (v = list.some(hpDependentProfile)))
   return v
+}
+
+/** Clé « PV » d'un combattant pour les caches des sorts dépendant des PV : PV, PV max, bouclier présent. */
+export function hpKeyOf(f: Fighter): number {
+  return fnvInt(fnvInt(fnvInt(0x2545f491, f.hp), f.maxHp), f.shield > 0 ? 1 : 0)
 }
 
 const ZERO_CAST: CastDamage = Object.freeze({ mean: 0, variance: 0 }) as CastDamage
@@ -803,7 +857,7 @@ export class DptFrame {
       K.alive[i] = alive
       K.rev[i] = rev
       K.cd[i] = alive ? nextCooldownHash(f) : 0
-      K.hp[i] = f.hp
+      K.hp[i] = hpKeyOf(f)
       K.hpDep[i] = alive && hpDependent(profiles.ofFighter(f)) ? 1 : 0
       if (alive) {
         // Révision égale ⇒ même contenu (E4) : l'empreinte de l'ancre est reprise sans recalcul.
@@ -923,8 +977,8 @@ export class DptFrame {
     return this.keys.dig[id]
   }
 
-  /** PV de `f` si l'un de ses sorts dépend des PV (« % PV »), 0 sinon (clés des mémos des modèles). */
+  /** Clé « PV » de `f` (`hpKeyOf`) si l'un de ses sorts dépend des PV ou du bouclier, 0 sinon (mémos des modèles). */
   hpOf(id: number): number {
-    return this.keys.hpDep[id] ? Math.round(this.keys.hp[id]) : 0
+    return this.keys.hpDep[id] ? this.keys.hp[id] : 0
   }
 }

@@ -104,7 +104,11 @@ export interface PlannerConfig {
   maxActions: number
   /** Seuil de `C_vx` d'une heure « chère » (élagage). */
   badHourVx: number
-  /** Tours (sans glyphe) dans lesquels un tueur doit revoir une heure de mort (§12.5 `unreachableHourCost`). */
+  /**
+   * Tours (sans glyphe) dans lesquels un tueur doit revoir une heure de mort (§12.5 `unreachableHourCost`) : 3 à 4
+   * joueurs ; jamais moins d'un cycle d'horloge (12/N tours, `followUpRoundsFor`) — à 3 joueurs, un personnage ne
+   * revoit son heure que 4 tours plus tard et TOUTE marque deviendrait « sans suite ».
+   */
   followUpRounds: number
   /**
    * Valeur d'un PV restant à retirer (θ.vortex.waveHpSlope) dans le RANG du faisceau seulement (guide les lignes de
@@ -150,6 +154,11 @@ export function plannerConfig(mode: AIMode, theta: StrategyParams): PlannerConfi
     followUpRounds: 3,
     hpSlope: theta.vortex.waveHpSlope,
   }
+}
+
+/** Fenêtre de re-kill effective (tours de jeu) : `cfg.followUpRounds`, au moins un cycle d'horloge (12/N). */
+export function followUpRoundsFor(cfg: Pick<PlannerConfig, 'followUpRounds'>, players: number): number {
+  return Math.max(cfg.followUpRounds, Math.ceil(HOUR_COUNT / Math.max(1, players)))
 }
 
 // ───────────────────────────── contexte ─────────────────────────────
@@ -318,16 +327,19 @@ export function planHours(root: AbsState, ctx: PlannerContext, cfg: PlannerConfi
   for (let i = 0; i <= last; i++) if (isActionSlot(slots[i]) && costs.cVx(slots[i].hour) <= cfg.badHourVx) cheapHourMask |= hourBit(slots[i].hour)
 
   const zombieHp = (m: AbsMonster): number => resurrection(m, abs).hp
+  const followUp = followUpRoundsFor(cfg, N)
 
   /** Un tueur vivant reverra-t-il une heure de `hours` (après la résurrection qui suit le créneau i) ? */
   const followCache = new Map<number, boolean>()
   const hasFollowUp = (i: number, s: AbsState, m: AbsMonster, hours: number): boolean => {
     const v = nextVortex[i]
     if (v < 0) return true // pas de résurrection prévue dans la prévision : rien à reprocher
-    const ck = ((v * 12 + (s.glyphShift % 12)) * 4096 + hours) * 1024 + ((m.id + 512) & 1023)
+    // Clé : résurrection, tour du créneau (borne de la fenêtre : deux créneaux d'un même cycle du Vortex peuvent être
+    // dans deux tours de jeu si le Vortex ne joue pas en dernier), décalage, heures, monstre.
+    const ck = (((v * 64 + (slots[i].round & 63)) * 12 + (s.glyphShift % 12)) * 4096 + hours) * 1024 + ((m.id + 512) & 1023)
     const hit = followCache.get(ck)
     if (hit !== undefined) return hit
-    const maxRound = slots[i].round + cfg.followUpRounds
+    const maxRound = slots[i].round + followUp
     const z: AbsMonster = { ...m, hours, status: 'alive', hp: zombieHp({ ...m, hours }) }
     let r = false
     for (let j = v + 1; j < slots.length && slots[j].round <= maxRound && !r; j++) {
@@ -655,6 +667,9 @@ export function planHours(root: AbsState, ctx: PlannerContext, cfg: PlannerConfi
       const fk = actionKey(opts.forceRoot)
       const kept = cands.filter(c => c.key === fk)
       cands.length = 0
+      // Racine imposée : l'action est SUPPOSÉE réalisée (prix « si elle a lieu ») ; un nœud hypothétique serait exclu du
+      // complément du faisceau et chiffré avec moitié moins de nœuds que les actions réelles (prix biaisés vers le bas).
+      for (const c of kept) c.hypo = false
       if (kept.length) cands.push(...kept)
       else cands.push({ n: beam[0], a: opts.forceRoot, key: fk, score: beam[0].s.score, adj: 0, hypo: false, hour: beam[0].s.hour })
     }
@@ -733,7 +748,8 @@ const STATUS_CODE: Record<AbsMonster['status'], number> = { pending: 1, invulner
 /**
  * Sélection du faisceau parmi les candidats (triés par score, états construits à la demande) : (1) diversité de
  * racine — le meilleur nœud de chaque action racine (puis les suivants jusqu'à `diversity` par racine), dans la limite
- * de la moitié du faisceau (tout le faisceau au créneau courant) ; (2) complément par score, une seule fois par
+ * de la moitié du faisceau (tout le faisceau au créneau courant), lignes réelles d'abord puis hypothétiques dans la
+ * capacité restante ; (2) complément par score, une seule fois par
  * empreinte STRUCTURELLE (deux lignes qui ne diffèrent que par des PV ou par l'action racine n'occupent pas deux
  * places), nœuds hypothétiques exclus ; (3) places restantes par score. Doublons exacts (état × racine) écartés.
  */
@@ -759,24 +775,30 @@ function selectBeam(cands: Cand[], i: number, width: number, diversity: number, 
   }
   const divCap = isRoot ? width : Math.max(1, Math.floor(width / 2))
   const rootKey = (c: Cand) => (isRoot ? c.key : c.n.key)
+  const hypo = (c: Cand) => (isRoot ? c.hypo : c.n.hypo)
   const perKey = new Map<string, number>()
-  for (let round = 1; round <= diversity && out.length < divCap; round++) {
-    for (const c of cands) {
-      if (out.length >= divCap) break
-      if (used.has(c)) continue
-      const k = rootKey(c)
-      if ((perKey.get(k) ?? 0) >= round) continue
-      if (take(c, false)) perKey.set(k, (perKey.get(k) ?? 0) + 1)
+  // Diversité : lignes RÉELLES d'abord, puis hypothétiques (prix seulement) dans la capacité restante — une action
+  // racine impossible (glyphe hors d'atteinte, mort improbable) ne prend jamais la place d'une action réelle, sinon le
+  // faisceau étroit du mode `fast` (4) peut ne garder que des racines hypothétiques et publier un plan infaisable.
+  for (const wantHypo of [false, true]) {
+    for (let round = 1; round <= diversity && out.length < divCap; round++) {
+      for (const c of cands) {
+        if (out.length >= divCap) break
+        if (used.has(c) || hypo(c) !== wantHypo) continue
+        const k = rootKey(c)
+        if ((perKey.get(k) ?? 0) >= round) continue
+        if (take(c, false)) perKey.set(k, (perKey.get(k) ?? 0) + 1)
+      }
     }
   }
   for (const c of cands) {
     if (out.length >= width) break
-    if (used.has(c) || (isRoot ? c.hypo : c.n.hypo)) continue
+    if (used.has(c) || hypo(c)) continue
     take(c, true)
   }
   for (const c of cands) {
     if (out.length >= width) break
-    if (used.has(c) || (isRoot ? c.hypo : c.n.hypo)) continue
+    if (used.has(c) || hypo(c)) continue
     take(c, false)
   }
   return out.sort(byRank)

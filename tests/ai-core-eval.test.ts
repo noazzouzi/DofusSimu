@@ -7,10 +7,10 @@
  *  - décomposition : `total` = somme des termes ; continuation seulement sur les feuilles non terminales.
  */
 import { describe, expect, it } from 'vitest'
-import { createPerception, createView, generateCasts, valueOf } from '../src/ai/core'
+import { applyMacro, createPerception, createView, generateCasts, simClone, valueOf } from '../src/ai/core'
 import type { Engine } from '../src/engine/engine'
 import type { Fighter, FightState } from '../src/engine/types'
-import { BREEDS, engineFor, makeFight, MAP_IDS, monster, player, randomScene, THL, VORTEX_MONSTERS } from './ai-core-helpers'
+import { BREEDS, engineFor, makeFight, MAP_IDS, monster, player, randomScene, THL, VORTEX_MONSTERS, yieldToEventLoop } from './ai-core-helpers'
 
 function V(engine: Engine, fight: FightState, me: Fighter, opts: Parameters<typeof valueOf>[3] = {}) {
   const view = createView(engine, fight, me, 3)
@@ -104,6 +104,43 @@ describe('T-eval : V(s)', () => {
       expect(vhCands.map(m => `${m.key}/${m.prior}`)).toEqual(vcCands.map(m => `${m.key}/${m.prior}`))
     }
   })
+
+  it('les caches n’influencent aucune décision le long d’une recherche (enfants et petits-enfants, ordres différents)', async () => {
+    // Perception « chaude » (ordre de la recherche), perception parcourue en ordre inverse, perception neuve par état :
+    // mêmes termes (cadres DPT ancrés, géométries de menace/potentiel et lignes « PV » réutilisées).
+    const engine = engineFor()
+    let checks = 0
+    for (const seed of [3, 7, 12, 21, 30, 44]) {
+      await yieldToEventLoop()
+      const { fight, me } = randomScene(seed, { engine })
+      const view = createView(engine, fight, me, 1)
+      const p = createPerception(view)
+      const states: FightState[] = []
+      for (const m of generateCasts(view, fight, me, { perception: p }).slice(0, 30)) {
+        const c = simClone(view, fight, 7)
+        if (applyMacro(engine, c, me.id, m)) states.push(c)
+      }
+      for (const k of states.slice(0, 4)) {
+        const vk = createView(engine, k, k.fighters[me.id], 1)
+        for (const m of generateCasts(vk, k, k.fighters[me.id], { perception: createPerception(vk) }).slice(0, 6)) {
+          const c = simClone(view, k, 9)
+          if (applyMacro(engine, c, me.id, m)) states.push(c)
+        }
+      }
+      const warm = states.map(st => valueOf(view, st, p, { root: fight, terminal: false }))
+      const p2 = createPerception(view)
+      const rev = states.slice().reverse().map(st => valueOf(view, st, p2, { root: fight, terminal: false })).reverse()
+      states.forEach((st, i) => {
+        const cold = valueOf(view, st, createPerception(view), { root: fight, terminal: false })
+        for (const k of TERMS) {
+          expect(warm[i][k], `${k} graine ${seed} état ${i} (chaud)`).toBeCloseTo(cold[k], 6)
+          expect(rev[i][k], `${k} graine ${seed} état ${i} (inverse)`).toBeCloseTo(cold[k], 6)
+          checks++
+        }
+      })
+    }
+    expect(checks).toBeGreaterThan(2000)
+  }, 120_000)
 
   it('décomposition : total = Σ termes ; continuation seulement hors feuille terminale', () => {
     const engine = engineFor()

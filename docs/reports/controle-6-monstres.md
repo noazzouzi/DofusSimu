@@ -8,8 +8,6 @@
 |---|---|---|---|---|---|---|
 | **99.2 %** (127/128) | 95.7 % – 99.9 % | 1.039 | 7.7 | 1.29 | 36.4 % | 0.0 |
 
-Pire variante INCERTAINE (≥ 7 combats) : `default` — 99.2 % sur 128.
-
 Causes d’échec : défaite (1).
 
 Tactiques utilisées : aucune ; coups créatifs : 0 ; effets non simulés rencontrés : 0 ; nœuds simulés : 0.
@@ -27,14 +25,14 @@ Tactiques utilisées : aucune ; coups créatifs : 0 ; effets non simulés rencon
 
 | Emplacement | Objet | Niv. | Panoplie | Forgemagie |
 |---|---|---|---|---|
-| Amulette | Collier de Tourthon | 200 | Panoplie des Tréfonds | transcendance criticalDamage +8 |
-| Anneau | Anneau de Brouce | 198 | Panoplie de Brouce Boulgoure | exo ap +1 |
-| Anneau | Anneau Crustique | 200 | Panoplie des Tréfonds | exo mp +1 |
-| Ceinture | Ceinture de Brouce | 194 | Panoplie de Brouce Boulgoure | transcendance criticalDamage +8 |
-| Bottes | Clairvoyance de Mériana ⁽¹⁾ | 200 |  | transcendance criticalDamage +8 |
-| Coiffe | Corne de Torkélonia | 200 | Panoplie de Torkélonia | transcendance criticalDamage +8 |
-| Cape | Cape au Logis | 198 |  | transcendance criticalDamage +8 |
-| Bouclier | Écorce de Brouce | 196 | Panoplie de Brouce Boulgoure | transcendance criticalDamage +8 |
+| Amulette | Collier de Tourthon | 200 | Panoplie des Tréfonds | transcendance Dommages critiques +8 |
+| Anneau | Anneau de Brouce | 198 | Panoplie de Brouce Boulgoure | exo PA +1 |
+| Anneau | Anneau Crustique | 200 | Panoplie des Tréfonds | exo PM +1 |
+| Ceinture | Ceinture de Brouce | 194 | Panoplie de Brouce Boulgoure | transcendance Dommages critiques +8 |
+| Bottes | Clairvoyance de Mériana ⁽¹⁾ | 200 |  | transcendance Dommages critiques +8 |
+| Coiffe | Corne de Torkélonia | 200 | Panoplie de Torkélonia | transcendance Dommages critiques +8 |
+| Cape | Cape au Logis | 198 |  | transcendance Dommages critiques +8 |
+| Bouclier | Écorce de Brouce | 196 | Panoplie de Brouce Boulgoure | transcendance Dommages critiques +8 |
 | Arme | Baguette de Torkélonia | 200 | Panoplie de Torkélonia |  |
 | Familier/Monture | Kokulte | 20 |  |  |
 | Dofus/Trophée | Aprybou ⁽¹⁾ | 200 |  |  |
@@ -53,14 +51,14 @@ Rotation de référence : Puissance → Bond → Concentration → Pression → 
 
 | Emplacement | Objet | Niv. | Panoplie | Forgemagie |
 |---|---|---|---|---|
-| Amulette | Talisman Songe | 200 | Panoplie du Bonimenteur | transcendance vitality +100 |
-| Anneau | Anneau du Cycloïde | 200 | Panoplie du Cycloïde | exo ap +1 |
-| Anneau | Anneau de Padgref | 197 | Panoplie de Padgref | exo mp +1 |
-| Ceinture | Sangle Ouare | 200 | Panoplie du Bonimenteur | transcendance vitality +100 |
-| Bottes | Bottes du Cycloïde | 200 | Panoplie du Cycloïde | transcendance vitality +100 |
-| Coiffe | Coiffe de Padgref | 198 | Panoplie de Padgref | transcendance vitality +100 |
-| Cape | Cape Ovri | 200 | Panoplie du Bonimenteur | transcendance vitality +100 |
-| Bouclier | Bouclier du Cycloïde | 200 | Panoplie du Cycloïde | transcendance vitality +100 |
+| Amulette | Talisman Songe | 200 | Panoplie du Bonimenteur | transcendance Vitalité +100 |
+| Anneau | Anneau du Cycloïde | 200 | Panoplie du Cycloïde | exo PA +1 |
+| Anneau | Anneau de Padgref | 197 | Panoplie de Padgref | exo PM +1 |
+| Ceinture | Sangle Ouare | 200 | Panoplie du Bonimenteur | transcendance Vitalité +100 |
+| Bottes | Bottes du Cycloïde | 200 | Panoplie du Cycloïde | transcendance Vitalité +100 |
+| Coiffe | Coiffe de Padgref | 198 | Panoplie de Padgref | transcendance Vitalité +100 |
+| Cape | Cape Ovri | 200 | Panoplie du Bonimenteur | transcendance Vitalité +100 |
+| Bouclier | Bouclier du Cycloïde | 200 | Panoplie du Cycloïde | transcendance Vitalité +100 |
 | Arme | Yaularc | 200 |  |  |
 | Familier/Monture | Sakochère | 60 |  |  |
 | Dofus/Trophée | Dofus des Glaces | 180 |  |  |
@@ -79,14 +77,14 @@ Rotation de référence : Balise Tactique → Tirs Puissants → Flèche Explosi
 
 | Emplacement | Objet | Niv. | Panoplie | Forgemagie |
 |---|---|---|---|---|
-| Amulette | Amulette des Chocomanciens | 200 | Panoplie des Chocomanciens | transcendance vitality +100 |
-| Anneau | Alliance Gloursonne | 198 | Panoplie Gloursonne | exo ap +1 |
-| Anneau | Anneau Volkorne | 200 | Panoplie Volkorne | exo mp +1 |
-| Ceinture | Ceinture du Glourséleste | 195 | Panoplie du Glourséleste | transcendance mpReduction +4 |
-| Bottes | Clairvoyance de Mériana ⁽¹⁾ | 200 |  | transcendance mpReduction +4 |
-| Coiffe | Visage de Mureine | 200 | Panoplie du Gouffre | transcendance mpReduction +4 |
-| Cape | Dorsale de Willorque | 200 | Panoplie du Gouffre | transcendance mpReduction +4 |
-| Bouclier | Bouclier des Chocomanciens | 200 | Panoplie des Chocomanciens | transcendance vitality +100 |
+| Amulette | Amulette des Chocomanciens | 200 | Panoplie des Chocomanciens | transcendance Vitalité +100 |
+| Anneau | Alliance Gloursonne | 198 | Panoplie Gloursonne | exo PA +1 |
+| Anneau | Anneau Volkorne | 200 | Panoplie Volkorne | exo PM +1 |
+| Ceinture | Ceinture du Glourséleste | 195 | Panoplie du Glourséleste | transcendance Retrait PM +4 |
+| Bottes | Clairvoyance de Mériana ⁽¹⁾ | 200 |  | transcendance Retrait PM +4 |
+| Coiffe | Visage de Mureine | 200 | Panoplie du Gouffre | transcendance Retrait PM +4 |
+| Cape | Dorsale de Willorque | 200 | Panoplie du Gouffre | transcendance Retrait PM +4 |
+| Bouclier | Bouclier des Chocomanciens | 200 | Panoplie des Chocomanciens | transcendance Vitalité +100 |
 | Arme | Lancepince d'Exécrabe | 200 | Panoplie du Gouffre |  |
 | Familier/Monture | Volkorne Turquoise et Indigo | 60 |  |  |
 | Dofus/Trophée | Aprybou ⁽¹⁾ | 200 |  |  |
@@ -105,14 +103,14 @@ Rotation de référence : Obsolescence → Pelle Aurifère → Maladresse → Ma
 
 | Emplacement | Objet | Niv. | Panoplie | Forgemagie |
 |---|---|---|---|---|
-| Amulette | Pendentif mignon de Koutoulou | 200 | Panoplie de R'lyugluglu | transcendance vitality +100 |
-| Anneau | Anneau Rifique | 200 | Panoplie de R'lyugluglu | exo ap +1 |
-| Anneau | Malédiction du Vénérable Endormi | 200 | Panoplie du Vénérable Endormi | exo mp +1 |
-| Ceinture | Ceinture de Vortex | 200 | Panoplie de Vortex | transcendance vitality +100 |
-| Bottes | Sabots de Vortex | 200 | Panoplie de Vortex | transcendance vitality +100 |
-| Coiffe | Cagoule de Vortex | 200 | Panoplie de Vortex | transcendance vitality +100 |
-| Cape | Manteau du Vénérable Endormi | 200 | Panoplie du Vénérable Endormi | transcendance vitality +100 |
-| Bouclier | Jadis | 200 |  | transcendance vitality +100 |
+| Amulette | Pendentif mignon de Koutoulou | 200 | Panoplie de R'lyugluglu | transcendance Vitalité +100 |
+| Anneau | Anneau Rifique | 200 | Panoplie de R'lyugluglu | exo PA +1 |
+| Anneau | Malédiction du Vénérable Endormi | 200 | Panoplie du Vénérable Endormi | exo PM +1 |
+| Ceinture | Ceinture de Vortex | 200 | Panoplie de Vortex | transcendance Vitalité +100 |
+| Bottes | Sabots de Vortex | 200 | Panoplie de Vortex | transcendance Vitalité +100 |
+| Coiffe | Cagoule de Vortex | 200 | Panoplie de Vortex | transcendance Vitalité +100 |
+| Cape | Manteau du Vénérable Endormi | 200 | Panoplie du Vénérable Endormi | transcendance Vitalité +100 |
+| Bouclier | Jadis | 200 |  | transcendance Vitalité +100 |
 | Arme | Arc du Vénérable Endormi | 200 | Panoplie du Vénérable Endormi |  |
 | Familier/Monture | Bisouglours | 20 |  |  |
 | Dofus/Trophée | Aprybou ⁽¹⁾ | 200 |  |  |
@@ -139,16 +137,16 @@ Rôles : Iop (killer), Crâ (zoneDps), Enutrof (mpLock), Eniripsa (healer).
 
 ## Historique d’optimisation
 
-- Stuff Iop (proxy) : log J 8.120 → 8.244 (DPT 2754 → 3119, EHP 5356 → 6052, 3.0 s).
-- Stuff Crâ (proxy) : log J 8.218 → 8.463 (DPT 3420 → 4289, EHP 4476 → 5974, 1.9 s).
-- Stuff Enutrof (proxy) : log J 6.172 → 6.578 (DPT 978 → 1822, EHP 7341 → 9575, 1.7 s).
-- Stuff Eniripsa (proxy) : log J 6.595 → 7.016 (DPT 2004 → 1611, EHP 4476 → 10619, 1.6 s).
+- Stuff Iop (proxy) : log J 8.121 → 8.244 (DPT 2754 → 3119, EHP 5361 → 6047, 2.5 s).
+- Stuff Crâ (proxy) : log J 8.218 → 8.463 (DPT 3420 → 4289, EHP 4475 → 5960, 1.5 s).
+- Stuff Enutrof (proxy) : log J 6.171 → 6.576 (DPT 978 → 1822, EHP 7332 → 9544, 1.3 s).
+- Stuff Eniripsa (proxy) : log J 6.595 → 7.014 (DPT 2004 → 1611, EHP 4475 → 10585, 1.6 s).
 - Variantes : objectif 1.043 → 1.043 ; aucune bascule significative.
 - Départ (presets, stuffs méta d’equipment.md §12) : 15.6 % de victoires (IC95 10.3-22.9 %), objectif 0.450 sur 128 combats
-- L3 Iop : proxy log J 8.120 → 8.244 (3.0 s) ; combats (24 graines) : build 2 retenu, objectif 0.457 → 0.654
-- L3 Crâ : proxy log J 8.218 → 8.463 (1.9 s) ; combats (24 graines) : build 1 retenu, objectif 0.654 → 0.783
-- L3 Enutrof : proxy log J 6.172 → 6.578 (1.7 s) ; combats (24 graines) : build 5 retenu, objectif 0.783 → 1.031
-- L3 Eniripsa : proxy log J 6.595 → 7.016 (1.6 s) ; combats (24 graines) : build 5 retenu, objectif 1.031 → 1.042
+- L3 Iop : proxy log J 8.121 → 8.244 (2.5 s) ; combats (24 graines) : build 2 retenu, objectif 0.457 → 0.654
+- L3 Crâ : proxy log J 8.218 → 8.463 (1.5 s) ; combats (24 graines) : build 1 retenu, objectif 0.654 → 0.783
+- L3 Enutrof : proxy log J 6.171 → 6.576 (1.3 s) ; combats (24 graines) : build 5 retenu, objectif 0.783 → 1.031
+- L3 Eniripsa : proxy log J 6.595 → 7.014 (1.6 s) ; combats (24 graines) : build 5 retenu, objectif 1.031 → 1.042
 - L4 : 0 bascule(s) acceptée(s) sur 24 essai(s), objectif 1.043 → 1.043
 - L2 (θ) non lancé : la politique scripted et le bouchon de l’IA de groupe n’utilisent pas θ (WP2) — un réglage ne pourrait rien mesurer.
 - Après L3 + L4 : 99.2 % (IC95 95.7-99.9 %), objectif 1.039 sur les mêmes 128 graines

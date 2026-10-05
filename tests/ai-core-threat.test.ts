@@ -26,7 +26,7 @@ import type { Fighter, FightState } from '../src/engine/types'
 import { distance } from '../src/map/geometry'
 import { Rng } from '../src/core/rng'
 import { loadTheta } from '../src/ai/theta'
-import { engineFor, pearson, randomScene } from './ai-core-helpers'
+import { engineFor, pearson, randomScene, yieldToEventLoop } from './ai-core-helpers'
 
 /** Cerveau de substitution (voir l'en-tête) ; `firstTarget` : première cible frappée par chaque monstre. */
 function standInBrain(engine: Engine): Controller & { firstTarget: Map<number, number> } {
@@ -74,13 +74,14 @@ function standInBrain(engine: Engine): Controller & { firstTarget: Map<number, n
 }
 
 describe('T-threat : menace ordonnée par la timeline contre des rollouts', () => {
-  it('120 scènes : corrélation incoming / dégâts subis (≥ 0,6, design 0,8) ; cible prédite = cible réelle ≥ 85 %', () => {
+  it('120 scènes : corrélation incoming / dégâts subis (≥ 0,6, design 0,8) ; cible prédite = cible réelle ≥ 85 %', async () => {
     const engine = engineFor()
     const xs: number[] = []
     const ys: number[] = []
     let agree = 0
     let predicted = 0
     for (let seed = 1; seed <= 120; seed++) {
+      if (seed % 10 === 0) await yieldToEventLoop()
       const { fight, me } = randomScene(seed, { engine })
       // PV des personnages variés (sinon tous identiques : les monstres départagent des ex æquo exacts).
       const rng = new Rng(seed * 7919)

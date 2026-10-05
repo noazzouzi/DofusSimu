@@ -13,7 +13,7 @@
 import { critChance } from '../../damage/crit'
 import type { FightState, Fighter } from '../../engine/types'
 import type { AIView, KillEstimate, LethalSplit, MacroAction, Perception } from '../types'
-import { castCellsFor, castFailureStatic, LosOracle, levelFor } from './castCells'
+import { castFailureStatic, hitCellsFor, LosOracle, levelFor } from './castCells'
 import { calibrationOf, createDptTable, lineDamage, isMeleeSpell, type DptTableImpl } from './dpt'
 import { cachedReach, buildOccupancy } from './reach'
 import { clamp, phi } from './rng'
@@ -107,7 +107,8 @@ export function canKillNow(view: AIView, me: Fighter, t: Fighter, p?: Perception
     if (castFailureStatic(engine, me, ks, lvl, me.ap) !== null) continue
     const bit = 1 << idx.length
     idx.push(i)
-    castCellsFor(s, me, ks, lvl, tCell, reach, los, 600, cells)
+    // Cases d'où le sort inflige ses dégâts à t (visée directe, couronne, autour du lanceur, portée 0 à zone).
+    hitCellsFor(s, me, ks, lvl, profiles[i], tCell, reach, los, 600, cells)
     for (const c of cells) byCell.set(c, (byCell.get(c) ?? 0) | bit)
   }
   if (!byCell.size) return NO_KILL(me)
@@ -130,7 +131,8 @@ export function canKillNow(view: AIView, me: Fighter, t: Fighter, p?: Perception
       let apNeeded = Math.ceil(ap)
       for (let a = 0; a <= Math.floor(ap); a++) {
         const tt = dpt.turn(me, t, a, 'now', filter)
-        if (killProbability(tt.mean * calib, tt.variance * calib * calib, need) >= 0.95 * pk) {
+        // Même loi que `pk` (mélange exact des critiques) : sinon le seuil de 95 % compare deux approximations.
+        if (killProbabilityParts(castParts(dpt, me, t, tt.casts, calib), need) >= 0.95 * pk) {
           apNeeded = a
           break
         }
@@ -245,6 +247,9 @@ export function lethalSplit(view: AIView, parent: FightState, meId: number, m: M
       if (c > 0 && k > 1) pk = (1 - c) * pk + c * uniform(k)
     }
   }
+  // Les états rendus reviennent en 'average' : la recherche qui les prolongerait ne doit pas jouer en jets min/max.
+  cMin.options.rollMode = 'average'
+  cMax.options.rollMode = 'average'
   let killed: FightState | null = pk > 0 ? (minKills ? cMin : maxKills ? cMax : null) : null
   if (pk > 0 && !killed) {
     // Kill possible seulement en critique : état « tué » approché par la mort de la victime après le jet maximal.

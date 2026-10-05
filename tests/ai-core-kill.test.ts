@@ -9,7 +9,7 @@ import { castSpell } from '../src/engine/cast'
 import type { Engine } from '../src/engine/engine'
 import type { Fighter, FightState } from '../src/engine/types'
 import type { MacroAction } from '../src/ai/types'
-import { BREEDS, engineFor, makeFight, monster, player, THL, VORTEX_MAP } from './ai-core-helpers'
+import { BREEDS, engineFor, makeFight, monster, player, THL, VORTEX_MAP, yieldToEventLoop } from './ai-core-helpers'
 
 const DRAWS = 10_000
 
@@ -29,10 +29,14 @@ function duel(engine: Engine, breedId: number, hp: number): { fight: FightState;
   return { fight, me, t }
 }
 
-/** Fraction de tirages `random` (graines 1..n) où `play` tue la cible. */
-function empirical(engine: Engine, fight: FightState, targetId: number, play: (c: FightState) => void, n = DRAWS): number {
+/**
+ * Fraction de tirages `random` (graines 1..n) où `play` tue la cible. Asynchrone : rend la main à la boucle
+ * d'événements tous les 1 000 tirages (un test synchrone de plus de 60 s fait expirer le RPC du worker vitest).
+ */
+async function empirical(engine: Engine, fight: FightState, targetId: number, play: (c: FightState) => void, n = DRAWS): Promise<number> {
   let kills = 0
   for (let i = 1; i <= n; i++) {
+    if (i % 1000 === 0) await yieldToEventLoop()
     const c = engine.cloneFight(fight, false)
     c.options.rollMode = 'random'
     c.rngState = (i * 2654435761) | 0
@@ -42,8 +46,25 @@ function empirical(engine: Engine, fight: FightState, targetId: number, play: (c
   return kills / n
 }
 
+/**
+ * Placements des lancers d'un plan (case du lanceur, case visée), calculés une fois sur un clone `average` : les
+ * tirages `random` jouent les mêmes lancers depuis les mêmes cases (aucun sort du plan ne déplace la cible).
+ */
+function placements(engine: Engine, fight: FightState, meId: number, targetId: number, spells: readonly number[]): { spellId: number; from: number; cell: number }[] {
+  const c = engine.cloneFight(fight, false)
+  const m = c.fighters[meId]
+  const out: { spellId: number; from: number; cell: number }[] = []
+  for (const spellId of spells) {
+    const cell = placeForCast(engine, c, m, spellId, c.fighters[targetId].cell)
+    if (cell < 0) continue
+    out.push({ spellId, from: m.cell, cell })
+    castSpell(engine, c, m, spellId, cell)
+  }
+  return out
+}
+
 describe('T-kill : probabilité de kill analytique (tour complet)', () => {
-  it('Iop et Crâ, PV autour des dégâts attendus : |p analytique − p empirique| ≤ 3 points', () => {
+  it('Iop et Enutrof, PV autour des dégâts attendus : |p analytique − p empirique| ≤ 3 points', async () => {
     const engine = engineFor()
     let checked = 0
     for (const breedId of [BREEDS.iop, BREEDS.enutrof]) {
@@ -59,11 +80,14 @@ describe('T-kill : probabilité de kill analytique (tour complet)', () => {
         const { fight, me, t } = duel(engine, breedId, hp)
         const view = createView(engine, fight, me, 1)
         const k = canKillNow(view, me, t, createPerception(view))
-        const pEmp = empirical(engine, fight, t.id, c => {
+        const plan = placements(engine, fight, me.id, t.id, k.spells)
+        expect(plan.length).toBe(k.spells.length)
+        const pEmp = await empirical(engine, fight, t.id, c => {
           const m = c.fighters[me.id]
-          for (const spellId of k.spells) {
-            const cell = placeForCast(engine, c, m, spellId, c.fighters[t.id].cell)
-            if (cell >= 0) castSpell(engine, c, m, spellId, cell)
+          for (const x of plan) {
+            if (!m.alive || !c.fighters[t.id].alive) break
+            m.cell = x.from
+            castSpell(engine, c, m, x.spellId, x.cell)
           }
         })
         console.log(`T-kill ${me.name} PV ${hp} (${frac} × espérance) : analytique ${k.p.toFixed(3)}, empirique ${pEmp.toFixed(3)} (${k.spells.join('+')})`)
@@ -86,7 +110,7 @@ describe('T-kill : probabilité de kill analytique (tour complet)', () => {
 })
 
 describe('T-kill : split léthal (un lancer, jets min/max + critique)', () => {
-  it('lancers isolés près du seuil : |p split − p empirique| ≤ 7 points', () => {
+  it('lancers isolés près du seuil : |p split − p empirique| ≤ 7 points', async () => {
     const engine = engineFor()
     let checked = 0
     for (const [breedId, spellId] of [[BREEDS.iop, 13125], [BREEDS.enutrof, 13333], [BREEDS.cra, 32429]] as const) {
@@ -106,7 +130,7 @@ describe('T-kill : split léthal (un lancer, jets min/max + critique)', () => {
         const split = lethalSplit(view, fight, me.id, macro, t.id, 7)!
         expect(split).not.toBeNull()
         expect(split.nodes).toBeGreaterThanOrEqual(2)
-        const pEmp = empirical(engine, fight, t.id, c => {
+        const pEmp = await empirical(engine, fight, t.id, c => {
           castSpell(engine, c, c.fighters[me.id], spellId, cell)
         })
         console.log(`T-kill split ${me.name} ${spellId} PV ${hp} : split ${split.p.toFixed(3)}, empirique ${pEmp.toFixed(3)}`)
@@ -114,6 +138,8 @@ describe('T-kill : split léthal (un lancer, jets min/max + critique)', () => {
         // États retenus : tué ⇔ p > 0, survivant ⇔ p < 1.
         if (split.p > 0) expect(split.killed && !split.killed.fighters[t.id].alive).toBe(true)
         if (split.p < 1) expect(split.survived && split.survived.fighters[t.id].alive).toBe(true)
+        // États prolongeables par la recherche : jets moyens.
+        for (const st of [split.killed, split.survived]) if (st) expect(st.options.rollMode).toBe('average')
         checked++
       }
     }

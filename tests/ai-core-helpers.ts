@@ -142,6 +142,14 @@ export function randomScene(seed: number, o: { nPlayers?: number; nMonsters?: nu
   return { engine, fight, me }
 }
 
+/**
+ * Rend la main à la boucle d'événements (tests longs) : un test qui bloque le worker vitest plus de 60 s fait expirer
+ * ses RPC (« Timeout calling onTaskUpdate »), erreur non gérée qui fait échouer toute la suite sous charge.
+ */
+export function yieldToEventLoop(): Promise<void> {
+  return new Promise(resolve => setImmediate(resolve))
+}
+
 /** Distance de Manhattan logique (réexport commode). */
 export function manhattan(a: number, b: number): number {
   return distanceOf(a, b)

@@ -15,6 +15,7 @@ import type { Stats } from '../../core/types'
 import type { EffectData, SpellLevelData, ZoneSpec } from '../../data/model'
 import { modifiedSpellLevel } from '../../engine/effects/buffs/spellMods'
 import { statBuffDef } from '../../engine/effects/buffs/stats'
+import { CAST_SPELL_RULES } from '../../engine/effects/castspell'
 import { CAST_SPELL_EFFECTS, isInstant } from '../../engine/effects/core'
 import { DAMAGE_SPECS, type DamageFamily } from '../../engine/effects/damage/pipeline'
 import { registeredEffects } from '../../engine/effects/registry'
@@ -46,6 +47,12 @@ export interface DamageLineX extends DamageLine {
   sub: boolean
   /** Masques des effets « lance un sort » parents (hors parents « soi ») que la cible doit aussi vérifier. */
   gates?: readonly string[]
+  /**
+   * Ligne d'un sous-sort lancé sur la case du LANCEUR (effet parent à masque « soi » : 1160/2160 sur « c »/« C »,
+   * 792/793, 1017-1019 ; src/engine/effects/castspell.ts) : sa zone est centrée sur le lanceur, pas sur la case visée
+   * (Jormun de la Forgelance : couronne de 2 cases autour du lanceur).
+   */
+  aroundCaster?: boolean
   sides: MaskSides
   effect: EffectData
   /** Effet homologue de la liste critique (null : critique sans effet propre). */
@@ -84,6 +91,21 @@ export interface SpellProfileX extends SpellProfile {
   /** Zone principale (première ligne de dégâts, sinon premier effet). */
   zone: ZoneSpec | null
   needFreeCell: boolean
+  /**
+   * Comment viser une entité pour lui infliger les dégâts du sort : 'direct' (sa case : une ligne de dégâts touche la
+   * case d'impact), 'ring' (une case voisine : dégâts seulement dans la couronne de la zone, ou case libre exigée —
+   * Fourvoiement, Brimade, Souffle, Vajra, Propulsion), 'around' (depuis une case proche : dégâts d'un sous-sort lancé
+   * autour du lanceur — Jormun). Lu par `hitCellsFor` (castCells.ts) : menace, potentiel, kills, continuation.
+   */
+  aim: 'direct' | 'ring' | 'around'
+  /**
+   * Caractéristiques offensives gagnées par le LANCEUR avant la première ligne de dégâts du sort (vols 266-271,
+   * buffs « soi » : Arnaque, Truanderie, Extorsion du Sram) : les dégâts du même lancer en profitent (dpt.ts).
+   */
+  preBoost: { stat: keyof Stats; value: number }[]
+  /** Zone de la ligne de dégâts « couronne » (aim 'ring') et de la ligne « autour du lanceur » (aim 'around'). */
+  ringZone: ZoneSpec | null
+  aroundZone: ZoneSpec | null
   needTakenCell: boolean
   /** Le sort ne vise que le lanceur (portée 0, masques C/c). */
   selfCast: boolean
@@ -118,6 +140,12 @@ const REMOVAL: Record<number, ['ap' | 'mp', boolean, boolean]> = {
   168: ['ap', false, false], 169: ['mp', false, false],
 }
 const DISPEL = new Set([132, 406, 1075, 1406])
+/** Vols de caractéristique (src/engine/effects/buffs/stats.ts) : la cible perd X, le lanceur gagne X. */
+const STEAL_STATS: Record<number, keyof Stats> = { 266: 'chance', 267: 'vitality', 268: 'agility', 269: 'intelligence', 271: 'strength', 320: 'range' }
+/** Caractéristiques qui modifient les dégâts d'un lancer (gains du lanceur avant ses lignes de dégâts). */
+const OFFENSIVE_STATS = new Set<keyof Stats>(['strength', 'intelligence', 'chance', 'agility', 'power', 'spellPower', 'damage',
+  'neutralDamage', 'earthDamage', 'fireDamage', 'waterDamage', 'airDamage', 'criticalDamage', 'critical', 'spellDamagePct',
+  'meleeDamagePct', 'rangedDamagePct', 'finalDamagePct', 'weaponDamagePct'])
 const GLYPH = new Set([401, 402, 1091, 1165, 4040, 2022, 1181])
 const TRAP = new Set([400])
 /** Sous-sorts lancés par le lanceur sur la case ciblée (fermeture analytique). */
@@ -161,6 +189,28 @@ function meanOf(e: EffectData): number {
   return (diceMinOf(e) + diceMaxOf(e)) / 2
 }
 
+/** La zone touche-t-elle sa propre case d'impact (anneaux, « tout sauf » exclus) ? */
+export function zoneHitsCenter(zone: ZoneSpec): boolean {
+  const z = compileZone(zone)
+  switch (z.shape) {
+    case 'O':
+    case 'Z':
+      return z.radius <= 0
+    case 'Q':
+    case '#':
+    case 'W':
+      return false
+    case 'C':
+    case 'X':
+    case '+':
+    case 'D':
+    case 'I':
+      return z.minRadius < 1
+    default:
+      return true
+  }
+}
+
 /** Rayon d'une zone (0 = case unique). */
 export function zoneRadius(zone: ZoneSpec): number {
   const z = compileZone(zone)
@@ -202,7 +252,7 @@ function conditionalCast(e: EffectData): boolean {
 }
 
 function scanEffects(engine: Engine, acc: Acc, effects: readonly EffectData[], crits: readonly EffectData[], sub: boolean, depth: number,
-                     seen: Set<SpellLevelData>, weight = 1, gates?: readonly string[]): void {
+                     seen: Set<SpellLevelData>, weight = 1, gates?: readonly string[], aroundCaster = false): void {
   const p = acc.p
   const probs = randomProbabilities(effects)
   // Sous-sorts conditionnels frères (paliers de PV, états) : une seule branche s'applique en général ⇒ poids 1/n.
@@ -232,6 +282,7 @@ function scanEffects(engine: Engine, acc: Acc, effects: readonly EffectData[], c
           dotTurns: isDot ? Math.max(1, e.triggerDuration ?? e.duration) : 0,
           effectId: id, family: spec.family, p: prob, sub, sides, effect: e, critEffect: ce, gates,
         }
+        if (aroundCaster) line.aroundCaster = true
         p.damage.push(line)
         if (!isDot && e.delay <= 0 && spec.family !== 'hp') p.baseDamage += prob * meanOf(e)
         acc.covered++
@@ -332,9 +383,12 @@ function scanEffects(engine: Engine, acc: Acc, effects: readonly EffectData[], c
         if (lvl && !seen.has(lvl)) {
           seen.add(lvl)
           // Porte du sous-sort : il n'est lancé que sur les cibles du masque de l'effet parent (ex. la lance du
-          // Forgelance « a,P,F7139 ») ; un parent « soi » (C/c) le lance sur la case du lanceur (zone autour de lui).
-          const gate = maskSides(e.targetMask).selfOnly ? gates : [...(gates ?? []), e.targetMask]
-          scanEffects(engine, acc, lvl.effects, lvl.criticalEffects, true, depth + 1, seen, conditionalCast(e) && nCond > 1 ? prob / nCond : prob, gate)
+          // Forgelance « a,P,F7139 ») ; un parent « soi » (C/c) le lance sur la case du lanceur (zone autour de lui),
+          // sauf 2960/2794/2795 qui visent toujours la case ciblée par le sort parent (castspell.ts).
+          const selfParent = maskSides(e.targetMask).selfOnly
+          const gate = selfParent ? gates : [...(gates ?? []), e.targetMask]
+          const around = aroundCaster || (selfParent && CAST_SPELL_RULES[id]?.where !== 'cell')
+          scanEffects(engine, acc, lvl.effects, lvl.criticalEffects, true, depth + 1, seen, conditionalCast(e) && nCond > 1 ? prob / nCond : prob, gate, around)
           continue
         }
       }
@@ -366,6 +420,7 @@ function buildProfile(engine: Engine, level: SpellLevelData, crit: boolean): Spe
     level, heals: [], shields: [], stats: [], removals: [], moves: [], states: [], received: [],
     zoneRadius: 0, zone: null, needFreeCell: level.needFreeCell, needTakenCell: level.needTakenCell,
     selfCast: false, hitsEnemies: false, hitsAllies: false, baseDamage: 0, removesStates: false, summonLines: [],
+    aim: 'direct', ringZone: null, aroundZone: null, preBoost: [],
   }
   const acc: Acc = { p, covered: 0, uncovered: 0 }
   scanEffects(engine, acc, effects, crits, false, 0, new Set([level]))
@@ -376,6 +431,33 @@ function buildProfile(engine: Engine, level: SpellLevelData, crit: boolean): Spe
   const firstZone = main ? main.zone : (effects.find(e => !e.clientOnly)?.zone ?? null)
   p.zone = firstZone
   p.zoneRadius = firstZone ? zoneRadius(firstZone) : 0
+  // Gains du lanceur avant la première ligne de dégâts (voir `preBoost`).
+  for (const e of effects) {
+    if (e.clientOnly) continue
+    if (DAMAGE_SPECS.has(e.effectId)) break
+    const steal = STEAL_STATS[e.effectId]
+    if (steal) {
+      if (OFFENSIVE_STATS.has(steal)) p.preBoost.push({ stat: steal, value: meanOf(e) })
+      continue
+    }
+    const sd = statBuffDef(e.effectId)
+    if (sd?.stat && sd.sign > 0 && OFFENSIVE_STATS.has(sd.stat) && maskSides(e.targetMask).selfOnly && e.delay <= 0) {
+      p.preBoost.push({ stat: sd.stat, value: meanOf(e) })
+    }
+  }
+  // Visée des dégâts (voir `aim`).
+  if (p.damage.length) {
+    const direct = !level.needFreeCell && p.damage.some(l => !l.aroundCaster && zoneHitsCenter(l.zone))
+    // Ligne « couronne » de préférence sans condition sur la cible (la lance du Forgelance « A,F50000 » ne vise
+    // qu'elle-même : la visée « autour du lanceur » prime alors).
+    const rings = p.damage.filter(l => !l.aroundCaster && zoneRadius(l.zone) > 0)
+    const free = rings.find(l => compileTargetMask(l.mask).targetConditions.length === 0)
+    const around = p.damage.find(l => l.aroundCaster && zoneRadius(l.zone) > 0)
+    const ring = free ?? (around ? undefined : rings[0])
+    p.ringZone = ring?.zone ?? null
+    p.aroundZone = around?.zone ?? null
+    p.aim = direct ? 'direct' : ring ? 'ring' : around ? 'around' : 'direct'
+  }
   let enemy = false
   let ally = false
   let selfOnly = true

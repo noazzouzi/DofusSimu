@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "description": "Calibration du DPT analytique (docs/design/ai.md §6.4) : rapport « dégâts simulés / DPT analytique », borné à [0,5 ; 2]. Mesuré par src/ai/core/calibrate.ts (micro-scénario « poutch » simplifié : le combattant seul contre un Buboxor grade 5 aux PV énormes sur la carte de l'Œil de Vortex, rollMode 'average', 3 tours de lancers choisis par le sac à dos analytique puis 3 tours sans lancer pour les dégâts différés). Presets : data/ai/presets.json (stuffs réels) ; classes : build THL simulé des tests (repli). Régénéré par WRITE_CALIBRATION=1 npx vitest run tests/ai-core-calibration.test.ts ; vérifié (dérive ≤ 0,03) par ce même test.",
-    "version": 2,
+    "description": "Calibration du DPT analytique (docs/design/ai.md §6.4) : rapport « dégâts simulés / DPT analytique », borné à [0,5 ; 2]. Mesuré par src/ai/core/calibrate.ts (micro-scénario « poutch » simplifié : le combattant seul contre un Buboxor grade 5 aux PV énormes sur la carte de l'Œil de Vortex, rollMode 'average', 3 tours de lancers choisis par le sac à dos analytique, chacun placé comme le suppose le DPT — sur l'entité, à côté pour un sort « couronne » ou à case libre, sur sa propre case pour un sous-sort lancé autour du lanceur —, puis 3 tours sans lancer pour les dégâts différés). Presets : data/ai/presets.json (stuffs réels) ; classes : build THL simulé des tests (repli). Régénéré par WRITE_CALIBRATION=1 npx vitest run tests/ai-core-calibration.test.ts ; vérifié (dérive ≤ 0,03) par ce même test.",
+    "version": 3,
     "bounds": [
       0.5,
       2
@@ -27,10 +27,10 @@
     "feca_protecteur": 1.002,
     "feca_entrave_zone": 1,
     "feca_glyphes": 1,
-    "forgelance_zone_terre": 0.5,
-    "forgelance_eau_air_support": 0.5,
-    "huppermage_quadra": 0.828,
-    "huppermage_entrave": 0.842,
+    "forgelance_zone_terre": 1,
+    "forgelance_eau_air_support": 1.002,
+    "huppermage_quadra": 1.007,
+    "huppermage_entrave": 1.03,
     "iop_terre_burst": 1,
     "iop_multi_zone": 0.91,
     "iop_soutien": 1,
@@ -49,9 +49,9 @@
     "sadida_infection": 1,
     "sadida_soin": 1,
     "sadida_terre": 1,
-    "sram_terre_pieges": 0.948,
-    "sram_air_poisons": 0.562,
-    "sram_utilitaire": 0.893,
+    "sram_terre_pieges": 0.893,
+    "sram_air_poisons": 1.106,
+    "sram_utilitaire": 1.183,
     "steamer_soutien": 1,
     "steamer_artillerie": 1.001,
     "xelor_retrait_pa": 0.946,
@@ -64,7 +64,7 @@
     "1": 1,
     "2": 1.056,
     "3": 1,
-    "4": 1.069,
+    "4": 1.032,
     "5": 1.001,
     "6": 1.006,
     "7": 1.001,
@@ -76,10 +76,10 @@
     "13": 1.087,
     "14": 1.002,
     "15": 1.046,
-    "16": 0.534,
-    "17": 0.819,
+    "16": 1.094,
+    "17": 1.012,
     "18": 1.017,
-    "20": 0.5
+    "20": 1
   },
   "monsters": {}
 }

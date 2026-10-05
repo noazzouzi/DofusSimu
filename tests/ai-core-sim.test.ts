@@ -15,7 +15,7 @@ import {
 import { playGreedyTurn } from '../src/ai/fallback'
 import { runFight, type ControllerProvider } from '../src/engine/runner'
 import type { FightEvent, FightState } from '../src/engine/types'
-import { engineFor, randomScene } from './ai-core-helpers'
+import { engineFor, randomScene, yieldToEventLoop } from './ai-core-helpers'
 
 describe('T-hash : transpositions', () => {
   it('A puis B ≡ B puis A pour des lancers indépendants (cibles différentes, sans déplacement ni état)', () => {
@@ -88,6 +88,57 @@ describe('T-hash : transpositions', () => {
     expect(dup).toBe(0)
   }, 60_000)
 
+  it('corpus d’états de recherche réels : hash égaux ⇔ états égaux sur les champs du hash (aucune collision)', async () => {
+    // Clé canonique indépendante (chaîne) des champs couverts par §6.8 : case, PV par paliers de 10, bouclier, PA/PM
+    // × 100, buffs sans uid ni ordre, relances, lancers du tour, morts (buffs conservés), marques, tour et créneau.
+    const canon = (st: FightState): string => {
+      const parts: string[] = [`${st.round}/${st.turnIndex}`]
+      for (const f of st.fighters) {
+        const buffs = f.buffs.map(b => `${b.sourceId}:${b.spellId}:${b.effect.effectId}:${Math.round(b.value * 100)}:${b.remaining}:${b.delay}`).sort().join(',')
+        if (!f.alive) {
+          parts.push(`~${f.id}[${buffs}]`)
+          continue
+        }
+        const rec = (r: Record<string, number>) => Object.keys(r).filter(k => r[k]).sort().map(k => `${k}=${r[k]}`).join(',')
+        parts.push(`${f.id}@${f.cell}:${Math.floor(f.hp / 10)}:${f.shield}:${Math.round(f.ap * 100)}:${Math.round(f.mp * 100)}[${buffs}]{${rec(f.cooldowns)}}{${rec(f.castsThisTurn)}}`)
+      }
+      parts.push(st.glyphs.map(m => `${m.sourceId}:${m.spellId}:${m.center}:${m.remaining}`).sort().join(','))
+      parts.push(st.traps.map(m => `${m.sourceId}:${m.spellId}:${m.center}`).sort().join(','))
+      return parts.join('|')
+    }
+    const engine = engineFor()
+    const byHash = new Map<bigint, string>()
+    let states = 0
+    for (let seed = 1; seed <= 24; seed++) {
+      await yieldToEventLoop()
+      const { fight, me } = randomScene(seed, { engine })
+      const view = createView(engine, fight, me, 3)
+      const frontier: FightState[] = [fight]
+      for (let depth = 0; depth < 2; depth++) {
+        const next: FightState[] = []
+        for (const st of frontier.slice(0, 6)) {
+          const m0 = st.fighters[me.id]
+          const vs = createView(engine, st, m0, 3)
+          for (const m of generateCasts(vs, st, m0, { perception: createPerception(vs) })) {
+            const c = simClone(view, st, depth)
+            if (!applyMacro(engine, c, me.id, m)) continue
+            const h = stateHash(c)
+            const key = canon(c)
+            const prev = byHash.get(h)
+            if (prev !== undefined) expect(prev, `collision (graine ${seed})`).toBe(key)
+            else byHash.set(h, key)
+            next.push(c)
+            states++
+          }
+        }
+        frontier.splice(0, frontier.length, ...next)
+      }
+    }
+    // Des transpositions existent (mêmes états par deux ordres) : moins de hash distincts que d'états.
+    expect(states).toBeGreaterThan(5000)
+    expect(byHash.size).toBeLessThan(states)
+  }, 120_000)
+
   it('empreinte de combattant : stable sur clone, sensible aux caractéristiques et à la case', () => {
     const engine = engineFor()
     const { fight } = randomScene(3, { engine })
@@ -104,11 +155,12 @@ describe('T-hash : transpositions', () => {
 })
 
 describe('T-parity : advanceUntil = runFight', () => {
-  it('20 combats : mêmes tours, mêmes événements, même état final', () => {
+  it('20 combats : mêmes tours, mêmes événements, même état final', async () => {
     const engine = engineFor()
     const ctrl: ControllerProvider = () => ({ playTurn: (e, f, me) => playGreedyTurn(e, f, me) })
     const strip = (evs: FightEvent[]) => evs.filter(e => e.t !== 'log' && e.t !== 'aiNote' && e.t !== 'fightEnd')
     for (let seed = 1; seed <= 20; seed++) {
+      await yieldToEventLoop()
       const { fight } = randomScene(seed, { engine, nPlayers: 2, nMonsters: 3 })
       const a = engine.cloneFight(fight, true)
       const b = engine.cloneFight(fight, true)

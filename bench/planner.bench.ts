@@ -10,6 +10,7 @@
  * | `HourPlanner` `deep` (48 × 20) | ≤ 40 ms | > 80 ms |
  * | `measureHourCosts` (une fois par combat) | ≤ 2 ms | — |
  * | `VortexAIModel.update` `fast` / `standard` (oracle, plan, prix, relances, coût de mort) | ≈ 2 ms / ≈ 15 ms | — |
+ * | idem sur un combat réel passif de 8 tours (perception neuve à chaque tour, caches froids) | repère 1 ms / 15 ms | — |
  * | `planBurst` (phase 2) | ≤ 1 ms | — |
  *
  * Échec à ×2 (machines de CI variables) : signalé dans le résumé imprimé, pas d'assertion (vitest bench).
@@ -115,6 +116,36 @@ const updateOnce = (mode: 'fast' | 'standard') => {
   model[mode].update(view, emptyBlackboard(), perception, mode)
 }
 
+/**
+ * Mises à jour RÉALISTES : un combat passif de 8 tours (vagues 1-2, monstres qui bougent, buffs, heures), le modèle
+ * mis à jour au début de chaque tour de joueur avec une perception neuve — moyenne par mise à jour (le banc sur un
+ * état figé ci-dessus profite de caches DPT/menace chauds qu'un vrai combat n'a pas).
+ */
+function passiveFightUpdates(mode: 'fast' | 'standard', seed: number): { ms: number; n: number } {
+  const e = createEngine(DATA, vortexHooks)
+  const t = buildTeam(DATA, parseTeam(META, DATA))
+  for (const p of t) p.hp = p.maxHp = p.baseMaxHp = 1_000_000
+  const f = createVortexFight(e, t, { params: VORTEX_DEFAULT_PARAMS, seed, rollMode: 'random', record: false, rngRekey: 'perTurn' })
+  const m = createVortexAIModel(VORTEX_DEFAULT_PARAMS, theta)
+  let ms = 0
+  let n = 0
+  for (let i = 0; i < 400 && f.round <= 8 && !f.ended; i++) {
+    const cur = e.nextTurn(f)
+    if (!cur) break
+    if (cur.kind === 'player') {
+      const v = createView(e, f, cur, 7)
+      const b = emptyBlackboard()
+      const p = createPerception(v, { theta }, m, { bb: b })
+      const t0 = performance.now()
+      m.update(v, b, p, mode)
+      ms += performance.now() - t0
+      n++
+    }
+    if (cur.alive && !f.ended) e.endTurn(f, cur)
+  }
+  return { ms, n }
+}
+
 // ── phase 2 ──
 const p2engine = createEngine(DATA, vortexHooks)
 const p2fight = createPhase2Fight(p2engine, buildTeam(DATA, parseTeam(META, DATA)), { params: { ...VORTEX_DEFAULT_PARAMS, phase2Hours: [2, 7, 10] }, seed: 5, rollMode: 'random', record: false, rngRekey: 'perTurn' })
@@ -166,6 +197,19 @@ afterAll(() => {
   measure('VortexAIModel.update fast (non caché)', 3, 60, () => updateOnce('fast'))
   measure('VortexAIModel.update standard', 20, 30, () => updateOnce('standard'))
   measure('planBurst', 1, 200, () => planBurst(p2view, { theta, params: VORTEX_DEFAULT_PARAMS, dpt: createDptTable(p2engine) }))
+  for (const mode of ['fast', 'standard'] as const) {
+    passiveFightUpdates(mode, 1) // chauffe
+    let ms = 0
+    let n = 0
+    for (const seed of [2, 3, 4]) {
+      const r = passiveFightUpdates(mode, seed)
+      ms += r.ms
+      n += r.n
+    }
+    const per = ms / Math.max(1, n)
+    const target = mode === 'fast' ? 1 : 15
+    notes.push(`VortexAIModel.update ${mode} — combat réel passif (8 tours, ${n} mises à jour) : ${per.toFixed(2)} ms/mise à jour (repère ${target} ms) — ${per <= target ? 'OK' : per <= 2 * target ? 'au-dessus du repère' : 'ÉCHEC (×2)'}`)
+  }
   const r = planHours(realRoot, realCtx, cfg('standard'))
   notes.push(`plan standard (tour 8) : ${r.plan.contracts.length} contrats, ${r.expansions} expansions, ${realRoot.monsters.filter(m => m.status !== 'pending').length} monstres présents`)
   console.log(`\n── WP3b, B7 (planificateur d'heures) ──\n${notes.join('\n')}\n`)

@@ -9,7 +9,7 @@
  *  budget.ts       budget en nœuds (`createNodeBudget`)
  *  hash.ts         transpositions (`stateHash`), empreintes (`fighterDigest`, `revKey`)
  *  reach.ts        accessibilité avec tacle exact (`computeReach`, `cachedReach`, `reachPath`)
- *  castCells.ts    portée inverse, LdV mémoïsée, cases de lancer
+ *  castCells.ts    portée inverse, LdV mémoïsée, cases de lancer, visée des dégâts (`hitCellsFor`, `hitsFrom`)
  *  spellProfile.ts profils analytiques des sorts
  *  dpt.ts          DPT calibré (`createDptTable`), dégâts d'un lancer
  *  threat.ts       menace ordonnée par la timeline (`buildThreat`)
@@ -37,17 +37,17 @@ export {
   escapeRatioAt, mpSpent, reachPath, type ReachOptions,
 } from './reach'
 export {
-  castCellsFor, castFailureStatic, castGeom, castGeometryOk, firstCastCell, hitCastCell, inverseRange, levelFor, LosOracle,
-  nextTurnStaticOk, occupantAfterMove, selfZoneHits, type CastGeom,
+  castCellsFor, castFailureStatic, castGeom, castGeometryOk, firstCastCell, hitCastCell, hitCellsFor, hitsFrom, inverseRange,
+  levelFor, LosOracle, nextTurnStaticOk, occupantAfterMove, selfZoneHits, type CastGeom,
 } from './castCells'
 export {
-  createSpellProfileIndex, maskSides, zoneRadius, type DamageLineX, type HealLineX, type MaskSides, type MoveLineX,
+  createSpellProfileIndex, maskSides, zoneHitsCenter, zoneRadius, type DamageLineX, type HealLineX, type MaskSides, type MoveLineX,
   type ReceivedLineX, type RemovalLineX, type ShieldLineX, type SpellProfileIndexX, type SpellProfileX, type StatLineX,
   type StateLineX,
 } from './spellProfile'
 export {
-  calibrationOf, castDamage, castsAvailable, createDptTable, DptFrame, DptTableImpl, isMeleeSpell, lineDamage, receivedMods,
-  spellCritPct, zoneHitsCenter, type CalibrationTable, type CastDamage, type TurnDamage, type TurnMode,
+  calibrationOf, casterZoneCover, castDamage, castsAvailable, createDptTable, DptFrame, DptTableImpl, isMeleeSpell, lineDamage,
+  receivedMods, spellCritPct, type CalibrationTable, type CastDamage, type TurnDamage, type TurnMode,
 } from './dpt'
 export {
   buffActiveAtNextTurn, buildThreat, flagAtNextTurn, hpEff, nextTurnApMp, pacifistStates, ThreatModelImpl, type EnemyThreat,

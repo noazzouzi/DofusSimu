@@ -29,7 +29,7 @@
           "level": 200,
           "set": "Panoplie des Tréfonds",
           "forgemagie": [
-            "transcendance criticalDamage +8"
+            "transcendance Dommages critiques +8"
           ],
           "passiveUnsimulated": false
         },
@@ -40,7 +40,7 @@
           "level": 198,
           "set": "Panoplie de Brouce Boulgoure",
           "forgemagie": [
-            "exo ap +1"
+            "exo PA +1"
           ],
           "passiveUnsimulated": false
         },
@@ -51,7 +51,7 @@
           "level": 200,
           "set": "Panoplie des Tréfonds",
           "forgemagie": [
-            "exo mp +1"
+            "exo PM +1"
           ],
           "passiveUnsimulated": false
         },
@@ -62,7 +62,7 @@
           "level": 194,
           "set": "Panoplie de Brouce Boulgoure",
           "forgemagie": [
-            "transcendance criticalDamage +8"
+            "transcendance Dommages critiques +8"
           ],
           "passiveUnsimulated": false
         },
@@ -72,7 +72,7 @@
           "name": "Clairvoyance de Mériana",
           "level": 200,
           "forgemagie": [
-            "transcendance criticalDamage +8"
+            "transcendance Dommages critiques +8"
           ],
           "passiveUnsimulated": true
         },
@@ -83,7 +83,7 @@
           "level": 200,
           "set": "Panoplie de Torkélonia",
           "forgemagie": [
-            "transcendance criticalDamage +8"
+            "transcendance Dommages critiques +8"
           ],
           "passiveUnsimulated": false
         },
@@ -93,7 +93,7 @@
           "name": "Cape au Logis",
           "level": 198,
           "forgemagie": [
-            "transcendance criticalDamage +8"
+            "transcendance Dommages critiques +8"
           ],
           "passiveUnsimulated": false
         },
@@ -104,7 +104,7 @@
           "level": 196,
           "set": "Panoplie de Brouce Boulgoure",
           "forgemagie": [
-            "transcendance criticalDamage +8"
+            "transcendance Dommages critiques +8"
           ],
           "passiveUnsimulated": false
         },
@@ -376,7 +376,7 @@
           "level": 200,
           "set": "Panoplie du Bonimenteur",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -387,7 +387,7 @@
           "level": 200,
           "set": "Panoplie du Cycloïde",
           "forgemagie": [
-            "exo ap +1"
+            "exo PA +1"
           ],
           "passiveUnsimulated": false
         },
@@ -398,7 +398,7 @@
           "level": 197,
           "set": "Panoplie de Padgref",
           "forgemagie": [
-            "exo mp +1"
+            "exo PM +1"
           ],
           "passiveUnsimulated": false
         },
@@ -409,7 +409,7 @@
           "level": 200,
           "set": "Panoplie du Bonimenteur",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -420,7 +420,7 @@
           "level": 200,
           "set": "Panoplie du Cycloïde",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -431,7 +431,7 @@
           "level": 198,
           "set": "Panoplie de Padgref",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -442,7 +442,7 @@
           "level": 200,
           "set": "Panoplie du Bonimenteur",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -453,7 +453,7 @@
           "level": 200,
           "set": "Panoplie du Cycloïde",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -725,7 +725,7 @@
           "level": 200,
           "set": "Panoplie des Chocomanciens",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -736,7 +736,7 @@
           "level": 198,
           "set": "Panoplie Gloursonne",
           "forgemagie": [
-            "exo ap +1"
+            "exo PA +1"
           ],
           "passiveUnsimulated": false
         },
@@ -747,7 +747,7 @@
           "level": 200,
           "set": "Panoplie Volkorne",
           "forgemagie": [
-            "exo mp +1"
+            "exo PM +1"
           ],
           "passiveUnsimulated": false
         },
@@ -758,7 +758,7 @@
           "level": 195,
           "set": "Panoplie du Glourséleste",
           "forgemagie": [
-            "transcendance mpReduction +4"
+            "transcendance Retrait PM +4"
           ],
           "passiveUnsimulated": false
         },
@@ -768,7 +768,7 @@
           "name": "Clairvoyance de Mériana",
           "level": 200,
           "forgemagie": [
-            "transcendance mpReduction +4"
+            "transcendance Retrait PM +4"
           ],
           "passiveUnsimulated": true
         },
@@ -779,7 +779,7 @@
           "level": 200,
           "set": "Panoplie du Gouffre",
           "forgemagie": [
-            "transcendance mpReduction +4"
+            "transcendance Retrait PM +4"
           ],
           "passiveUnsimulated": false
         },
@@ -790,7 +790,7 @@
           "level": 200,
           "set": "Panoplie du Gouffre",
           "forgemagie": [
-            "transcendance mpReduction +4"
+            "transcendance Retrait PM +4"
           ],
           "passiveUnsimulated": false
         },
@@ -801,7 +801,7 @@
           "level": 200,
           "set": "Panoplie des Chocomanciens",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -1073,7 +1073,7 @@
           "level": 200,
           "set": "Panoplie de R'lyugluglu",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -1084,7 +1084,7 @@
           "level": 200,
           "set": "Panoplie de R'lyugluglu",
           "forgemagie": [
-            "exo ap +1"
+            "exo PA +1"
           ],
           "passiveUnsimulated": false
         },
@@ -1095,7 +1095,7 @@
           "level": 200,
           "set": "Panoplie du Vénérable Endormi",
           "forgemagie": [
-            "exo mp +1"
+            "exo PM +1"
           ],
           "passiveUnsimulated": false
         },
@@ -1106,7 +1106,7 @@
           "level": 200,
           "set": "Panoplie de Vortex",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -1117,7 +1117,7 @@
           "level": 200,
           "set": "Panoplie de Vortex",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -1128,7 +1128,7 @@
           "level": 200,
           "set": "Panoplie de Vortex",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -1139,7 +1139,7 @@
           "level": 200,
           "set": "Panoplie du Vénérable Endormi",
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -1149,7 +1149,7 @@
           "name": "Jadis",
           "level": 200,
           "forgemagie": [
-            "transcendance vitality +100"
+            "transcendance Vitalité +100"
           ],
           "passiveUnsimulated": false
         },
@@ -1465,10 +1465,10 @@
   },
   "history": [
     "Départ (presets, stuffs méta d’equipment.md §12) : 15.6 % de victoires (IC95 10.3-22.9 %), objectif 0.450 sur 128 combats",
-    "L3 Iop : proxy log J 8.120 → 8.244 (3.0 s) ; combats (24 graines) : build 2 retenu, objectif 0.457 → 0.654",
-    "L3 Crâ : proxy log J 8.218 → 8.463 (1.9 s) ; combats (24 graines) : build 1 retenu, objectif 0.654 → 0.783",
-    "L3 Enutrof : proxy log J 6.172 → 6.578 (1.7 s) ; combats (24 graines) : build 5 retenu, objectif 0.783 → 1.031",
-    "L3 Eniripsa : proxy log J 6.595 → 7.016 (1.6 s) ; combats (24 graines) : build 5 retenu, objectif 1.031 → 1.042",
+    "L3 Iop : proxy log J 8.121 → 8.244 (2.5 s) ; combats (24 graines) : build 2 retenu, objectif 0.457 → 0.654",
+    "L3 Crâ : proxy log J 8.218 → 8.463 (1.5 s) ; combats (24 graines) : build 1 retenu, objectif 0.654 → 0.783",
+    "L3 Enutrof : proxy log J 6.171 → 6.576 (1.3 s) ; combats (24 graines) : build 5 retenu, objectif 0.783 → 1.031",
+    "L3 Eniripsa : proxy log J 6.595 → 7.014 (1.6 s) ; combats (24 graines) : build 5 retenu, objectif 1.031 → 1.042",
     "L4 : 0 bascule(s) acceptée(s) sur 24 essai(s), objectif 1.043 → 1.043",
     "L2 (θ) non lancé : la politique scripted et le bouchon de l’IA de groupe n’utilisent pas θ (WP2) — un réglage ne pourrait rien mesurer.",
     "Après L3 + L4 : 99.2 % (IC95 95.7-99.9 %), objectif 1.039 sur les mêmes 128 graines",
@@ -1513,43 +1513,43 @@
   "stuff": [
     {
       "member": "Iop",
-      "startLogJ": 8.120430503166622,
-      "bestLogJ": 8.244127993225225,
+      "startLogJ": 8.120693975737934,
+      "bestLogJ": 8.243915699270373,
       "startDpt": 2754.3103238866397,
       "bestDpt": 3119.05991902834,
-      "startEhp": 5355.875800442479,
-      "bestEhp": 6051.675653255911,
-      "ms": 3026.8694749999995
+      "startEhp": 5360.581621127033,
+      "bestEhp": 6047.394720934918,
+      "ms": 2454.6424779999998
     },
     {
       "member": "Crâ",
-      "startLogJ": 8.218146726676089,
-      "bestLogJ": 8.463260867897816,
+      "startLogJ": 8.218134935865365,
+      "bestLogJ": 8.462571302452774,
       "startDpt": 3420.2295386072874,
       "bestDpt": 4289.212985684211,
-      "startEhp": 4475.659013362554,
-      "bestEhp": 5974.165062996267,
-      "ms": 1914.3364320000037
+      "startEhp": 4475.483111324986,
+      "bestEhp": 5960.4489067128525,
+      "ms": 1488.1375560000015
     },
     {
       "member": "Enutrof",
-      "startLogJ": 6.1719234009723145,
-      "bestLogJ": 6.577804155929897,
+      "startLogJ": 6.171436270805283,
+      "bestLogJ": 6.576481319040198,
       "startDpt": 977.6822672064778,
       "bestDpt": 1821.9759919028338,
-      "startEhp": 7341.174174040535,
-      "bestEhp": 9575.165978385028,
-      "ms": 1689.6279189999987
+      "startEhp": 7332.239347170396,
+      "bestEhp": 9543.552324878709,
+      "ms": 1253.943793999999
     },
     {
       "member": "Eniripsa",
-      "startLogJ": 6.594896083477957,
-      "bestLogJ": 7.015510172909378,
+      "startLogJ": 6.5948764321267515,
+      "bestLogJ": 7.013937888222538,
       "startDpt": 2003.6689812145748,
       "bestDpt": 1611.0783615789474,
-      "startEhp": 4475.659013362554,
-      "bestEhp": 10618.673039251673,
-      "ms": 1648.4232829999964
+      "startEhp": 4475.483111324986,
+      "bestEhp": 10585.334330636311,
+      "ms": 1599.0015879999992
     }
   ],
   "variants": {

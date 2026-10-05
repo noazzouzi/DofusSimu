@@ -237,7 +237,7 @@ class Evaluator {
         }
       }
     }
-    if (!r.valid) return { state: s, logJ: -Infinity }
+    if (!r.valid) return { state: cloneState(s), logJ: -Infinity }
     const score = this.ctx.surrogate(r.stats, r.maxHp)
     return { state: cloneState(s), logJ: score.logJ, score, stats: r.stats, maxHp: r.maxHp, forge: forge ?? undefined, build }
   }

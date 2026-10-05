@@ -4,7 +4,7 @@
  * corpus : ops/s ⇒ µs par opération (1e6 / hz).
  *
  *  - B1 « nœud » : `simClone` + `applyMacro` (chemin + lancer, effets réels) — cible ≤ 70 µs, échec CI > 140 µs.
- *  - B2 « V(s) » : `valueOf` (menace + potentiel + DPT, perception synchronisée) d'un enfant inédit (clone neuf) :
+ *  - B2 « V(s) » : `valueOf` (menace + potentiel + DPT, perception synchronisée) d'un enfant (copie faite hors mesure) :
  *    (a) même géométrie déjà vue (cas courant d'un faisceau), (b) premier passage (géométrie nouvelle : accessibilités
  *    et lignes de vue recalculées) — cible ≤ 30 µs, échec CI > 60 µs.
  *  - Références : `cloneFight` seul, génération des candidats d'un nœud (`generateCasts` + `quickEstimate`), préfiltre
@@ -67,12 +67,18 @@ describe('B1 — nœud (clone + chemin + lancer)', () => {
   })
 })
 
+// Copies des enfants faites hors mesure : chaque appel voit un objet d'état différent du précédent (resynchronisation
+// complète de la perception), sans compter le coût du clonage dans B2.
+const kidCopies = kids.map(({ k }) => engine.cloneFight(k, false))
+
 describe('B2 — V(s) d’un enfant', () => {
   bench('B2a valueOf (géométrie déjà vue)', () => {
+    const i = iKid++ % kids.length
+    valueOf(kids[i].sc.view, kidCopies[i], kids[i].sc.p, { root: kids[i].sc.fight })
+  })
+  bench('B2a\' valueOf + cloneFight (référence de la livraison)', () => {
     const { sc, k } = kids[iKid++ % kids.length]
-    // Clone neuf : état inédit pour la perception (empreinte différente), mêmes positions.
-    const c = engine.cloneFight(k, false)
-    valueOf(sc.view, c, sc.p, { root: sc.fight })
+    valueOf(sc.view, engine.cloneFight(k, false), sc.p, { root: sc.fight })
   })
   bench('B2b valueOf (premier passage : perception neuve)', () => {
     const { sc, k } = kids[iFresh++ % kids.length]

@@ -1,0 +1,1853 @@
+{
+  "id": "vortex-campagne",
+  "title": "Œil de Vortex — campagne de composition (T0 → successive halving → co-optimisation → validation)",
+  "createdAt": "2026-10-05",
+  "scenarioId": "vortex",
+  "team": [
+    {
+      "name": "Crâ",
+      "className": "Crâ",
+      "presetId": "cra_feu_zone",
+      "presetLabel": "Crâ Feu zone",
+      "role": "zoneDps",
+      "element": "Feu",
+      "stats": {
+        "ap": 12,
+        "mp": 6,
+        "range": 5,
+        "hp": 5003,
+        "mainStat": "Intelligence",
+        "mainValue": 1158,
+        "critical": 30,
+        "power": 290
+      },
+      "items": [
+        {
+          "slot": "Amulette",
+          "itemId": 31789,
+          "name": "Collier de Gargandyas",
+          "level": 200,
+          "set": "Panoplie de Gargandyas",
+          "forgemagie": [
+            "transcendance Dommages Feu +6"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Anneau",
+          "itemId": 18594,
+          "name": "Baguistik",
+          "level": 200,
+          "set": "Panoplistik",
+          "forgemagie": [
+            "exo PA +1"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Anneau",
+          "itemId": 22192,
+          "name": "Ceste de Guerre",
+          "level": 200,
+          "set": "Panoplie de Guerre",
+          "forgemagie": [
+            "exo PM +1"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Ceinture",
+          "itemId": 21224,
+          "name": "Croture",
+          "level": 200,
+          "forgemagie": [
+            "transcendance Vitalité +100"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Bottes",
+          "itemId": 22189,
+          "name": "Solerets de Guerre",
+          "level": 200,
+          "set": "Panoplie de Guerre",
+          "forgemagie": [
+            "transcendance Vitalité +100"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Coiffe",
+          "itemId": 22190,
+          "name": "Heaume de Guerre",
+          "level": 200,
+          "set": "Panoplie de Guerre",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Cape",
+          "itemId": 15697,
+          "name": "Voilamibe",
+          "level": 200,
+          "set": "Panoplie des Krobes",
+          "forgemagie": [
+            "transcendance Vitalité +100"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Bouclier",
+          "itemId": 18692,
+          "name": "Bouclistik",
+          "level": 200,
+          "set": "Panoplistik",
+          "forgemagie": [
+            "transcendance Vitalité +100"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Arme",
+          "itemId": 26010,
+          "name": "Épée Diablotine",
+          "level": 200,
+          "forgemagie": [
+            "transcendance Vitalité +100"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Familier/Monture",
+          "itemId": 11971,
+          "name": "Bisouglours",
+          "level": 20,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 694,
+          "name": "Dofus Pourpre",
+          "level": 110,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 7754,
+          "name": "Dofus Ocre",
+          "level": 160,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 6980,
+          "name": "Dofus Vulbis",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 7043,
+          "name": "Dofus des Glaces",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 22022,
+          "name": "Aprybou",
+          "level": 200,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 30453,
+          "name": "Impétueux",
+          "level": 150,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        }
+      ],
+      "points": {
+        "Vitalité": 3,
+        "Intelligence": 992
+      },
+      "scrolls": {
+        "Vitalité": 100,
+        "Sagesse": 100,
+        "Force": 100,
+        "Intelligence": 100,
+        "Chance": 100,
+        "Agilité": 100
+      },
+      "spells": [
+        {
+          "pair": 0,
+          "active": "Flèche Éclatante",
+          "activeId": 32449,
+          "other": "Flèche de Recul",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 1,
+          "active": "Flèche Glacée",
+          "activeId": 32435,
+          "other": "Flèche Harcelante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 2,
+          "active": "Flèche Évasive",
+          "activeId": 32531,
+          "other": "Flèche Vagabonde",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 3,
+          "active": "Flèche de Barrage",
+          "activeId": 32443,
+          "other": "Carreaux Destructeurs",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 4,
+          "active": "Balise Tactique",
+          "activeId": 32467,
+          "other": "Pas Chassé",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 5,
+          "active": "Tirs Éloignés",
+          "activeId": 32465,
+          "other": "Tir Perçant",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 6,
+          "active": "Flèche Détonante",
+          "activeId": 32444,
+          "other": "Flèche Ralentissante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 7,
+          "active": "Flèche Persécutrice",
+          "activeId": 32433,
+          "other": "Flèche d'Abolition",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 8,
+          "active": "Flèche Assaillante",
+          "activeId": 32458,
+          "other": "Flèche Cinglante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 9,
+          "active": "Flèche Tyrannique",
+          "activeId": 32448,
+          "other": "Flèche d'Immobilisation",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 10,
+          "active": "Tirs Puissants",
+          "activeId": 32466,
+          "other": "Flèches Amoureuses",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 11,
+          "active": "Flèches Enflammées",
+          "activeId": 32447,
+          "other": "Flèche de Dispersion",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 12,
+          "active": "Flèche Explosive",
+          "activeId": 32445,
+          "other": "Flèche Massacrante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 13,
+          "active": "Pluie de Flèches",
+          "activeId": 32431,
+          "other": "Œil de Taupe",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 14,
+          "active": "Flèche Paralysante",
+          "activeId": 32441,
+          "other": "Œil pour Œil",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 15,
+          "active": "Balise de Survie",
+          "activeId": 32474,
+          "other": "Représailles",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 16,
+          "active": "Tir de Repli",
+          "activeId": 32470,
+          "other": "Vendetta",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 17,
+          "active": "Flèche Punitive",
+          "activeId": 32456,
+          "other": "Flèche du Jugement",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 18,
+          "active": "Flèche d'Expiation",
+          "activeId": 32438,
+          "other": "Flèche de Rédemption",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 19,
+          "active": "Flèche Perforante",
+          "activeId": 32429,
+          "other": "Flèche Boomerang",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 20,
+          "active": "Flèche Dévorante",
+          "activeId": 32446,
+          "other": "Flèche Fulminante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 21,
+          "active": "Sentinelle",
+          "activeId": 32475,
+          "other": "Acuité Absolue",
+          "changedFromPreset": false
+        }
+      ],
+      "rotation": [
+        "Balise Tactique",
+        "Tirs Puissants",
+        "Flèche Explosive",
+        "Flèche Détonante ×2",
+        "Tir de Repli",
+        "Flèche Tyrannique",
+        "Flèche Dévorante"
+      ]
+    },
+    {
+      "name": "Crâ 2",
+      "className": "Crâ",
+      "presetId": "cra_air_entrave",
+      "presetLabel": "Crâ Air entrave PM",
+      "role": "mpLock",
+      "element": "Air",
+      "stats": {
+        "ap": 12,
+        "mp": 6,
+        "range": 5,
+        "hp": 4153,
+        "mainStat": "Agilité",
+        "mainValue": 1323,
+        "critical": 67,
+        "power": 0
+      },
+      "items": [
+        {
+          "slot": "Coiffe",
+          "itemId": 13123,
+          "name": "Couronne d'Allister",
+          "level": 196,
+          "set": "Panoplie d'Allister",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Anneau",
+          "itemId": 13124,
+          "name": "Anneau d'Allister",
+          "level": 197,
+          "set": "Panoplie d'Allister",
+          "forgemagie": [
+            "exo PM +1"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Bottes",
+          "itemId": 13125,
+          "name": "Bottes d'Allister",
+          "level": 191,
+          "set": "Panoplie d'Allister",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Bouclier",
+          "itemId": 18718,
+          "name": "Bouclier du Cycloïde",
+          "level": 200,
+          "set": "Panoplie du Cycloïde",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Anneau",
+          "itemId": 14092,
+          "name": "Anneau du Cycloïde",
+          "level": 200,
+          "set": "Panoplie du Cycloïde",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Amulette",
+          "itemId": 14091,
+          "name": "Amulette du Cycloïde",
+          "level": 200,
+          "set": "Panoplie du Cycloïde",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Cape",
+          "itemId": 19601,
+          "name": "Cape de Crânonier",
+          "level": 200,
+          "set": "Panoplie Submergée",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Ceinture",
+          "itemId": 19599,
+          "name": "Sangle Oriole",
+          "level": 200,
+          "set": "Panoplie Submergée",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Arme",
+          "itemId": 19606,
+          "name": "Lance Horselé",
+          "level": 200,
+          "set": "Panoplie Submergée",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Familier/Monture",
+          "itemId": 11966,
+          "name": "Blérodoudou",
+          "level": 20,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 18043,
+          "name": "Dofus Abyssal",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 29136,
+          "name": "Dofus Sylvestre",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 6980,
+          "name": "Dofus Vulbis",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 7043,
+          "name": "Dofus des Glaces",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 739,
+          "name": "Dofus Turquoise",
+          "level": 160,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 7754,
+          "name": "Dofus Ocre",
+          "level": 160,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        }
+      ],
+      "points": {
+        "Vitalité": 3,
+        "Agilité": 992
+      },
+      "scrolls": {
+        "Vitalité": 100,
+        "Sagesse": 100,
+        "Force": 100,
+        "Intelligence": 100,
+        "Chance": 100,
+        "Agilité": 100
+      },
+      "spells": [
+        {
+          "pair": 0,
+          "active": "Flèche de Recul",
+          "activeId": 32426,
+          "other": "Flèche Éclatante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 1,
+          "active": "Flèche Glacée",
+          "activeId": 32435,
+          "other": "Flèche Harcelante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 2,
+          "active": "Flèche Évasive",
+          "activeId": 32531,
+          "other": "Flèche Vagabonde",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 3,
+          "active": "Flèche de Barrage",
+          "activeId": 32443,
+          "other": "Carreaux Destructeurs",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 4,
+          "active": "Pas Chassé",
+          "activeId": 32464,
+          "other": "Balise Tactique",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 5,
+          "active": "Tirs Éloignés",
+          "activeId": 32465,
+          "other": "Tir Perçant",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 6,
+          "active": "Flèche Détonante",
+          "activeId": 32444,
+          "other": "Flèche Ralentissante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 7,
+          "active": "Flèche Persécutrice",
+          "activeId": 32433,
+          "other": "Flèche d'Abolition",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 8,
+          "active": "Flèche Cinglante",
+          "activeId": 32427,
+          "other": "Flèche Assaillante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 9,
+          "active": "Flèche d'Immobilisation",
+          "activeId": 32436,
+          "other": "Flèche Tyrannique",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 10,
+          "active": "Tirs Puissants",
+          "activeId": 32466,
+          "other": "Flèches Amoureuses",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 11,
+          "active": "Flèche de Dispersion",
+          "activeId": 32428,
+          "other": "Flèches Enflammées",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 12,
+          "active": "Flèche Explosive",
+          "activeId": 32445,
+          "other": "Flèche Massacrante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 13,
+          "active": "Pluie de Flèches",
+          "activeId": 32431,
+          "other": "Œil de Taupe",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 14,
+          "active": "Flèche Paralysante",
+          "activeId": 32441,
+          "other": "Œil pour Œil",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 15,
+          "active": "Balise de Survie",
+          "activeId": 32474,
+          "other": "Représailles",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 16,
+          "active": "Tir de Repli",
+          "activeId": 32470,
+          "other": "Vendetta",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 17,
+          "active": "Flèche Punitive",
+          "activeId": 32456,
+          "other": "Flèche du Jugement",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 18,
+          "active": "Flèche de Rédemption",
+          "activeId": 32442,
+          "other": "Flèche d'Expiation",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 19,
+          "active": "Flèche Boomerang",
+          "activeId": 32432,
+          "other": "Flèche Perforante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 20,
+          "active": "Flèche Dévorante",
+          "activeId": 32446,
+          "other": "Flèche Fulminante",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 21,
+          "active": "Acuité Absolue",
+          "activeId": 32469,
+          "other": "Sentinelle",
+          "changedFromPreset": false
+        }
+      ],
+      "rotation": [
+        "Pluie de Flèches",
+        "Flèche Paralysante",
+        "Flèche Cinglante ×2"
+      ]
+    },
+    {
+      "name": "Ecaflip",
+      "className": "Ecaflip",
+      "presetId": "ecaflip_feu_hybride",
+      "presetLabel": "Ecaflip Feu hybride soin",
+      "role": "killer",
+      "element": "Feu",
+      "stats": {
+        "ap": 12,
+        "mp": 6,
+        "range": 5,
+        "hp": 3603,
+        "mainStat": "Intelligence",
+        "mainValue": 1308,
+        "critical": 58,
+        "power": 0
+      },
+      "items": [
+        {
+          "slot": "Coiffe",
+          "itemId": 14079,
+          "name": "Coiffe Séculaire",
+          "level": 200,
+          "set": "Panoplie Séculaire",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Amulette",
+          "itemId": 14080,
+          "name": "Amulette Séculaire",
+          "level": 200,
+          "set": "Panoplie Séculaire",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Ceinture",
+          "itemId": 14081,
+          "name": "Ceinture Séculaire",
+          "level": 200,
+          "set": "Panoplie Séculaire",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Cape",
+          "itemId": 17584,
+          "name": "Cape d'Atcham",
+          "level": 200,
+          "set": "Panoplie d'Atcham",
+          "forgemagie": [
+            "exo PM +1"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Bouclier",
+          "itemId": 18718,
+          "name": "Bouclier du Cycloïde",
+          "level": 200,
+          "set": "Panoplie du Cycloïde",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Anneau",
+          "itemId": 14092,
+          "name": "Anneau du Cycloïde",
+          "level": 200,
+          "set": "Panoplie du Cycloïde",
+          "forgemagie": [
+            "exo PA +1"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Bottes",
+          "itemId": 14093,
+          "name": "Bottes du Cycloïde",
+          "level": 200,
+          "set": "Panoplie du Cycloïde",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Anneau",
+          "itemId": 13642,
+          "name": "Anneau de Padgref",
+          "level": 197,
+          "set": "Panoplie de Padgref",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Familier/Monture",
+          "itemId": 11971,
+          "name": "Bisouglours",
+          "level": 20,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 18043,
+          "name": "Dofus Abyssal",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 13344,
+          "name": "Dolmanax",
+          "level": 100,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 6980,
+          "name": "Dofus Vulbis",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 7043,
+          "name": "Dofus des Glaces",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 739,
+          "name": "Dofus Turquoise",
+          "level": 160,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 7754,
+          "name": "Dofus Ocre",
+          "level": 160,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        }
+      ],
+      "points": {
+        "Vitalité": 3,
+        "Intelligence": 992
+      },
+      "scrolls": {
+        "Vitalité": 100,
+        "Sagesse": 100,
+        "Force": 100,
+        "Intelligence": 100,
+        "Chance": 100,
+        "Agilité": 100
+      },
+      "spells": [
+        {
+          "pair": 0,
+          "active": "Réflexes",
+          "activeId": 12857,
+          "other": "Lapement",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 1,
+          "active": "Langue Râpeuse",
+          "activeId": 12855,
+          "other": "Yams",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 2,
+          "active": "Topkaj",
+          "activeId": 12846,
+          "other": "Griffe Joueuse",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 3,
+          "active": "Pile ou Face",
+          "activeId": 12841,
+          "other": "Fanfaronnade",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 4,
+          "active": "Bonne Pioche",
+          "activeId": 12843,
+          "other": "Redistribution",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 5,
+          "active": "Bond du Félin",
+          "activeId": 12844,
+          "other": "Entrechat",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 6,
+          "active": "Jass",
+          "activeId": 12864,
+          "other": "Infortune",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 7,
+          "active": "Perception",
+          "activeId": 12852,
+          "other": "Prédation",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 8,
+          "active": "Baraka",
+          "activeId": 12848,
+          "other": "Toupet",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 9,
+          "active": "Château de Cartes",
+          "activeId": 12845,
+          "other": "Bonne Étoile",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 10,
+          "active": "Blakjak",
+          "activeId": 12870,
+          "other": "Destin d'Ecaflip",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 11,
+          "active": "Tarot d'Ecaflip",
+          "activeId": 12850,
+          "other": "Roulette",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 12,
+          "active": "Péril",
+          "activeId": 14311,
+          "other": "Belote",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 13,
+          "active": "Tout ou Rien",
+          "activeId": 12858,
+          "other": "Tromperie",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 14,
+          "active": "Pelotage",
+          "activeId": 14310,
+          "other": "Griffe de Ceangal",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 15,
+          "active": "Caresse Invocatrice",
+          "activeId": 12869,
+          "other": "Griffe Invocatrice",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 16,
+          "active": "Kraps",
+          "activeId": 12883,
+          "other": "Esprit Félin",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 17,
+          "active": "Roue de la Fortune",
+          "activeId": 12863,
+          "other": "Odorat",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 18,
+          "active": "Feulement",
+          "activeId": 12872,
+          "other": "Coussinets",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 19,
+          "active": "Neuf Vies",
+          "activeId": 12874,
+          "other": "Seconde Chance",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 20,
+          "active": "Félintion",
+          "activeId": 12861,
+          "other": "Mésaventure",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 21,
+          "active": "Rekop",
+          "activeId": 12853,
+          "other": "Bluff",
+          "changedFromPreset": false
+        }
+      ],
+      "rotation": [
+        "Bonne Pioche",
+        "Langue Râpeuse",
+        "Blakjak",
+        "Topkaj ×2",
+        "Pile ou Face"
+      ]
+    },
+    {
+      "name": "Sadida",
+      "className": "Sadida",
+      "presetId": "sadida_soin",
+      "presetLabel": "Sadida soin de zone",
+      "role": "healer",
+      "element": "Eau",
+      "stats": {
+        "ap": 12,
+        "mp": 6,
+        "range": 6,
+        "hp": 4103,
+        "mainStat": "Chance",
+        "mainValue": 1458,
+        "critical": 51,
+        "power": 0
+      },
+      "items": [
+        {
+          "slot": "Coiffe",
+          "itemId": 13120,
+          "name": "Coiffe de Danathor",
+          "level": 196,
+          "set": "Panoplie de Danathor",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Bouclier",
+          "itemId": 30690,
+          "name": "L'Écu de Danathor",
+          "level": 195,
+          "set": "Panoplie de Danathor",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Ceinture",
+          "itemId": 13122,
+          "name": "Ceinture de Danathor",
+          "level": 188,
+          "set": "Panoplie de Danathor",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Cape",
+          "itemId": 14085,
+          "name": "Cape du Sinistrofu",
+          "level": 200,
+          "set": "Panoplie du Sinistrofu",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Amulette",
+          "itemId": 14086,
+          "name": "Amulette du Sinistrofu",
+          "level": 200,
+          "set": "Panoplie du Sinistrofu",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Bottes",
+          "itemId": 14087,
+          "name": "Bottes du Sinistrofu",
+          "level": 200,
+          "set": "Panoplie du Sinistrofu",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Arme",
+          "itemId": 18017,
+          "name": "Dagoulinantes",
+          "level": 200,
+          "set": "Panoplie de la Fosse",
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Familier/Monture",
+          "itemId": 11950,
+          "name": "Kanigloups",
+          "level": 20,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Anneau",
+          "itemId": 19985,
+          "name": "Anneau Volkorne",
+          "level": 200,
+          "set": "Panoplie Volkorne",
+          "forgemagie": [
+            "exo PA +1"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Anneau",
+          "itemId": 24035,
+          "name": "Anneau Rtograf",
+          "level": 200,
+          "forgemagie": [
+            "exo PM +1"
+          ],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 18043,
+          "name": "Dofus Abyssal",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 29136,
+          "name": "Dofus Sylvestre",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 6980,
+          "name": "Dofus Vulbis",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 7043,
+          "name": "Dofus des Glaces",
+          "level": 180,
+          "forgemagie": [],
+          "passiveUnsimulated": false
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 739,
+          "name": "Dofus Turquoise",
+          "level": 160,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        },
+        {
+          "slot": "Dofus/Trophée",
+          "itemId": 7754,
+          "name": "Dofus Ocre",
+          "level": 160,
+          "forgemagie": [],
+          "passiveUnsimulated": true
+        }
+      ],
+      "points": {
+        "Vitalité": 3,
+        "Chance": 992
+      },
+      "scrolls": {
+        "Vitalité": 100,
+        "Sagesse": 100,
+        "Force": 100,
+        "Intelligence": 100,
+        "Chance": 100,
+        "Agilité": 100
+      },
+      "spells": [
+        {
+          "pair": 0,
+          "active": "Ronce",
+          "activeId": 13516,
+          "other": "Ronce Insolente",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 1,
+          "active": "Larme de Sadida",
+          "activeId": 13528,
+          "other": "Montée de Sève",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 2,
+          "active": "Buisson Ardent",
+          "activeId": 13574,
+          "other": "Feu de Brousse",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 3,
+          "active": "Cigüe",
+          "activeId": 13577,
+          "other": "Vent Empoisonné",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 4,
+          "active": "Arbre Feuillu",
+          "activeId": 13560,
+          "other": "Arbre",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 5,
+          "active": "La Folle",
+          "activeId": 13564,
+          "other": "La Folle Transmutée",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 6,
+          "active": "Sève Paralysante",
+          "activeId": 13533,
+          "other": "Miasmes",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 7,
+          "active": "Mangrove",
+          "activeId": 14396,
+          "other": "Contagion",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 8,
+          "active": "Ronce Apaisante",
+          "activeId": 13525,
+          "other": "Rempotage",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 9,
+          "active": "La Bloqueuse",
+          "activeId": 13561,
+          "other": "La Bloqueuse Transmutée",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 10,
+          "active": "Ronces Agressives",
+          "activeId": 13527,
+          "other": "Fétiches Calcinés",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 11,
+          "active": "Fléau",
+          "activeId": 13571,
+          "other": "Forêt Hantée",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 12,
+          "active": "Influence Végétale",
+          "activeId": 13566,
+          "other": "Puissance Sylvestre",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 13,
+          "active": "La Sacrifiée",
+          "activeId": 13567,
+          "other": "La Sacrifiée Transmutée",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 14,
+          "active": "Herbes Folles",
+          "activeId": 13518,
+          "other": "Malédiction Vaudou",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 15,
+          "active": "Sacrifice Vaudou",
+          "activeId": 13531,
+          "other": "Chardons Ardents",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 16,
+          "active": "Arbre de Vie",
+          "activeId": 13534,
+          "other": "Altruisme Végétal",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 17,
+          "active": "La Gonflable",
+          "activeId": 13573,
+          "other": "La Gonflable Transmutée",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 18,
+          "active": "Tremblement",
+          "activeId": 13514,
+          "other": "Mandragore",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 19,
+          "active": "Inoculation",
+          "activeId": 13569,
+          "other": "Force de la Nature",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 20,
+          "active": "Don Naturel",
+          "activeId": 13532,
+          "other": "Harmonie",
+          "changedFromPreset": false
+        },
+        {
+          "pair": 21,
+          "active": "La Surpuissante",
+          "activeId": 13578,
+          "other": "La Surpuissante Transmutée",
+          "changedFromPreset": false
+        }
+      ],
+      "rotation": [
+        "Ronce Apaisante",
+        "Mangrove",
+        "Larme de Sadida ×2"
+      ]
+    }
+  ],
+  "theta": {
+    "changes": {}
+  },
+  "plan": {
+    "roles": [
+      {
+        "name": "Crâ",
+        "role": "zoneDps"
+      },
+      {
+        "name": "Crâ 2",
+        "role": "mpLock"
+      },
+      {
+        "name": "Ecaflip",
+        "role": "killer"
+      },
+      {
+        "name": "Sadida",
+        "role": "healer"
+      }
+    ],
+    "doctrine": [
+      "Marquer chaque monstre à une heure bon marché vue par un tueur vivant, le corrompre 3 tours plus tard (même tueur à 4 joueurs).",
+      "Éviter les kills à V et XI (bonus majeurs hérités par le Vortex) ; ne pas finir son tour sur la croix de l’Auroraire au tour du Vortex.",
+      "Retrait de PM sur les monstres de mêlée (Ikargn, Buboxor, Brabuzar) ; soigner le poison des Harpilles.",
+      "Phase 2 : 2 tours de préparation (buffs, placement hors des lignes du Vortex), burst au premier tour vulnérable."
+    ],
+    "hours": [
+      {
+        "name": "Crâ",
+        "hours": [
+          "I",
+          "V",
+          "IX"
+        ]
+      },
+      {
+        "name": "Crâ 2",
+        "hours": [
+          "II",
+          "VI",
+          "X"
+        ]
+      },
+      {
+        "name": "Ecaflip",
+        "hours": [
+          "III",
+          "VII",
+          "XI"
+        ]
+      },
+      {
+        "name": "Sadida",
+        "hours": [
+          "IV",
+          "VIII",
+          "XII"
+        ]
+      }
+    ],
+    "cheapHours": [
+      "VII (0 PVe)",
+      "II (100 PVe)",
+      "X (100 PVe)",
+      "IX (400 PVe)",
+      "VI (600 PVe)"
+    ]
+  },
+  "results": {
+    "mode": "scripted",
+    "n": 48,
+    "result": {
+      "n": 48,
+      "wins": 0,
+      "winRate": 0,
+      "wilson95": [
+        6.938893903907228e-18,
+        0.07410012966611748
+      ],
+      "meanScore": 0.006710526315789476,
+      "meanRounds": 12.604166666666666,
+      "p10HpLeft": 0,
+      "byVariant": {
+        "actionDelay=0": {
+          "n": 2,
+          "winRate": 0
+        },
+        "arrivalRounds=1,6,11,16,21|deadPlayerAdvancesClock=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "arrivalRounds=1,6,11,16,21|deadPlayerAdvancesClock=true|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "arrivalRounds=1,6,11,16,21|earlySpawnIfCleared=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "arrivalRounds=1,6,11,16,21|earlySpawnIfCleared=true|rezHpPct=50,50|rezMinusOneMp=true|deadPlayerAdvancesClock=true|unlockVortexTurn=27": {
+          "n": 1,
+          "winRate": 0
+        },
+        "arrivalRounds=1,6,11,16,21|rezAllPerTurn=false": {
+          "n": 1,
+          "winRate": 0
+        },
+        "arrivalRounds=1,6,11,16,21|rezHpPct=50,50|actionDelay=0|glyphTrigger=turnEnd": {
+          "n": 1,
+          "winRate": 0
+        },
+        "arrivalRounds=1,6,11,16,21|rezHpPct=50,50|rezMinusOneMp=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "arrivalRounds=1,6,11,16,21|rezHpPct=50,50|unlockVortexTurn=25": {
+          "n": 1,
+          "winRate": 0
+        },
+        "arrivalRounds=1,6,11,16,21|wave1Invulnerable=true|unlockVortexTurn=25|glyphTrigger=turnEnd": {
+          "n": 1,
+          "winRate": 0
+        },
+        "default": {
+          "n": 1,
+          "winRate": 0
+        },
+        "earlySpawnIfCleared=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "earlySpawnIfCleared=true|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "rezAllPerTurn=false|deadPlayerAdvancesClock=true|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "rezHpPct=50,50|rezMinusOneMp=true": {
+          "n": 2,
+          "winRate": 0
+        },
+        "rezMinusOneMp=true|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "rezMinusOneMp=true|deadPlayerAdvancesClock=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "rezMinusOneMp=true|deadPlayerAdvancesClock=true|unlockVortexTurn=27": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|actionDelay=0": {
+          "n": 2,
+          "winRate": 0
+        },
+        "startingTeamRule=best|arrivalRounds=1,6,11,16,21|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|arrivalRounds=1,6,11,16,21|deadPlayerAdvancesClock=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|arrivalRounds=1,6,11,16,21|wave1Invulnerable=true|glyphTrigger=turnEnd": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|deadPlayerAdvancesClock=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|deadPlayerAdvancesClock=true|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|rezAllPerTurn=false|deadPlayerAdvancesClock=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|rezHpPct=50,50": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|rezHpPct=50,50|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|rezHpPct=50,50|rezMinusOneMp=true|deadPlayerAdvancesClock=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|rezMinusOneMp=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|unlockVortexTurn=25": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|unlockVortexTurn=25|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|unlockVortexTurn=25|actionDelay=0|glyphTrigger=turnEnd": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|unlockVortexTurn=27": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|unlockVortexTurn=27|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "startingTeamRule=best|wave1Invulnerable=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "unlockVortexTurn=25": {
+          "n": 1,
+          "winRate": 0
+        },
+        "unlockVortexTurn=27": {
+          "n": 1,
+          "winRate": 0
+        },
+        "wave1Invulnerable=true|actionDelay=0": {
+          "n": 1,
+          "winRate": 0
+        },
+        "wave1Invulnerable=true|earlySpawnIfCleared=true|rezHpPct=50,50|rezMinusOneMp=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "wave1Invulnerable=true|rezHpPct=50,50": {
+          "n": 1,
+          "winRate": 0
+        },
+        "wave1Invulnerable=true|rezHpPct=50,50|rezMinusOneMp=true": {
+          "n": 1,
+          "winRate": 0
+        },
+        "wave1Invulnerable=true|rezHpPct=50,50|unlockVortexTurn=25": {
+          "n": 1,
+          "winRate": 0
+        },
+        "wave1Invulnerable=true|rezMinusOneMp=true|unlockVortexTurn=25": {
+          "n": 1,
+          "winRate": 0
+        },
+        "wave1Invulnerable=true|unlockVortexTurn=25": {
+          "n": 1,
+          "winRate": 0
+        }
+      }
+    },
+    "meanObjective": 0.013012609649122804,
+    "meanDeaths": 4,
+    "meanHoursUsed": 5.041666666666667,
+    "corruptionTimeline": [
+      0,
+      0,
+      0,
+      0,
+      0.06,
+      0.08,
+      0.1,
+      0.17,
+      0.29,
+      0.29,
+      0.33,
+      0.35,
+      0.35,
+      0.35,
+      0.35,
+      0.35,
+      0.35,
+      0.35,
+      0.35
+    ],
+    "worstValue": {
+      "param": "wave1Invulnerable",
+      "value": "true",
+      "n": 10,
+      "winRate": 0,
+      "baseWinRate": 0
+    },
+    "marginals": [
+      {
+        "param": "wave1Invulnerable",
+        "value": "true",
+        "n": 10,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "rezHpPct",
+        "value": "50,50",
+        "n": 13,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "arrivalRounds",
+        "value": "1,6,11,16,21",
+        "n": 12,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "glyphTrigger",
+        "value": "turnEnd",
+        "n": 4,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "rezMinusOneMp",
+        "value": "true",
+        "n": 12,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "rezAllPerTurn",
+        "value": "false",
+        "n": 3,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "unlockVortexTurn",
+        "value": "25",
+        "n": 9,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "deadPlayerAdvancesClock",
+        "value": "true",
+        "n": 11,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "unlockVortexTurn",
+        "value": "27",
+        "n": 5,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "earlySpawnIfCleared",
+        "value": "true",
+        "n": 5,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "startingTeamRule",
+        "value": "best",
+        "n": 19,
+        "winRate": 0,
+        "baseWinRate": 0
+      },
+      {
+        "param": "actionDelay",
+        "value": "0",
+        "n": 16,
+        "winRate": 0,
+        "baseWinRate": 0
+      }
+    ],
+    "failReasons": [
+      {
+        "reason": "submersion",
+        "n": 31
+      },
+      {
+        "reason": "défaite",
+        "n": 15
+      },
+      {
+        "reason": "mort sur la croix de l’Auroraire",
+        "n": 2
+      }
+    ],
+    "tactics": {},
+    "creativeActions": 0,
+    "unknownEffects": 0,
+    "nodes": 0
+  },
+  "history": [
+    "T0 : 177881 équipes notées en 8.8 s, 10 candidates",
+    "T1 micro (prefix12 + phase2) : 10 équipes → 3 (meilleure cra_air_entrave+cra_feu_zone+eniripsa_air_boost+sadida_soin, objectif 0.337)",
+    "T2 combat complet : 3 équipes → 1 (meilleure cra_air_entrave+cra_feu_zone+ecaflip_feu_hybride+sadida_soin, objectif 0.010)",
+    "cra_air_entrave+cra_feu_zone+ecaflip_feu_hybride+sadida_soin — L3 Crâ : proxy 8.218 → 8.426, combats : build 1 retenu (objectif 0.016 contre 0.005)",
+    "cra_air_entrave+cra_feu_zone+ecaflip_feu_hybride+sadida_soin — L3 Crâ 2 : proxy 6.233 → 6.650, combats : build 0 retenu (objectif 0.016 contre 0.016)",
+    "cra_air_entrave+cra_feu_zone+ecaflip_feu_hybride+sadida_soin — L3 Ecaflip : proxy 7.921 → 8.131, combats : build 0 retenu (objectif 0.016 contre 0.016)",
+    "cra_air_entrave+cra_feu_zone+ecaflip_feu_hybride+sadida_soin — L3 Sadida : proxy 6.854 → 7.153, combats : build 0 retenu (objectif 0.016 contre 0.016)",
+    "cra_air_entrave+cra_feu_zone+ecaflip_feu_hybride+sadida_soin — L4 : 0 bascule(s), objectif 0.019 → 0.019",
+    "Validation scripted cra_air_entrave+cra_feu_zone+ecaflip_feu_hybride+sadida_soin : 0.0 % (IC95 0.0-7.4 %), objectif 0.013"
+  ],
+  "replays": [
+    {
+      "label": "Échec typique",
+      "seed": 3967610106,
+      "file": "vortex-campagne/replay-3967610106.json",
+      "win": false,
+      "rounds": 12
+    }
+  ],
+  "notes": [
+    "IA des personnages : politique `scripted` (rotations des presets). L’IA de groupe (WP2 : recherche tactique, tableau noir, tactiques) et le planificateur d’heures (WP3b) ne sont pas encore branchés : AUCUNE corruption planifiée, les équipes sont submergées — le taux de victoire publié est celui de cette IA de référence, pas un plafond.",
+    "Le modèle T0 est analytique et GROSSIER (filtre de 177881 équipes vers 10) : son classement n’est pas un taux de victoire ; il sera recalibré (`calibrateT0`) sur les combats quand l’IA réelle sera livrée.",
+    "Variantes INCERTAINES tirées par graine (§12.1) : le taux est « robuste » (moyenné sur les variantes) ; la pire valeur est publiée.",
+    "Réglage de θ (L2) non lancé : la politique scripted n’utilise pas θ.",
+    "Classe Steamer exclue de cette campagne de démonstration : un défaut de performance du moteur (accumulation de buffs des tourelles) rend certains tours très longs ; à réintégrer après correction.",
+    "Sorts passifs d’objets NON simulés par le moteur (seules leurs lignes de caractéristiques comptent) : Crâ : Dofus Pourpre ; Crâ : Dofus Ocre ; Crâ : Dofus Vulbis ; Crâ : Aprybou ; Crâ 2 : Dofus Abyssal ; Crâ 2 : Dofus Sylvestre ; Crâ 2 : Dofus Vulbis ; Crâ 2 : Dofus Turquoise ; Crâ 2 : Dofus Ocre ; Ecaflip : Dofus Abyssal ; Ecaflip : Dofus Vulbis ; Ecaflip : Dofus Turquoise ; Ecaflip : Dofus Ocre ; Sadida : Dofus Abyssal ; Sadida : Dofus Sylvestre ; Sadida : Dofus Vulbis ; Sadida : Dofus Turquoise ; Sadida : Dofus Ocre."
+  ],
+  "stuff": [
+    {
+      "member": "Crâ",
+      "startLogJ": 8.218134935865365,
+      "bestLogJ": 8.425879375892404,
+      "startDpt": 3420.2295386072874,
+      "bestDpt": 3695.95376,
+      "startEhp": 4475.483111324986,
+      "bestEhp": 7464.7366792042885,
+      "ms": 1230.349758999997
+    },
+    {
+      "member": "Crâ 2",
+      "startLogJ": 6.233360205014599,
+      "bestLogJ": 6.6502438821512415,
+      "startDpt": 3146.4892884210535,
+      "bestDpt": 1962.1865364210528,
+      "startEhp": 5613.3897571781645,
+      "bestEhp": 11064.952438654953,
+      "ms": 1267.1515320000035
+    },
+    {
+      "member": "Ecaflip",
+      "startLogJ": 7.9208658978996045,
+      "bestLogJ": 8.131093294527293,
+      "startDpt": 2236.7806251012144,
+      "bestDpt": 2425.689149797571,
+      "startEhp": 4475.483111324986,
+      "bestEhp": 7464.7366792042885,
+      "ms": 786.2294919999986
+    },
+    {
+      "member": "Sadida",
+      "startLogJ": 6.8542165839466405,
+      "bestLogJ": 7.1529667653767905,
+      "startDpt": 2336.4117004048585,
+      "bestDpt": 2049.646923076923,
+      "startEhp": 5543.522240680075,
+      "bestEhp": 8390.402053760763,
+      "ms": 1010.0011279999962
+    }
+  ],
+  "variants": {
+    "accepted": [],
+    "base": 0.018654605263157896,
+    "final": 0.018654605263157896
+  },
+  "campaign": {
+    "stages": [
+      {
+        "name": "T1 micro (prefix12 + phase2)",
+        "teams": 10,
+        "kept": [
+          "cra_air_entrave+cra_feu_zone+eniripsa_air_boost+sadida_soin",
+          "cra_air_entrave+cra_feu_zone+ecaflip_feu_hybride+sadida_soin",
+          "cra_feu_zone+ecaflip_air_zone+eniripsa_soin_feu+sadida_soin"
+        ]
+      },
+      {
+        "name": "T2 combat complet",
+        "teams": 3,
+        "kept": [
+          "cra_air_entrave+cra_feu_zone+ecaflip_feu_hybride+sadida_soin"
+        ]
+      }
+    ],
+    "t0Evaluated": 177881
+  },
+  "rewind": {
+    "seed": 1131163312,
+    "failRound": 11,
+    "attempts": 16,
+    "robust": "aucune (reprise à l’identique)"
+  }
+}

@@ -41,7 +41,7 @@ import { killProbability } from './kill'
 import type { PerceptionX } from './perception'
 import { damageWeightOf, type ValueWeights } from './potential'
 import { apSpent, buildOccupancy, cachedReach, mpSpent, reachPath } from './reach'
-import { createSpellProfileIndex, type SpellProfileX } from './spellProfile'
+import { createSpellProfileIndex, zoneRadius, type SpellProfileX } from './spellProfile'
 import { hpEff } from './threat'
 import { believedCell } from './view'
 
@@ -434,8 +434,10 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
   const threat = p.threat
   const potential = p.potential
   const calib = calibrationOf(me)
-  const zone = prof.zone
-  const inZone = zone && prof.zoneRadius > 0 ? zoneMembership(zone, c.cell, c.from) : null
+  // Zone des dégâts : zone principale, ou zone « couronne » pour un sort qui ne touche pas sa case d'impact (case libre
+  // exigée : Propulsion, Vajra — la zone principale y est ponctuelle et vide).
+  const zone = prof.aim === 'ring' && prof.ringZone ? prof.ringZone : prof.zone
+  const inZone = zone && zoneRadius(zone) > 0 ? zoneMembership(zone, c.cell, c.from) : null
   // w_pot de V : 0,35 si l'allié joue avant l'ennemi le plus menaçant, 0,15 sinon.
   let topThreatId = -1
   let topThreat = 0
@@ -478,7 +480,8 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
       if (dmg > 0) {
         if (enemy) {
           const v = damageWeightOf(f, w, scenario, bb)
-          const killValue = w.killKappa * f.maxHp + w.killTau * threat.threatOf(f)
+          // Même valeur de kill que V (value.ts : κ·PVmax + τ·menace, menace = meilleur DPT sur un allié).
+          const killValue = w.killKappa * f.maxHp + w.killTau * potential.enemyThreat(f)
           value += Math.min(dmg, he) * v + killProbability(dmg, variance * eff * eff, f.hp + f.shield) * killValue
         } else {
           value -= 0.6 * Math.min(dmg, he) + (dmg >= f.hp + f.shield ? f.baseMaxHp : 0)
