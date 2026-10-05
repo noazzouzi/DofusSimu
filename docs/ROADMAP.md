@@ -13,7 +13,9 @@ Chaque checkpoint est commité et poussé dans un état utilisable.
 - [x] **CP3 — Moteur de combat + replays animés** : état de combat, PA/PM, ligne de vue, déplacements & tacle,
       4 familles d'effets (212 effectId), déclencheurs, invocations, glyphes/pièges ; 856 sorts testés sans
       exception (`docs/engine-coverage.md`) ; visualiseur animé (démo synthétique — les vrais combats arrivent au CP4).
-- [ ] **CP4 — IA & Vortex** : IA des monstres (génériques + Vortex), IA de groupe (recherche de tour), scénario de
-      vagues de l'Œil de Vortex jouable et animé.
-- [ ] **CP5 — Optimiseurs** : stuff optimal par rôle/combat (exos inclus), composition d'équipe par simulation
+- [~] **CP4 — IA & Vortex** : IA des monstres (profils officiels + Vortex en 2 phases), IA de groupe (commandant,
+      recherche de tour fast/standard/deep, rollouts, 8 tactiques créatives), scénario Vortex (vagues, horloge de
+      l'Auroraire, corruption) et planificateur d'heures ; premier combat complet joué et animé
+      (`web/public/replays/`). **En cours** : réglage itératif pour gagner le Vortex, performances.
+- [~] **CP5 — Optimiseurs** (implémentés, campagnes à relancer avec l'IA réglée) : stuff optimal par rôle/combat (exos inclus), composition d'équipe par simulation
       massive (Monte-Carlo), rapport Vortex : meilleure équipe, stuffs, sorts, déroulé du combat.
