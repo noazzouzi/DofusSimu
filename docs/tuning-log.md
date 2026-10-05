@@ -208,6 +208,8 @@ reproduction `it.fails`) :
   changer une variante de sort d'un preset, + sorts lancés par personnage), `batch.sh` (**2 processus**), `snap.sh`
   (instantané figé de `src/` et `data/ai/` ; les variantes d'une expérience reprennent le moteur de l'instantané
   `base` et n'écrasent que les fichiers réglables : l'autre agent modifie le moteur en parallèle).
+- Référence « avant » du tour : tag git `base-tuning-r2` (commit 81430e2) ; `git diff base-tuning-r2 -- <fichiers>`
+  montre les changements du tour (le commit d'instantané e7b3394 contient déjà une partie du travail).
 - Lot : 32 graines `fast` (`masterSeed` 1, mêmes graines qu'au tour 1). Un changement candidat est confirmé sur 32
   graines de plus (`masterSeed` 2) : **n = 64** (IC 95 % ≈ ±0,3 corrompu, ±0,7 tour).
 - Diagnostics (scripts du dossier) : `rounds.cjs` (par tour de jeu : dégâts infligés par personnage, subis, soins,
