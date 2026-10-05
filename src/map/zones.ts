@@ -43,6 +43,7 @@ import {
   CELL_COUNT,
   CELL_X,
   CELL_Y,
+  cellsByDistance,
   DIRECTION_DX,
   DIRECTION_DY,
   directionBetween,
@@ -259,22 +260,55 @@ interface Frame {
 }
 
 function makeFrame(z: CompiledZone, center: number, caster: number, opts: ZoneOptions | undefined): Frame {
-  const casterCell = caster >= 0 && caster < CELL_COUNT ? caster : center
-  const f: Frame = {
-    z,
-    center,
-    caster: casterCell,
-    cx: CELL_X[center],
-    cy: CELL_Y[center],
-    kx: CELL_X[casterCell],
-    ky: CELL_Y[casterCell],
-    dir: orientationOf(z, center, casterCell, opts?.direction),
-    lineMax: z.radius,
-    list: null,
-    origin: z.shape === 'l' ? casterCell : center,
-    blocksLos: z.onlyIfInSight ? opts?.blocksLos : undefined,
-    cellFilter: opts?.cellFilter,
+  return initFrame(blankFrame(z), z, center, caster, opts)
+}
+
+function blankFrame(z: CompiledZone): Frame {
+  return { z, center: 0, caster: 0, cx: 0, cy: 0, kx: 0, ky: 0, dir: -1, lineMax: 0, list: null, origin: 0, blocksLos: undefined, cellFilter: undefined }
+}
+
+/**
+ * Cadres réutilisés par les requêtes ponctuelles (`zoneCells`, `zoneCellsInto`, `isCellInZone`) : une pile, car les
+ * rappels (LdV, filtre, arrêt) peuvent réentrer dans ce module. `zoneMembership` garde son cadre : il en alloue un.
+ */
+const FRAME_POOL: Frame[] = []
+let frameDepth = 0
+
+function acquireFrame(z: CompiledZone, center: number, caster: number, opts: ZoneOptions | undefined): Frame {
+  let f = FRAME_POOL[frameDepth]
+  if (!f) FRAME_POOL[frameDepth] = f = blankFrame(z)
+  frameDepth++
+  try {
+    return initFrame(f, z, center, caster, opts)
+  } catch (e) {
+    frameDepth--
+    throw e
   }
+}
+
+function releaseFrame(): void {
+  const f = FRAME_POOL[--frameDepth]
+  // Aucune référence retenue (rappels liés à un état de combat, boomerang).
+  f.list = null
+  f.blocksLos = undefined
+  f.cellFilter = undefined
+}
+
+function initFrame(f: Frame, z: CompiledZone, center: number, caster: number, opts: ZoneOptions | undefined): Frame {
+  const casterCell = caster >= 0 && caster < CELL_COUNT ? caster : center
+  f.z = z
+  f.center = center
+  f.caster = casterCell
+  f.cx = CELL_X[center]
+  f.cy = CELL_Y[center]
+  f.kx = CELL_X[casterCell]
+  f.ky = CELL_Y[casterCell]
+  f.dir = orientationOf(z, center, casterCell, opts?.direction)
+  f.lineMax = z.radius
+  f.list = null
+  f.origin = z.shape === 'l' ? casterCell : center
+  f.blocksLos = z.onlyIfInSight ? opts?.blocksLos : undefined
+  f.cellFilter = opts?.cellFilter
   if (z.shape === 'l' && z.stopAtTarget) {
     // Client (port D3 et D2 Line) : distance de Manhattan lanceur → impact, non divisée en diagonale.
     const d = Math.abs(f.cx - f.kx) + Math.abs(f.cy - f.ky)
@@ -449,25 +483,6 @@ function inFrame(f: Frame, cell: number): boolean {
 
 // ───────────────────────────── ordre de parcours ─────────────────────────────
 
-/** Pour chaque origine : toutes les cellules triées par (distance de Manhattan, id), calculées à la demande. */
-const BY_DISTANCE: (Int16Array | undefined)[] = new Array(CELL_COUNT)
-const DIST_KEYS = new Int32Array(CELL_COUNT)
-
-function cellsByDistance(origin: number): Int16Array {
-  let order = BY_DISTANCE[origin]
-  if (!order) {
-    for (let c = 0; c < CELL_COUNT; c++) {
-      const d = Math.abs(CELL_X[c] - CELL_X[origin]) + Math.abs(CELL_Y[c] - CELL_Y[origin])
-      DIST_KEYS[c] = d * 1024 + c
-    }
-    const sorted = DIST_KEYS.slice().sort()
-    order = new Int16Array(CELL_COUNT)
-    for (let i = 0; i < CELL_COUNT; i++) order[i] = sorted[i] & 1023
-    BY_DISTANCE[origin] = order
-  }
-  return order
-}
-
 /** Directions des rayons des formes en étoile / croix (relatives ou absolues). */
 const ORTHO_DIRS = [1, 3, 5, 7]
 const DIAG_DIRS = [0, 2, 4, 6]
@@ -574,6 +589,21 @@ function maxScanDistance(z: CompiledZone): number {
   }
 }
 
+/** Zone couvrant toute la carte (A, a, et cercles qui la couvrent : C63, C40...), sans filtre ni LdV. */
+function isWholeMapUnfiltered(f: Frame): boolean {
+  const z = f.z
+  const wholeMap = z.shape === 'A' || z.shape === 'a' || (z.shape === 'C' && z.minRadius === 0 && z.radius >= MAP_DIAMETER)
+  return wholeMap && !f.blocksLos && !f.cellFilter
+}
+
+/** Toutes les cellules par (distance à `origin`, id) en tableau ordinaire (copié par `slice`, plus rapide que 560 `push`). */
+const WHOLE_MAP_ORDER: (number[] | undefined)[] = new Array(CELL_COUNT)
+function wholeMapOrder(origin: number): number[] {
+  let a = WHOLE_MAP_ORDER[origin]
+  if (!a) WHOLE_MAP_ORDER[origin] = a = Array.from(cellsByDistance(origin))
+  return a
+}
+
 function collect(f: Frame, out: number[]): number[] {
   const z = f.z
   if (z.shape === ';') {
@@ -587,8 +617,7 @@ function collect(f: Frame, out: number[]): number[] {
   }
   const order = cellsByDistance(f.origin)
   // Toute la carte (A, a, et cercles qui la couvrent : C63, C40...) sans filtre : l'ordre précalculé tel quel.
-  const wholeMap = z.shape === 'A' || z.shape === 'a' || (z.shape === 'C' && z.minRadius === 0 && z.radius >= MAP_DIAMETER)
-  if (wholeMap && !f.blocksLos && !f.cellFilter) {
+  if (isWholeMapUnfiltered(f)) {
     for (let i = 0; i < CELL_COUNT; i++) out.push(order[i])
     return out
   }
@@ -615,20 +644,37 @@ function collect(f: Frame, out: number[]): number[] {
  */
 export function zoneCells(zone: ZoneSpec, center: number, casterCell: number, opts?: ZoneOptions): number[] {
   if (center < 0 || center >= CELL_COUNT) return []
-  return collect(makeFrame(compileZone(zone), center, casterCell, opts), [])
+  const f = acquireFrame(compileZone(zone), center, casterCell, opts)
+  try {
+    // Toute la carte sans filtre : copie de l'ordre précalculé (même résultat que `collect`).
+    if (isWholeMapUnfiltered(f)) return wholeMapOrder(f.origin).slice()
+    return collect(f, [])
+  } finally {
+    releaseFrame()
+  }
 }
 
 /** Comme `zoneCells` mais remplit `out` (vidé au préalable) pour éviter une allocation. */
 export function zoneCellsInto(zone: ZoneSpec, center: number, casterCell: number, out: number[], opts?: ZoneOptions): number[] {
   out.length = 0
   if (center < 0 || center >= CELL_COUNT) return out
-  return collect(makeFrame(compileZone(zone), center, casterCell, opts), out)
+  const f = acquireFrame(compileZone(zone), center, casterCell, opts)
+  try {
+    return collect(f, out)
+  } finally {
+    releaseFrame()
+  }
 }
 
 /** La cellule `cell` est-elle dans la zone ? (même règle que `zoneCells`, en O(1) hors LdV) */
 export function isCellInZone(zone: ZoneSpec, cell: number, center: number, casterCell: number, opts?: ZoneOptions): boolean {
   if (cell < 0 || cell >= CELL_COUNT || center < 0 || center >= CELL_COUNT) return false
-  return inFrame(makeFrame(compileZone(zone), center, casterCell, opts), cell)
+  const f = acquireFrame(compileZone(zone), center, casterCell, opts)
+  try {
+    return inFrame(f, cell)
+  } finally {
+    releaseFrame()
+  }
 }
 
 /**

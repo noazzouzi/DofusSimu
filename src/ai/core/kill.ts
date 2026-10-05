@@ -20,6 +20,20 @@ import { clamp, phi } from './rng'
 import { applyMacro, simClone } from './sim'
 import { believedCell } from './view'
 
+/**
+ * Valeur d'une mort de `e` CE tour, sans simulation (préfiltre `quick`, terme `continuation`) : prix du scénario lu
+ * sur l'état courant (`deathValue(s, s, e, bb)` : heure et étoile de `s` — Vortex : `kill[m][0]` sous l'étoile,
+ * `kill[m][h]` sinon), à défaut κ·PVmax + τ·menace comme V (§7). Sans ce prix, le préfiltre classait en tête les sorts
+ * qui achèvent un zombie réservé à une corruption (≈ +2 900 PVe au lieu d'un prix négatif) : en `fast` (top-K 6), tous
+ * les candidats simulés tuaient le monstre à la mauvaise heure et le personnage passait son tour (tuning-log, tour 1).
+ */
+export function killValueNow(s: FightState, e: Fighter, w: { killKappa: number; killTau: number }, threat: () => number,
+                             scenario?: { deathValue?(root: FightState, leaf: FightState, victim: Fighter, bb: never): number | undefined },
+                             bb?: unknown): number {
+  const dv = bb && scenario?.deathValue ? scenario.deathValue(s, s, e, bb as never) : undefined
+  return dv ?? w.killKappa * e.maxHp + w.killTau * threat()
+}
+
 /** Φ((mean − hpEff)/σ) ; variance nulle ⇒ 0 ou 1. */
 export function killProbability(mean: number, variance: number, hpEff: number): number {
   if (hpEff <= 0) return 1

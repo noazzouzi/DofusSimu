@@ -7,6 +7,7 @@ import { critChance } from '../damage/crit'
 import { distance, inDiagonal, inLine, isInCastRange } from '../map/geometry'
 import { hasLineOfSight } from '../map/los'
 import { zoneCells } from '../map/zones'
+import { setRecord } from './cow'
 import { checkStatesCriterion } from './criteria'
 import type { Engine } from './engine'
 import { applyEffects } from './effects/core'
@@ -48,9 +49,17 @@ export function castPreventedByStates(engine: Engine, caster: Fighter, criterion
   for (const st of caster.states) {
     if (caster.disabledStates !== undefined && caster.disabledStates.includes(st)) continue
     if (!engine.data.state(st)?.preventsSpellCast) continue
-    if (!criterion || !new RegExp(`E${st}(?!\\d)`).test(criterion)) return true
+    if (!criterion || !stateTermRegex(st).test(criterion)) return true
   }
   return false
+}
+
+/** Terme « possède l'état » `E<id>` (non suivi d'un chiffre) d'un critère d'états — expression mise en cache par état. */
+const STATE_TERM = new Map<number, RegExp>()
+function stateTermRegex(st: number): RegExp {
+  let re = STATE_TERM.get(st)
+  if (!re) STATE_TERM.set(st, (re = new RegExp(`E${st}(?!\\d)`)))
+  return re
 }
 
 export function canCast(
@@ -121,7 +130,14 @@ export interface CastResult {
  * probabilité de critique (via le multiplicateur `critWeight` lu par le module de dégâts).
  */
 export function castSpell(engine: Engine, fight: FightState, caster: Fighter, spellId: number, cell: number): CastResult {
-  const spell = caster.spells.find(s => s.spellId === spellId)
+  let spell: KnownSpell | undefined
+  const known = caster.spells
+  for (let i = 0; i < known.length; i++) {
+    if (known[i].spellId === spellId) {
+      spell = known[i]
+      break
+    }
+  }
   if (!spell) return { ok: false, failure: 'unknownSpell' }
   const failure = canCast(engine, fight, caster, spell, cell)
   if (failure) return { ok: false, failure }
@@ -133,35 +149,38 @@ export function castSpell(engine: Engine, fight: FightState, caster: Fighter, sp
   const occupant = engine.fighterAt(fight, cell)
 
   // Bookkeeping avant application (un sort peut tuer son lanceur ou terminer le combat).
-  caster.castsThisTurn[spellId] = (caster.castsThisTurn[spellId] ?? 0) + 1
+  // Compteurs et relances : objets remplacés, jamais modifiés en place (partagés entre clones, src/engine/cow.ts).
+  caster.castsThisTurn = setRecord(caster.castsThisTurn, spellId, (caster.castsThisTurn[spellId] ?? 0) + 1)
   if (occupant) {
     const k = `${spellId}:${occupant.id}`
-    caster.castsOnTarget[k] = (caster.castsOnTarget[k] ?? 0) + 1
+    caster.castsOnTarget = setRecord(caster.castsOnTarget, k, (caster.castsOnTarget[k] ?? 0) + 1)
   }
-  if (lvl.minCastInterval > 0) caster.cooldowns[spellId] = lvl.minCastInterval
+  if (lvl.minCastInterval > 0) caster.cooldowns = setRecord(caster.cooldowns, spellId, lvl.minCastInterval)
   if (lvl.globalCooldown > 0) {
     for (const ally of engine.alliesOf(fight, caster, true)) {
-      if (ally.spells.some(s => s.spellId === spellId)) ally.cooldowns[spellId] = Math.max(ally.cooldowns[spellId] ?? 0, lvl.globalCooldown)
+      if (ally.spells.some(s => s.spellId === spellId)) ally.cooldowns = setRecord(ally.cooldowns, spellId, Math.max(ally.cooldowns[spellId] ?? 0, lvl.globalCooldown))
     }
   }
 
   const casterCell = caster.cell
-  // Cellules affectées (animation) : calculées seulement si le combat est enregistré.
-  const allCells = new Set<number>()
-  if (fight.options.record) for (const e of effects) for (const c of zoneCells(e.zone, cell, casterCell)) allCells.add(c)
-  const mainElement = effects.find(e => e.element >= 0 && e.element <= 4)?.element
-  engine.emit(fight, {
-    t: 'cast',
-    fighter: caster.id,
-    spellId,
-    spellName: spell.name,
-    cell,
-    crit,
-    apCost: lvl.apCost,
-    zone: [...allCells],
-    element: mainElement as never,
-  })
-  engine.emit(fight, { t: 'apmp', target: caster.id, ap: caster.ap, mp: caster.mp, reason: 'cast' })
+  // Événements (et cellules affectées, pour l'animation) : construits seulement si le combat est enregistré.
+  if (fight.options.record) {
+    const allCells = new Set<number>()
+    for (const e of effects) for (const c of zoneCells(e.zone, cell, casterCell)) allCells.add(c)
+    const mainElement = effects.find(e => e.element >= 0 && e.element <= 4)?.element
+    engine.emit(fight, {
+      t: 'cast',
+      fighter: caster.id,
+      spellId,
+      spellName: spell.name,
+      cell,
+      crit,
+      apCost: lvl.apCost,
+      zone: [...allCells],
+      element: mainElement as never,
+    })
+    engine.emit(fight, { t: 'apmp', target: caster.id, ap: caster.ap, mp: caster.mp, reason: 'cast' })
+  }
 
   if (fight.options.rollMode === 'average' && pCrit > 0 && lvl.criticalEffects.length) {
     // Évaluation en espérance : on applique les effets normaux avec un poids (1 - p) et critiques avec p

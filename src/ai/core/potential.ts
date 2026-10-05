@@ -5,7 +5,8 @@
  * tour, retraits subis déduits ; Pacifiste ⇒ 0), via son accessibilité (tacle compris) et les anneaux de portée de
  * ses sorts, sur les ennemis vulnérables à ce moment (`scenario.vulnerableAt`, invulnérabilité encore active) :
  *   Pot_a = max_e [min(dmg, hpEff_e)·v_e + P(kill)·killValue_e] + 0,3 × 2e cible dans la zone du meilleur sort.
- * killValue_e = κ·PVmax_e + τ·menace_e (θ.value), menace_e = max_a dpt(e, a). C'est le terme qui rémunère les mises
+ * killValue_e = prix du scénario pour une mort au prochain tour de a (`killValueFor`, Vortex : heure de son créneau),
+ * sinon κ·PVmax_e + τ·menace_e (θ.value), menace_e = max_a dpt(e, a). C'est le terme qui rémunère les mises
  * en place (rapprocher un monstre, regrouper pour une zone, retirer un Pacifiste, débuff « dommages subis »).
  */
 import type { TeamId } from '../../core/types'
@@ -23,6 +24,11 @@ import { buildOccupancy, cachedReach } from './reach'
 import { SlotOrder } from './timeline'
 import { believedCell } from './view'
 import { flagAtNextTurn, geoFrame, hpEff, nextTurnApMp } from './threat'
+
+/** Extension facultative d'un modèle de scénario : prix d'une mort de `e` au prochain tour de l'allié `allyId`. */
+interface ScenarioKillFor {
+  killValueFor?(s: FightState, e: Fighter, allyId: number, bb: Blackboard): number | undefined
+}
 
 export interface ValueWeights {
   monsterDamage: number
@@ -232,6 +238,7 @@ export class PotentialModelImpl implements PotentialModel {
     const nE = enemies.length
     const vals = VALS
     const calib = this.frame.calibration(a)
+    const killFor = (this.scenario as ScenarioKillFor | undefined)?.killValueFor
     let bestVal = 0
     let bestJ = -1
     for (let j = 0; j < nE; j++) {
@@ -252,7 +259,9 @@ export class PotentialModelImpl implements PotentialModel {
       const he = hpEff(e)
       let th = this.threatMemo[j]
       if (th < 0) this.threatMemo[j] = th = this.enemyThreat(e)
-      const killValue = this.w.killKappa * e.maxHp + this.w.killTau * th
+      // Prix du scénario pour une mort au prochain tour de l'allié (Vortex : heure de son créneau), sinon κ·PVmax + τ·menace.
+      const sk = killFor && this.bb ? killFor.call(this.scenario, s, e, a.id, this.bb) : undefined
+      const killValue = sk ?? this.w.killKappa * e.maxHp + this.w.killTau * th
       const val = Math.min(dmg, he) * v + killProbability(dmg, variance, he) * killValue
       vals[j] = val
       if (val > bestVal) {

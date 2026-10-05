@@ -27,6 +27,44 @@ function recordDigest(seed: number, r: Readonly<Record<string, number>>): number
   return sum
 }
 
+/** `recordDigest` pour deux graines en un seul parcours (résultats dans `PAIR`). */
+const PAIR = { a: 0, b: 0 }
+function recordDigest2(seedA: number, seedB: number, r: Readonly<Record<string, number>>): typeof PAIR {
+  let sa = 0
+  let sb = 0
+  for (const k in r) {
+    const v = r[k]
+    if (v) {
+      const n = Number(k)
+      sa = (sa + fnvInt(fnvInt(seedA, n), v)) | 0
+      sb = (sb + fnvInt(fnvInt(seedB, n), v)) | 0
+    }
+  }
+  PAIR.a = sa
+  PAIR.b = sb
+  return PAIR
+}
+
+/** `buffsDigest` pour deux graines en un seul parcours (résultats dans `PAIR`). */
+function buffsDigest2(f: Fighter, seedA: number, seedB: number): typeof PAIR {
+  let sa = 0
+  let sb = 0
+  const bs = f.buffs
+  for (let i = 0; i < bs.length; i++) {
+    const b = bs[i]
+    const value = Math.round(b.value * 100)
+    let ha = fnvInt(seedA, b.sourceId)
+    let hb = fnvInt(seedB, b.sourceId)
+    ha = fnvInt(fnvInt(fnvInt(fnvInt(fnvInt(ha, b.spellId), b.effect.effectId), value), b.remaining), b.delay)
+    hb = fnvInt(fnvInt(fnvInt(fnvInt(fnvInt(hb, b.spellId), b.effect.effectId), value), b.remaining), b.delay)
+    sa = (sa + ha) | 0
+    sb = (sb + hb) | 0
+  }
+  PAIR.a = sa
+  PAIR.b = sb
+  return PAIR
+}
+
 /**
  * Empreinte des buffs, INDÉPENDANTE de leur ordre et de leurs uid (somme commutative) : deux ordres de lancers
  * indépendants produisent les mêmes buffs avec des uid différents.
@@ -85,8 +123,9 @@ export function stateHash(s: FightState): bigint {
   for (let i = 0; i < fs.length; i++) {
     const f = fs[i]
     if (!f.alive) {
-      a = fnvInt(fnvInt(a, ~f.id), buffsDigest(f, 0x811c9dc5))
-      b = fnvInt(fnvInt(b, ~f.id), buffsDigest(f, 0x050c5d1f))
+      const bd = buffsDigest2(f, 0x811c9dc5, 0x050c5d1f)
+      a = fnvInt(fnvInt(a, ~f.id), bd.a)
+      b = fnvInt(fnvInt(b, ~f.id), bd.b)
       continue
     }
     const hp10 = Math.floor(f.hp / 10)
@@ -94,10 +133,16 @@ export function stateHash(s: FightState): bigint {
     const mp = Math.round(f.mp * 100)
     a = fnvInt(fnvInt(fnvInt(fnvInt(fnvInt(fnvInt(a, f.id), f.cell), hp10), f.shield), ap), mp)
     b = fnvInt(fnvInt(fnvInt(fnvInt(fnvInt(fnvInt(b, f.id), f.cell), hp10), f.shield), ap), mp)
-    a = fnvInt(a, buffsDigest(f, 0x811c9dc5))
-    b = fnvInt(b, buffsDigest(f, 0x050c5d1f))
-    a = fnvInt(fnvInt(a, recordDigest(0x811c9dc5, f.cooldowns)), recordDigest(0x01000193, f.castsThisTurn))
-    b = fnvInt(fnvInt(b, recordDigest(0x050c5d1f, f.cooldowns)), recordDigest(0x2545f491, f.castsThisTurn))
+    // Deux graines en un seul parcours de chaque liste (mêmes valeurs que deux appels séparés).
+    const bd = buffsDigest2(f, 0x811c9dc5, 0x050c5d1f)
+    a = fnvInt(a, bd.a)
+    b = fnvInt(b, bd.b)
+    const cd = recordDigest2(0x811c9dc5, 0x050c5d1f, f.cooldowns)
+    const cdA = cd.a
+    const cdB = cd.b
+    const ct = recordDigest2(0x01000193, 0x2545f491, f.castsThisTurn)
+    a = fnvInt(fnvInt(a, cdA), ct.a)
+    b = fnvInt(fnvInt(b, cdB), ct.b)
   }
   let marksA = 0
   let marksB = 0

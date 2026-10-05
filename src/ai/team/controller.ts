@@ -444,7 +444,18 @@ export class TeamController implements Controller {
       if (n) emitNote(engine, fight, view.me.id, n)
     }
     for (const it of bb.intents) if (it.owner === view.me.id && intentActive(it, fight)) emitNote(engine, fight, view.me.id, intentNote(fight, it))
+    // Plan du scénario (Vortex : « qui marque / corrompt quoi à quelle heure »), s'il a changé depuis la dernière note.
+    if (view.me.kind === 'player') {
+      const ex = (this.brain.scenario as { explain?: () => string }).explain?.()
+      if (ex && ex !== this.lastScenarioNote) {
+        this.lastScenarioNote = ex
+        emitNote(engine, fight, view.me.id, { kind: 'plan', text: `Scénario — ${ex}` })
+      }
+    }
   }
+
+  /** Dernière note de plan de scénario émise (évite les répétitions). */
+  private lastScenarioNote = ''
 
   /** Notes d'un plan : plan, tactiques, coup créatif. */
   private notesForPlan(engine: Engine, fight: FightState, view: AIView, plan: SearchPlan): void {

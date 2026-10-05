@@ -136,13 +136,22 @@ export interface Fighter {
   cell: number
   alive: boolean
   states: number[]
+  /**
+   * Buffs actifs. Tableau ET objets partagés entre clones de combat (`Engine.cloneFight`) en copie-sur-écriture : le
+   * moteur les rend privés (`ownBuffs`, src/engine/cow.ts) avant toute modification. Hors du moteur : lecture libre,
+   * jamais de modification en place (remplacer le tableau).
+   */
   buffs: Buff[]
   spells: KnownSpell[]
-  /** spellId -> tours restants avant de pouvoir relancer. */
+  /**
+   * spellId -> tours restants avant de pouvoir relancer. Comme `castsThisTurn` et `castsOnTarget` : objet partagé
+   * entre clones de combat (`Engine.cloneFight`), REMPLACÉ à chaque écriture (`setRecord`, src/engine/cow.ts), jamais
+   * modifié en place une fois le combat cloné.
+   */
   cooldowns: Record<number, number>
-  /** spellId -> nombre de lancers ce tour. */
+  /** spellId -> nombre de lancers ce tour (objet remplacé à chaque écriture, cf. `cooldowns`). */
   castsThisTurn: Record<number, number>
-  /** `${spellId}:${targetId}` -> nombre de lancers ce tour sur cette cible. */
+  /** `${spellId}:${targetId}` -> nombre de lancers ce tour sur cette cible (objet remplacé, cf. `cooldowns`). */
   castsOnTarget: Record<string, number>
   summonerId?: number
   /** Clé de l'IA à utiliser (registre src/ai). */

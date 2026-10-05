@@ -8,6 +8,7 @@
  *  - 140 : « Tour annulé » — buff `passTurn` : le porteur passe ses tours tant qu'il est actif (Engine.nextTurn) ;
  *  - 2188 : change le comportement d'IA d'un monstre (`tags.aiBehaviour` = diceNum, sinon value ; sens INCERTAIN).
  */
+import { ownBuffs } from '../../cow'
 import type { Buff, Fighter } from '../../types'
 import type { EffectContext } from '../registry'
 import { addEffectBuff, buffDuration, enforceMaxStack, recording, registerBuffEffect } from './common'
@@ -34,8 +35,11 @@ export function addState(ctx: EffectContext, t: Fighter, stateId: number): boole
   if ((!t.alive && t.cell < 0) || !stateId) return false
   const had = t.states.includes(stateId)
   const remaining = buffDuration(ctx.effect)
-  const existing = sameStateBuff(ctx, t, stateId)
-  if (existing) {
+  const found = sameStateBuff(ctx, t, stateId)
+  if (found) {
+    // Durée rafraîchie en place : buff rendu privé (copie de même ordre si partagé, src/engine/cow.ts).
+    const idx = t.buffs.indexOf(found)
+    const existing = ownBuffs(t)[idx]
     existing.remaining = existing.remaining < 0 || remaining < 0 ? -1 : Math.max(existing.remaining, remaining)
     return !had
   }

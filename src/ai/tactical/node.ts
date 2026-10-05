@@ -28,7 +28,7 @@ export interface Tactic {
 
 /** Événement de trace d'une recherche (tests, diagnostics) : n'influence aucune décision. */
 export type SearchTrace =
-  | { t: 'expand'; depth: number; key: string; v: number; tactic?: TacticId; cat: CandidateCat; mandatory: boolean }
+  | { t: 'expand'; depth: number; key: string; v: number; tactic?: TacticId; cat: CandidateCat; mandatory: boolean; b?: EvalBreakdown }
   | { t: 'final'; keys: string[]; v: number; rolled: boolean }
   | { t: 'choice'; keys: string[]; v: number; pass: number }
 

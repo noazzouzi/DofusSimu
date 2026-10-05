@@ -37,6 +37,12 @@ import type { AIMode } from '../src/ai/types'
 
 const data = loadDataStore('data')
 const theta = loadTheta()
+/**
+ * Coûts d'heures MESURÉS à l'échelle 1 : les valeurs absolues vérifiées ci-dessous (V ≈ 3 667, XI ≈ 3 300) sont celles
+ * de la formule ; le θ par défaut les multiplie par `planner.hourCostScale` (0,4 depuis le réglage du tour 1,
+ * docs/tuning-log.md).
+ */
+const unitTheta = loadTheta({ planner: { hourCostScale: 1 } })
 
 // ───────────────────────────── outils des puzzles ─────────────────────────────
 
@@ -110,7 +116,7 @@ describe('coûts des heures (§12.4, T-hours)', () => {
   const engine = createEngine(data, vortexHooks)
   const meta = buildTeam(data, parseTeam('cra_feu_zone,enutrof_retrait_pm_eau,iop_terre_burst,eniripsa_soin_feu', data))
   createVortexFight(engine, meta, { params: VORTEX_DEFAULT_PARAMS, seed: 1, rollMode: 'random', record: false, rngRekey: 'perTurn' })
-  const measured = measureHourCosts(engine, { params: VORTEX_DEFAULT_PARAMS, theta, team: meta })
+  const measured = measureHourCosts(engine, { params: VORTEX_DEFAULT_PARAMS, theta: unitTheta, team: meta })
 
   it('table de repli : valeurs du §12.4, élément absent, placeur, échelle', () => {
     const f = fallbackHourCosts()
@@ -159,7 +165,7 @@ describe('coûts des heures (§12.4, T-hours)', () => {
     const e2 = createEngine(data, vortexHooks)
     const smoke = createSmokeTeam(data)
     createVortexFight(e2, smoke, { params: VORTEX_DEFAULT_PARAMS, seed: 1, rollMode: 'random', record: false, rngRekey: 'perTurn' })
-    const low = measureHourCosts(e2, { params: VORTEX_DEFAULT_PARAMS, theta, team: smoke })
+    const low = measureHourCosts(e2, { params: VORTEX_DEFAULT_PARAMS, theta: unitTheta, team: smoke })
     expect(low.cVx(7)).toBeGreaterThan(0)
     expect(measured.cVx(7)).toBeGreaterThan(low.cVx(7))
   })
@@ -175,7 +181,7 @@ describe('coûts des heures (§12.4, T-hours)', () => {
   })
 
   it('déterministe : deux mesures identiques ; sans joueur vivant : repli', () => {
-    const again = measureHourCosts(engine, { params: VORTEX_DEFAULT_PARAMS, theta, team: meta })
+    const again = measureHourCosts(engine, { params: VORTEX_DEFAULT_PARAMS, theta: unitTheta, team: meta })
     expect(Array.from(again.vx)).toEqual(Array.from(measured.vx))
     expect(Array.from(again.mon.get(HARPILLE)!)).toEqual(Array.from(measured.mon.get(HARPILLE)!))
     expect(measureHourCosts(engine, { params: VORTEX_DEFAULT_PARAMS, theta, team: [] }).source).toBe('fallback')

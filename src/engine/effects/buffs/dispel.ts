@@ -10,6 +10,7 @@
  * 132 et 1075 émettent le déclencheur 'DIS' (« le porteur est désenvoûté ») sur la cible — 1075 seulement s'il a
  * retiré au moins un buff (OTOMAI) ; 406/1406 non (ce sont des retraits ciblés, souvent l'auto-consommation d'un buff).
  */
+import { ownBuffs } from '../../cow'
 import type { Engine } from '../../engine'
 import type { Buff, Fighter, FightState } from '../../types'
 import type { EffectContext } from '../registry'
@@ -44,9 +45,11 @@ const PERMANENT_DURATION = 63
  */
 export function shortenBuffs(engine: Engine, fight: FightState, target: Fighter, turns: number, source?: Fighter): void {
   let uids: number[] | undefined
-  if (turns > 0) {
-    for (const b of target.buffs) {
-      if (!b.dispellable || b.delay > 0 || b.kind === 'delayed' || b.remaining < 0 || b.remaining >= PERMANENT_DURATION) continue
+  // Durées modifiées en place : buffs rendus privés d'abord s'il y a un buff à raccourcir (src/engine/cow.ts).
+  const shortened = (b: Buff): boolean => !(!b.dispellable || b.delay > 0 || b.kind === 'delayed' || b.remaining < 0 || b.remaining >= PERMANENT_DURATION)
+  if (turns > 0 && target.buffs.some(shortened)) {
+    for (const b of ownBuffs(target)) {
+      if (!shortened(b)) continue
       b.remaining -= turns
       if (b.remaining <= 0) (uids ??= []).push(b.uid)
     }

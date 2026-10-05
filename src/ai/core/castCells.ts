@@ -16,9 +16,9 @@ import { castPreventedByStates, type CastFailure } from '../../engine/cast'
 import { modifiedSpellLevel } from '../../engine/effects/buffs/spellMods'
 import type { Engine } from '../../engine/engine'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
-import { CELL_COUNT, distance, isInCastRange } from '../../map/geometry'
-import { zoneMembership } from '../../map/zones'
-import { hasLineOfSightOnMap } from '../../map/los'
+import { CELL_COUNT, cellsByDistance, distance, isInCastRange } from '../../map/geometry'
+import { isCellInZone } from '../../map/zones'
+import { hasLineOfSightOcc } from '../../map/los'
 import type { ReachInfo } from '../types'
 import { buildOccupancy } from './reach'
 import type { SpellProfileX } from './spellProfile'
@@ -34,28 +34,76 @@ export function castGeom(caster: Fighter, lvl: SpellLevelData): CastGeom {
   return { min: lvl.minRange, max: Math.max(lvl.minRange, lvl.range + bonus), line: lvl.castInLine, diag: lvl.castInDiagonal }
 }
 
+/** `castGeom` écrit dans `out` (tampon d'une fonction feuille non réentrante : aucune allocation). */
+function castGeomInto(caster: Fighter, lvl: SpellLevelData, out: CastGeom): CastGeom {
+  const bonus = lvl.rangeBoostable ? caster.stats.range : 0
+  out.min = lvl.minRange
+  out.max = Math.max(lvl.minRange, lvl.range + bonus)
+  out.line = lvl.castInLine
+  out.diag = lvl.castInDiagonal
+  return out
+}
+const GEOM_CCF: CastGeom = { min: 0, max: 0, line: false, diag: false }
+const GEOM_HITS: CastGeom = { min: 0, max: 0, line: false, diag: false }
+
 const RING_CACHE = new Map<number, (Int16Array | undefined)[]>()
+/**
+ * Géométries non entières (PO fractionnaire d'un clone en mode 'average') ou négatives : clé texte EXACTE (rare). Une
+ * clé numérique les confondait avec une géométrie entière (ex. {max 5.25} et {max 5, diag}) : l'anneau mis en cache
+ * par l'une servait à l'autre — cases manquantes, ou cases hors de portée acceptées par `castCellsFor` qui ne revérifie
+ * pas la portée sur un anneau de géométrie entière (tests/engine-perf-regressions.test.ts).
+ */
+const RING_CACHE_INEXACT = new Map<string, (Int16Array | undefined)[]>()
+
+/** Portées entières positives : la clé numérique est exacte (au-delà de 127, aucune case de plus : bornage sans effet). */
+function exactGeom(g: CastGeom): boolean {
+  return Number.isInteger(g.min) && Number.isInteger(g.max) && g.min >= 0 && g.max >= 0
+}
 
 function geomKey(g: CastGeom): number {
-  const max = Math.max(0, Math.min(127, g.max))
-  const min = Math.max(0, Math.min(127, g.min))
+  const max = Math.min(127, g.max)
+  const min = Math.min(127, g.min)
   return ((min * 128 + max) * 2 + (g.line ? 1 : 0)) * 2 + (g.diag ? 1 : 0)
+}
+
+function ringRow(g: CastGeom): (Int16Array | undefined)[] {
+  if (exactGeom(g)) {
+    const k = geomKey(g)
+    let row = RING_CACHE.get(k)
+    if (!row) RING_CACHE.set(k, (row = new Array(CELL_COUNT)))
+    return row
+  }
+  const k = `${g.min}|${g.max}|${g.line ? 1 : 0}|${g.diag ? 1 : 0}`
+  let row = RING_CACHE_INEXACT.get(k)
+  if (!row) RING_CACHE_INEXACT.set(k, (row = new Array(CELL_COUNT)))
+  return row
 }
 
 /** Cases d'où `target` est à portée (géométrie seule), triées par distance puis id. Vue en lecture seule. */
 export function inverseRange(g: CastGeom, target: number): Int16Array {
-  const k = geomKey(g)
-  let row = RING_CACHE.get(k)
-  if (!row) RING_CACHE.set(k, (row = new Array(CELL_COUNT)))
+  const row = ringRow(g)
   let ring = row[target]
   if (!ring) {
-    const list: number[] = []
-    for (let c = 0; c < CELL_COUNT; c++) if (isInCastRange(c, target, g.min, g.max, g.line, g.diag)) list.push(c)
-    list.sort((a, b) => distance(a, target) - distance(b, target) || a - b)
-    row[target] = ring = Int16Array.from(list)
+    if (target >= 0 && target < CELL_COUNT) {
+      // Parcours des cases par (distance, id) croissants depuis la cible (ordre précalculé) : déjà trié. Une case à
+      // portée est à une distance de Manhattan ≤ 2 × max (diagonale : r pas = 2r) : arrêt au-delà.
+      const order = cellsByDistance(target)
+      const bound = 2 * g.max
+      let n = 0
+      for (let i = 0; i < CELL_COUNT; i++) {
+        const c = order[i]
+        if (distance(c, target) > bound) break
+        if (isInCastRange(c, target, g.min, g.max, g.line, g.diag)) RING_TMP[n++] = c
+      }
+      ring = RING_TMP.slice(0, n)
+    } else {
+      ring = new Int16Array(0)
+    }
+    row[target] = ring
   }
   return ring
 }
+const RING_TMP = new Int16Array(CELL_COUNT)
 
 // ───────────────────────────── ligne de vue ─────────────────────────────
 
@@ -86,22 +134,17 @@ export class LosOracle {
   readonly occ: Int16Array
   /** 1 = case opaque. */
   private readonly opaque: Uint8Array
-  /** Case intermédiaire occupée par une autre entité que le lanceur (fermeture unique : aucune allocation par requête). */
-  private readonly blocked: (c: number) => boolean
 
   constructor(readonly s: FightState, team: TeamId, readonly casterId: number, occ?: Int16Array) {
-    const o = (this.occ = occ ?? buildOccupancy(s, team))
+    this.occ = occ ?? buildOccupancy(s, team)
     this.opaque = opaqueOf(s)
-    this.blocked = c => {
-      const id = o[c]
-      return id >= 0 && id !== casterId
-    }
   }
 
   los(from: number, to: number): boolean {
     if (from === to) return this.opaque[to] === 0
-    // Lecture directe des lignes précalculées du client (sans vue `subarray` par requête).
-    return hasLineOfSightOnMap(this.opaque, from, to, this.blocked)
+    // Lignes précalculées du client lues depuis la cible (table en cache pour une cible fixe), occupation sans fermeture :
+    // intermédiaires transparentes et non occupées par une autre entité que le lanceur, cible transparente.
+    return hasLineOfSightOcc(this.opaque, from, to, this.occ, this.casterId)
   }
 }
 
@@ -176,7 +219,7 @@ export function castGeometryOk(s: FightState, caster: Fighter, spell: KnownSpell
 export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, target: number,
                              reach: ReachInfo, los: LosOracle, limit = CELL_COUNT, out: number[] = [], nextTurn = false): number[] {
   out.length = 0
-  const g = castGeom(caster, lvl)
+  const g = castGeomInto(caster, lvl, GEOM_CCF)
   const cost = lvl.apCost
   const start = reach.count > 0 ? reach.cells[0] : caster.cell
   // Rejet rapide : toute case atteignable est à ≤ PM du départ, toute case de lancer à ≤ PO de la cible.
@@ -188,16 +231,25 @@ export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, 
     if ((caster.castsThisTurn[spell.spellId] ?? 0) > 0 && (caster.castsOnTarget[`${spell.spellId}:${occT}`] ?? 0) >= lvl.maxCastPerTarget) return out
     perTarget = true
   }
-  if (start >= 0 && reach.apLeft[start] >= cost && castGeometryOk(s, caster, spell, lvl, g, start, target, los, nextTurn, perTarget)) {
+  // Case cible absente de la carte : `castGeometryOk` est faux pour toute case de lancer.
+  const mc = s.map.cells[target]
+  if (!mc) return out
+  const x = targetCtx(caster, spell, lvl, g, target, mc.walkable, los, nextTurn, perTarget)
+  if (start >= 0 && reach.apLeft[start] >= cost && fromOk(x, start, false)) {
     out.push(start)
     if (out.length >= limit) return out
   }
   const ring = inverseRange(g, target)
   if (ring.length <= reach.count * 2) {
+    const mpLeft = reach.mpLeft
+    const apLeft = reach.apLeft
+    // Anneau ⇔ `isInCastRange` (clé de cache exacte pour toute géométrie, `ringRow`) ; par prudence, la portée n'est
+    // pas revérifiée seulement pour les portées entières dans [0, 127] (PO fractionnaire d'un clone 'average' : revérifiée).
+    const exactRing = Number.isInteger(g.min) && Number.isInteger(g.max) && g.min >= 0 && g.max >= 0 && g.min <= 127 && g.max <= 127
     for (let i = 0; i < ring.length; i++) {
       const c = ring[i]
-      if (c === start || reach.mpLeft[c] < 0 || reach.apLeft[c] < cost) continue
-      if (!castGeometryOk(s, caster, spell, lvl, g, c, target, los, nextTurn, perTarget)) continue
+      if (c === start || mpLeft[c] < 0 || apLeft[c] < cost) continue
+      if (!fromOk(x, c, exactRing)) continue
       out.push(c)
       if (out.length >= limit) break
     }
@@ -205,7 +257,7 @@ export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, 
     for (let i = 0; i < reach.count; i++) {
       const c = reach.cells[i]
       if (c === start || reach.apLeft[c] < cost) continue
-      if (!castGeometryOk(s, caster, spell, lvl, g, c, target, los, nextTurn, perTarget)) continue
+      if (!fromOk(x, c, false)) continue
       out.push(c)
       if (out.length >= limit) break
     }
@@ -214,12 +266,76 @@ export function castCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, 
 }
 
 /**
+ * Invariants de `castGeometryOk` pour une cible fixe (une instance de module : `castCellsFor` n'est pas réentrante) :
+ * occupant de la cible, contraintes de case, compteur par cible, LdV. `fromOk(x, c)` ⇔ `castGeometryOk(…, c, target, …)`.
+ */
+interface TargetCtx {
+  g: CastGeom
+  target: number
+  walkable: boolean
+  casterId: number
+  casterCell: number
+  occT: number
+  needFree: boolean
+  needTaken: boolean
+  checkPerTarget: boolean
+  spellId: number
+  maxPerTarget: number
+  castsOnTarget: Record<string, number>
+  testLos: boolean
+  los: LosOracle | null
+}
+const TCTX: TargetCtx = {
+  g: GEOM_CCF, target: 0, walkable: false, casterId: 0, casterCell: 0, occT: -1, needFree: false, needTaken: false,
+  checkPerTarget: false, spellId: 0, maxPerTarget: 0, castsOnTarget: {}, testLos: false, los: null,
+}
+
+function targetCtx(caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, g: CastGeom, target: number, walkable: boolean,
+                   los: LosOracle, nextTurn: boolean, perTargetChecked: boolean): TargetCtx {
+  const x = TCTX
+  x.g = g
+  x.target = target
+  x.walkable = walkable
+  x.casterId = caster.id
+  x.casterCell = caster.cell
+  x.occT = los.occ[target]
+  x.needFree = !!lvl.needFreeCell
+  x.needTaken = !!lvl.needTakenCell
+  // Compteur par cible (castSpell incrémente lancers du tour et par cible) : seulement si le sort a déjà servi ce tour.
+  x.checkPerTarget = !nextTurn && !perTargetChecked && lvl.maxCastPerTarget > 0 && (caster.castsThisTurn[spell.spellId] ?? 0) > 0
+  x.spellId = spell.spellId
+  x.maxPerTarget = lvl.maxCastPerTarget
+  x.castsOnTarget = caster.castsOnTarget
+  x.testLos = !!lvl.castTestLos
+  x.los = los
+  return x
+}
+
+/** `castGeometryOk` depuis `from` vers la cible de `x` (même ordre de tests, invariants précalculés). */
+function fromOk(x: TargetCtx, from: number, rangeChecked: boolean): boolean {
+  const target = x.target
+  const g = x.g
+  if (!rangeChecked && !isInCastRange(from, target, g.min, g.max, g.line, g.diag)) return false
+  // `occupantAfterMove(occ, casterId, casterCell, from, target)`.
+  let occId = x.occT
+  if (target === from) occId = x.casterId
+  else if (occId === x.casterId && target === x.casterCell && from !== x.casterCell) occId = -1
+  if (!x.walkable && occId < 0) return false
+  if (x.needFree && occId >= 0 && occId !== x.casterId) return false
+  if (x.needFree && from !== x.casterCell && target === from) return false
+  if (x.needTaken && occId < 0) return false
+  if (x.checkPerTarget && occId >= 0 && (x.castsOnTarget[`${x.spellId}:${occId}`] ?? 0) >= x.maxPerTarget) return false
+  if (x.testLos && distance(from, target) > 1 && !x.los!.los(from, target)) return false
+  return true
+}
+
+/**
  * Un sort de portée 0 à zone (lancé sur la case du lanceur : Cercle de feu, Cri de Guerre…) touche-t-il `target`
  * quand le lanceur est sur `from` ? Zone centrée sur `from`, orientation neutre.
  */
 export function selfZoneHits(zone: ZoneSpec, radius: number, from: number, target: number): boolean {
   if (from === target || distance(from, target) > radius) return false
-  return zoneMembership(zone, from, from)(target)
+  return isCellInZone(zone, target, from, from)
 }
 
 /**
@@ -303,7 +419,7 @@ export function hitCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, l
       castCellsFor(s, caster, spell, lvl, t, reach, los, CELL_COUNT, AIM_CELLS, nextTurn)
       for (let i = 0; i < AIM_CELLS.length && out.length < limit; i++) {
         const c = AIM_CELLS[i]
-        if (out.includes(c) || !zoneMembership(zone, t, c)(target)) continue
+        if (out.includes(c) || !isCellInZone(zone, target, t, c)) continue
         out.push(c)
       }
     }
@@ -314,7 +430,7 @@ export function hitCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, l
     const cost = lvl.apCost
     for (let i = 0; i < reach.count && out.length < limit; i++) {
       const c = reach.cells[i]
-      if (reach.apLeft[c] < cost || !zoneMembership(zone, c, c)(target)) continue
+      if (reach.apLeft[c] < cost || !isCellInZone(zone, target, c, c)) continue
       if (!castGeometryOk(s, caster, spell, lvl, g, c, c, los, nextTurn)) continue
       out.push(c)
     }
@@ -329,7 +445,7 @@ export function hitCellsFor(s: FightState, caster: Fighter, spell: KnownSpell, l
  */
 export function hitsFrom(s: FightState, caster: Fighter, spell: KnownSpell, lvl: SpellLevelData, prof: SpellProfileX | null | undefined,
                          from: number, target: number, los: LosOracle, nextTurn = false): boolean {
-  const g = castGeom(caster, lvl)
+  const g = castGeomInto(caster, lvl, GEOM_HITS)
   if (prof && g.max === 0 && prof.zone && prof.zoneRadius > 0) {
     return selfZoneHits(prof.zone, prof.zoneRadius, from, target) && castGeometryOk(s, caster, spell, lvl, g, from, from, los, nextTurn)
   }
@@ -339,13 +455,13 @@ export function hitsFrom(s: FightState, caster: Fighter, spell: KnownSpell, lvl:
     for (let k = 0; k < aims.length; k++) {
       const t = aims[k]
       if (!isInCastRange(from, t, g.min, g.max, g.line, g.diag)) continue
-      if (!zoneMembership(prof.ringZone, t, from)(target)) continue
+      if (!isCellInZone(prof.ringZone, target, t, from)) continue
       if (castGeometryOk(s, caster, spell, lvl, g, from, t, los, nextTurn)) return true
     }
     return false
   }
   if (prof.aim === 'around' && prof.aroundZone) {
-    return zoneMembership(prof.aroundZone, from, from)(target) && castGeometryOk(s, caster, spell, lvl, g, from, from, los, nextTurn)
+    return isCellInZone(prof.aroundZone, target, from, from) && castGeometryOk(s, caster, spell, lvl, g, from, from, los, nextTurn)
   }
   return castGeometryOk(s, caster, spell, lvl, g, from, target, los, nextTurn)
 }

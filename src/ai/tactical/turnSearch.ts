@@ -348,7 +348,7 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
         if (bctx.nodes.exhausted()) break
         const child = expand(bctx, node, c, salt)
         if (!child) continue
-        ctx.trace?.({ t: 'expand', depth, key: c.key, v: child.v, tactic: c.tactic, cat: c.cat, mandatory: c.mandatory === true })
+        ctx.trace?.({ t: 'expand', depth, key: c.key, v: child.v, tactic: c.tactic, cat: c.cat, mandatory: c.mandatory === true, b: child.breakdown })
         const prev = seen.get(child.hash)
         if (prev !== undefined && prev >= child.v) continue
         seen.set(child.hash, child.v)

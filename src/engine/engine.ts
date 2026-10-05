@@ -10,6 +10,7 @@ import { addStats, emptyStats, type Element, type Stats, type TeamId } from '../
 import { erosion } from '../damage/life'
 import type { DataStore } from '../data/store'
 import type { MapData } from '../data/model'
+import { addMetric, cloneBuff, keepOwnership, newShareEpoch, ownBuffs, setRecord } from './cow'
 import { accumulateSpellMod } from './effects/buffs/spellMods'
 import { bumpRev } from './rev'
 import type {
@@ -81,17 +82,23 @@ export class Engine {
     return fight
   }
 
-  /** Copie profonde de l'état mutable (la carte et les données de sorts restent partagées). */
+  /**
+   * Copie de l'état mutable (la carte et les données de sorts restent partagées). Buffs, relances et compteurs de
+   * lancers des combattants sont partagés en copie-sur-écriture (src/engine/cow.ts) : copiés à la première
+   * modification, dans le clone comme dans le parent.
+   */
   cloneFight(fight: FightState, record = false): FightState {
+    newShareEpoch()
     const c: FightState = {
       ...fight,
-      fighters: fight.fighters.map(cloneFighter),
+      fighters: fight.fighters.map(cloneFighterShared),
       timeline: fight.timeline.slice(),
       glyphs: fight.glyphs.map(g => ({ ...g, cells: g.cells })),
       traps: fight.traps.map(t => ({ ...t, cells: t.cells })),
       events: record ? fight.events.slice() : [],
       options: { ...fight.options, record },
-      metrics: cloneMetrics(fight.metrics),
+      // Table copiée, métriques par combattant partagées (remplacées à chaque écriture : `addMetric`, cow.ts).
+      metrics: { ...fight.metrics },
       // E2 : copie fournie par le scénario (rapide) ; à défaut copie profonde générique (sauf état vide).
       scenarioState: this.scenario?.cloneState
         ? this.scenario.cloneState(fight.scenarioState)
@@ -122,7 +129,7 @@ export class Engine {
     // d'effets qui lancent un sort dès la création du combat.
     if (fight.options.initialCooldowns) for (const sp of f.spells) {
       const n = sp.level.initialCooldown
-      if (n > 0) f.cooldowns[sp.spellId] = Math.max(f.cooldowns[sp.spellId] ?? 0, n + 1)
+      if (n > 0) f.cooldowns = setRecord(f.cooldowns, sp.spellId, Math.max(f.cooldowns[sp.spellId] ?? 0, n + 1))
     }
     this.recomputeStats(f)
     fight.metrics[f.id] = emptyMetrics()
@@ -136,7 +143,11 @@ export class Engine {
   }
 
   fighterAt(fight: FightState, cell: number): Fighter | undefined {
-    for (const f of fight.fighters) if (f.alive && f.cell === cell && f.carriedBy === undefined) return f
+    const fs = fight.fighters
+    for (let i = 0; i < fs.length; i++) {
+      const f = fs[i]
+      if (f.cell === cell && f.alive && f.carriedBy === undefined) return f
+    }
     return undefined
   }
 
@@ -215,33 +226,44 @@ export class Engine {
 
   addBuff(fight: FightState, target: Fighter, buff: Omit<Buff, 'uid'>): Buff {
     const b: Buff = { ...buff, uid: this.uid(fight) }
-    const hadStates = new Set(target.states)
-    target.buffs.push(b)
+    // États avant : `states` est remplacé (jamais modifié en place) par `recomputeStats` — la référence est un instantané.
+    const hadStates = target.states
+    ownBuffs(target).push(b)
     const before = target.stats
     this.recomputeStats(target)
     this.applyPoolDelta(fight, target, before)
-    this.emit(fight, {
-      t: 'buff',
-      target: target.id,
-      source: b.sourceId,
-      spellId: b.spellId,
-      label: b.label,
-      duration: b.remaining,
-      uid: b.uid,
-    })
+    if (fight.options.record) {
+      this.emit(fight, {
+        t: 'buff',
+        target: target.id,
+        source: b.sourceId,
+        spellId: b.spellId,
+        label: b.label,
+        duration: b.remaining,
+        uid: b.uid,
+      })
+    }
     this.emitStateChanges(fight, target, hadStates)
     return b
   }
 
   removeBuff(fight: FightState, target: Fighter, uid: number): void {
-    const i = target.buffs.findIndex(b => b.uid === uid)
+    const buffs = target.buffs
+    let i = -1
+    for (let k = 0; k < buffs.length; k++) {
+      if (buffs[k].uid === uid) {
+        i = k
+        break
+      }
+    }
     if (i < 0) return
-    const hadStates = new Set(target.states)
-    const removed = target.buffs.splice(i, 1)[0]
+    const hadStates = target.states
+    // Copie (même ordre) si le tableau est partagé avec un clone : l'indice reste valable.
+    const removed = ownBuffs(target).splice(i, 1)[0]
     const before = target.stats
     this.recomputeStats(target)
     this.applyPoolDelta(fight, target, before)
-    this.emit(fight, { t: 'unbuff', target: target.id, uid })
+    if (fight.options.record) this.emit(fight, { t: 'unbuff', target: target.id, uid })
     this.hooks.onBuffRemoved?.(fight, target, removed)
     this.emitStateChanges(fight, target, hadStates)
   }
@@ -272,18 +294,26 @@ export class Engine {
     if (!dAp && !dMp) return
     f.ap = Math.max(0, f.ap + dAp)
     f.mp = Math.max(0, f.mp + dMp)
-    this.emit(fight, { t: 'apmp', target: f.id, ap: f.ap, mp: f.mp, reason: 'buff' })
+    if (fight.options.record) this.emit(fight, { t: 'apmp', target: f.id, ap: f.ap, mp: f.mp, reason: 'buff' })
   }
 
-  private emitStateChanges(fight: FightState, f: Fighter, had: Set<number>): void {
-    const now = new Set(f.states)
-    for (const s of now) {
-      if (had.has(s)) continue
+  /**
+   * États gagnés (EON) puis perdus (EOFF) entre `had` et `f.states` (instantanés : tableaux remplacés, jamais modifiés
+   * en place, par `recomputeStats`). Parcours des tableaux dans leur ordre, doublons ignorés (première occurrence) :
+   * même ordre que l'itération d'un `Set` construit sur ces tableaux, sans allocation.
+   */
+  private emitStateChanges(fight: FightState, f: Fighter, had: readonly number[]): void {
+    const now = f.states
+    if (now === had) return
+    for (let i = 0; i < now.length; i++) {
+      const s = now[i]
+      if (had.includes(s) || firstIndexOf(now, s) !== i) continue
       if (fight.options.record) this.emit(fight, { t: 'state', target: f.id, stateId: s, name: this.data.state(s)?.name ?? `État ${s}`, added: true })
       this.trigger(fight, f, { type: 'EON', stateId: s })
     }
-    for (const s of had) {
-      if (now.has(s)) continue
+    for (let i = 0; i < had.length; i++) {
+      const s = had[i]
+      if (now.includes(s) || firstIndexOf(had, s) !== i) continue
       if (fight.options.record) this.emit(fight, { t: 'state', target: f.id, stateId: s, name: this.data.state(s)?.name ?? `État ${s}`, added: false })
       this.trigger(fight, f, { type: 'EOFF', stateId: s })
     }
@@ -329,19 +359,21 @@ export class Engine {
       target.maxHp = Math.max(1, target.maxHp - eroded)
       target.hp = Math.min(target.hp, target.maxHp)
     }
-    this.emit(fight, {
-      t: 'damage',
-      source: source?.id ?? -1,
-      target: target.id,
-      amount: lost,
-      element,
-      kind,
-      shieldAbsorbed: absorbed || undefined,
-      erosion: eroded || undefined,
-      crit: opts.crit,
-    })
-    if (source) fight.metrics[source.id].damageDealt += lost
-    fight.metrics[target.id].damageTaken += lost
+    if (fight.options.record) {
+      this.emit(fight, {
+        t: 'damage',
+        source: source?.id ?? -1,
+        target: target.id,
+        amount: lost,
+        element,
+        kind,
+        shieldAbsorbed: absorbed || undefined,
+        erosion: eroded || undefined,
+        crit: opts.crit,
+      })
+    }
+    if (source) addMetric(fight, source.id, 'damageDealt', lost)
+    addMetric(fight, target.id, 'damageTaken', lost)
     if (target.hp <= 0) this.kill(fight, target, source)
     this.hooks.onDamaged?.(fight, target, source, lost + absorbed, { element, kind, melee: opts.melee, isWeapon: opts.isWeapon })
     return lost
@@ -357,8 +389,8 @@ export class Engine {
     const healed = Math.min(Math.floor(amount), target.maxHp - target.hp)
     if (healed <= 0) return 0
     target.hp += healed
-    this.emit(fight, { t: 'heal', source: source?.id ?? -1, target: target.id, amount: healed })
-    if (source) fight.metrics[source.id].healingDone += healed
+    if (fight.options.record) this.emit(fight, { t: 'heal', source: source?.id ?? -1, target: target.id, amount: healed })
+    if (source) addMetric(fight, source.id, 'healingDone', healed)
     if (opts.noTrigger) return healed
     this.trigger(fight, target, { type: 'H', source, amount: healed })
     if (source && source.alive) this.trigger(fight, source, { type: 'CH', source, amount: healed })
@@ -383,7 +415,7 @@ export class Engine {
   addShield(fight: FightState, source: Fighter | undefined, target: Fighter, amount: number): void {
     if (!target.alive || amount <= 0) return
     target.shield += Math.floor(amount)
-    this.emit(fight, { t: 'shield', source: source?.id ?? -1, target: target.id, amount: Math.floor(amount) })
+    if (fight.options.record) this.emit(fight, { t: 'shield', source: source?.id ?? -1, target: target.id, amount: Math.floor(amount) })
   }
 
   kill(fight: FightState, target: Fighter, killer?: Fighter): void {
@@ -405,14 +437,16 @@ export class Engine {
     // Registre chronologique des morts (résurrections 780/1034) : tableau remplacé, jamais modifié en place.
     const death = { fighter: target.id, cell: target.cell, round: fight.round, killer: killer?.id }
     fight.deaths = fight.deaths ? [...fight.deaths, death] : [death]
-    if (killer && killer.team !== target.team) fight.metrics[killer.id].kills++
+    if (killer && killer.team !== target.team) addMetric(fight, killer.id, 'kills', 1)
     this.trigger(fight, target, { type: 'X', source: killer, killed: true })
     if (killer && killer.alive && killer.id !== target.id) this.trigger(fight, killer, { type: 'K', source: killer })
     target.cell = -1
     // Mort : retrait des buffs portés par le mort et des buffs qu'il a lancés (dispellable 1 ou 2),
     // comme le client (FightDeathStep → BuffManager.dispell + removeLinkedBuff). Les buffs « désenvoûtement fort »
     // (3) et indissipables (4) restent sur le mort (ex. états d'heure du Vortex, conservés à la résurrection).
-    target.buffs = target.buffs.filter(b => b.effect.dispellable === 3 || b.effect.dispellable === 4)
+    const prevBuffs = target.buffs
+    target.buffs = prevBuffs.filter(b => b.effect.dispellable === 3 || b.effect.dispellable === 4)
+    keepOwnership(prevBuffs, target.buffs) // mêmes objets : la propriété (et leur identité) est conservée
     const vitBefore = target.stats.vitality
     this.recomputeStats(target)
     // Les bonus de Vitalité retirés à la mort ne survivent pas à une résurrection (pas de cumul de PV max).
@@ -538,15 +572,24 @@ export class Engine {
     if (fight.options.rngRekey === 'perTurn') fight.rngState = mix32(mix32(fight.options.seed, fight.round), f.id) | 0
     // Durées des effets lancés par ce combattant : décrémentées au début de son tour.
     this.decrementCastedBuffs(fight, f)
-    for (const k in f.cooldowns) if (f.cooldowns[k] > 0) f.cooldowns[k]--
+    // Relances : objet remplacé (partagé entre clones, cf. cow.ts), seulement s'il y a quelque chose à décompter.
+    const cds = f.cooldowns
+    for (const k in cds) {
+      if (cds[k] > 0) {
+        const next = { ...cds }
+        for (const j in next) if (next[j] > 0) next[j]--
+        f.cooldowns = next
+        break
+      }
+    }
     f.castsThisTurn = {}
     f.castsOnTarget = {}
     delete f.tags.endTurnNow
     this.recomputeStats(f)
     f.ap = Math.max(0, f.stats.ap)
     f.mp = Math.max(0, f.stats.mp)
-    fight.metrics[f.id].turnsPlayed++
-    this.emit(fight, { t: 'turnStart', fighter: f.id, ap: f.ap, mp: f.mp })
+    addMetric(fight, f.id, 'turnsPlayed', 1)
+    if (fight.options.record) this.emit(fight, { t: 'turnStart', fighter: f.id, ap: f.ap, mp: f.mp })
     this.scenario?.onTurnStart?.(fight, f)
     this.hooks.onTurnStart?.(fight, f)
   }
@@ -554,7 +597,7 @@ export class Engine {
   endTurn(fight: FightState, f: Fighter): void {
     this.hooks.onTurnEnd?.(fight, f)
     this.scenario?.onTurnEnd?.(fight, f)
-    this.emit(fight, { t: 'turnEnd', fighter: f.id })
+    if (fight.options.record) this.emit(fight, { t: 'turnEnd', fighter: f.id })
   }
 
   /**
@@ -595,7 +638,16 @@ export class Engine {
   private decrementCastedBuffs(fight: FightState, caster: Fighter): void {
     for (const target of fight.fighters) {
       if (!target.alive) continue
-      for (const b of target.buffs.slice()) {
+      // Seuls les buffs lancés par `caster` changent : aucune copie (cow.ts) si la cible n'en porte pas.
+      let any = false
+      for (const b of target.buffs) {
+        if (b.sourceId === caster.id) {
+          any = true
+          break
+        }
+      }
+      if (!any) continue
+      for (const b of ownBuffs(target).slice()) {
         if (b.sourceId !== caster.id) continue
         if (b.delay > 0) {
           b.delay--
@@ -652,21 +704,10 @@ export function initiativeOf(f: Fighter): number {
   return f.stats.initiative
 }
 
-function cloneMetrics(m: Record<number, FighterMetrics>): Record<number, FighterMetrics> {
-  const out: Record<number, FighterMetrics> = {}
-  for (const k in m) {
-    const v = m[k]
-    out[k] = {
-      damageDealt: v.damageDealt,
-      damageTaken: v.damageTaken,
-      healingDone: v.healingDone,
-      apRemoved: v.apRemoved,
-      mpRemoved: v.mpRemoved,
-      kills: v.kills,
-      turnsPlayed: v.turnsPlayed,
-    }
-  }
-  return out
+/** Indice de la première occurrence de `x` (tableaux courts : états). */
+function firstIndexOf(a: readonly number[], x: number): number {
+  for (let i = 0; i < a.length; i++) if (a[i] === x) return i
+  return -1
 }
 
 function isEmptyObject(o: object): boolean {
@@ -697,36 +738,7 @@ export function snapshot(f: Fighter): FighterSnapshot {
   }
 }
 
-/**
- * Copie d'un buff — littéral explicite (forme stable pour V8, ~20 % plus rapide qu'une décomposition).
- * TOUT nouveau champ de `Buff` doit être ajouté ici (garde-fou : tests/engine-clone.test.ts).
- */
-export function cloneBuff(b: Buff): Buff {
-  return {
-    uid: b.uid,
-    sourceId: b.sourceId,
-    spellId: b.spellId,
-    effect: b.effect,
-    value: b.value,
-    remaining: b.remaining,
-    delay: b.delay,
-    dispellable: b.dispellable,
-    statDelta: b.statDelta,
-    stateId: b.stateId,
-    triggers: b.triggers,
-    label: b.label,
-    kind: b.kind,
-    crit: b.crit,
-    triggerCount: b.triggerCount,
-    maxTriggers: b.maxTriggers,
-    firing: b.firing,
-    spellMod: b.spellMod,
-    disabledStateId: b.disabledStateId,
-    passTurn: b.passTurn,
-    markUid: b.markUid,
-    targetCell: b.targetCell,
-  }
-}
+export { cloneBuff } from './cow'
 
 /**
  * Copie d'un combattant pour les simulations de l'IA — littéral explicite (forme stable pour V8). Les données
@@ -737,6 +749,24 @@ export function cloneFighter(f: Fighter): Fighter {
   const src = f.buffs
   const buffs: Buff[] = new Array(src.length)
   for (let i = 0; i < src.length; i++) buffs[i] = cloneBuff(src[i])
+  return cloneFighterWith(f, buffs, { ...f.cooldowns }, { ...f.castsThisTurn }, { ...f.castsOnTarget })
+}
+
+/**
+ * Copie d'un combattant pour `cloneFight` : buffs, relances et compteurs de lancers PARTAGÉS en copie-sur-écriture
+ * (src/engine/cow.ts) ; le reste comme `cloneFighter`.
+ */
+function cloneFighterShared(f: Fighter): Fighter {
+  return cloneFighterWith(f, f.buffs, f.cooldowns, f.castsThisTurn, f.castsOnTarget)
+}
+
+function cloneFighterWith(
+  f: Fighter,
+  buffs: Buff[],
+  cooldowns: Fighter['cooldowns'],
+  castsThisTurn: Fighter['castsThisTurn'],
+  castsOnTarget: Fighter['castsOnTarget'],
+): Fighter {
   return {
     id: f.id,
     team: f.team,
@@ -759,9 +789,9 @@ export function cloneFighter(f: Fighter): Fighter {
     states: f.states.slice(),
     buffs,
     spells: f.spells,
-    cooldowns: { ...f.cooldowns },
-    castsThisTurn: { ...f.castsThisTurn },
-    castsOnTarget: { ...f.castsOnTarget },
+    cooldowns,
+    castsThisTurn,
+    castsOnTarget,
     summonerId: f.summonerId,
     ai: f.ai,
     role: f.role,

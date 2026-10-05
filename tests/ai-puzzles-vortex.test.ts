@@ -111,9 +111,16 @@ function play(sc: VxScene, me: Fighter, actions: readonly MacroAction[], rollMod
   return s
 }
 
-function vortexModel(): VortexAIModel {
-  return createVortexAIModel(VORTEX_DEFAULT_PARAMS, THETA)
+function vortexModel(theta = THETA): VortexAIModel {
+  return createVortexAIModel(VORTEX_DEFAULT_PARAMS, theta)
 }
+
+/**
+ * θ des coûts d'heures à l'échelle 1 (design) : P4 suppose qu'une PREMIÈRE mort à V coûte. Avec le θ par défaut
+ * (`planner.hourCostScale` 0,4 depuis le réglage du tour 1, docs/tuning-log.md), un marquage planifié est payé à
+ * toutes les heures et la prémisse du puzzle ne tient plus ; le puzzle vérifie la réponse TACTIQUE à un prix négatif.
+ */
+const DESIGN_HOUR_COSTS = loadTheta({ planner: { hourCostScale: 1 } })
 
 /** Modèle du Vortex dont les prix sont ceux de l'`HeuristicPricer` quel que soit le mode (contrats du plan glouton). */
 function heuristicPricing(base: VortexAIModel): ScenarioAIModel {
@@ -150,7 +157,7 @@ describe('puzzles du Vortex (modèle WP3 réel)', () => {
       expect(hour).toBe(5)
       const target = sc.fight.fighters.find(f => isWaveMonster(f) && f.alive && deathHours(f) === 0 && f.monsterId !== IKARGN)!
       bring(sc, target, sc.cra, 2500)
-      const d = decide(sc.as(sc.cra), mode, { scenario: vortexModel(), seed: 5 })
+      const d = decide(sc.as(sc.cra), mode, { scenario: vortexModel(DESIGN_HOUR_COSTS), seed: 5 })
       const row = d.ctx.bb.prices.kill.get(target.id)!
       // Hypothèses du puzzle (prix du modèle) : tuer à V coûte, tuer à VI rapporte.
       expect(row[hour]).toBeLessThan(0)

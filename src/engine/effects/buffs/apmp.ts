@@ -20,6 +20,7 @@
  */
 import { apMpRemovalProbability, expectedApMpRemoved } from '../../../damage/apmp'
 import { nextRandom } from '../../random'
+import { addMetric } from '../../cow'
 import type { Fighter } from '../../types'
 import type { EffectContext } from '../registry'
 import { addEffectBuff, enforceMaxStack, isPlaying, recording, registerBuffEffect, rollValue, signed } from './common'
@@ -137,8 +138,8 @@ function removal(ctx: EffectContext, pool: Pool, dodgeable: boolean, steal: bool
     }
     if (removed > 0) {
       applyLoss(ctx, t, pool, removed)
-      if (pool === 'ap') fight.metrics[caster.id].apRemoved += effective
-      else fight.metrics[caster.id].mpRemoved += effective
+      // Métriques : objet remplacé (partagé entre clones de combat, src/engine/cow.ts).
+      addMetric(fight, caster.id, pool === 'ap' ? 'apRemoved' : 'mpRemoved', effective)
       if (steal && caster.alive && caster.id !== t.id && effective > 0) applyGain(ctx, caster, pool, effective)
     }
     if (fight.ended) return

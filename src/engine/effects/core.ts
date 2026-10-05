@@ -16,6 +16,7 @@ import type { Engine } from '../engine'
 import { nextRandom } from '../random'
 import { compileTargetMask, matchesTargetMask, type MaskContext } from '../targetMask'
 import type { Buff, DamageKind, Fighter, FightState, KnownSpell } from '../types'
+import { ownBuffs } from '../cow'
 import { getEffectHandler, noteUnknownEffect, type EffectContext } from './registry'
 import { enforceMaxStack } from './buffs/common'
 
@@ -174,11 +175,33 @@ function damageCodeMatches(code: string, ev: TriggerEvent, holder: Fighter): boo
 export function fireTriggers(engine: Engine, fight: FightState, holder: Fighter, ev: TriggerEvent, depth = 0): void {
   if (depth > MAX_DEPTH || fight.ended) return
   if (!holder.alive && !ev.killed && ev.type !== 'X') return
-  const candidates = holder.buffs.filter(b => b.triggers && b.delay <= 0 && !b.firing)
+  // Candidats (instantané) : aucune allocation sans buff déclencheur actif (cas courant). Les candidats sont modifiés
+  // (compteur, garde de réentrance) : buffs rendus privés AVANT d'en prendre les références (src/engine/cow.ts).
+  let any = false
+  for (const b of holder.buffs) {
+    if (b.triggers && b.delay <= 0 && !b.firing) {
+      any = true
+      break
+    }
+  }
+  if (!any) return
+  const buffs = ownBuffs(holder)
+  const candidates: Buff[] = []
+  for (let i = 0; i < buffs.length; i++) {
+    const b = buffs[i]
+    if (b.triggers && b.delay <= 0 && !b.firing) candidates.push(b)
+  }
   for (const buff of candidates) {
-    if (!holder.buffs.includes(buff) && ev.type !== 'X') continue
+    if (ev.type !== 'X' && !holder.buffs.includes(buff)) continue
     const codes = parseTriggerCodes(buff.triggers!)
-    if (!codes.some(c => triggerMatches(c, ev, holder))) continue
+    let matched = false
+    for (let k = 0; k < codes.length; k++) {
+      if (triggerMatches(codes[k], ev, holder)) {
+        matched = true
+        break
+      }
+    }
+    if (!matched) continue
     if (buff.maxTriggers !== undefined && (buff.triggerCount ?? 0) >= buff.maxTriggers) continue
     buff.triggerCount = (buff.triggerCount ?? 0) + 1
     buff.firing = true
@@ -338,11 +361,15 @@ function applyEffectsInner(
   opts: ApplyOptions | undefined,
 ): void {
   if (depth > MAX_DEPTH) return
-  const ordered = [...effects].sort((a, b) => a.order - b.order)
+  // Effets triés par `order` (tri stable) ; liste déjà triée (cas courant des données) : utilisée telle quelle (lue
+  // seulement avant l'exécution du premier effet).
+  const ordered = sortedByOrder(effects)
 
   // Tirage aléatoire : un seul groupe d'effets aléatoires est exécuté (probabilité ∝ somme des poids).
+  let anyRandom = false
+  for (let i = 0; i < ordered.length; i++) if (ordered[i].random > 0) anyRandom = true
   const groupWeights = new Map<number, number>()
-  for (const e of ordered) if (e.random > 0) groupWeights.set(e.group || -e.order - 1, (groupWeights.get(e.group || -e.order - 1) ?? 0) + e.random)
+  if (anyRandom) for (const e of ordered) if (e.random > 0) groupWeights.set(e.group || -e.order - 1, (groupWeights.get(e.group || -e.order - 1) ?? 0) + e.random)
   let pickedGroup: number | undefined
   if (groupWeights.size) {
     const total = [...groupWeights.values()].reduce((a, b) => a + b, 0)
@@ -373,7 +400,17 @@ function applyEffectsInner(
     const late = p.effect.targetMask && LATE_MASK.test(p.effect.targetMask)
     const prep = late ? target(engine, fight, caster, p.effect, cell, casterCell, opts) : p
     // Les cibles mortes ou déplacées hors du jeu entre-temps sont ignorées (sauf le mourant d'un déclenchement X).
-    const targets = prep.targets.filter(t => t.alive || (opts?.fromDeath === true && isDying(t)))
+    // Toutes retenues (cas courant) : la liste préparée (propre à cet effet, plus lue ensuite) est passée telle quelle.
+    const fromDeath = opts?.fromDeath === true
+    let allKept = true
+    for (let i = 0; i < prep.targets.length; i++) {
+      const t = prep.targets[i]
+      if (!(t.alive || (fromDeath && isDying(t)))) {
+        allKept = false
+        break
+      }
+    }
+    const targets = allKept ? prep.targets : prep.targets.filter(t => t.alive || (fromDeath && isDying(t)))
     runEffect(engine, fight, {
       trigger: opts?.trigger,
       mark: opts?.mark,
@@ -391,6 +428,14 @@ function applyEffectsInner(
       depth,
     })
   }
+}
+
+/** `effects` trié par `order` (tri stable) : la liste elle-même si elle l'est déjà, sinon une copie triée. */
+function sortedByOrder(effects: EffectData[]): EffectData[] {
+  for (let i = 1; i < effects.length; i++) {
+    if (!(effects[i - 1].order <= effects[i].order)) return [...effects].sort((a, b) => a.order - b.order)
+  }
+  return effects
 }
 
 /** Jeton U / u isolé dans un masque (entité qui vient d'apparaître). */
@@ -413,8 +458,8 @@ function addOutOfArea(
 }
 
 /** Combattant vivant (ou mourant si `dying`) sur une case. */
-/** Tampon de marquage des cases d'une zone (réutilisé, remis à zéro après usage). */
-const ZONE_MARK = new Uint8Array(560)
+/** Tampon de marquage des cases d'une zone (1 + rang dans la zone ; réutilisé, remis à zéro après usage). */
+const ZONE_MARK = new Uint16Array(560)
 
 function occupantAt(engine: Engine, fight: FightState, c: number, dying: boolean): Fighter | undefined {
   const f = engine.fighterAt(fight, c)
@@ -454,26 +499,30 @@ export function target(
   // Parcours des COMBATTANTS (et non des cases) : O(cases + combattants) au lieu de O(cases × combattants),
   // décisif pour les zones « toute la carte » (a1, C63) des scripts du Vortex. Même sélection que `occupantAt` :
   // occupant vivant non porté de chaque case, ou mourant si `fromDeath` et la case n'a pas d'occupant vivant.
+  // `mark[c]` = 1 + rang de la PREMIÈRE occurrence de la case c dans la zone (0 = hors zone) : sert à la fois de
+  // marquage et d'ordre de tri (rang dans la zone), sans table associative.
   const mark = ZONE_MARK
-  for (let i = 0; i < cells.length; i++) mark[cells[i]] = 1
+  const nCells = cells.length
+  for (let i = 0; i < nCells; i++) {
+    const c = cells[i]
+    if (mark[c] === 0) mark[c] = i + 1
+  }
   const picked: Fighter[] = []
-  for (const f of fight.fighters) {
+  const fs = fight.fighters
+  for (let i = 0; i < fs.length; i++) {
+    const f = fs[i]
     if (f.cell < 0 || f.carriedBy !== undefined || !mark[f.cell]) continue
     if (f.alive) picked.push(f)
   }
   if (dying) {
-    for (const f of fight.fighters) {
+    for (const f of fs) {
       if (!isDying(f) || f.carriedBy !== undefined || !mark[f.cell]) continue
       if (!picked.some(o => o.cell === f.cell)) picked.push(f)
     }
   }
-  for (let i = 0; i < cells.length; i++) mark[cells[i]] = 0
   // Ordre des cases de la zone conservé (tri final par distance de toute façon).
-  if (picked.length > 1) {
-    const order = new Map<number, number>()
-    for (let i = 0; i < cells.length; i++) if (!order.has(cells[i])) order.set(cells[i], i)
-    picked.sort((a, b) => (order.get(a.cell) ?? 0) - (order.get(b.cell) ?? 0))
-  }
+  if (picked.length > 1) picked.sort((a, b) => mark[a.cell] - mark[b.cell])
+  for (let i = 0; i < nCells; i++) mark[cells[i]] = 0
   for (const f of picked) {
     if (force && f !== force) continue
     if (!matchesTargetMask(mask, caster, f, mctx)) continue

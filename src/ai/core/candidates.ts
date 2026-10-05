@@ -37,7 +37,7 @@ import type { ZoneSpec } from '../../data/model'
 import type { AIView, Blackboard, MacroAction, Perception, ReachInfo } from '../types'
 import { castCellsFor, castFailureStatic, castGeom, castGeometryOk, inverseRange, LosOracle, levelFor } from './castCells'
 import { calibrationOf, createDptTable, type DptTableImpl } from './dpt'
-import { killProbability } from './kill'
+import { killProbability, killValueNow } from './kill'
 import type { PerceptionX } from './perception'
 import { damageWeightOf, type ValueWeights } from './potential'
 import { apSpent, buildOccupancy, cachedReach, mpSpent, reachPath } from './reach'
@@ -519,8 +519,8 @@ export function quickEstimate(view: AIView, s: FightState, me: Fighter, m: Macro
       if (dmg > 0) {
         if (enemy) {
           const v = damageWeightOf(f, w, scenario, bb)
-          // Même valeur de kill que V (value.ts : κ·PVmax + τ·menace, menace = meilleur DPT sur un allié).
-          const killValue = w.killKappa * f.maxHp + w.killTau * potential.enemyThreat(f)
+          // Même valeur de kill que V : prix du scénario (heure et étoile courantes), sinon κ·PVmax + τ·menace.
+          const killValue = killValueNow(s, f, w, () => potential.enemyThreat(f), scenario, bb)
           value += Math.min(dmg, he) * v + killProbability(dmg, variance * eff * eff, f.hp + f.shield) * killValue
         } else {
           value -= 0.6 * Math.min(dmg, he) + (dmg >= f.hp + f.shield ? f.baseMaxHp : 0)

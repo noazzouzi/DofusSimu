@@ -2,7 +2,7 @@
  * Déplacements : cellules accessibles (BFS 4-voisins), tacle/fuite, exécution d'un chemin.
  */
 import { apMpAfterTackle, tackleRatio } from '../damage/tackle'
-import { distance, neighbors } from '../map/geometry'
+import { distance, neighborsOf } from '../map/geometry'
 import type { Engine } from './engine'
 import { bumpRev } from './rev'
 import type { Fighter, FightState } from './types'
@@ -15,7 +15,7 @@ import type { Fighter, FightState } from './types'
 export function escapeRatio(fight: FightState, mover: Fighter, engine: Engine): number {
   if (engine.stateFlag(mover, 'cantBeTackled')) return 1
   let ratio = 1
-  for (const n of neighbors(mover.cell)) {
+  for (const n of neighborsOf(mover.cell)) {
     const e = engine.fighterAt(fight, n)
     if (!e || e.team === mover.team || !e.alive) continue
     if (e.tags.cantTackle || engine.stateFlag(e, 'cantTackle')) continue
@@ -47,7 +47,7 @@ export function reachableCells(fight: FightState, f: Fighter, engine: Engine, mp
     const c = queue.shift()!
     const d = cost.get(c)!
     if (d >= mp) continue
-    for (const n of neighbors(c)) {
+    for (const n of neighborsOf(c)) {
       if (cost.has(n)) continue
       if (!engine.isCellFree(fight, n)) continue
       cost.set(n, d + 1)
@@ -96,7 +96,7 @@ export function move(fight: FightState, f: Fighter, path: number[], engine: Engi
         flush()
         f.ap -= apLost
         f.mp -= mpLost
-        engine.emit(fight, { t: 'tackle', fighter: f.id, apLost, mpLost })
+        if (fight.options.record) engine.emit(fight, { t: 'tackle', fighter: f.id, apLost, mpLost })
       }
     }
     if (f.mp <= 0) break

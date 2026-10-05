@@ -38,7 +38,7 @@ import type { ThetaJson } from '../theta'
 import type { AIView, Blackboard, EvalBreakdown, Perception, RoleId } from '../types'
 import { castFailureStatic, hitCellsFor, hitsFrom, LosOracle, levelFor } from './castCells'
 import { calibrationOf, lineDamage, type DptTableImpl } from './dpt'
-import { killProbability } from './kill'
+import { killProbability, killValueNow } from './kill'
 import type { PerceptionX } from './perception'
 import { damageWeightOf, type ValueWeights } from './potential'
 import { buildOccupancy, cachedReach } from './reach'
@@ -164,6 +164,7 @@ export function restOfTurn(view: AIView, s: FightState, me: Fighter, p: Percepti
     const v = damageWeightOf(e, w, scenario, bb)
     if (v <= 0 && !(scenario?.deathValue)) continue
     const seen = new Set<number>()
+    let killValue = NaN
     for (const i of usable) {
       const ks = me.spells[i]
       // Case d'où ce sort inflige ses dégâts à e (visée directe, couronne, zone autour du lanceur, portée 0 à zone).
@@ -181,7 +182,7 @@ export function restOfTurn(view: AIView, s: FightState, me: Fighter, p: Percepti
       const t = dpt.turn(me, e, reach.apLeft[c], 'now', filter)
       const mean = t.mean * calib
       const he = hpEff(e)
-      const killValue = w.killKappa * e.maxHp + w.killTau * enemyThreatIn(dpt, e, s, view.team)
+      if (Number.isNaN(killValue)) killValue = killValueNow(s, e, w, () => enemyThreatIn(dpt, e, s, view.team), scenario, bb)
       const val = Math.min(mean, he) * v + killProbability(mean, t.variance * calib * calib, e.hp + e.shield) * killValue
       if (val > best) best = val
     }

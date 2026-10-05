@@ -288,6 +288,24 @@ export function castRangeCells(
   return out
 }
 
+/**
+ * Toutes les cellules triées par (distance de Manhattan à `origin`, id) — calculé à la demande puis mis en cache par
+ * origine (tableau partagé en lecture seule).
+ */
+export function cellsByDistance(origin: number): Int16Array {
+  let order = BY_DISTANCE[origin]
+  if (!order) {
+    const keys = new Int32Array(CELL_COUNT)
+    for (let c = 0; c < CELL_COUNT; c++) keys[c] = (Math.abs(CELL_X[c] - CELL_X[origin]) + Math.abs(CELL_Y[c] - CELL_Y[origin])) * 1024 + c
+    keys.sort()
+    order = new Int16Array(CELL_COUNT)
+    for (let i = 0; i < CELL_COUNT; i++) order[i] = keys[i] & 1023
+    BY_DISTANCE[origin] = order
+  }
+  return order
+}
+const BY_DISTANCE: (Int16Array | undefined)[] = new Array(CELL_COUNT)
+
 // ───────────────────────────── voisinage ─────────────────────────────
 
 /** Voisins orthogonaux précalculés (ordre SE, NW, NE, SW), tableaux partagés et gelés. */

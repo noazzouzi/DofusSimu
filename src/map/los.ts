@@ -142,6 +142,29 @@ export function opaqueCells(cells: readonly { los: boolean }[]): Uint8Array {
 }
 
 /**
+ * `hasLineOfSightOnMap(opaque, from, to, c => occ[c] >= 0 && occ[c] !== exceptId)` sans fermeture : occupation en
+ * tableau (`occ[c]` = id de l'occupant, −1 si libre ; `exceptId` ne bloque pas). Les cellules intermédiaires sont lues
+ * sur la ligne `to → from` (mêmes cellules que `from → to` : symétrie vérifiée sur les 313 040 paires,
+ * tests/map-los.test.ts) : pour une cible fixe et de nombreuses origines (anneaux de lancer), la même table reste en
+ * cache. Le prédicat étant pur, l'ordre de parcours ne change pas le résultat.
+ */
+export function hasLineOfSightOcc(opaque: Uint8Array, from: number, to: number, occ: Int16Array, exceptId: number): boolean {
+  if (from === to) return true
+  if (from < 0 || from >= CELL_COUNT || to < 0 || to >= CELL_COUNT) return false
+  if (!LINE_OFFSETS[to]) linesFrom(to)
+  const off = LINE_OFFSETS[to]!
+  const data = LINE_DATA[to]!
+  const end = off[from + 1] - 1 // dernière cellule de la ligne `to → from` = `from` (exclue)
+  for (let i = off[from]; i < end; i++) {
+    const c = data[i]
+    if (opaque[c]) return false
+    const id = occ[c]
+    if (id >= 0 && id !== exceptId) return false
+  }
+  return !opaque[to]
+}
+
+/**
  * LdV sur une carte selon la règle du client : cellules intermédiaires transparentes et inoccupées, cellule
  * cible transparente. `opaque` vient de `opaqueCells(map.cells)` ; `occupied(c)` indique une entité bloquante
  * (le combattant actif doit être exclu par l'appelant).

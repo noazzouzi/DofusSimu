@@ -12,7 +12,7 @@
  * Si `clock[1] < 0`, rien n'est proposé et les chemins génériques évitent déjà les glyphes (cases-événements).
  * Valeur captée par `clock[k]` et `kill[m][h]` (heure de mort lue dans les états de la victime simulée).
  */
-import { believedCell, buildOccupancy, computeReachFor, reachPath } from '../core'
+import { believedCell, buildOccupancy, computeReachFor, reachPath, type PerceptionX } from '../core'
 import { castFrom, castOnly, genericCands, hitsTarget, seqMacro } from '../tactical/cands'
 import type { Tactic } from '../tactical/node'
 import type { MacroAction } from '../types'
@@ -42,7 +42,25 @@ export const glyphClock: Tactic = {
     const reach = computeReachFor(engine, s, me, team, { allowEventCells: glyphCells })
     const killTargets = (ctx.hints ?? []).filter(h => h.kind === 'kill' && h.targetId !== undefined && h.weight > 0).map(h => h.targetId!)
     const cands = genericCands(ctx, node)
-    const kills = cands.filter(m => m.cast && m.cat === 'damage' && killTargets.some(t => hitsTarget(ctx, s, me, m, t))).sort((a, b) => b.prior - a.prior).slice(0, 3)
+    // Lancers qui touchent une cible sous contrat, classés par dégâts sur elle (plafonnés à ses PV) puis par prior : le
+    // prior est calculé à l'heure ACTUELLE, où la mort est justement mal payée (avant la glyphe) ; trié par prior, il
+    // plaçait en tête les coups qui ne tuent pas et la séquence « glyphe puis kill » ne tuait plus (tuning-log tour 1).
+    const p = ctx.perception as PerceptionX
+    const dmgOn = (m: MacroAction): number => {
+      const i = me.spells.findIndex(x => x.spellId === m.cast!.spellId)
+      let best = 0
+      for (const t of killTargets) {
+        const f = s.fighters[t]
+        if (!f || !f.alive || i < 0 || !hitsTarget(ctx, s, me, m, t)) continue
+        best = Math.max(best, Math.min(p.dpt.perCast(me, i, f).mean, f.hp + f.shield))
+      }
+      return best
+    }
+    const kills = cands.filter(m => m.cast && m.cat === 'damage' && killTargets.some(t => hitsTarget(ctx, s, me, m, t)))
+      .map(m => ({ m, d: dmgOn(m) }))
+      .sort((a, b) => b.d - a.d || b.m.prior - a.m.prior)
+      .slice(0, 3)
+      .map(x => x.m)
     const lever = ctx.bb.prices.clock[1]
     const out: MacroAction[] = []
     for (const g of glyphCells) {

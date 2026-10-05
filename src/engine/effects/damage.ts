@@ -16,6 +16,7 @@
  */
 import { Element } from '../../core/types'
 import { healLastDamage, healPercentMaxHp, shieldFromLevel, shieldFromMaxHp } from '../../damage/heal'
+import { ownBuffs } from '../cow'
 import type { Engine } from '../engine'
 import type { Buff, Fighter, FightState } from '../types'
 import {
@@ -295,7 +296,9 @@ export function installDamageHooks(engine: Engine): void {
 function consumeShieldBuffs(engine: Engine, fight: FightState, target: Fighter, absorbed: number): void {
   let rest = absorbed
   let emptied: number[] | undefined
-  for (const b of target.buffs) {
+  // Les buffs de bouclier sont modifiés en place : rendus privés d'abord s'il y en a un à entamer (src/engine/cow.ts).
+  if (rest <= 0 || !target.buffs.some(b => isShieldBuff(b) && b.value > 0)) return
+  for (const b of ownBuffs(target)) {
     if (rest <= 0) break
     if (!isShieldBuff(b) || b.value <= 0) continue
     const take = b.value < rest ? b.value : rest

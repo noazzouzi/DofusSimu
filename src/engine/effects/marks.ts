@@ -31,9 +31,10 @@
 import type { EffectData } from '../../data/model'
 import { distance } from '../../map/geometry'
 import { isCellInZone, zoneCells } from '../../map/zones'
+import { ownBuffs } from '../cow'
 import type { Engine } from '../engine'
 import { casterPassesMask } from '../targetMask'
-import type { Fighter, FightState, Glyph, Trap } from '../types'
+import type { Buff, Fighter, FightState, Glyph, Trap } from '../types'
 import { applyEffects, type ApplyOptions, type TriggerEvent } from './core'
 import { nearestChain } from './movement/chain'
 import { canUsePortal as canTravelThroughPortal, travelThrough } from './movement/portals'
@@ -168,7 +169,9 @@ function applyAura(engine: Engine, fight: FightState, g: Glyph, f: Fighter): voi
   const firstUid = fight.nextUid
   executeMark(engine, fight, g, 'aura', f)
   const spellId = g.castSpellId ?? g.spellId
-  for (const b of f.buffs) if (b.uid >= firstUid && b.spellId === spellId && b.sourceId === g.sourceId) b.markUid = g.uid
+  const marked = (b: Buff): boolean => b.uid >= firstUid && b.spellId === spellId && b.sourceId === g.sourceId
+  // `markUid` posé en place : buffs rendus privés d'abord (src/engine/cow.ts).
+  if (f.buffs.some(marked)) for (const b of ownBuffs(f)) if (marked(b)) b.markUid = g.uid
 }
 
 /** Retire les buffs directs d'une aura portés par `f` (sortie de la zone). */
@@ -222,7 +225,17 @@ function updateAuras(engine: Engine, fight: FightState): void {
 function sweepAuraBuffs(engine: Engine, fight: FightState): void {
   for (const f of fight.fighters) {
     if (!f.alive) continue
-    const buffs = f.buffs
+    // Le tableau est lu par indices pendant les retraits (en place) : rendu privé d'abord s'il y a un retrait
+    // (src/engine/cow.ts) ; aucun retrait ⇒ boucle sans effet, sautée.
+    let stale = false
+    for (const b of f.buffs) {
+      if (b.markUid === undefined) continue
+      let alive = false
+      for (const g of fight.glyphs) if (g.uid === b.markUid) alive = true
+      if (!alive) stale = true
+    }
+    if (!stale) continue
+    const buffs = ownBuffs(f)
     for (let i = buffs.length - 1; i >= 0; i--) {
       const b = buffs[i]
       if (b?.markUid === undefined) continue

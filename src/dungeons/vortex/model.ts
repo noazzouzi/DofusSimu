@@ -476,6 +476,53 @@ export class VortexAIModel implements ScenarioAIModel {
     return this.unplannedDeath(root, victim, h)
   }
 
+  /**
+   * Prix d'une mort de `e` au PROCHAIN tour de l'allié `allyId` (potentiel, core/potential.ts, §6.6) : heure de son
+   * prochain créneau dans la dernière prévision (décalée des glyphes déclenchées depuis : heure lue dans `s`), étoile
+   * si le monstre porte cette heure ⇒ `kill[m][0]`, sinon `kill[m][h]`. undefined (valeur générique) hors phase de
+   * vagues, pour le Vortex, un monstre sans prix ou un allié sans créneau prévu (invocation). Sans ce prix, le potentiel comptait
+   * κ·PVmax + τ·menace (≈ +2 900 PVe) pour un zombie qu'un allié pourra achever, même à une heure interdite, et
+   * pénalisait d'autant toute mort qui « retire » cette possibilité (tuning-log, tour 1).
+   */
+  killValueFor(s: FightState, e: Fighter, allyId: number, bb: Blackboard): number | undefined {
+    // Vortex (phase 2) : valeur générique — le prix de victoire (20 000) dans le potentiel faisait attendre les alliés
+    // au lieu d'entamer le Vortex (puzzle P12 en `fast`) ; seule la phase des vagues est concernée.
+    if (!isWaveMonster(e) || isCorrupted(e) || (bb.phase !== 'waveCycle' && bb.phase !== 'opening')) return undefined
+    const row = bb.prices.kill.get(e.id)
+    const slots = this.lastSlots
+    if (!row || !slots?.length) return undefined
+    const h = this.allyHour(s, allyId, slots)
+    if (!h) return undefined
+    return deathHours(e) & (1 << (h - 1)) ? row[0] : row[h]
+  }
+
+  /** Heure du prochain créneau d'un allié (après le créneau courant), décalée des glyphes lues dans `s` ; 0 si aucun. */
+  private allyHour(s: FightState, allyId: number, slots: readonly ClockSlot[]): number {
+    const c = this.allyHourCache
+    if (c.slots !== slots || c.s !== s) {
+      c.slots = slots
+      c.s = s
+      c.map.clear()
+      const now = currentHour(s)
+      c.shift = now && slots[0].hour ? (((now - slots[0].hour) % 12) + 12) % 12 : 0
+    }
+    let h = c.map.get(allyId)
+    if (h === undefined) {
+      h = 0
+      for (let j = 1; j < slots.length; j++) {
+        const sl = slots[j]
+        if (sl.fighterId === allyId && sl.isPlayer && sl.index >= 0) {
+          h = nextHour(sl.hour, c.shift)
+          break
+        }
+      }
+      c.map.set(allyId, h)
+    }
+    return h
+  }
+
+  private allyHourCache: { slots?: readonly ClockSlot[]; s?: FightState; shift: number; map: Map<number, number> } = { shift: 0, map: new Map() }
+
   /** Mort non planifiée d'un monstre à l'heure h : −(base + C_mon + [h neuve]·C_vx), heures posées lues à la racine. */
   private unplannedDeath(root: FightState, victim: Fighter, h: number): number {
     const tv = this.theta.vortex

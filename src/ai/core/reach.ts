@@ -64,18 +64,48 @@ const REACH_TEMPLATE = (() => {
   return new Uint8Array(b)
 })()
 
-/** ReachInfo vide (toutes cases non atteintes) : un seul `ArrayBuffer`, initialisé par copie d'un gabarit. */
+/**
+ * Tranches de mémoire partagées par plusieurs petits tableaux typés (vues) : allouer un `ArrayBuffer` hors tas (≈ 1 µs,
+ * mémoire externe qui déclenche des GC) pour chaque `ReachInfo` ou occupation dominait leur coût. Une tranche vit tant
+ * qu'une de ses vues est vivante. Contenu initial nul (les appelants initialisent).
+ */
+class Slab {
+  private buf: ArrayBuffer | null = null
+  private next = 0
+  constructor(private readonly bytes: number, private readonly perSlab: number) {}
+  /** Décalage (octets) d'un bloc neuf de `bytes` octets dans `this.current`. */
+  take(): number {
+    if (this.buf === null || this.next >= this.perSlab) {
+      this.buf = new ArrayBuffer(this.bytes * this.perSlab)
+      this.next = 0
+    }
+    return this.bytes * this.next++
+  }
+  get current(): ArrayBuffer {
+    return this.buf!
+  }
+}
+const REACH_SLAB = new Slab(REACH_BYTES, 32)
+const OCC_SLAB = new Slab(2 * CELL_COUNT, 64)
+
+/** Tableau d'occupation neuf (vue dans une tranche partagée ; contenu à initialiser). */
+function newOccupancy(): Int16Array {
+  const off = OCC_SLAB.take()
+  return new Int16Array(OCC_SLAB.current, off, CELL_COUNT)
+}
+
+/** ReachInfo vide (toutes cases non atteintes) : un bloc d'une tranche partagée, initialisé par copie d'un gabarit. */
 export function createReachInfo(): ReachInfo {
-  const bytes = new Uint8Array(REACH_BYTES)
-  bytes.set(REACH_TEMPLATE)
-  const b = bytes.buffer
+  const off = REACH_SLAB.take()
+  const b = REACH_SLAB.current
+  new Uint8Array(b, off, REACH_BYTES).set(REACH_TEMPLATE)
   return {
-    mpLeft: new Float32Array(b, 0, CELL_COUNT),
-    apLeft: new Float32Array(b, 4 * CELL_COUNT, CELL_COUNT),
-    cells: new Int16Array(b, 8 * CELL_COUNT, CELL_COUNT),
+    mpLeft: new Float32Array(b, off, CELL_COUNT),
+    apLeft: new Float32Array(b, off + 4 * CELL_COUNT, CELL_COUNT),
+    cells: new Int16Array(b, off + 8 * CELL_COUNT, CELL_COUNT),
     count: 0,
-    prev: new Int16Array(b, 10 * CELL_COUNT, CELL_COUNT),
-    viaEvent: new Uint8Array(b, 12 * CELL_COUNT, CELL_COUNT),
+    prev: new Int16Array(b, off + 10 * CELL_COUNT, CELL_COUNT),
+    viaEvent: new Uint8Array(b, off + 12 * CELL_COUNT, CELL_COUNT),
   }
 }
 
@@ -83,7 +113,7 @@ export function createReachInfo(): ReachInfo {
  * Occupation du plateau vue par `team` : `occ[c]` = id du combattant (vivant, non porté) sur la case, −1 sinon.
  * Les invisibles adverses sont placés sur leur dernière case connue (ou absents).
  */
-export function buildOccupancy(s: FightState, team: TeamId, out: Int16Array = new Int16Array(CELL_COUNT)): Int16Array {
+export function buildOccupancy(s: FightState, team: TeamId, out: Int16Array = newOccupancy()): Int16Array {
   out.fill(-1)
   const fs = s.fighters
   for (let i = 0; i < fs.length; i++) {
@@ -319,7 +349,6 @@ interface ReachEntry { k2: number; r: ReachInfo }
 const REACH_CACHE = new WeakMap<Engine, Map<number, ReachEntry>>()
 /** Plafond d'entrées (≈ 7 ko chacune). */
 const REACH_CACHE_MAX = 4000
-const SCRATCH_REACH = createReachInfo()
 
 /** Copie indépendante d'un `ReachInfo`. */
 export function cloneReach(r: ReachInfo): ReachInfo {
@@ -377,8 +406,8 @@ export function cachedReach(engine: Engine, s: FightState, f: Fighter, team: Tea
   }
   const e = cache.get(h)
   if (e && e.k2 === h2) return e.r
-  computeReachFor(engine, s, f, team, { mp: mpi, ap, out: SCRATCH_REACH, occupancy, priority })
-  const r = cloneReach(SCRATCH_REACH)
+  // Calcul directement dans un résultat neuf (même contenu qu'une copie de tampon : toute case étiquetée est finalisée).
+  const r = computeReachFor(engine, s, f, team, { mp: mpi, ap, out: createReachInfo(), occupancy, priority })
   if (cache.size >= REACH_CACHE_MAX) cache.clear()
   cache.set(h, { k2: h2, r })
   return r

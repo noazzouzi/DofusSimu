@@ -9,6 +9,7 @@
  * (compteur `Fighter.cooldowns`, décrémenté au début du tour du porteur). Avec une durée non nulle, 1036 devient un
  * modificateur permanent de l'intervalle de relance (comme 286).
  */
+import { setRecord } from '../../cow'
 import type { SpellModKey } from '../../types'
 import type { EffectContext } from '../registry'
 import { addEffectBuff, enforceMaxStack, isPlaying, recording, registerBuffEffect, signed } from './common'
@@ -83,7 +84,8 @@ registerBuffEffect(SPELL_MODIFIER_EFFECT_IDS, modifierHandler)
 registerBuffEffect(1045, ctx => {
   const spellId = ctx.effect.diceNum
   const turns = Math.max(0, ctx.effect.value)
-  for (const t of ctx.targets) if (t.alive) t.cooldowns[spellId] = turns > 0 && !isPlaying(ctx, t) ? turns + 1 : turns
+  // Relances : objet remplacé, jamais modifié en place (partagé entre clones, src/engine/cow.ts).
+  for (const t of ctx.targets) if (t.alive) t.cooldowns = setRecord(t.cooldowns, spellId, turns > 0 && !isPlaying(ctx, t) ? turns + 1 : turns)
 })
 
 /** 1036 : relance restante du sort `diceNum` réduite de `value` tours (modificateur si `duration` ≠ 0). */
@@ -102,6 +104,6 @@ registerBuffEffect(1036, ctx => {
   for (const t of ctx.targets) {
     if (!t.alive) continue
     const cd = t.cooldowns[spellId] ?? 0
-    if (cd > 0) t.cooldowns[spellId] = Math.max(0, cd - turns)
+    if (cd > 0) t.cooldowns = setRecord(t.cooldowns, spellId, Math.max(0, cd - turns))
   }
 })
