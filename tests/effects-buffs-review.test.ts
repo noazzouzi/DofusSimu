@@ -166,8 +166,8 @@ describe('maxStack des buffs déclencheurs (API pour le noyau)', () => {
     }
     const known = sram.spells[0]
     const poison = known.level.effects.find(e => e.effectId === 98 && e.triggers === 'TB')!
-    // Le noyau ne plafonne pas encore ses buffs déclencheurs (3 poisons pour un cumul de 2) : l'API le permet.
-    expect(foe.buffs.filter(b => b.kind === 'trigger' && b.effect.effectId === 98)).toHaveLength(3)
+    // Le noyau plafonne ses buffs déclencheurs (core.ts runEffect → enforceMaxStack) : 2 poisons pour un cumul de 2.
+    expect(foe.buffs.filter(b => b.kind === 'trigger' && b.effect.effectId === 98)).toHaveLength(known.level.maxStack)
     const ctx = {
       engine, fight: fs, caster: sram, spell: known, spellId: INJECTION, effect: poison, targetCell: foe.cell, casterCell: sram.cell,
       cells: [foe.cell], targets: [foe], efficiency: new Map([[foe.id, 1]]), crit: false, indirect: false, depth: 0,

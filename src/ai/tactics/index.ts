@@ -9,7 +9,8 @@
  * interface Tactic { id; requires(me, profils, capacités); relevance(ctx, nœud); propose(ctx, nœud, limite) }
  * quota de la tactique = round(θ.tactics.prior[id] · relevance), plafond global θ.tactics.maxPerNode par nœud
  * ```
- * v1 (8) : stateChain, mpLock, carryThrow, glyphClock, healCleanse, bodyBlock, groupForZone, burstSetup.
+ * v1 (8) : stateChain, mpLock, carryThrow, glyphClock, healCleanse, bodyBlock, groupForZone, burstSetup — `bodyBlock`
+ * a un prior θ nul par défaut (perte mesurée, voir bodyBlock.ts) : quota 0, rien n'est proposé.
  * v2 (apLock, tackleTrap, pushCollision, losShield, lineDodge, corruptedWall, baitSummon, dispelAlly) : non implémentées.
  */
 import type { Fighter } from '../../engine/types'

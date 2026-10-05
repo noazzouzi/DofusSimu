@@ -76,8 +76,11 @@ export function generate(ctx: TacticalContext, node: SearchNode): Generated {
   out.generic = ctx.offensiveOnly ? generic.filter(m => m.cat === 'damage') : generic
   if (!out.generic.length && !generic.length) return out
   // Indices « kill » du scénario et intentions du combattant : meilleurs candidats qui touchent la cible.
-  const wanted: { target: number; cats?: CandidateCat[]; n: number }[] = []
-  for (const h of ctx.hints ?? []) if (h.kind === 'kill' && h.targetId !== undefined && h.weight > 0) wanted.push({ target: h.targetId, n: 2 })
+  const wanted: { target: number; cats?: CandidateCat[]; n: number; perSpell?: boolean }[] = []
+  // Kill sous contrat : le meilleur candidat de CHAQUE sort qui touche la cible (« sorts capables d'atteindre une cible
+  // sous contrat », §8.1), dans la limite de `mandatoryMax` — et non les 2 meilleurs priors, souvent le même gros sort
+  // sur plusieurs cases : deux sorts sûrs lancés de la case actuelle (P16) n'étaient alors jamais simulés ensemble.
+  for (const h of ctx.hints ?? []) if (h.kind === 'kill' && h.targetId !== undefined && h.weight > 0) wanted.push({ target: h.targetId, n: 4, perSpell: true })
   const root = ctx.root ?? ctx.view.fight
   for (const it of ctx.bb.intents) {
     if (it.owner !== me.id || it.target === undefined || it.price <= 0 || !intentActive(it, root)) continue
@@ -90,7 +93,15 @@ export function generate(ctx: TacticalContext, node: SearchNode): Generated {
     const t = s.fighters[w.target]
     if (!t || !t.alive) continue
     const pool = out.generic.filter(m => (!w.cats || w.cats.includes(m.cat)) && hitsTarget(ctx, s, me, m, w.target)).sort(byPrior)
-    for (const m of pool.slice(0, w.n)) {
+    const spells = new Set<number>()
+    let n = 0
+    for (const m of pool) {
+      if (n >= w.n) break
+      if (w.perSpell && m.cast) {
+        if (spells.has(m.cast.spellId)) continue
+        spells.add(m.cast.spellId)
+      }
+      n++
       if (taken.has(m.key)) continue
       taken.add(m.key)
       out.mandatory.push({ ...m, mandatory: true })

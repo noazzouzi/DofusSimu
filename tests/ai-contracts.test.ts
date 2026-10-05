@@ -272,7 +272,8 @@ describe('chaîne complète bouchonnée (S0)', () => {
     const provider = createControllers(engine, defaultAIConfig('fast', 3))
     runFight(engine, fight, provider)
     expect(fight.ended).toBe(true)
-    expect(provider.stats().nodes).toBe(0)
+    // Le contrôleur d'équipe réel (WP2) cherche : des nœuds sont simulés.
+    expect(provider.stats().nodes).toBeGreaterThan(0)
     const snap = provider.snapshot()
     expect(() => provider.restore(snap)).not.toThrow()
   })

@@ -11,6 +11,12 @@
  *                une case atteignable ; marche jusqu'à elle (levier C11)
  * ```
  * Valeur captée par `incoming` (le monstre ne passe plus) ; la simulation tranche.
+ *
+ * DÉSACTIVÉE PAR DÉFAUT (θ.tactics.prior.bodyBlock = 0, règle du §10.3 « sans gain apparié, la tactique est retirée ») :
+ * aucun gain au niveau d'une décision (P15 : la recherche générique place déjà l'invocation) et une perte mesurée sur
+ * combats complets (combat dur, fast, 12 graines : 5,75 tours / 77 % de PV / 6 morts avec, 5,08 / 95,5 % / 0 sans) —
+ * le personnage qui marche jusqu'à l'étranglement s'expose, et la menace « détournée » par les invocations-bouchons
+ * est surestimée. Réactivable par θ (réglage L2) ou un preset.
  */
 import { believedCell, buildOccupancy, cachedReach, castCellsFor, LosOracle, levelFor, mpSpent, reachPath, type PerceptionX } from '../core'
 import { distance } from '../../map/geometry'

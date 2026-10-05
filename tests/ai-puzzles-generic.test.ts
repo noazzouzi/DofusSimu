@@ -15,10 +15,12 @@
  *  P15 couloir unique vers le Crâ (fragile), Osamodas         → invocation sur la case d'étranglement
  *
  * Ablations (§16.4, « la tactique désactivée fait perdre de la valeur ») : `stateChain` sur P3 (fast ; en standard le
- * faisceau retrouve seul la séquence) ; `carryThrow` sur P10 (standard : sans elle, plus de portage et un plan qui vaut
- * moins). `glyphClock` : P6 (tests/ai-puzzles-vortex.test.ts). Sur P1 (`mpLock`), P8 (`healCleanse`) et P15
- * (`bodyBlock`), la recherche générique trouve le même plan avec ou sans la tactique : leurs ablations (et celles de
- * `groupForZone`, `burstSetup`) sont mesurées sur des combats complets appariés (tests/ai-team-ablation.test.ts).
+ * faisceau retrouve seul la séquence) ; `mpLock` sur P1b/P1c (deux scènes Enutrof, fast et standard) ; `carryThrow` sur
+ * P10 (standard : sans elle, plus de portage et un plan qui vaut moins) ; `glyphClock` : P6
+ * (tests/ai-puzzles-vortex.test.ts). `healCleanse` (P8), `groupForZone`, `burstSetup` : sur toutes les scènes
+ * essayées, la recherche générique trouve le même plan avec ou sans la tactique (non démontré au niveau d'une décision ;
+ * campagne de combats appariés à la demande : tests/ai-team-ablation.test.ts). `bodyBlock` : aucun gain, et une perte
+ * mesurée sur combats complets ⇒ désactivée par défaut (θ.tactics.prior.bodyBlock = 0, §10.3).
  */
 import { describe, expect, it } from 'vitest'
 import { createPerception, createView, nextTurnApMp, type PerceptionX } from '../src/ai/core'
@@ -212,6 +214,23 @@ describe('ablations des tactiques (§16.4)', () => {
     const onS = decide(byId('P3').build(), 'standard')
     const offS = decide(byId('P3').build(), 'standard', { disabledTactics: new Set(['stateChain']) })
     expect(offS.plan.value).toBeLessThanOrEqual(onS.plan.value + 1e-6)
+  }, 120_000)
+
+  it('P1b/P1c sans mpLock (fast et standard) : le plan trouvé vaut moins (verrou de PM sur deux menaces)', () => {
+    // Enutrof face à deux ou trois monstres qui doivent marcher pour frapper l'allié fragile : `mpLock` enchaîne les
+    // retraits de PM « juste assez » depuis une même case (séquence que le faisceau ne compose pas seul).
+    const scenes = [
+      () => scene({ fighters: [hero(BREEDS.enutrof, 'Enu', 22, -8), hero(BREEDS.eniripsa, 'Eni', 17, -9), foe(3838, 'Bubo', 20, -3), foe(3836, 'Mej', 23, -3)], order: ['Enu', 'Bubo', 'Mej', 'Eni'] }),
+      () => scene({ fighters: [hero(BREEDS.enutrof, 'Enu', 20, -9), hero(BREEDS.cra, 'Cra', 18, -10), foe(3838, 'Bubo', 20, -3), foe(3834, 'Ika', 23, -3), foe(3839, 'Bra', 17, -2)], order: ['Enu', 'Bubo', 'Ika', 'Bra', 'Cra'] }),
+    ]
+    for (const build of scenes) {
+      for (const mode of ['fast', 'standard'] as const) {
+        const on = decide(build(), mode)
+        const off = decide(build(), mode, { disabledTactics: new Set(['mpLock']) })
+        expect(on.plan.actions.some(a => a.tactic === 'mpLock'), mode).toBe(true)
+        expect(off.plan.value, mode).toBeLessThan(on.plan.value)
+      }
+    }
   }, 120_000)
 
   it('P10 sans carryThrow (standard) : plus de portage de l\'Ikargn, et le plan vaut moins', () => {

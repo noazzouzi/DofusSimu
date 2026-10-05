@@ -49,7 +49,7 @@
       "carryThrow": 1,
       "glyphClock": 1,
       "healCleanse": 1,
-      "bodyBlock": 1,
+      "bodyBlock": 0,
       "groupForZone": 1,
       "burstSetup": 1
     },
