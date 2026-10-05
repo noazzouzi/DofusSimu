@@ -35,12 +35,6 @@ interface Need {
   source: Intent['source']
 }
 
-/**
- * Part de la perte attendue d'un Pacifiste payée par l'intention de contrôle d'un poseur de Pacifiste (réglage, tour 4 ;
- * 0 = prix d'origine, ½ × ¾ de la contribution à l'incoming).
- */
-const PAC_CONTROL = 0
-
 /** Fenêtre (tour, index) du créneau courant jusqu'au créneau de rang `rank`. */
 function windowTo(s: FightState, order: SlotOrder, rank: number): Intent['window'] {
   const sl = order.slots[Math.min(rank, order.slots.length - 1)]
@@ -128,34 +122,12 @@ export function allocateIntents(view: AIView, p: PerceptionX, bb: Blackboard, th
     const ec = believedCell(e, team)
     let dmin = Infinity
     for (const a of allies) dmin = Math.min(dmin, distance(ec, a.cell))
-    let mpMax = Math.max(0, dmin - damageRange(p, e) - 1)
+    const mpMax = Math.max(0, dmin - damageRange(p, e) - 1)
     const next = nextTurnApMp(e, order, { ap: 0, mp: 0 })
-    let price = 0.5 * 0.75 * c
-    let what = "qu'il n'atteigne personne"
-    // Poseur de Pacifiste (Méjaire, réglage tour 4) : le contrôle vaut la perte attendue des tours de dégâts des
-    // personnages qu'il peut pacifier (2 cibles par tour : min(1, 2π)·portée·valeur du Pacifiste) ; PM maximaux pour
-    // rester hors de portée du sort Pacifiste (et non du meilleur sort à dégâts, plus long : Plumière 3-7).
-    if (PAC_CONTROL > 0 && row.pacifist && row.pacSpells) {
-      let pac = 0
-      for (let i = 0; i < row.nA; i++) {
-        const a = p.threat.allies[i]
-        if (!a || a.kind !== 'player' || !order.before(e.id, a.id)) continue
-        pac += Math.min(1, 2 * row.pi[i]) * Math.min(1, row.pacH[i]) * row.pacU[i]
-      }
-      if (PAC_CONTROL * pac > price) {
-        let pr = 0
-        for (const k of row.pacSpells) pr = Math.max(pr, p.profiles.ofFighter(e)[k]?.maxRange ?? 0)
-        let dminP = Infinity
-        for (const a of allies) if (a.kind === 'player') dminP = Math.min(dminP, distance(ec, a.cell))
-        price = PAC_CONTROL * pac
-        mpMax = Math.max(0, dminP - pr - 1)
-        what = "qu'il ne puisse pacifier personne"
-      }
-    }
     if (next.mp <= mpMax) continue
     needs.push({
-      kind: 'control', target: e.id, price, deadline: order.rank(e.id), params: { mpMax },
-      explain: `Contrôler ${e.name} : PM ≤ ${mpMax} pour ${what}`, source: 'allocator',
+      kind: 'control', target: e.id, price: 0.5 * 0.75 * c, deadline: order.rank(e.id), params: { mpMax },
+      explain: `Contrôler ${e.name} : PM ≤ ${mpMax} pour qu'il n'atteigne personne`, source: 'allocator',
     })
   }
   // Protection / survie / purge.

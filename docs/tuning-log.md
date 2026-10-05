@@ -853,9 +853,181 @@ Diagnostic « puissance » (arbre figé modifié, `Engine.applyDamage` × facteu
 | CPAC | PCAL2 + intention de contrôle d'une Méjaire au prix de la perte de Pacifiste attendue (`allocator.ts`) | −0,34 ± 0,26 (vs PCAL2) | 0,00 ± 0,52 | −0,19 ± 1,19 | +0,69 ± 1,96 | *Maladresse* 5,8 → 7,3 par combat ; Iop pacifié 37 → 30 % des tours (≥ 13) | rejeté |
 | DMEJ2 | **diagnostic** : Méjaires à −2 PM à chaque tour (borne d'un verrou parfait par *Maladresse*) | −0,41 ± 0,40 | −0,09 ± 0,71 | +0,75 ± 1,32 | +0,91 ± 3,14 | Iop pacifié 37 → 27 % | borne faible |
 | N90 | θ `tactical.fast.nodes` 120 → 90 (coût) | **−0,88 ± 0,46** | −0,97 ± 0,67 | **−1,31 ± 0,95** | **−3,31 ± 2,28** | 727 → 628 ms par tour de jeu | rejeté : 120 nœuds est déjà le minimum |
+| SPG | garde Pacifiste du TITULAIRE d'une étoile au prochain tour : 0,5 × prix de la corruption sur les cases qu'une Méjaire peut pacifier (`model.ts`, `extraIncoming`) | −0,34 ± 0,31 | −0,38 ± 0,65 | −0,31 ± 1,22 | −0,97 ± 3,38 | Iop pacifié 37 → 32 % ; vague 2 −0,44 | rejeté |
+| N160 | θ `tactical.fast.nodes` 120 → 160 | −0,22 ± 0,44 | −0,13 ± 0,43 | −0,22 ± 0,74 | −1,06 ± 2,01 | même coût par tour (727 ms) : le faisceau s'arrête avant 120 nœuds | neutre |
+| θ hc02 / hc00 | `planner.hourCostScale` 0,4 → 0,2 / 0 | −0,22 / −0,22 | −0,16 / −0,06 | +0,28 ± 1,15 / 0,00 ± 1,06 | −0,13 / −0,72 | | neutres |
+| θ inc06 / inc10 | `value.incoming` 0,8 → 0,6 / 1,0 | −0,25 / **−0,53 ± 0,38** | −0,47 / −0,41 | −0,63 ± 0,75 / −0,44 ± 0,88 | −1,44 / −1,59 | 0,8 est un optimum local | rejetés |
+| θ cb3k | `planner.corruptBonus` 1 500 → 3 000 | −0,09 | −0,38 | −0,66 ± 0,84 | −1,38 | | rejeté |
+| θ whs10 / whs06 | `vortex.waveHpSlope` 0,8 → 1,0 / 0,6 | −0,53 / −0,03 | −0,31 / −0,22 | −0,34 / −0,25 | −2,13 / −1,88 | | rejetés |
+| θ pa05 | `value.potAfter` 0,15 → 0,3 | −0,34 ± 0,40 | +0,03 ± 0,57 | +0,66 ± 1,38 | +0,25 ± 3,34 | | à confirmer (n plus grand) |
+| DEF | stuffs défensifs `*_vortex_def` (presets existants) | **−1,59 ± 0,42** | **−2,00 ± 0,58** | **−2,03 ± 0,93** | −0,75 ± 2,57 | premier mort +4,2 ± 1,7 | rejeté (l'équilibré reste le meilleur) |
+| STD (n = 9) | mode `standard` (largeur 6, 1 500 nœuds, rollouts, sans ligne de kill) | −1,00 ± 0,98 | −1,11 ± 0,89 | −1,22 ± 1,26 | −1,00 ± 1,60 | 67 s par combat (× 3,3) | `standard` fait MOINS bien que `fast` |
 
 Pacifiste au début des tours (tours ≥ 13, GKL) : Crâ 21 %, Iop 37 %, Eniripsa 33 %, Enutrof 30 %.
 
 **Fenêtres d'étoile manquées** (`starmiss.cjs`, référence, tours 13-24, 314 fenêtres) : converties 31 % ; titulaire
 **pacifié 29 %** ; titulaire à 5-8 cases 18 %, à plus de 8 cases 13 % ; à ≤ 4 cases sans kill 7 % ; mort 2 %. Tours 1-12 :
 83 % converties. Le Pacifiste coûte donc directement ≈ 2,8 corruptions par combat (91 fenêtres / 32).
+
+**Lecture du bruit** : avec 32 graines, l'écart-type d'une différence appariée de corrompus vaut ≈ 2,9 (trajectoires
+chaotiques : 0 combat identique dès que la décision change une fois) ; IC 95 % ≈ ± 1,0 corrompu. Les 15 variantes neutres
+ci-dessus ont des moyennes entre 6,7 et 7,7 (référence 7,34) : compatibles avec le seul bruit. Seuls des effets ≥ 1
+corrompu sont lisibles sur 32 graines (N90, DEF, diagnostics NOPAC / NOPUSH).
+
+### PREMIÈRE VICTOIRE (règles 2.42, équipe stuffée, `fast`)
+
+**Graine 2750401650** (`masterSeed` 31), équipe `cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex,
+eniripsa_soin_vortex`, IA `fast`, variante `default` : **victoire** au tour 60 (19 / 19 corrompus au tour 41, *Action !*,
+Vortex tué ; 2 morts : Crâ au tour 27 et un second personnage). Arbre `.cache/tuning/r4/trees/eg_spg` = code du dépôt +
+garde Pacifiste du titulaire d'étoile (SPG, 0,5) + **correctif de fin de partie** (ci-dessous) ; replay :
+`.cache/tuning/r4/rep/eg_spg/s2750401650.json` (empreinte des événements 6877289bd870, identique avec et sans
+`explain`).
+
+**Mode d'échec trouvé — fin de partie bloquée** : dans le même combat SANS le correctif (arbre `spg`), l'équipe corrompt
+18 monstres au tour 36 puis tient jusqu'à la limite de 60 tours sans jamais corrompre le dernier : un Buboxor zombie tué une
+seule fois, à VII ; avec 3 personnages vivants (Crâ mort), seule l'heure de l'Enutrof retombe sur VII (fenêtre tous les
+4 tours), l'Enutrof est à 6-9 cases et ne l'achève pas ; entre deux fenêtres, ses alliés le frappent sans le tuer (une mort
+à une heure nouvelle coûte C_mon + C_vx au prix du planificateur) et il regagne ses PV par vol de vie (775 → 2 583 PV).
+**Correctif** (`model.ts`) : en fin de partie (toutes les vagues arrivées, au plus `ENDGAME_LEFT` = 2 monstres à
+corrompre), une mort d'un zombie à une heure NOUVELLE vaut au moins `ENDGAME_NEWHOUR` = +800 PVe (`deathValue`) et le
+zombie reçoit un indice `kill` (la ligne de kill de `fast` le vise) : de nouvelles heures ouvrent des fenêtres d'étoile aux
+autres personnages. Le correctif ne change aucune décision avant la fin de partie (empreintes identiques jusque-là).
+
+**Deuxième victoire, code du dépôt SANS correctif de fin de partie, stuff de l'Iop seul changé** : graine
+**3712432396** (`masterSeed` 31), équipe `cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex_def,
+eniripsa_soin_vortex` (Iop en stuff DÉFENSIF `vortex_iop_terre_def`, 6 245 PV au lieu de 4 203 ; preset existant),
+`fast` : **victoire au tour 45, aucun mort**, 19 / 19 corrompus au tour 36. Lot de 32 graines (IOPDEF, ms 31) : 1 victoire,
+tours +1,47 ± 2,94, premier mort **+4,75 ± 5,16**, corrompus +0,38 ± 1,17 (n.s.). Le stuff défensif sur les QUATRE
+personnages (DEF) fait bien moins bien (−2,0 corrompus) : seul l'Iop, mêlée et premier mort, gagne à être plus solide.
+
+### Expériences (suite, ms 31, n = 32, référence GKL)
+
+| Essai | Changement | Corr. t13 (Δ) | Corr. t19 (Δ) | Corr. total (Δ) | Tours (Δ) | Premier mort (Δ) | Verdict |
+|---|---|---|---|---|---|---|---|
+| MF13 / MF16 | pente de PV × 1,3 / × 1,6 sur une Méjaire jamais tuée (`model.ts`, `damageWeight`) | −0,13 / −0,50 | −0,13 / −0,41 | +0,16 ± 1,07 / −0,47 ± 1,03 | −0,47 / −1,75 | +0,59 / −0,50 | rejetés |
+| BF13 | pente × 1,3 sur un Brabuzar jamais tué | −0,31 | −0,06 | +0,22 ± 1,06 | −0,81 | −0,53 | neutre, rejeté |
+| θ h16 / h20 | `planner.horizonPlayerSlots` 12 → 16 / 20 (`fast` : 8 → 11 / 13 créneaux, la corruption d'un kill immédiat entre dans l'horizon) | −0,38 / −0,22 | −0,19 / −0,41 | −0,06 / −0,25 | −1,81 / −1,09 | | rejetés |
+| CTERRE | Iop remplacé par un Crâ Terre au stuff de l'Iop (`cra_terre_mono@vortex_iop_terre`) | −0,19 | −0,13 | +0,16 ± 1,00 | −0,97 | +0,09 | neutre |
+| OFF | stuffs offensifs `*_vortex_off` | +0,03 | −0,03 | −0,16 ± 0,97 | **−3,75 ± 2,62** | −1,78 | rejeté |
+| **IOPDEF** | **Iop seul en stuff défensif** (`iop_terre_vortex_def`, 6 245 PV) | −0,47 ± 0,37 | −0,34 | +0,38 ± 1,17 | +1,47 ± 2,94 | **+4,75 ± 5,16** | **1 victoire / 32** (graine 3712432396, aucun mort) ; mesuré sur n = 128 ci-dessous |
+
+**Victoire avec le code FINAL du dépôt** (GKL + correctif de fin de partie) : graine **3712432396**, équipe
+`cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex_def,eniripsa_soin_vortex`, IA `fast` : **victoire au
+tour 44, aucun mort** (« Le Vortex est vaincu », 75 % des PV de l'équipe restants). Reproductible par
+`npx tsx src/cli/simulate.ts fight vortex --team cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex_def,eniripsa_soin_vortex --ai fast --seed 3712432396 --json` ;
+replay : `.cache/tuning/r4/rep/final/cli-s3712432396.json` (empreinte f461c91caa7e). Corruptions : vague 1 au tour 8,
+vague 2 au tour 19, vague 3 au tour 27, vague 4 au tour 34, vague 5 au tour 36 ; le correctif de fin de partie y gagne un
+tour (45 → 44).
+
+### Mesure finale du tour 4 (`fast`, n = 128 : `masterSeed` 31-34, appariée)
+
+« Avant » = `base-tuning-r4` ; « après » = code final du dépôt (ligne de kill par glyphe + correctif de fin de partie).
+
+| Métrique | Avant (équipe stuffée) | Après (même équipe) | Δ apparié | Après, **Iop en stuff défensif** | Δ apparié vs avant |
+|---|---|---|---|---|---|
+| Victoires | 0 / 128 | 0 / 128 | — | **1 / 128** (+ 1 *Action !* atteinte, Vortex à 6 % de PV) | +1 |
+| Tours survécus | 26,79 | 26,60 | −0,19 ± 0,59 | 28,02 | **+1,23 ± 1,04** (+65 / −46) |
+| Corrompus au tour 7 | 2,28 | 2,27 | −0,01 ± 0,04 | 2,16 | −0,13 ± 0,18 |
+| Corrompus au tour 13 | 4,48 | 4,49 | +0,01 ± 0,11 | 4,27 | −0,22 ± 0,21 |
+| Corrompus au tour 19 | 6,21 | 6,15 | −0,06 ± 0,17 | 6,02 | −0,19 ± 0,30 |
+| Corrompus au tour 25 / total | 7,00 / 7,23 | 6,89 / 7,09 | −0,14 ± 0,30 | 7,03 / 7,38 | +0,15 ± 0,58 |
+| Premier mort (tour) | 18,5 | 18,4 | −0,13 ± 0,46 | **21,1** | **+2,52 ± 1,61** (+78 / −43) |
+| Causes d'échec | submersion 62, vague non corrompue 56, défaite 7, croix 3 | submersion 56, vague non corrompue 57, défaite 9, croix 6 | | submersion 38, vague non corrompue 81, défaite 3, croix 4, burst raté 1 | |
+| Temps par tour de jeu | — | 639 ms | | 706 ms | |
+
+Le code final est neutre sur les métriques moyennes de l'équipe stuffée (39 combats identiques sur 128, aucun n'atteint
+la fin de partie) : le correctif de fin de partie ne joue que dans les combats qui arrivent à 17-18 corrompus (rares :
+7 combats sur 128 dépassent 12 corrompus, maximum 15 avec l'équipe stuffée, 19 avec l'Iop défensif). L'Iop en stuff
+défensif (preset existant) échange ≈ 0,2 corrompu au tour 13 contre +1,2 tour de survie et +2,5 tours avant le premier
+mort : c'est l'équipe des deux combats qui atteignent *Action !* sur 128.
+
+### Re-mesures sur n = 128 (ms 31-34, code final = référence)
+
+| Bras | Victoires | Corr. t7 (Δ) | Corr. t13 (Δ) | Corr. total (Δ) | Tours (Δ) | Premier mort (Δ) | Par jeu de graines (corr. total) |
+|---|---|---|---|---|---|---|---|
+| Code final, équipe stuffée | 0 / 128 | — | — | 7,09 | 26,60 | 18,4 | — |
+| + menace avec collisions + Pacifiste calibré (PUSH1 + PCAL1, `patches/threat_push_pcal.ts`) | **2 / 128** (graines 76840650 au tour 58, 3371243329 au tour 56) | −0,21 ± 0,20 | −0,23 ± 0,25 | −0,05 ± 0,54 | +0,39 ± 0,98 | −0,40 ± 1,06 | ms 31 **−0,97 ± 0,82**, ms 32 −0,78, ms 33 +0,16, ms 34 **+1,38 ± 1,08** |
+| Iop en stuff défensif (équipe) | 1 / 128 (+ 1 *Action !*) | −0,12 ± 0,17 | −0,23 ± 0,20 | +0,29 ± 0,60 | **+1,41 ± 1,10** | **+2,65 ± 1,64** | |
+
+Le paquet « menace » donne deux victoires mais des effets contraires d'un jeu de graines à l'autre (−0,97 puis +1,38) :
+re-mesuré sur ms 35-36 ci-dessous avant décision.
+
+### Changements gardés (tour 4)
+
+1. `src/ai/tactical/turnSearch.ts` — **ligne de kill par une glyphe** (`glyphKillLine`, travail partiel repris) : neutre
+   (n = 64), corrige le puzzle P6 en `fast` (plus de `it.fails`).
+2. `src/dungeons/vortex/model.ts` — **fin de partie** : toutes les vagues arrivées et au plus 2 monstres à corrompre ⇒ une
+   mort de zombie à une heure NOUVELLE vaut au moins +800 PVe (`deathValue`) et le zombie reçoit un indice `kill` (ligne de
+   kill de `fast`). Ne change aucune décision avant la fin de partie ; débloque le combat 2750401650 (18 / 19 pendant 30
+   tours → victoire dans la variante SPG) et accélère la victoire 3712432396 (45 → 44 tours).
+3. Tests : `tests/ai-puzzles-vortex.test.ts` — P6 `fast` n'est plus marqué `it.fails` ; **P19** (fin de partie : dernier
+   zombie à 500 PV, une seule heure de mort, toutes les vagues arrivées ⇒ indice `kill` et kill à l'heure nouvelle ; échoue
+   sans le correctif).
+4. Recommandation d'équipe (aucun preset modifié) : pour viser la victoire,
+   `cra_feu_vortex,enutrof_retrait_pm_vortex,iop_terre_vortex_def,eniripsa_soin_vortex`.
+
+Retirés (mesurés neutres ou négatifs, code supprimé ; correctifs conservés hors dépôt dans `.cache/tuning/r4/patches`
+et les arbres `trees/*`) : SV (valeur des invocations dans la menace), PUSH1 (dommages de collision dans la menace),
+PCAL1/PCAL2 (portée et calibration du Pacifiste), CPAC (contrôle des Méjaires), SPG (garde Pacifiste du titulaire
+d'étoile), MJ / MJC, MF / BF (pentes de focus), θ (hourCostScale, incoming, corruptBonus, waveHpSlope, potAfter, horizon,
+nœuds 90 / 160), stuffs DEF / OFF, composition Crâ Terre.
+
+Vérifications : `npx tsc --noEmit` vert ; `npx vitest run tests/ai-* tests/vortex-* tests/engine-summon-owned.test.ts`
+(1 processus) : **334 réussis, 1 ignoré** (ablations, opt-in). Aucune infidélité du moteur trouvée ce tour (aucun test
+`it.fails` ajouté) ; à signaler : `θ.threat.pacifistFactor` est partagé par la menace de l'IA d'équipe ET le poids
+`pacifist` du MonsterBrain (`src/ai/monster/profiles/index.ts`) — modifier l'un modifie les monstres (essais PAC2 du
+tour 4 et P1 du tour 2 faussés).
+
+### Modes d'échec restants
+
+1. **Pacifiste (vagues 3-5)** : Iop pacifié au début de 37 % de ses tours (45 % en stuff défensif), Eniripsa 33 %,
+   Enutrof 30 %, Crâ 21 % ; 29 % des fenêtres d'étoile des tours 13-24 perdues parce que leur titulaire est pacifié ;
+   borne supérieure (NOPAC) +3,1 corrompus et 2 victoires / 32. Les leviers d'évaluation essayés (calibration, contrôle,
+   garde, focus) restent dans le bruit ; un verrou parfait de 2 PM sur les Méjaires (DMEJ2) ne vaut que +0,75.
+2. **Poussées du Brabuzar** (9 100 + Neutralisation 8 200 par combat) : NOPUSH +1,8 corrompu, +5,3 tours ; la menace
+   avec collisions (PUSH1) réduit les poussées de 14 % sans effet mesurable.
+3. **Rythme** : la vague 2 est marquée tard (Harpilles : premier kill 4,2 tours après l'arrivée, dégâts dispersés par les
+   zones) et finit corrompue pendant la vague 3 ; vague 3 : 0,8 corrompu sur 4 ; l'équipe meurt aux tours 19-28.
+4. **Fin de partie** : sur ≈ 1 500 combats hors diagnostics de ce tour, 8 seulement arrivent au bout des vagues :
+   3 victoires (graines 2750401650 avec SPG + correctif, 3712432396 avec l'Iop défensif, 243694197 avec θ `potAfter` 0,3),
+   4 bursts ratés (19 corrompus aux tours 41-50 avec 1-2 survivants ; Vortex à 6 % de PV dans le meilleur cas) et 1 combat
+   bloqué à 18 / 19 (corrigé). La victoire exige d'arriver à *Action !* vers le tour 35-40 avec 3-4 personnages.
+5. **Mesure** : avec 32 graines, IC 95 % ≈ ± 1 corrompu (trajectoires chaotiques) ; tout effet < 0,5 corrompu exige
+   n ≥ 128.
+
+### Ce qui bloque la victoire (preuves)
+
+- **Pas le moteur** : aucune infidélité trouvée (poussées : formule du patch 2.17, +200 de *Mise en situation* cumulable
+  sans limite d'après les données, `maxStack` −1 ; Pacifiste : `cantDealDamage` seul, le retrait de PM reste possible).
+- **La puissance de l'équipe** reste le verrou principal : il manque ≈ +25 % de dégâts et −20 % de dégâts subis pour
+  gagner un combat sur quatre (diagnostic ×1,25 / ×0,8 : 8 / 32 ; ×1,5 / ×0,67 : 22 / 32). Le stuff défensif de l'Iop
+  seul (preset existant) apporte +2,5 tours avant le premier mort et la première victoire du code final ; tout autre jeu
+  de stuffs essayé fait moins bien (DEF, OFF) ou pareil (Crâ Terre à la place de l'Iop).
+- **L'IA** : deux mécaniques coûtent l'essentiel. (1) Le Pacifiste des Méjaires (borne +3,1 corrompus, 29 % des
+  fenêtres d'étoile perdues aux tours 13-24) : l'IA ne sait ni l'éviter sans perdre ses dégâts (Iop au corps à corps), ni
+  le prévenir (le verrou parfait de 2 PM ne vaut que +0,75) ; seule la mort rapide des Méjaires fraîches (90 % des
+  Pacifiste) paraît suffisante, et ni les pentes de focus ni les prix du planificateur ne l'ont obtenue. (2) Les poussées du
+  Brabuzar (borne +1,8 corrompu, +5,3 tours). Les réglages d'évaluation (menace, θ) sont à un optimum local : 25 variantes
+  mesurées, toutes dans le bruit ou négatives.
+- **La recherche** : 120 nœuds est le minimum (90 : −1,3 corrompu, −3,3 tours) et le maximum utile (160 : même coût, le
+  faisceau s'arrête avant) ; `standard` fait moins bien que `fast` (9 graines : −1,2 corrompu).
+- **La fin de partie** n'était pas prête : combat bloqué à 18 / 19 (corrigé ce tour) ; burst raté avec 1-2 survivants.
+
+### Pistes pour le tour 5
+
+- **Méjaires fraîches** : plan d'équipe explicite à l'arrivée de la vague 3 (tour 13) — focus de la Méjaire la plus proche
+  du titulaire de la prochaine étoile, *Corruption* de l'Enutrof (5 PA, la cible passe son tour) sur la Méjaire qui
+  menace ce titulaire, Iop hors des lignes 1-3 des Méjaires au tour qui précède son étoile.
+- **Séparer `θ.threat.pacifistFactor`** de la valeur `pacifist` du MonsterBrain (`src/ai/theta.ts`, hors du périmètre de
+  ce tour) avant tout réglage du Pacifiste par θ.
+- **Protocole** : juger sur n ≥ 128 (≈ 18 min par bras avec 3 processus) ; avec 32 graines, IC ≈ ± 1 corrompu.
+- **Fin de partie** : `ENDGAME_LEFT` 3, prise en compte du nombre de survivants avant *Action !* (attendre de soigner),
+  burst à 1-2 personnages.
+- **Équipe** : refaire la campagne de stuffs avec l'Iop en contrainte « survie » (seul l'Iop défensif aide) ; essayer un
+  4ᵉ personnage qui retire les PM à distance (Méjaires) sans perdre de dégâts.
+- **À re-mesurer sur n ≥ 128** : menace avec collisions + Pacifiste calibré (`.cache/tuning/r4/patches/threat_push_pcal.ts`,
+  test `ai-core-threat-push.test.ts` à côté), θ `value.potAfter` 0,3 (une victoire sur 32 au premier lot).
+
+`standard`, code final, 9 graines (ms 31), appariées avec `fast` : équipe stuffée 0 / 9, corrompus 7,11 → 5,89
+(−1,22 ± 1,26), tours −1,00 ; Iop défensif 0 / 9 (la graine 3712432396, gagnée en `fast`, est perdue), corrompus
+9,22 → 7,11 ; 66-82 s par combat (≈ × 4). `standard` reste moins bon que `fast` (sans ligne de kill).

@@ -33,13 +33,15 @@ import { createMonsterBrain } from '../src/ai/monster/brain'
 import { createPerception, createView, type PerceptionX } from '../src/ai/core'
 import { createTeamController } from '../src/ai/team/controller'
 import type { Blackboard } from '../src/ai/types'
-import { IKARGN, VORTEX_DEFAULT_PARAMS } from '../src/dungeons/vortex/constants'
+import { IKARGN, STATE, VORTEX_DEFAULT_PARAMS } from '../src/dungeons/vortex/constants'
+
+const CORRUPTED_STATE = STATE.CORRUPTED
 import {
   currentHour, deathHours, forecastHours, hasStar, isWaveMonster, lineCells, nextVortexSlot,
 } from '../src/dungeons/vortex/clock'
 import { createPhase2Fight } from '../src/dungeons/vortex/micro'
 import { createVortexAIModel, type VortexAIModel } from '../src/dungeons/vortex/model'
-import { vortexState } from '../src/dungeons/vortex/params'
+import { patchVortexState, vortexState } from '../src/dungeons/vortex/params'
 import { vortexVulnerableAt } from '../src/dungeons/vortex/scenario'
 import { createVortexFight, vortexHooks } from '../src/dungeons/vortex/setup'
 import type { CandidateHint, ScenarioAIModel } from '../src/dungeons/types'
@@ -323,6 +325,32 @@ describe('puzzles du Vortex (modèle WP3 réel)', () => {
       }
     }, 120_000)
   }
+
+  // Tour 4 du réglage : combat bloqué 30 tours à 18 / 19 corrompus (graine 2750401650) — le dernier zombie n'avait qu'une
+  // heure de mort, vue par un seul personnage qui ne l'achevait jamais ; ses alliés ne le tuaient pas à une autre heure
+  // (coût d'heure du planificateur).
+  it('P19 (fast) : fin de partie — dernier zombie tué à une heure NOUVELLE (plus de fenêtres d\'étoile)', () => {
+    const sc = vortexScene()
+    sc.turnOf(sc.cra, 1)
+    sc.engine.kill(sc.fight, sc.ika, sc.cra) // heure de mort I
+    sc.turnOf(sc.cra, 2)
+    const hour = currentHour(sc.fight)
+    expect(hour).toBe(5)
+    expect(sc.ika.alive && deathHours(sc.ika) === 1).toBe(true)
+    // Fin de partie simulée : toutes les vagues arrivées, les autres monstres de vague corrompus.
+    const vx = vortexState(sc.fight)!
+    patchVortexState(sc.fight, { wavesSpawned: vx.arrivalRounds.length })
+    for (const f of sc.fight.fighters) if (isWaveMonster(f) && f.id !== sc.ika.id && !f.states.includes(CORRUPTED_STATE)) f.states.push(CORRUPTED_STATE)
+    bring(sc, sc.ika, sc.cra, 500)
+    const model = vortexModel()
+    const d = decide(sc.as(sc.cra), 'fast', { scenario: model, seed: 5 })
+    const keys = d.plan.actions.map(a => a.key).join(' | ')
+    expect(d.ctx.hints?.some(h => h.kind === 'kill' && h.targetId === sc.ika.id), keys).toBe(true)
+    const s = play(sc, sc.cra, d.plan.actions, 'average')
+    const ika = s.fighters[sc.ika.id]
+    expect(ika.alive, keys).toBe(false)
+    expect(deathHours(ika) & (1 << (hour - 1))).not.toBe(0) // nouvelle heure V : nouvelles fenêtres d'étoile
+  }, 120_000)
 
   it('P16 (standard) : corruption — deux sorts sûrs plutôt qu\'un sort qui ne tue que sur coup critique', () => {
     const sc = vortexScene()
