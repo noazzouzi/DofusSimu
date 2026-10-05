@@ -94,9 +94,6 @@ export interface VortexModelSnapshot {
 
 const clamp = (v: number, lo: number, hi: number): number => (v < lo ? lo : v > hi ? hi : v)
 
-/** Prix minimal d'un kill hors étoile et hors contrat pour un indice `kill` (ligne de kill, réglage tour 2). */
-export const PAID_KILL_HINT = 1000
-
 /** Plafond du coût « horloge » d'une mort d'allié (PVe, s'ajoute au coût de mort de V(s), ≈ 10 000). */
 export const DEATH_EXTRA_MAX = 4000
 
@@ -670,18 +667,8 @@ export class VortexAIModel implements ScenarioAIModel {
         const w = row ? row[0] : this.theta.vortex.corruptKill
         if (w > 0) out.push({ kind: 'kill', targetId: f.id, weight: w })
       }
-      // Kills bien payés à l'heure courante (hors étoile, hors contrat) et à ma portée selon l'oracle.
-      const s0 = view.fight
-      const h = currentHour(s0)
-      if (me.id === this.meId && h >= 1 && h <= HOUR_COUNT) {
-        for (const f of s0.fighters) {
-          if (!f.alive || !isWaveMonster(f) || isCorrupted(f) || hasStar(f) || !vortexVulnerableAt(s0, f, 0) || out.some(x => x.kind === 'kill' && x.targetId === f.id)) continue
-          const w = bb.prices.kill.get(f.id)?.[h] ?? 0
-          if (w < PAID_KILL_HINT) continue
-          const e = this.oracle.expected(0, me.id, { id: f.id, monsterId: f.monsterId!, hours: deathHours(f) } as AbsMonster)
-          if (e >= f.hp + f.shield) out.push({ kind: 'kill', targetId: f.id, weight: w })
-        }
-      }
+      // Pas d'indice pour les kills « payés » hors étoile et hors contrat (essai KH du tour 2, retiré à la vérification :
+      // corrompus −0,28 ± 0,29, tours −0,83 ± 0,60 sur 64 graines inédites ; docs/tuning-log.md).
     }
     const avoid: number[] = []
     if (bb.prices.cell) for (let c = 0; c < bb.prices.cell.length; c++) if (bb.prices.cell[c] < 0) avoid.push(c)

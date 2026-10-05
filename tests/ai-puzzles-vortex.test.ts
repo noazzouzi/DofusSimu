@@ -18,7 +18,8 @@
  *  P16 corruption : 2 sorts sûrs contre 1 sort incertain   → les 2 sorts sûrs (le plan tue même en jets minimaux)
  *  P17 monstre étoilé à deux lancers, à 4 cases            → corrompu dans sa fenêtre (ligne de kill en `fast` ; prix
  *      de l'étoile positif en `standard` : la référence « sans tuer m » du `SearchPricer` exclut les morts improbables)
- *  P18 monstre neuf à 900 PV à 3 cases, kill payé ≥ seuil à l'heure courante, sans contrat → indice `kill`, marqué
+ *  P18 monstre neuf à 900 PV à 3 cases, kill bien payé à l'heure courante                → marqué (sans indice « kill
+ *      payé » hors contrat : essai KH retiré à la vérification du tour 2)
  *
  * Prix : P4, P5 (fast), P7 et P12 utilisent les prix publiés par le modèle. Là où le puzzle suppose une décision
  * stratégique donnée (contrat de corruption de P5 et P16 en `standard`, contrat « glyphe puis kill » de P6, interdiction
@@ -37,7 +38,7 @@ import {
   currentHour, deathHours, forecastHours, hasStar, isWaveMonster, lineCells, nextVortexSlot,
 } from '../src/dungeons/vortex/clock'
 import { createPhase2Fight } from '../src/dungeons/vortex/micro'
-import { createVortexAIModel, PAID_KILL_HINT, type VortexAIModel } from '../src/dungeons/vortex/model'
+import { createVortexAIModel, type VortexAIModel } from '../src/dungeons/vortex/model'
 import { vortexState } from '../src/dungeons/vortex/params'
 import { vortexVulnerableAt } from '../src/dungeons/vortex/scenario'
 import { createVortexFight, vortexHooks } from '../src/dungeons/vortex/setup'
@@ -217,7 +218,7 @@ describe('puzzles du Vortex (modèle WP3 réel)', () => {
       expect(castsOf(d.plan.actions).length, keys).toBeGreaterThanOrEqual(2)
     }, 120_000)
 
-    it(`P18 (${mode}) : monstre neuf à portée de kill, bien payé à l'heure courante — marqué (indice kill hors contrat)`, () => {
+    it(`P18 (${mode}) : monstre neuf à portée de kill, bien payé à l'heure courante — marqué`, () => {
       const sc = vortexScene()
       sc.turnOf(sc.cra, 3)
       const hour = currentHour(sc.fight)
@@ -228,9 +229,9 @@ describe('puzzles du Vortex (modèle WP3 réel)', () => {
       const keys = d.plan.actions.map(a => a.key).join(' | ')
       const price = d.ctx.bb.prices.kill.get(target.id)![hour]
       console.info(`[P18 ${mode}] heure ${hour}, prix ${price} ; indices ${JSON.stringify(d.ctx.hints?.filter(h => h.kind === 'kill'))} ; plan ${keys}`)
-      // Prémisse : le kill à l'heure courante est payé au-dessus du seuil des indices.
-      expect(price).toBeGreaterThanOrEqual(PAID_KILL_HINT)
-      expect(d.ctx.hints?.some(h => h.kind === 'kill' && h.targetId === target.id), keys).toBe(true)
+      // Prémisse : le kill à l'heure courante est bien payé. L'indice `kill` hors contrat (essai KH) n'est plus exigé : il
+      // a été retiré à la vérification du tour 2 (négatif sur 64 graines inédites) ; le kill se fait sans lui.
+      expect(price).toBeGreaterThanOrEqual(1000)
       const s = play(sc, sc.cra, d.plan.actions, 'average')
       expect(s.fighters[target.id].alive, keys).toBe(false)
     }, 120_000)
