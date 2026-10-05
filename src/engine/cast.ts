@@ -39,6 +39,20 @@ export function spellRange(caster: Fighter, lvl: SpellLevelData): { min: number;
 // Condition d'états du lanceur (statesCriterion « HS=x / HS!x », & | ( )) : voir criteria.ts.
 export { checkStatesCriterion }
 
+/**
+ * Un état `preventsSpellCast` porté par le lanceur (Silencieux 41, Porteur 3, Gelé 18…) interdit le lancer, SAUF si le
+ * critère d'états du sort contient le terme « possède l'état » de cet état (`E<id>`, HS=id : jets du Pandawa porteur,
+ * docs/research/mechanics.md §4.3 — D2 `canCastThisSpell` : `statesRequired`/`statesAuthorized` lèvent l'interdiction).
+ */
+export function castPreventedByStates(engine: Engine, caster: Fighter, criterion: string | undefined): boolean {
+  for (const st of caster.states) {
+    if (caster.disabledStates !== undefined && caster.disabledStates.includes(st)) continue
+    if (!engine.data.state(st)?.preventsSpellCast) continue
+    if (!criterion || !new RegExp(`E${st}(?!\\d)`).test(criterion)) return true
+  }
+  return false
+}
+
 export function canCast(
   engine: Engine,
   fight: FightState,
@@ -55,7 +69,7 @@ export function canCast(
   if ((caster.cooldowns[spell.spellId] ?? 0) > 0) return 'cooldown'
   if (lvl.maxCastPerTurn > 0 && (caster.castsThisTurn[spell.spellId] ?? 0) >= lvl.maxCastPerTurn) return 'maxPerTurn'
   if (!checkStatesCriterion(lvl.statesCriterion, caster)) return 'state'
-  if (engine.stateFlag(caster, 'preventsSpellCast')) return 'state'
+  if (castPreventedByStates(engine, caster, lvl.statesCriterion)) return 'state'
   const mapCell = fight.map.cells[cell]
   // Une case non marchable n'est ciblable que si une entité y a été posée par script (Auroraire de l'Œil de Vortex
   // sur les heures I-III / X-XII, src/dungeons/vortex/setup.ts `syncAuroraireCell`) : l'entité reste une cible.

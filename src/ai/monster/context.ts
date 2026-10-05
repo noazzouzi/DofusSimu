@@ -3,13 +3,14 @@
  *
  * Regroupe ce que le cerveau, le score, la position et les hooks lisent : vue honnête (§6.1 : positions crues, pièges
  * connus, jamais `fight.events` ni les dés futurs), profil et comportement résolus, poids, table DPT partagée du moteur,
- * ordre public des prochains tours, et des caches « par pas » (menace des ennemis, focale, instantané de la racine)
- * invalidés par `refresh()` après chaque action (R10, R11, R18 : tout a pu changer).
+ * ordre public des prochains tours, et des caches « par pas » (instantané de la racine, ordre, α des PM) invalidés par
+ * `refresh()` après chaque action (R10, R11, R18 : tout a pu changer) ; menaces, portées d'attaque et focale sont
+ * calculées une fois par tour (monster-ai.md §8.4 « pré-calculé au début de chaque tour »).
  *
- * Menace d'un ennemi (§11.4) : `threat_e` = DPT du joueur sur l'équipe des monstres (max sur les monstres vivants non
- * statiques), 0 s'il ne jouera pas son prochain tour ou s'il est sous un état « ne peut pas infliger de dommages »
- * couvrant ce tour. `apWorth = threat/PA`, `mpWorth = α·threat/max(1, PM)`, α = 0,15 s'il frappe un monstre depuis sa
- * case actuelle, 0,6 s'il doit se déplacer.
+ * Menace d'un ennemi (§11.4) : `threat_e` = DPT du joueur sur le monstre qui décide (approximation de « sur l'équipe
+ * des monstres », voir `threatOf`), 0 s'il ne jouera pas son prochain tour ou s'il est sous un état « ne peut pas
+ * infliger de dommages » couvrant ce tour. `apWorth = threat/PA`, `mpWorth = α·threat/max(1, PM)`, α = 0,15 s'il
+ * frappe un monstre depuis sa case actuelle, 0,6 s'il doit se déplacer.
  */
 import type { TeamId } from '../../core/types'
 import type { Engine } from '../../engine/engine'
@@ -62,9 +63,12 @@ export class MonsterContext {
   sawBlocked = false
   private snap: RootSnapshot | undefined
   private orderMemo: SlotOrder | undefined
+  /** Menaces des ennemis : calculées une fois par tour (monster-ai.md §8.4, « pré-calculé au début de chaque tour »). */
   private readonly threatMemo = new Map<number, number>()
   private readonly alphaMemo = new Map<number, number>()
-  private readonly reachMemo = new Map<number, number>()
+  /** Portée d'attaque (PM + portée) par ennemi, pour le tour (recalculée si ses PM changent). */
+  private readonly reachMemo = new Map<number, { mp: number; v: number }>()
+  /** Focale du tour (recalculée si elle meurt). */
   private focalMemo: Fighter | null | undefined
   private healerMemo: boolean | undefined
 
@@ -140,20 +144,30 @@ export class MonsterContext {
     return (this.orderMemo ??= new SlotOrder(this.engine, this.fight))
   }
 
-  /** Menace d'un ennemi (voir l'en-tête), mise en cache par pas (la table DPT met en cache les paires). */
+  /**
+   * Menace d'un ennemi (voir l'en-tête), calculée une fois par tour (la table DPT met en cache les paires). Défenseur de
+   * référence : le monstre qui décide (approximation de « DPT sur l'équipe des monstres » : le maximum sur toute
+   * l'équipe coûtait un sac à dos par paire et par pas — ×10 sur une vague du Vortex — pour un écart de quelques % dû
+   * aux résistances) ; un monstre statique ou sans PV utile prend le premier allié non statique.
+   */
   threatOf(e: Fighter): number {
     const memo = this.threatMemo.get(e.id)
     if (memo !== undefined) return memo
     const order = this.order()
     let v = 0
     if (e.alive && !isStaticFighter(e) && !order.passes(e.id) && !flagAtNextTurn(this.engine, e, 'cantDealDamage', order)) {
-      for (const d of this.defenders()) {
-        const x = this.dpt.dpt(e, d)
-        if (x > v) v = x
-      }
+      const d = this.referenceDefender()
+      if (d) v = this.dpt.dpt(e, d)
     }
     this.threatMemo.set(e.id, v)
     return v
+  }
+
+  /** Défenseur de référence de la menace : soi, sinon le premier monstre allié non statique. */
+  private referenceDefender(): Fighter | undefined {
+    const me = this.fight.fighters[this.me.id] ?? this.me
+    if (me.alive && !isStaticFighter(me)) return me
+    return this.defenders()[0]
   }
 
   /** Monstres de l'équipe (soi compris) qu'un ennemi peut viser : vivants, placés, non statiques. */
@@ -204,7 +218,7 @@ export class MonsterContext {
   /** Portée d'attaque d'un ennemi au prochain tour : PM + portée max de ses sorts de dégâts (danger, §11.5). */
   attackReach(e: Fighter): number {
     const memo = this.reachMemo.get(e.id)
-    if (memo !== undefined) return memo
+    if (memo !== undefined && memo.mp === e.stats.mp) return memo.v
     const order = this.order()
     const mp = nextTurnApMp(e, order).mp
     let range = -1
@@ -217,7 +231,7 @@ export class MonsterContext {
       if (r > range) range = r
     }
     const v = range < 0 ? -1 : Math.floor(mp) + range
-    this.reachMemo.set(e.id, v)
+    this.reachMemo.set(e.id, { mp: e.stats.mp, v })
     return v
   }
 
@@ -282,7 +296,10 @@ export class MonsterContext {
    * selon la distance), sinon le plus proche ; départage : plus proche puis plus petit id.
    */
   focal(): Fighter | undefined {
-    if (this.focalMemo !== undefined) return this.focalMemo ?? undefined
+    if (this.focalMemo !== undefined) {
+      const f = this.focalMemo ? this.fight.fighters[this.focalMemo.id] : undefined
+      if (this.focalMemo === null || (f && f.alive)) return f ?? undefined
+    }
     const me = this.me
     const enemies = this.enemies()
     const w = this.w
@@ -367,13 +384,35 @@ export class MonsterContext {
   /** Invalide les caches « par pas » (après chaque action réelle). */
   refresh(): void {
     this.step++
+    this.clearCaches()
+  }
+
+  /** Caches « par pas » (menaces, portées et focale restent ceux du tour). */
+  private clearCaches(): void {
     this.snap = undefined
     this.orderMemo = undefined
-    this.threatMemo.clear()
     this.alphaMemo.clear()
-    this.reachMemo.clear()
-    this.focalMemo = undefined
     this.healerMemo = undefined
+  }
+
+  /**
+   * Évalue `fn` avec l'état `s` (un clone) pour racine, sans compter de pas ni toucher au combat : suite d'un lancer
+   * (overrides, anticipation). Les caches de la vraie racine sont restaurés ensuite.
+   */
+  withRoot<T>(s: FightState, fn: () => T): T {
+    const saved = { fight: this.fight, snap: this.snap, order: this.orderMemo, alpha: new Map(this.alphaMemo), healer: this.healerMemo }
+    this.fight = s
+    this.clearCaches()
+    try {
+      return fn()
+    } finally {
+      this.fight = saved.fight
+      this.snap = saved.snap
+      this.orderMemo = saved.order
+      this.healerMemo = saved.healer
+      this.alphaMemo.clear()
+      for (const [k, v] of saved.alpha) this.alphaMemo.set(k, v)
+    }
   }
 
   /** Annotation de l'IA pour le replay (E3), seulement si `cfg.explain` et combat enregistré. */

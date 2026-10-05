@@ -10,8 +10,8 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { loadTheta } from '../src/ai'
 import { loadDataStore } from '../src/data/node'
 import { createNodePool } from '../src/optimizer/pool/node'
-import { candidateFromPresets, enforceDiversity, runCompositionCampaign, successiveHalving, teamId, type TeamCandidate } from '../src/optimizer/team/halving'
-import { parseTeam, resolvePreset } from '../src/optimizer/team/presets'
+import { candidateFromPresets, enforceDiversity, evolveTeams, runCompositionCampaign, successiveHalving, teamId, type TeamCandidate } from '../src/optimizer/team/halving'
+import { getPreset, parseTeam, presetMember, resolvePreset } from '../src/optimizer/team/presets'
 import { archetypeKey, archetypeOf } from '../src/optimizer/team/prior'
 import type { FightSpec } from '../src/optimizer/types'
 
@@ -97,6 +97,38 @@ describe('successive halving', () => {
     expect(r.halving.stages[0].entries.length).toBe(6)
     expect(lines.some(l => l.startsWith('T0 calibré'))).toBe(true)
     expect(r.best.validation.summaries.length).toBe(2)
+  }, 600_000)
+
+  it('option evolve : mutation d’un membre et croisement de stuffs, acceptation appariée significative', async () => {
+    // Parent : équipe méta dont le Crâ est NU ; l'autre équipe de la population a un Crâ équipé (croisement possible).
+    const team = parseTeam('iop:killer,cra:feu,enutrof:mpLock,eniripsa:healer', DATA)
+    team[1] = presetMember(getPreset('cra_feu_zone'), DATA, { stuff: 'unstuffed', name: 'Crâ' })
+    const parent: TeamCandidate = { id: 'meta@cra-nu', team, archetype: 'soin/sans-placeur' }
+    const other = candidate('iop:killer,cra:feu,pandawa:placer,eniripsa:healer')
+    const presets = ['cra_air_entrave', 'sacrieur_tank', 'xelor_zone_feu_air'].map(resolvePreset)
+    const r = await evolveTeams(DATA, base, [parent, other], pool, { generations: 1, mutants: 6, seeds: 8, presets })
+    expect(r.fights).toBe(2 * (1 + 6 + 1) * 8)
+    const mine = r.steps.filter(s => s.parent === parent.id)
+    expect(mine.filter(s => s.kind === 'mutation').length).toBe(6)
+    expect(mine.filter(s => s.kind === 'crossover').length).toBe(1)
+    for (const s of r.steps.filter(x => x.accepted)) {
+      expect(s.diff).toBeGreaterThan(0)
+      expect(s.z).toBeGreaterThanOrEqual(2)
+    }
+    // Chaque équipe est remplacée par sa variante acceptée de plus fort gain apparié (sinon conservée).
+    for (const [i, p] of [parent, other].entries()) {
+      const acc = r.steps.filter(x => x.parent === p.id && x.accepted).sort((a, b) => b.diff - a.diff)
+      expect(r.teams[i].id).toBe(acc.length ? acc[0].child : p.id)
+    }
+    // Ici le Crâ nu pénalise le parent : au moins une variante significativement meilleure existe.
+    expect(r.teams[0].id).not.toBe(parent.id)
+    for (const t of r.teams) {
+      const byClass = new Map<number, number>()
+      for (const m of t.team) byClass.set(m.breedId, (byClass.get(m.breedId) ?? 0) + 1)
+      expect([...byClass.values()].every(n => n <= 2)).toBe(true)
+      expect(new Set(t.team.map(m => m.name)).size).toBe(4)
+    }
+    expect(r.log.some(l => l.includes(parent.id))).toBe(true)
   }, 600_000)
 
   it('campagne réduite : halving → co-optimisation (stuff validé par combats, variantes) → validation', async () => {

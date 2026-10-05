@@ -37,7 +37,7 @@ import { evalLeaf, hourOf, rootInfo } from './evaluate'
 import { finalize } from './finalMove'
 import { generate, selectForSim } from './generate'
 import type { FinalLeaf, SearchNode, SearchPlan, StepDigest, TacticalContext } from './node'
-import { teamRollout } from './rollout'
+import { subBudget, teamRollout } from './rollout'
 
 export type { TacticalContext } from './node'
 
@@ -186,6 +186,8 @@ function expand(ctx: TacticalContext, node: SearchNode, m: MacroAction, salt: nu
       }
     }
   }
+  // Cohérence (§9.3) : l'action que le rollout de l'allié précédent prêtait à ce combattant.
+  if (node.depth === 0 && ctx.expectedKey !== undefined && m.key === ctx.expectedKey) adj += ctx.cfg.theta.team.coherenceBonus
   const tactics = m.tactic && !node.tactics.includes(m.tactic) ? [...node.tactics, m.tactic] : node.tactics
   return {
     s,
@@ -316,16 +318,21 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   const leaves: SearchNode[] = []
   const seen = new Map<bigint, number>()
   seen.set(rootNode.hash, rootNode.v)
-  for (let depth = 0; depth < b.maxDepth && beam.length && !ctx.nodes.exhausted(); depth++) {
+  // Réserve de nœuds pour les déplacements de fin (« rien » + finales) et les rollouts : le faisceau ne l'entame pas.
+  const nFinals = Math.max(2, 2 * b.width)
+  const rolloutsWanted = ctx.nested || ctx.noRollouts ? 0 : b.rollouts
+  const reserve = Math.min(Math.floor(ctx.nodes.remaining() / 3), b.endCells * Math.min(nFinals + 1, 5) + rolloutsWanted * 14)
+  const bctx: TacticalContext = { ...ctx, nodes: subBudget(ctx.nodes, ctx.nodes.remaining() - reserve) }
+  for (let depth = 0; depth < b.maxDepth && beam.length && !bctx.nodes.exhausted(); depth++) {
     const children: SearchNode[] = []
     for (const node of beam) {
-      if (ctx.nodes.exhausted()) break
+      if (bctx.nodes.exhausted()) break
       const me = node.s.fighters[ctx.view.me.id]
       if (!me || !me.alive || node.s.ended || me.ap <= 0) continue
       const salt = simSalt(node.hash, depth)
-      for (const c of selectForSim(ctx, node, generate(ctx, node), b)) {
-        if (ctx.nodes.exhausted()) break
-        const child = expand(ctx, node, c, salt)
+      for (const c of selectForSim(bctx, node, generate(bctx, node), b)) {
+        if (bctx.nodes.exhausted()) break
+        const child = expand(bctx, node, c, salt)
         if (!child) continue
         ctx.trace?.({ t: 'expand', depth, key: c.key, v: child.v, tactic: c.tactic, cat: c.cat, mandatory: c.mandatory === true })
         const prev = seen.get(child.hash)
@@ -339,7 +346,7 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   }
   // Plans complets : déplacement de fin et V terminale.
   const pass = finalize(ctx, rootNode)
-  const finals = leaves.sort(nodeOrder).slice(0, Math.max(2, 2 * b.width)).map(n => finalize(ctx, n))
+  const finals = leaves.sort(nodeOrder).slice(0, nFinals).map(n => finalize(ctx, n))
   finals.sort(finalOrder)
   let pool = finals
   const rollouts = ctx.nested || ctx.noRollouts ? 0 : b.rollouts
@@ -371,10 +378,21 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   const second = pool.find(f => f !== chosen && firstKey(f) !== firstKey(chosen))
   plan.closeCall = !!second && Math.abs(chosen.v - second.v) < 150
   let bestOff = -Infinity
-  for (const f of pool) if (offensive(f.node) && f.v > bestOff) bestOff = f.v
+  for (const f of pool) if (offensive(f.node) && f.node.actions.length && f.v > bestOff) bestOff = f.v
   plan.bestOffensive = Number.isFinite(bestOff) ? bestOff - pass.v : 0
   plan.maxDeathRisk = maxDeathRisk(ctx, chosen.s)
   plan.creative = isCreative(chosen, pass, plan.bestOffensive)
+  if (ctx.wantAlternatives) {
+    const firsts = new Set<string>([firstKey(chosen)])
+    plan.alternatives = []
+    for (const f of pool) {
+      if (plan.alternatives.length >= ctx.wantAlternatives) break
+      const k = firstKey(f)
+      if (firsts.has(k)) continue
+      firsts.add(k)
+      plan.alternatives.push(extractPlan(ctx, f, pass))
+    }
+  }
   plan.nodes = ctx.nodes.used
   return plan
 }
@@ -402,7 +420,6 @@ export function isCreative(chosen: FinalLeaf, pass: FinalLeaf, bestOffensiveGain
   const gain = chosen.v - pass.v
   if (gain <= 0) return false
   if (bestOffensiveGain > 0 && gain >= 1.15 * bestOffensiveGain) return true
-  if (bestOffensiveGain <= 0 && gain > 0) return true
   const b = chosen.breakdown
   const p0 = pass.breakdown
   const dOff = b.enemyLife - p0.enemyLife + (b.kills - p0.kills)

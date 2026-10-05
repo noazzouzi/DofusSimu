@@ -112,12 +112,14 @@ function makeProvider(engine: Engine, spec: FightSpec, seed: number, scenario: D
   return { controllers, provider: counting }
 }
 
-function startSession(data: GameDataStore, spec: FightSpec, seed: number, record: boolean, placement?: number[]): Session {
+/** Session neuve ; `diceSeed` remplace la graine des dés (E1) sans changer la variante ni la mise en place du scénario. */
+function startSession(data: GameDataStore, spec: FightSpec, seed: number, record: boolean, placement?: number[], diceSeed?: number): Session {
   const scenario = resolveScenario(spec.scenarioId)
   const engine = createEngine(data, scenario.hooks)
   const team = buildTeam(data, spec.team)
   const { params, variant } = fightParams(scenario, spec, seed)
   const fight = scenario.createFight(engine, team, { params, seed, placement: placement ?? spec.placement, rollMode: 'random', record, rngRekey: 'perTurn' })
+  if (diceSeed !== undefined) fight.options = { ...fight.options, seed: diceSeed }
   const playerTeam = team[0]?.team ?? 0
   const spellUse: Record<number, number> = {}
   const { controllers, provider } = makeProvider(engine, spec, seed, scenario, params, playerTeam, record, {}, spellUse)
@@ -133,36 +135,21 @@ export interface Checkpoint {
 }
 
 /**
- * Plus aucun combattant ne jouera (contrôleur) avant le round suivant : ceux qui suivent dans la timeline sont morts,
- * sautent leur tour (`skipTurns`) ou le passent (`passesTurn`, ex. monstres corrompus du Vortex). `nextTurn` les
- * traverse (de façon déterministe) puis ouvre le round suivant : l'état courant est le point de contrôle de ce round.
- * (Tester seulement « dernier index de la timeline » manquait tous les rounds dont la fin de timeline est morte ou
- * corrompue — fréquent au Vortex.)
+ * Joue jusqu'à la fin en posant un point de contrôle par round : l'état juste AVANT l'appel de `nextTurn` qui ouvre ce
+ * round (clone + instantané des contrôleurs, pris avant chaque appel et promu quand le round change). C'est exact
+ * même quand un appel traverse plusieurs entrées de la timeline (morts, corrompus qui passent leur tour, combattant
+ * tué par un poison ou mis en « passe son tour » à son propre début de tour) : un test « dernier index de la timeline »
+ * (première version) ou « tous les suivants morts/passent » manquait ces rounds — fréquents au Vortex.
  */
-function atRoundBoundary(engine: Engine, fight: FightState): boolean {
-  if (fight.round === 0) return true
-  for (let i = fight.turnIndex + 1; i < fight.timeline.length; i++) {
-    const f = fight.fighters[fight.timeline[i]]
-    if (!f || !f.alive) continue
-    const skip = f.tags.skipTurns
-    if (typeof skip === 'number' && skip > 0) continue
-    if (engine.passesTurn(f)) continue
-    return false
-  }
-  return true
-}
-
-/** Joue jusqu'à la fin en posant un point de contrôle avant le premier tour (joué) de chaque round. */
 function playWithCheckpoints(s: Session, checkpoints?: Map<number, Checkpoint>, maxTurns = 5000): void {
   const { engine, fight } = s
   for (let i = 0; i < maxTurns && !fight.ended; i++) {
-    if (checkpoints && atRoundBoundary(engine, fight)) {
-      const round = fight.round + 1
-      if (!checkpoints.has(round)) {
-        checkpoints.set(round, { round, fight: engine.cloneFight(fight, fight.options.record), brain: s.controllers.snapshot(), spellUse: { ...s.spellUse } })
-      }
-    }
+    const before = fight.round
+    const pre = checkpoints && !checkpoints.has(before + 1)
+      ? { fight: engine.cloneFight(fight, fight.options.record), brain: s.controllers.snapshot(), spellUse: { ...s.spellUse } }
+      : undefined
     const f = engine.nextTurn(fight)
+    if (pre && checkpoints) for (let r = before + 1; r <= fight.round; r++) if (!checkpoints.has(r)) checkpoints.set(r, { round: r, ...pre })
     if (!f) break
     const canPlay = f.tags.cannotPlay !== true && !engine.stateFlag(f, 'preventsFight')
     if (canPlay) s.provider(f).playTurn(engine, fight, f)
@@ -394,18 +381,27 @@ export function rewindFight(data: GameDataStore, spec: FightSpec, seed: number, 
     result.winningLine = { ...found, replay }
   }
 
-  // Sortie robuste : au point de contrôle de la ligne (ou du meilleur essai), alternatives × dés différents.
+  // Sortie robuste : au point de contrôle de la ligne (ou du meilleur essai), alternatives × dés différents. Une ligne
+  // de placement (reprise au tour 1) est évaluée au point de contrôle du tour 1, ce placement faisant partie des
+  // candidats (avant : aucune sortie robuste dès que la meilleure reprise était un placement).
   const nRobust = opts.robustSeeds ?? 16
   if (nRobust > 0 && result.attempts.length) {
     const ref = found ?? result.attempts.slice().sort((a, b) => b.summary.score - a.summary.score)[0]
-    const cp = ref.alternative.kind === 'placementAlt' ? null : checkpoints.get(ref.from)
+    const placementRef = ref.alternative.kind === 'placementAlt'
+    const cp = placementRef ? checkpoints.get(1) : checkpoints.get(ref.from)
     if (cp) {
-      const candidates: RewindAlternative[] = [{ kind: 'none' }, ...alts]
+      const candidates: RewindAlternative[] = [{ kind: 'none' }, ...alts, ...(placementRef ? [ref.alternative] : [])]
       const results = candidates.map(alt => {
         let wins = 0
         let score = 0
         for (let k = 0; k < nRobust; k++) {
-          const s = summarize(resume(data, spec, seed, base, cp, alt, false, mix32(seed, 0x0b05 + k) | 0), seed)
+          const dice = mix32(seed, 0x0b05 + k) | 0
+          let played: Session
+          if (alt.kind === 'placementAlt') {
+            played = startSession(data, spec, seed, false, alt.placement, dice)
+            playWithCheckpoints(played)
+          } else played = resume(data, spec, seed, base, cp, alt, false, dice)
+          const s = summarize(played, seed)
           if (s.win) wins++
           score += s.score
         }

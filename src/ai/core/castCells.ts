@@ -12,7 +12,7 @@
 import type { TeamId } from '../../core/types'
 import type { SpellLevelData, ZoneSpec } from '../../data/model'
 import { checkStatesCriterion } from '../../engine/criteria'
-import type { CastFailure } from '../../engine/cast'
+import { castPreventedByStates, type CastFailure } from '../../engine/cast'
 import { modifiedSpellLevel } from '../../engine/effects/buffs/spellMods'
 import type { Engine } from '../../engine/engine'
 import type { Fighter, FightState, KnownSpell } from '../../engine/types'
@@ -117,7 +117,7 @@ export function castFailureStatic(engine: Engine, caster: Fighter, spell: KnownS
   if ((caster.cooldowns[spell.spellId] ?? 0) > 0) return 'cooldown'
   if (lvl.maxCastPerTurn > 0 && (caster.castsThisTurn[spell.spellId] ?? 0) >= lvl.maxCastPerTurn) return 'maxPerTurn'
   if (!checkStatesCriterion(lvl.statesCriterion, caster)) return 'state'
-  if (engine.stateFlag(caster, 'preventsSpellCast')) return 'state'
+  if (castPreventedByStates(engine, caster, lvl.statesCriterion)) return 'state'
   return null
 }
 
@@ -129,7 +129,7 @@ export function nextTurnStaticOk(engine: Engine, caster: Fighter, spell: KnownSp
   if (ap < lvl.apCost) return false
   if ((caster.cooldowns[spell.spellId] ?? 0) > 1) return false
   if (!checkStatesCriterion(lvl.statesCriterion, caster)) return false
-  return !engine.stateFlag(caster, 'preventsSpellCast')
+  return !castPreventedByStates(engine, caster, lvl.statesCriterion)
 }
 
 /** Niveau du sort tel que vu par le lanceur (modificateurs appliqués). */

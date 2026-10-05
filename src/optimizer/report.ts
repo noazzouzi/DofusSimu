@@ -365,7 +365,8 @@ export function renderMarkdown(r: OptimizationReport): string {
   L.push('|---|---|---|---|---|---|---|')
   L.push(`| **${pct(res.result.winRate)}** (${res.result.wins}/${res.result.n}) | ${pct(res.result.wilson95[0])} – ${pct(res.result.wilson95[1])} | ${res.meanObjective.toFixed(3)} | ${res.result.meanRounds.toFixed(1)} | ${res.meanDeaths.toFixed(2)} | ${pct(res.result.p10HpLeft)} | ${res.meanHoursUsed.toFixed(1)} |`, '')
   if (res.worstVariant && res.worstVariant.key !== 'default') L.push(`Pire variante INCERTAINE (≥ ${variantMinN(res.n)} combats) : \`${res.worstVariant.key}\` — ${pct(res.worstVariant.winRate)} sur ${res.worstVariant.n}.`, '')
-  if (res.worstValue) L.push(`Valeur INCERTAINE la plus pénalisante : \`${res.worstValue.param}=${res.worstValue.value}\` — ${pct(res.worstValue.winRate)} (${res.worstValue.n} combats) contre ${pct(res.worstValue.baseWinRate)} au défaut.`, '')
+  // Valeur pénalisante seulement si elle fait réellement perdre des victoires (0 % contre 0 % n'apprend rien).
+  if (res.worstValue && res.worstValue.winRate < res.worstValue.baseWinRate) L.push(`Valeur INCERTAINE la plus pénalisante : \`${res.worstValue.param}=${res.worstValue.value}\` — ${pct(res.worstValue.winRate)} (${res.worstValue.n} combats) contre ${pct(res.worstValue.baseWinRate)} au défaut.`, '')
   if (res.failReasons.length) {
     L.push('Causes d’échec : ' + res.failReasons.map(f => `${f.reason} (${f.n})`).join(', ') + '.', '')
   }

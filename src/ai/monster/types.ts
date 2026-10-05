@@ -154,6 +154,11 @@ export interface MonsterDecision {
   rank: number
   /** Nombre de candidats simulés pendant ce pas. */
   simulated: number
+  /** Candidats générés pendant ce pas et obligatoires parmi eux (simulés hors topK). */
+  candidates: number
+  mandatory: number
+  /** Meilleur préfiltre du pas (diagnostic du préfiltre, T-prefilter). */
+  bestPrior: number
 }
 
 /** Statistiques d'un cerveau (bancs, tests). */

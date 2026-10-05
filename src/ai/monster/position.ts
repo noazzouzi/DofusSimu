@@ -84,7 +84,7 @@ export function buildFrame(ctx: MonsterContext, s: FightState, behaviour: Behavi
     if (!f.alive || f.id === me.id || f.carriedBy !== undefined) continue
     const cell = believedCell(f, team)
     if (cell < 0) continue
-    if (ctx.isEnemy(f)) enemies.push({ f, cell, reach: ctx.attackReach(f), threat: ctx.threatOf(f) })
+    if (ctx.isEnemy(f)) enemies.push({ f, cell, reach: -1, threat: 0 })
     else if (f.team === team) allyCells.push(cell)
   }
   let focalCell = -1
@@ -131,6 +131,13 @@ export function buildFrame(ctx: MonsterContext, s: FightState, behaviour: Behavi
   const pr = ctx.profile.preferredRange ?? ctx.archetype.preferredRange ?? [1, 1]
   const ideal = Math.max(Math.min(Math.max(2, pr[0]), pr[1]), Math.round((pr[0] + pr[1]) / 2))
   const lambda = behaviour === 'kiter' ? 0.03 : behaviour === 'fearful' ? 0.06 : behaviour === 'support' ? 0.04 : 0
+  // Menace et portée des ennemis : seulement pour le terme de danger (λ > 0).
+  if (lambda > 0) {
+    for (const e of enemies) {
+      e.reach = ctx.attackReach(e.f)
+      e.threat = ctx.threatOf(e.f)
+    }
+  }
   const summoner = me.summonerId !== undefined ? s.fighters[me.summonerId] : undefined
   const canTackle = me.tags.canTackle !== false && !me.tags.cantTackle && !ctx.engine.stateFlag(me, 'cantTackle')
   const frame: PosFrame = {
@@ -272,7 +279,7 @@ export function finalMove(ctx: MonsterContext): number[] | null {
   if (!me.alive || fight.ended || me.mp < 1 || me.tags.endTurnNow) return null
   const behaviour = endBehaviour(ctx)
   if (behaviour === 'static') return null
-  const reach = computeReach(ctx.view, fight, me)
+  const reach = computeReach(ctx.view, fight, me, { allowEventCells: harmlessGlyphCells(fight, me) })
   if (reach.count <= 1) return null
   const frame = buildFrame(ctx, fight, behaviour)
   if (!frame.enemies.length && behaviour !== 'devoted' && !frame.glyph && !frame.hook) return null
@@ -297,6 +304,22 @@ export function finalMove(ctx: MonsterContext): number[] | null {
   if (!path || path.length < 2) return null
   ctx.note('intent', `${me.name} se replace (${behaviour})`, [best])
   return ctx.perform({ type: 'move', path }) ? path : null
+}
+
+/**
+ * Cases de glyphes « à l'entrée » sans effet sur `me` (masques : glyphes des monstres du Vortex qui ne visent que les
+ * personnages) : admises comme cases d'arrivée de fin de tour (l'accessibilité du socle les contourne par défaut).
+ */
+export function harmlessGlyphCells(s: FightState, me: Fighter): Set<number> | undefined {
+  let out: Set<number> | undefined
+  for (const g of s.glyphs) {
+    if (g.trigger !== 'enter') continue
+    const src = s.fighters[g.sourceId] ?? me
+    if (g.effects.some(e => matchesTargetMask(e.targetMask, src, me))) continue
+    out ??= new Set()
+    for (const c of g.cells) out.add(c)
+  }
+  return out
 }
 
 /** Cases voisines libres (aide des overrides). */

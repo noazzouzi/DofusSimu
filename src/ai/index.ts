@@ -17,8 +17,9 @@ import { passController, type Controller } from '../engine/runner'
 import type { Fighter, FightState } from '../engine/types'
 import { fightAISeed, observeVisibility } from './core'
 import { createMonsterBrain } from './monster/brain'
+import { registerMonsterControllers } from './monster'
 import { createScriptedPolicy } from './policies/scripted'
-import { createTeamController, type TeamBrainSnapshot, type TeamController } from './team/controller'
+import { createTeamController, registerTeamControllers, type TeamBrainSnapshot, type TeamController } from './team/controller'
 import { createGenericModel } from './team/genericModel'
 import { loadTheta, type ThetaJson } from './theta'
 import type { AIConfig, AIControllerProvider, AIMode, AIRunStats, CandidateCat, TurnBudget } from './types'
@@ -95,6 +96,12 @@ export function registerAIController(key: string, factory: ControllerFactory): v
 export function unregisterAIController(key: string): void {
   REGISTRY.delete(key)
 }
+
+// Contrôleur de groupe (WP2) sous la clé `team` / `team:<mode>` (src/ai/team/controller.ts).
+registerTeamControllers(registerAIController)
+
+// Monstres à profil explicite (Œil de Vortex) : cerveau `play` sur leurs clés exactes (src/ai/monster/index.ts, WP1).
+registerMonsterControllers(registerAIController)
 
 function registryFactory(aiKey: string): ControllerFactory | undefined {
   const exact = REGISTRY.get(aiKey)

@@ -28,6 +28,8 @@ const GROUPS: readonly (readonly CandidateCat[])[] = [['damage'], ['control'], [
 export interface Generated {
   generic: MacroAction[]
   mandatory: MacroAction[]
+  /** Candidat d'exploration : simulé hors quota mais NON obligatoire (soumis au gain minimal). */
+  explore: MacroAction[]
   tactics: MacroAction[]
 }
 
@@ -67,7 +69,7 @@ const byPrior = (a: MacroAction, b: MacroAction): number => b.prior - a.prior ||
 export function generate(ctx: TacticalContext, node: SearchNode): Generated {
   const s = node.s
   const me = s.fighters[ctx.view.me.id]
-  const out: Generated = { generic: [], mandatory: [], tactics: [] }
+  const out: Generated = { generic: [], mandatory: [], explore: [], tactics: [] }
   if (!me || !me.alive || s.ended || me.ap <= 0) return out
   const generic = genericCands(ctx, node)
   out.generic = ctx.offensiveOnly ? generic.filter(m => m.cat === 'damage') : generic
@@ -100,10 +102,7 @@ export function generate(ctx: TacticalContext, node: SearchNode): Generated {
       const p = profileOf(ctx, me, m.cast.spellId)
       return !!p && p.prof.analyticCoverage < 0.7 && !p.prof.unsupported
     }).sort(byPrior)
-    if (explore.length) {
-      const m = explore[node.depth % explore.length]
-      out.mandatory.push({ ...m, mandatory: true })
-    }
+    if (explore.length) out.explore.push(explore[node.depth % explore.length])
   }
   if (!ctx.offensiveOnly) out.tactics = proposeTactics(ctx, node)
   return out
@@ -147,6 +146,7 @@ export function selectForSim(ctx: TacticalContext, node: SearchNode, g: Generate
     add(m)
     mand++
   }
+  for (const m of g.explore) add(m)
   for (const m of g.tactics) add(m)
   return picked
 }

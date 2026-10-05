@@ -9,6 +9,11 @@
  *
  * Préfiltre (coût) : `cellIncoming` n'est calculé que pour les 12 meilleures cases selon les termes bon marché (rôle,
  * prix de case, indices, opportunité) et les 8 cases les plus éloignées des ennemis (abri).
+ *
+ * Anti-blocage (AJOUT au design) : sans aucun dégât depuis `STALL_ROUNDS` tours de jeu (PV publics, suivis par le
+ * `TeamBrain`), deux équipes prudentes se regardent hors de portée jusqu'à la limite de tours (miroir 1 c 1 : 100 %
+ * de nuls). Le personnage reçoit alors +40 PVe par case gagnée vers sa cible focale et 75 % de la hausse de menace
+ * sur sa case lui est rendue : il accepte l'échange de coups et le combat avance.
  */
 import { isStaticFighter } from '../../engine/targetMask'
 import type { Fighter, FightState } from '../../engine/types'
@@ -193,11 +198,43 @@ function cellExtras(ctx: TacticalContext, me: Fighter, cell: number): number {
   return v
 }
 
+/** Seuil de tours de jeu sans aucun dégât au-delà duquel l'anti-blocage s'active. */
+export const STALL_ROUNDS = 2
+/** PVe par case gagnée vers la cible focale en situation de blocage. */
+const STALL_APPROACH = 40
+/** Part de la hausse de menace sur soi rendue en situation de blocage (le combat doit avancer). */
+const STALL_REFUND = 0.75
+
+/** Case du combattant à la racine de la recherche (progrès mesuré depuis le début du tour). */
+function rootCell(ctx: TacticalContext, me: Fighter): number {
+  return (ctx.root ?? ctx.view.fight).fighters[me.id]?.cell ?? me.cell
+}
+
+/** Anti-blocage (écart au design, voir l'en-tête du module) : aucun dégât depuis `STALL_ROUNDS` tours de jeu. */
+function stalled(ctx: TacticalContext, me: Fighter): boolean {
+  return (ctx.stall ?? 0) >= STALL_ROUNDS && me.kind === 'player'
+}
+
+/**
+ * Terme d'engagement en situation de blocage : +40 PVe par case gagnée vers la cible focale (au-delà de la portée
+ * idéale) et restitution de 75 % de la hausse de menace subie sur la case (`incStay` → `incCell`).
+ */
+function stallTerm(ctx: TacticalContext, s: FightState, me: Fighter, from: number, cell: number, incStay: number, incCell: number): number {
+  if (!stalled(ctx, me)) return 0
+  const focal = focalTarget(ctx, s, me)
+  if (!focal) return 0
+  const ideal = idealRange(ctx, me)
+  const gap = (c: number): number => Math.max(0, distance(c, focal.cell) - ideal)
+  const wInc = ctx.role === 'tank' ? ctx.cfg.theta.value.incomingTank : ctx.cfg.theta.value.incoming
+  return STALL_APPROACH * (gap(from) - gap(cell)) + STALL_REFUND * wInc * Math.max(0, incCell - incStay)
+}
+
 /** Score analytique d'une case de fin de tour (§8.5) ; `inc` = cellIncoming(me, c). */
-function posScore(ctx: TacticalContext, s: FightState, me: Fighter, cell: number, inc: number, risk: number): number {
+function posScore(ctx: TacticalContext, s: FightState, me: Fighter, cell: number, inc: number, risk: number, incStay: number): number {
   const w = ctx.cfg.theta.value
   const wInc = ctx.role === 'tank' ? w.incomingTank : w.incoming
   return -wInc * inc * (1 + risk) + 0.25 * opportunity(ctx, s, me, cell) + roleTerm(ctx, s, me, cell) + cellExtras(ctx, me, cell)
+    + stallTerm(ctx, s, me, rootCell(ctx, me), cell, incStay, inc)
 }
 
 /** Feuille terminale sans déplacement (« rester »). */
@@ -232,7 +269,7 @@ export function finalize(ctx: TacticalContext, node: SearchNode): FinalLeaf {
     if (c === me.cell) continue
     let far = Infinity
     for (const e of enemies) far = Math.min(far, distance(c, e.cell))
-    cheap.push({ c, v: roleTerm(ctx, s, me, c) + cellExtras(ctx, me, c) + 0.25 * opportunity(ctx, s, me, c), far: far === Infinity ? 0 : far })
+    cheap.push({ c, v: roleTerm(ctx, s, me, c) + cellExtras(ctx, me, c) + 0.25 * opportunity(ctx, s, me, c) + stallTerm(ctx, s, me, rootCell(ctx, me), c, 0, 0), far: far === Infinity ? 0 : far })
   }
   const pick = new Set<number>()
   cheap.sort((a, x) => x.v - a.v || a.c - x.c)
@@ -240,11 +277,13 @@ export function finalize(ctx: TacticalContext, node: SearchNode): FinalLeaf {
   cheap.sort((a, x) => x.far - a.far || x.v - a.v || a.c - x.c)
   for (const x of cheap.slice(0, 8)) pick.add(x.c)
   const risk0 = p.threat.deathRisk(me.id)
-  const stayScore = posScore(ctx, s, me, me.cell, p.threat.incoming(me.id), risk0)
-  const scored: { c: number; gain: number }[] = []
+  const incStay = p.threat.incoming(me.id)
+  const stayScore = posScore(ctx, s, me, me.cell, incStay, risk0, incStay)
+  const scored: { c: number; gain: number; inc: number }[] = []
   for (const c of pick) {
-    const gain = posScore(ctx, s, me, c, p.threat.cellIncoming(me, c), risk0) - stayScore
-    if (gain > 0) scored.push({ c, gain })
+    const inc = p.threat.cellIncoming(me, c)
+    const gain = posScore(ctx, s, me, c, inc, risk0, incStay) - stayScore
+    if (gain > 0) scored.push({ c, gain, inc })
   }
   if (!scored.length) return stay
   scored.sort((a, x) => x.gain - a.gain || a.c - x.c)
@@ -261,9 +300,11 @@ export function finalize(ctx: TacticalContext, node: SearchNode): FinalLeaf {
     if (!applyMacro(engine, child, me.id, m)) continue
     const cm = child.fighters[me.id]
     if (!cm || cm.cell === me.cell) continue
-    const position = cm.alive ? roleTerm(ctx, child, cm, cm.cell) : 0
+    const position = cm.alive ? roleTerm(ctx, child, cm, cm.cell) + stallTerm(ctx, s, me, rootCell(ctx, me), cm.cell, 0, 0) : 0
     const e = evalLeaf(ctx, child, { terminal: true, position })
-    const v = e.v + node.adj
+    let v = e.v + node.adj
+    // Anti-blocage : 75 % de la hausse de menace (terme `incoming` exact de V) est rendue.
+    if (cm.alive && stalled(ctx, me)) v += STALL_REFUND * Math.max(0, stay.breakdown.incoming - e.b.incoming)
     if (v > best.v + (best === stay ? minGain : 0) || (best !== stay && v > best.v)) {
       best = { node, s: child, endPath: path, v, vTerminal: v, breakdown: e.b, rolled: false }
     }

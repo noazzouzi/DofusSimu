@@ -6,6 +6,7 @@
  * `rollout.ts`, `executor.ts` et les tactiques (`src/ai/tactics/**`) l'importent sans cycle d'exécution.
  */
 import type { Rng } from '../../core/rng'
+import type { SpellProfileX } from '../core'
 import type { CandidateHint, ScenarioAIModel } from '../../dungeons/types'
 import type { Controller } from '../../engine/runner'
 import type { Fighter, FightState } from '../../engine/types'
@@ -17,8 +18,8 @@ import type {
 /** Proposeur de séquences (§10.2) — implémentations dans src/ai/tactics/**. */
 export interface Tactic {
   id: TacticId
-  /** Une fois par combat (capacités du combattant, profils de ses sorts). */
-  requires(caps: CapabilityProfile | undefined, ctx: TacticalContext): boolean
+  /** Une fois par tour (profils des sorts du combattant, capacités) : la tactique est-elle à sa portée ? */
+  requires(me: Fighter, profiles: readonly SpellProfileX[], caps?: CapabilityProfile): boolean
   /** O(µs) ; 0 = rien à proposer. */
   relevance(ctx: TacticalContext, node: SearchNode): number
   /** Séquences de 1 à 4 macro-actions (`MacroAction.seq`), marquées `tactic: id`. */
@@ -80,6 +81,10 @@ export interface TacticalContext {
   expect?: (allyId: number, key: string) => void
   /** Clé de la première action attendue de ce combattant par le rollout de l'allié précédent (+θ.team.coherenceBonus). */
   expectedKey?: string
+  /** Renvoyer les meilleurs plans alternatifs (`SearchPlan.alternatives`, MCTS). */
+  wantAlternatives?: number
+  /** Tours de jeu consécutifs sans aucun dégât (anti-blocage du déplacement de fin, finalMove.ts). */
+  stall?: number
 }
 
 /** Empreinte prévue après une macro-action (comparée à l'état réel par l'exécuteur, §8.7). */
@@ -153,4 +158,6 @@ export interface SearchPlan extends TurnPlan {
   maxDeathRisk?: number
   /** Décomposition de V pour « ne rien lancer » (explications, marquage créatif). */
   passBreakdown?: EvalBreakdown
+  /** Autres plans complets (premières actions distinctes) : racines du MCTS `deep` (§8.8). */
+  alternatives?: SearchPlan[]
 }

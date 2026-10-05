@@ -27,12 +27,15 @@ const spec: FightSpec = {
 }
 
 describe('rembobinage', () => {
-  it('combats perdus : ligne gagnante « mêmes dés », déterminisme, sortie robuste, replay', () => {
+  it('combats perdus : ligne gagnante « mêmes dés », déterminisme, sortie robuste, replay', async () => {
     const seeds = campaignSeeds(11, 2)
     let found = 0
     for (const [k, seed] of seeds.entries()) {
+      // Rend la main entre deux graines (un rembobinage est synchrone : le canal RPC de vitest ne doit pas expirer).
+      await new Promise(r => setTimeout(r, 0))
       const ref = runOne(DATA, spec, seed).summary
-      const r = rewindFight(DATA, spec, seed, { modes: ['fast', 'standard'], jitters: 1, robustSeeds: 2, maxResumes: 12, record: k === 0 })
+      // Alternative de politique `fast` seulement : `standard` (vraie IA de WP2) coûte plusieurs minutes par reprise.
+      const r = rewindFight(DATA, spec, seed, { modes: ['fast'], jitters: 1, robustSeeds: 2, maxResumes: 12, record: k === 0 })
       expect(r.optimistic).toBe(true)
       expect(r.original.eventsHash).toBe(ref.eventsHash)
       expect(r.original.score).toBe(ref.score)
@@ -65,12 +68,13 @@ describe('rembobinage', () => {
     expect(found).toBeGreaterThanOrEqual(1)
   }, 600_000)
 
-  it('Œil de Vortex : un point de contrôle par round (fin de timeline morte ou corrompue comprise), reprise identique depuis chacun', () => {
+  it('Œil de Vortex : un point de contrôle par round (fin de timeline morte ou corrompue comprise), reprise identique depuis chacun', async () => {
     // Régression : seul « dernier index de la timeline » ouvrait un point de contrôle ; un round dont les derniers
-    // combattants de la timeline étaient morts (ou corrompus : tour passé) n'en avait pas (rounds 5 et 8 manquants sur
-    // ces graines).
+    // combattants de la timeline étaient morts, corrompus (tour passé) ou tués par un poison à leur propre début de tour
+    // n'en avait pas (rounds 5, 6 ou 8 manquants selon la graine et l'IA des monstres).
     const vortex: FightSpec = { ...spec, scenarioId: 'vortex' }
-    for (const seed of [1, 2]) {
+    for (const seed of [1, 2, 3, 4]) {
+      await new Promise(r => setTimeout(r, 0))
       const ref = runOne(DATA, vortex, seed).summary
       const r = rewindFight(DATA, vortex, seed, { maxResumes: 0, robustSeeds: 0, placements: 0, checkAll: true })
       expect(r.original.eventsHash).toBe(ref.eventsHash)
@@ -80,7 +84,7 @@ describe('rembobinage', () => {
     }
     // Placements alternatifs construits sur les cases de DÉPART (régression : le combat terminé n'a que des cases
     // finales, −1 pour les morts ⇒ aucune alternative au Vortex).
-    const p = rewindFight(DATA, vortex, 1, { modes: [], jitters: 0, placements: 3, maxResumes: 3, robustSeeds: 0 })
+    const p = rewindFight(DATA, vortex, 1, { modes: [], jitters: 0, placements: 3, maxResumes: 3, robustSeeds: 1 })
     expect(p.original.win).toBe(false)
     expect(p.attempts.length).toBeGreaterThanOrEqual(1)
     for (const a of p.attempts) {
@@ -91,6 +95,11 @@ describe('rembobinage', () => {
       expect(new Set(cells).size).toBe(4)
       expect(cells.every(c => c >= 0)).toBe(true)
     }
+    // Sortie robuste au point de contrôle du tour 1, le meilleur placement essayé parmi les candidats (régression :
+    // aucune sortie robuste quand la meilleure reprise était un placement).
+    expect(p.robust).toBeDefined()
+    expect(p.robust!.from).toBe(1)
+    expect(p.robust!.results.map(x => x.label)).toContain(alternativeLabel(p.winningLine?.alternative ?? p.attempts.slice().sort((a, b) => b.summary.score - a.summary.score)[0].alternative))
   }, 600_000)
 
   it('outils : θ perturbé ±20 % (jamais les monstres), round d’échec', () => {
