@@ -343,7 +343,8 @@ exploités par l'IA). L'équipe méta reste la meilleure des trois.
 2. `src/dungeons/vortex/model.ts` (`hints`) — indices `kill` supplémentaires : (a) tout monstre étoilé vivant au
    créneau courant (prix `kill[m][0]` > 0), même hors contrat du plan ; (b) **kills payés** : monstre non étoilé,
    vulnérable, dont le prix de mort à l'heure courante est ≥ `PAID_KILL_HINT` (1 000 PVe) et que l'oracle juge à
-   portée de kill (espérance ≥ PV) — la ligne de kill marque aussi un monstre neuf achevable.
+   portée de kill (espérance ≥ PV) — la ligne de kill marque aussi un monstre neuf achevable. **(b) retiré à la
+   vérification** : nuisible sur graines inédites (voir « Vérification (tour 2) » en fin de section).
 3. `src/dungeons/vortex/pricer.ts` (`searchPrices`, `standard`/`deep`) — pour le prix d'une mort PROBABLE, la
    référence « meilleur plan sans tuer m » exclut les morts improbables (P(kill) < `minKillP`), chiffrées par une
    relance forcée qui les suppose réalisées : une corruption sûre n'est plus payée `killMin` (−3 000) parce qu'un
@@ -473,3 +474,48 @@ inutilisés par tour de joueur), arbres de travail au tag `base-tuning-r2` (8143
   L'échec signalé ne se reproduit plus.
 - Aucune modification de `src/` ni des tests par ce vérificateur ; la suite IA / Vortex sur l'arbre vivant (autre
   vérification, 09 h 36) : 333 réussis, 1 ignoré.
+
+### Vérification (tour 2)
+
+Vérification indépendante (harnais `.cache/tuning/verify2/` : `run.mts`, `batch.sh`, `cmp.cjs`, empreinte SHA-1 des
+événements de chaque combat). Arbres de travail git à `81430e2` (`base-tuning-r2`) : **avant** ; **livré** = + seuls
+les diffs du réglage (K1 + KH + correctif du `SearchPricer`) ; **K1** = livré sans les indices de kills payés (KH),
+c'est-à-dire le code final. `fast`, graines inédites `masterSeed` 7 et 9 (2 × 32), appariées ; le jeu `masterSeed` 8
+du second vérificateur (section précédente) est ajouté au cumul : **n = 96**.
+
+Contrôles du protocole : mes arbres reproduisent au combat près les sorties du réglage (`out/b0_64`, `out/kh_64`) sur
+2 graines de `masterSeed` 1 ; `masterSeed` 7 est identique graine à graine chez les deux vérificateurs ; l'arbre
+vivant (moteur optimisé du tour 2 de performance + code final) reproduit l'arbre K1 **événement par événement** sur
+4 graines (mêmes empreintes) : les optimisations moteur ne changent pas ces mesures.
+
+| Δ apparié, `fast`, n = 96 (`masterSeed` 7-9) | Corr. t7 | Corr. t12 | Corr. total | Tours | Premier mort |
+|---|---|---|---|---|---|
+| Livré (K1 + KH) − avant | +0,22 ± 0,22 | +0,19 ± 0,25 | +0,20 ± 0,28 | +0,03 ± 0,60 | +0,32 ± 0,56 |
+| **K1 (code final) − avant** | **+0,25 ± 0,21** | **+0,33 ± 0,23** | **+0,43 ± 0,27** | **+0,76 ± 0,64** | **+0,92 ± 0,61** |
+| KH : (K1 + KH) − K1 | −0,03 ± 0,17 | −0,15 ± 0,21 | −0,23 ± 0,24 | **−0,73 ± 0,50** | **−0,59 ± 0,48** |
+
+Moyennes (n = 96) : avant 14,22 tours, corrompus 1,16 / 2,10 / 2,22 (t7 / t12 / total), premier mort 9,6 ; livré
+14,25, 1,38 / 2,29 / 2,42, 9,9 ; **final 14,98, 1,41 / 2,44 / 2,65, 10,5**. Aucune victoire (0 / 96 dans chaque bras).
+
+- **Le gain annoncé ne se reproduit pas pour le code livré** : corrompus +0,06 ± 0,57 (`masterSeed` 7), +0,16 ± 0,47
+  (8), +0,38 ± 0,40 (9), contre +0,53 ± 0,34 annoncé sur les graines 1-2.
+- **KH est nuisible hors échantillon** (tours −0,81 / −0,53 / −0,84 sur les jeux 7 / 8 / 9). Il avait été gardé sur
+  une « tendance » (+0,11 ± 0,36) propre aux graines 1-2 : sur-ajustement. **Retiré** : bloc des kills payés de
+  `VortexAIModel.hints` et `PAID_KILL_HINT` supprimés. P18 exige toujours le kill (il réussit dans les deux modes
+  sans l'indice : contrat du planificateur en `fast`, recherche en `standard`) mais plus l'indice hors contrat.
+- **K1 (ligne de kill + indices des monstres étoilés) est confirmé et gardé.** Cumul avec les 64 graines du réglage
+  (n = 160) : corrompus +0,42 ± 0,22 (t7 +0,24 ± 0,16, t12 +0,31 ± 0,17), tours +0,66 ± 0,49, premier mort
+  +0,59 ± 0,51 ; KH sur n = 160 : −0,09 ± 0,20, tours −0,34 ± 0,47.
+- **Correctif du `SearchPricer`** : code relu et correct (P17 `standard`) ; gardé. `standard`, 8 graines
+  (`masterSeed` 7), final − avant : corrompus +0,13 ± 1,25, t7 −0,38 ± 0,82, tours +0,75 ± 2,18 : neutre (peu de
+  puissance), comme la mesure du réglage.
+- Variante essayée, non retenue : nœuds de la ligne de kill hors de `seen` (le faisceau glouton ne peut plus jouer le
+  premier coup de la ligne : quand son meilleur premier coup touche la cible, il explore le 2e) + suite gloutonne
+  après le kill. Contre le livré (`masterSeed` 7) : corrompus +0,13 ± 0,49, tours +0,31 ± 0,95 : neutre. Même verdict
+  que la « suite après le kill » du second vérificateur.
+- Remarque de revue, sans changement : `killLineTarget` prend l'indice le mieux payé même s'il est hors d'atteinte,
+  sans repli sur un indice atteignable moins payé (la ligne s'arrête alors dès la racine).
+- Tests sur l'arbre vivant final : `npx tsc --noEmit` vert ; `npx vitest run tests/ai-* tests/vortex-*
+  tests/engine-summon-owned.test.ts` : 333 réussis, 1 ignoré (ablations, opt-in), dont combats de contrôle
+  (`ai-team-control`) 5 / 5, puzzles Vortex 17 / 17, `ai-monster-fidelity` 13 / 13 (M-R20 passe). Aucune infidélité
+  du moteur trouvée.
