@@ -3,8 +3,9 @@
  * boucles L2-L5 (stuff, variantes, composition) — WP4b.
  *
  * Évaluation d'une configuration : Monte-Carlo sur des graines COMMUNES (CRN, `campaignSeeds`), workers du pool,
- * objectif « façonné » `shapedScore` = score du combat (§15.2 : `win ? 1 + 0,1·PV% − tours/600 : 0,8·progress`) +
- * départage de survie pour les défaites (0,02 × min(1, tours/40)) : tant que les défaites n'ont aucune progression
+ * objectif « façonné » `shapedScore` = score du combat (§15.2 : `win ? 1 + 0,1·PV% − tours/600 : 0,8·progress`, la
+ * progression des micro-scénarios comprise) + départage de survie pour les défaites (0,02 × min(1, tours/40)) : tant
+ * que les défaites n'ont aucune progression
  * (Vortex : équipe éliminée avant la première corruption ⇒ score 0), « tenir plus longtemps » reste un signal ; il ne
  * dépasse jamais l'écart entre une défaite et une victoire, ni un point de progression.
  *
@@ -31,9 +32,14 @@ import type { BatchResult, FightSpec, FightSummary, WorkerTask } from './types'
 
 // ───────────────────────────── objectif et évaluations ─────────────────────────────
 
-/** Objectif façonné d'un combat (voir l'en-tête). */
+/**
+ * Objectif façonné d'un combat (voir l'en-tête). Défaite : max(score, 0,8·progression) — identique au score d'un
+ * combat complet, et la progression d'un micro-scénario (dont le score est P(victoire), souvent ≈ 0) reste un signal
+ * — plus le départage de survie.
+ */
 export function shapedScore(s: FightSummary): number {
-  return s.score + (s.win ? 0 : 0.02 * Math.min(1, s.rounds / 40))
+  if (s.win) return s.score
+  return Math.max(s.score, 0.8 * s.progress) + 0.02 * Math.min(1, s.rounds / 40)
 }
 
 export type Objective = (s: FightSummary) => number

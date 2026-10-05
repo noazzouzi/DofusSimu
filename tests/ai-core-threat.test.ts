@@ -6,9 +6,11 @@
  * sort, cible) par min(dégâts, PV effectifs) + bonus de kill, puis lancer ; ≤ 6 pas). Les personnages passent leurs
  * tours : seuls les coups des monstres comptent. Critères du design : corrélation ≥ 0,8 entre `incoming(a)` (part
  * « dégâts ») et les dégâts subis par `a` avant son prochain tour ; cible prédite = première cible réelle ≥ 85 %.
- * ÉCART : la corrélation mesurée est ≈ 0,68 (garde-fou à 0,6) — `incoming` est une ESPÉRANCE (π lissé, τ = 0,25·max ;
- * ex æquo fréquents entre alliés), le rollout une réalisation où chaque monstre concentre ses coups ; les totaux
- * concordent (Σ prévu ≈ 1,09 × Σ subi, débordement des PA compris). La cible prédite atteint ≈ 91 %.
+ * ÉCART : la corrélation mesurée est ≈ 0,71 (garde-fou à 0,6) — `incoming` est une ESPÉRANCE (π lissé, τ = 0,25·max ;
+ * ex æquo fréquents entre alliés), le rollout une réalisation où chaque monstre concentre ses coups. Σ prévu ≈ 0,73 ×
+ * Σ subi : les PA laissés par le sac à dos sur la cible prédite (lancers par cible plafonnés) ne sont pas reportés sur
+ * une 2e cible. Un tel report (« débordement ») a été essayé : Σ ≈ 1,09 mais corrélation 0,675 et préfiltre dégradé
+ * (T-prefilter −9 points, les recalculs locaux ne le reproduisent pas) : retiré. La cible prédite atteint ≈ 91 %.
  * Plus : potentiel, et cohérence des recalculs locaux (`removalDelta`, `movedDelta`, `decoyDelta`, `contribution`).
  */
 import { describe, expect, it } from 'vitest'
@@ -128,10 +130,11 @@ describe('T-threat : menace ordonnée par la timeline contre des rollouts', () =
     console.log(`T-threat : ${xs.length} couples, corrélation ${r.toFixed(3)} ; cibles ${agree}/${predicted} = ${(100 * agree / predicted).toFixed(1)} %`)
     expect(xs.length).toBeGreaterThan(200)
     expect(r).toBeGreaterThanOrEqual(0.6)
-    // Biais global : l'espérance totale suit les dégâts réels à ± 25 %.
+    // Biais global : sous-estimation attendue (PA résiduels non reportés, voir l'en-tête), bornée.
     const sx = xs.reduce((a, b) => a + b, 0)
     const sy = ys.reduce((a, b) => a + b, 0)
-    expect(Math.abs(sx / sy - 1)).toBeLessThanOrEqual(0.25)
+    expect(sx / sy).toBeGreaterThanOrEqual(0.65)
+    expect(sx / sy).toBeLessThanOrEqual(1.25)
     expect(agree / predicted).toBeGreaterThanOrEqual(0.85)
   }, 120_000)
 })

@@ -843,21 +843,31 @@ function extractPlan(
       if (!isNow && st.expected !== undefined && st.expected > 0) bands.push({ m, beforeKiller: st.fighterId, hpMin: 1, hpMax: Math.max(1, Math.floor(0.8 * st.expected)) })
     })
   }
-  // Interdits : morts possibles maintenant dont le prix est nettement inférieur au meilleur plan.
+  // Interdits : (a) monstres sous contrat plus tard (le tuer maintenant casse le contrat) ; (b) morts possibles
+  // maintenant dont le score racine est nettement inférieur au meilleur plan (heure chère ou sans suite).
   const forbid: ScenarioPlan['forbid'] = []
   const bestScore = best?.s.score ?? 0
   const lastRound = steps.length ? steps[steps.length - 1].round : first?.round ?? 0
+  const isNow = (c: { round: number; index: number }) => !!first && c.round === first.round && c.index === first.index
   if (best) {
+    const seen = new Set<number>()
+    for (const c of contracts) {
+      if (isNow(c) || seen.has(c.m) || contracts.some(x => x.m === c.m && isNow(x))) continue
+      const mon = root.monsters.find(x => x.id === c.m)
+      if (!mon || mon.status !== 'alive') continue
+      seen.add(c.m)
+      forbid.push({ m: c.m, untilRound: c.round, reason: 'waveSync' })
+    }
     for (const [key, sc] of rootScores) {
       const mt = /^kill:(-?\d+)$/.exec(key)
       if (!mt || sc >= bestScore - 300) continue
       const m = Number(mt[1])
-      if (contracts.some(c => c.m === m && first && c.round === first.round && c.index === first.index)) continue
-      const later = contracts.find(c => c.m === m)
+      if (seen.has(m) || contracts.some(c => c.m === m && isNow(c))) continue
+      seen.add(m)
       const mon = root.monsters.find(x => x.id === m)
       const h = first?.hour ?? 0
       const cost = mon && !mon.star ? ctx.costs.markCost(mon.monsterId, h, root.hoursUsed) : 0
-      forbid.push({ m, untilRound: later ? later.round : lastRound, reason: cost >= cfg.badHourVx ? 'badHour' : later ? 'waveSync' : 'noFollowUp' })
+      forbid.push({ m, untilRound: lastRound, reason: cost >= cfg.badHourVx ? 'badHour' : 'noFollowUp' })
     }
   }
   // Fin prévue des corruptions : dernière corruption du plan, sinon estimation terminale.

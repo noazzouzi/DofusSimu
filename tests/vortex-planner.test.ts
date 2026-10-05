@@ -217,12 +217,15 @@ describe('puzzles du planificateur (§16.3)', () => {
     expect(r.plan.glyphs.some(g => g.round === 2 && g.index === first.index)).toBe(true)
     const c = corruptions(r).find(x => x.m === 11)
     expect(c).toMatchObject({ killer: P2, hour: 7, round: 2 })
-    // Prix : seule la glyphe rend l'étoile accessible ⇒ clock[1] > 0.
-    const replan = (a: Parameters<typeof actionKey>[0]) => planHours(root, ctx, cfg, { forceRoot: a, beamWidth: 4, horizonPlayerSlots: 8 })
-    const prices = searchPrices({ result: r, root, ctx, cfg, theta, me: P1, replan })
+    // Prix : quand SEULE la glyphe de maintenant rend l'étoile accessible (aucune glyphe plus tard : disponibilité 0),
+    // avancer l'horloge vaut plus que le détour ⇒ clock[1] > 0. (Avec la disponibilité par défaut 0,6, P2 peut aussi
+    // traverser une glyphe à son tour : la glyphe de P1 ne vaut alors que l'écart de fiabilité.)
+    const strict = { ...cfg, glyphAvailability: 0 }
+    const replan = (a: Parameters<typeof actionKey>[0]) => planHours(root, ctx, strict, { forceRoot: a, beamWidth: 4, horizonPlayerSlots: 8 })
+    const prices = searchPrices({ result: planHours(root, ctx, strict), root, ctx, cfg: strict, theta, me: P1, replan })
     expect(prices.clock[1]).toBeGreaterThan(0)
-    // Sans glyphe atteignable, la même mort n'est pas planifiée.
-    const noGlyph = planHours(root, { ...ctx, glyphsNow: 0, slots: slots.slice() }, { ...cfg, glyphAvailability: 0, failCost: 5000 })
+    // Sans glyphe atteignable maintenant ni plus tard (coût prohibitif), la corruption du tour 2 n'est pas planifiée.
+    const noGlyph = planHours(root, { ...ctx, glyphsNow: 0 }, { ...cfg, glyphAvailability: 0, failCost: 5000 })
     expect(noGlyph.plan.contracts.some(x => x.m === 11 && x.kind === 'corrupt' && x.round === 2)).toBe(false)
   })
 
@@ -232,16 +235,16 @@ describe('puzzles du planificateur (§16.3)', () => {
     expect(slots.find(s => s.round === 2 && s.fighterId === P4)!.hour).toBe(7)
     const mej = mon(11, MEJAIRE, { hours: bit(7), hp: Math.round(0.9 * HP), threat: 700 })
     const root = rootOf(slots, [mon(10, IKARGN, { hours: bit(10), hp: 1650 }), mej, mon(12, HARPILLE, { hours: bit(2), hp: 1650 })])
-    const ctx = ctxOf(slots, { E: { [P1]: 3500, [P2]: 3500, [P4]: 3000 } })
+    // P1/P2 ne peuvent qu'entamer (2 000/tour) ; P4 (3 500) achève un monstre entamé.
+    const ctx = ctxOf(slots, { E: { [P1]: 2000, [P2]: 2000, [P4]: 3500 } })
     const r = planHours(root, ctx, plannerConfig('standard', theta))
     const c = corruptions(r).find(x => x.m === 11)
     expect(c).toMatchObject({ killer: P4, hour: 7, round: 2 })
-    expect(r.plan.glyphs.filter(g => g.round === 2)).toHaveLength(0)
     // P4 ne tue pas seul 5 940 PV : pré-dégâts de P1/P2 et palier pour P4.
     expect(r.plan.steps.some(s => s.round === 2 && (s.fighterId === P1 || s.fighterId === P2) && s.action.t === 'damage' && s.action.m === 11)).toBe(true)
     const band = r.plan.bands.find(b => b.m === 11 && b.beforeKiller === P4)
     expect(band).toBeDefined()
-    expect(band!.hpMax).toBeLessThanOrEqual(Math.floor(0.8 * 3000 * 0.85) + 1)
+    expect(band!.hpMax).toBeLessThanOrEqual(Math.floor(0.8 * 3500 * 0.85) + 1)
     // Prix pour P1 : pente « contrat » et bande avant le créneau de P4.
     const prices = heuristicPrices({ result: r, root, ctx, cfg: plannerConfig('standard', theta), theta, me: P1 })
     const hp = prices.hp.get(11)!
@@ -297,7 +300,11 @@ describe('puzzles du planificateur (§16.3)', () => {
     const ctx = ctxOf(slots, { E: { [P1]: 12000, [P2]: 4000, [P3]: 4000, [P4]: 4000 } })
     const cfg = plannerConfig('standard', theta)
     const r = planHours(root, ctx, cfg)
-    expect(corruptions(r).find(c => c.m === 11)).toMatchObject({ killer: P3, hour: 3, round: 4 })
+    // Corruption à III ce tour-ci : par P3, ou par P2 en traversant une glyphe juste avant (II → III) — jamais par P1.
+    const c = corruptions(r).find(x => x.m === 11)
+    expect(c).toMatchObject({ hour: 3, round: 4 })
+    expect(c!.killer).not.toBe(P1)
+    if (c!.killer === P2) expect(r.plan.steps.find(s => s.round === 4 && s.fighterId === P2)!.action).toMatchObject({ t: 'kill', glyph: 'before' })
     expect(r.plan.steps[0].action.t === 'kill' && r.plan.steps[0].action.m.includes(11)).toBe(false)
     const replan = (a: Parameters<typeof actionKey>[0]) => planHours(root, ctx, cfg, { forceRoot: a, beamWidth: 4, horizonPlayerSlots: 8 })
     const search = searchPrices({ result: r, root, ctx: { ...ctx, pKillNow: () => 1 }, cfg, theta, me: P1, replan })
@@ -355,9 +362,12 @@ describe('prix (§12.7, §16.3)', () => {
     // P1 revoit I trois tours plus tard : fenêtre de re-kill ; sans tueur autorisé, non.
     expect(reKillWindow(ctx, plannerConfig('fast', theta), root.monsters[0], bit(1))).toBe(true)
     expect(reKillWindow({ ...ctx, canContract: () => false }, plannerConfig('fast', theta), root.monsters[0], bit(1))).toBe(false)
-    // L'horloge arrive sur IV puis VII avant le prochain tour de P1 : 292 et 484 pénalisées.
+    // Avant le prochain tour de P1 (V), l'horloge arrive sur II, III, IV : 292 (IV) pénalisée, pas 484 (VII).
     expect(prices.cell?.[292]).toBe(-theta.vortex.swapCell)
-    expect(prices.cell?.[484]).toBe(-theta.vortex.swapCell)
+    expect(prices.cell?.[484] ?? 0).toBe(0)
+    // Pour P4 (IV), l'horloge passe par V, VI, VII avant son tour suivant (VIII) : 484 pénalisée.
+    const p4 = heuristicPrices({ result: r, root, ctx: { ...ctx, slots: slots.slice(6) }, cfg: plannerConfig('fast', theta), theta, me: P4 })
+    expect(p4.cell?.[484]).toBe(-theta.vortex.swapCell)
   })
 })
 

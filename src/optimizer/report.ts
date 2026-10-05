@@ -124,8 +124,23 @@ const SLOT_FR: Readonly<Record<string, string>> = {
 const ELEMENT_FR: Readonly<Record<string, string>> = { earth: 'Terre', fire: 'Feu', water: 'Eau', air: 'Air' }
 const MAIN_STAT: Readonly<Record<string, PrimaryStat>> = { earth: 'strength', fire: 'intelligence', water: 'chance', air: 'agility' }
 
+/** Libellés français des caractéristiques de forgemagie (clé `Stats` sinon). */
+const STAT_FR: Readonly<Record<string, string>> = {
+  ap: 'PA', mp: 'PM', range: 'PO', summons: 'Invocations', vitality: 'Vitalité', wisdom: 'Sagesse', strength: 'Force',
+  intelligence: 'Intelligence', chance: 'Chance', agility: 'Agilité', power: 'Puissance', damage: 'Dommages',
+  critical: '% Critique', criticalDamage: 'Dommages critiques', heals: 'Soins', spellDamagePct: '% Dommages aux sorts',
+  weaponDamagePct: '% Dommages d’armes', meleeDamagePct: '% Dommages mêlée', rangedDamagePct: '% Dommages distance',
+  earthDamage: 'Dommages Terre', fireDamage: 'Dommages Feu', waterDamage: 'Dommages Eau', airDamage: 'Dommages Air',
+  neutralDamage: 'Dommages Neutre', pushDamage: 'Dommages de poussée', mpReduction: 'Retrait PM', apReduction: 'Retrait PA',
+  mpParry: 'Esquive PM', apParry: 'Esquive PA', tackleBlock: 'Tacle', tackleEvade: 'Fuite', initiative: 'Initiative',
+  criticalRes: 'Résistance critique', pushRes: 'Résistance poussée', earthResPct: '% Résistance Terre',
+  fireResPct: '% Résistance Feu', waterResPct: '% Résistance Eau', airResPct: '% Résistance Air',
+  neutralResPct: '% Résistance Neutre', meleeResPct: '% Résistance mêlée', rangedResPct: '% Résistance distance',
+}
+
 function forgeLabel(stat: string, value: number, kind?: string): string {
-  return kind === 'transcendence' ? `transcendance ${stat} +${value}` : `exo ${stat} +${value}`
+  const name = STAT_FR[stat] ?? stat
+  return kind === 'transcendence' ? `transcendance ${name} +${value}` : `exo ${name} +${value}`
 }
 
 /** Description d'un membre (stuff, points, variantes, rotation). */
@@ -347,7 +362,7 @@ export function renderMarkdown(r: OptimizationReport): string {
   L.push(`| Taux de victoire | IC 95 % (Wilson) | Objectif moyen | Tours moyens | Morts moyennes | PV restants (p10) | Heures utilisées |`)
   L.push('|---|---|---|---|---|---|---|')
   L.push(`| **${pct(res.result.winRate)}** (${res.result.wins}/${res.result.n}) | ${pct(res.result.wilson95[0])} – ${pct(res.result.wilson95[1])} | ${res.meanObjective.toFixed(3)} | ${res.result.meanRounds.toFixed(1)} | ${res.meanDeaths.toFixed(2)} | ${pct(res.result.p10HpLeft)} | ${res.meanHoursUsed.toFixed(1)} |`, '')
-  if (res.worstVariant) L.push(`Pire variante INCERTAINE (≥ ${variantMinN(res.n)} combats) : \`${res.worstVariant.key}\` — ${pct(res.worstVariant.winRate)} sur ${res.worstVariant.n}.`, '')
+  if (res.worstVariant && res.worstVariant.key !== 'default') L.push(`Pire variante INCERTAINE (≥ ${variantMinN(res.n)} combats) : \`${res.worstVariant.key}\` — ${pct(res.worstVariant.winRate)} sur ${res.worstVariant.n}.`, '')
   if (res.worstValue) L.push(`Valeur INCERTAINE la plus pénalisante : \`${res.worstValue.param}=${res.worstValue.value}\` — ${pct(res.worstValue.winRate)} (${res.worstValue.n} combats) contre ${pct(res.worstValue.baseWinRate)} au défaut.`, '')
   if (res.failReasons.length) {
     L.push('Causes d’échec : ' + res.failReasons.map(f => `${f.reason} (${f.n})`).join(', ') + '.', '')

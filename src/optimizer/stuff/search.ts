@@ -364,12 +364,24 @@ function greedyState(pools: StuffPools): State {
   return { ids, hosts: new Int8Array(EXO_STATS.length).fill(-1) }
 }
 
+/**
+ * Front diversifié : candidats non dominés en (DPT, EHP, UTIL), un seul par profil (DPT, EHP, UTIL arrondis : deux
+ * stuffs aux profils identiques n'apportent rien à la validation par combats), complété par les meilleurs restants.
+ */
 function paretoFront(cands: StuffCandidate[], k: number): StuffCandidate[] {
+  const sig = (s: ProxyScore) => `${Math.round(s.dpt)}|${Math.round(s.ehp)}|${Math.round(s.util * 1000)}`
+  const seen = new Set<string>()
+  const unique = cands.filter(c => {
+    const key = sig(c.score)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
   const dominated = (a: ProxyScore, b: ProxyScore) =>
     b.dpt >= a.dpt && b.ehp >= a.ehp && b.util >= a.util && (b.dpt > a.dpt || b.ehp > a.ehp || b.util > a.util)
-  const front = cands.filter(c => !cands.some(o => o !== c && dominated(c.score, o.score)))
+  const front = unique.filter(c => !unique.some(o => o !== c && dominated(c.score, o.score)))
   const out = front.slice(0, k)
-  for (const c of cands) {
+  for (const c of unique) {
     if (out.length >= k) break
     if (!out.includes(c)) out.push(c)
   }

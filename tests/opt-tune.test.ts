@@ -132,6 +132,8 @@ describe('boucle L2 sur combats réels', () => {
     expect(shapedScore(mk(1, false, 0, 40))).toBeCloseTo(0.02, 12)
     expect(shapedScore(mk(1, false, 0, 10))).toBeCloseTo(0.005, 12)
     expect(shapedScore(mk(1, true, 1.05, 10))).toBe(1.05)
+    // Micro-scénario : score = P(victoire) ≈ 0, la progression compte.
+    expect(shapedScore({ ...mk(1, false, 0, 40), progress: 0.5 })).toBeCloseTo(0.42, 12)
     // Le départage de survie ne dépasse jamais une victoire.
     expect(shapedScore(mk(1, false, 0.8, 60))).toBeLessThan(shapedScore(mk(1, true, 1 - 60 / 600, 60)))
     const a = [mk(1, false, 0.1, 5), mk(2, false, 0.2, 5), mk(3, true, 1.0, 5)]
