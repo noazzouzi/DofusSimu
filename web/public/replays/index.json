@@ -1,6 +1,10 @@
 {
  "replays": [
   {
+   "file": "vortex-meilleur-combat-regles-242.json",
+   "title": "Œil de Vortex — meilleur combat du jour : 14 monstres corrompus, 41 tours (défaite)"
+  },
+  {
    "file": "vortex-premier-combat.json",
    "title": "Œil de Vortex — premier combat de l'IA complète (défaite)"
   }
