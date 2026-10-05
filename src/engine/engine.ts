@@ -90,9 +90,13 @@ export class Engine {
       traps: fight.traps.map(t => ({ ...t, cells: t.cells })),
       events: record ? fight.events.slice() : [],
       options: { ...fight.options, record },
-      metrics: Object.fromEntries(Object.entries(fight.metrics).map(([k, v]) => [k, { ...v }])),
-      // E2 : copie fournie par le scénario (rapide) ; à défaut copie profonde générique.
-      scenarioState: this.scenario?.cloneState ? this.scenario.cloneState(fight.scenarioState) : structuredClone(fight.scenarioState),
+      metrics: cloneMetrics(fight.metrics),
+      // E2 : copie fournie par le scénario (rapide) ; à défaut copie profonde générique (sauf état vide).
+      scenarioState: this.scenario?.cloneState
+        ? this.scenario.cloneState(fight.scenarioState)
+        : isEmptyObject(fight.scenarioState)
+          ? {}
+          : structuredClone(fight.scenarioState),
     }
     return c
   }
@@ -645,6 +649,28 @@ export function initiativeOf(f: Fighter): number {
   return f.stats.initiative
 }
 
+function cloneMetrics(m: Record<number, FighterMetrics>): Record<number, FighterMetrics> {
+  const out: Record<number, FighterMetrics> = {}
+  for (const k in m) {
+    const v = m[k]
+    out[k] = {
+      damageDealt: v.damageDealt,
+      damageTaken: v.damageTaken,
+      healingDone: v.healingDone,
+      apRemoved: v.apRemoved,
+      mpRemoved: v.mpRemoved,
+      kills: v.kills,
+      turnsPlayed: v.turnsPlayed,
+    }
+  }
+  return out
+}
+
+function isEmptyObject(o: object): boolean {
+  for (const _ in o) return false
+  return true
+}
+
 export function emptyMetrics(): FighterMetrics {
   return { damageDealt: 0, damageTaken: 0, healingDone: 0, apRemoved: 0, mpRemoved: 0, kills: 0, turnsPlayed: 0 }
 }
@@ -668,17 +694,81 @@ export function snapshot(f: Fighter): FighterSnapshot {
   }
 }
 
-export function cloneFighter(f: Fighter): Fighter {
+/**
+ * Copie d'un buff — littéral explicite (forme stable pour V8, ~20 % plus rapide qu'une décomposition).
+ * TOUT nouveau champ de `Buff` doit être ajouté ici (garde-fou : tests/engine-clone.test.ts).
+ */
+export function cloneBuff(b: Buff): Buff {
   return {
-    ...f,
+    uid: b.uid,
+    sourceId: b.sourceId,
+    spellId: b.spellId,
+    effect: b.effect,
+    value: b.value,
+    remaining: b.remaining,
+    delay: b.delay,
+    dispellable: b.dispellable,
+    statDelta: b.statDelta,
+    stateId: b.stateId,
+    triggers: b.triggers,
+    label: b.label,
+    kind: b.kind,
+    crit: b.crit,
+    triggerCount: b.triggerCount,
+    maxTriggers: b.maxTriggers,
+    firing: b.firing,
+    spellMod: b.spellMod,
+    disabledStateId: b.disabledStateId,
+    passTurn: b.passTurn,
+    markUid: b.markUid,
+    targetCell: b.targetCell,
+  }
+}
+
+/**
+ * Copie d'un combattant pour les simulations de l'IA — littéral explicite (forme stable pour V8). Les données
+ * immuables pendant le combat (baseStats, sorts, modificateurs de sorts reconstruits par recomputeStats) sont partagées.
+ * TOUT nouveau champ de `Fighter` doit être ajouté ici (garde-fou : tests/engine-clone.test.ts).
+ */
+export function cloneFighter(f: Fighter): Fighter {
+  const src = f.buffs
+  const buffs: Buff[] = new Array(src.length)
+  for (let i = 0; i < src.length; i++) buffs[i] = cloneBuff(src[i])
+  return {
+    id: f.id,
+    team: f.team,
+    kind: f.kind,
+    name: f.name,
+    breedId: f.breedId,
+    monsterId: f.monsterId,
+    grade: f.grade,
+    level: f.level,
     baseStats: f.baseStats, // immuable pendant le combat
     stats: { ...f.stats },
+    hp: f.hp,
+    maxHp: f.maxHp,
+    baseMaxHp: f.baseMaxHp,
+    shield: f.shield,
+    ap: f.ap,
+    mp: f.mp,
+    cell: f.cell,
+    alive: f.alive,
     states: f.states.slice(),
-    buffs: f.buffs.map(b => ({ ...b })),
+    buffs,
     spells: f.spells,
     cooldowns: { ...f.cooldowns },
     castsThisTurn: { ...f.castsThisTurn },
     castsOnTarget: { ...f.castsOnTarget },
+    summonerId: f.summonerId,
+    ai: f.ai,
+    role: f.role,
+    carrying: f.carrying,
+    carriedBy: f.carriedBy,
+    direction: f.direction,
+    wave: f.wave,
     tags: { ...f.tags },
+    spellMods: f.spellMods,
+    disabledStates: f.disabledStates,
+    rev: f.rev,
   }
 }

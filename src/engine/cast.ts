@@ -132,8 +132,9 @@ export function castSpell(engine: Engine, fight: FightState, caster: Fighter, sp
   }
 
   const casterCell = caster.cell
+  // Cellules affectées (animation) : calculées seulement si le combat est enregistré.
   const allCells = new Set<number>()
-  for (const e of effects) for (const c of zoneCells(e.zone, cell, casterCell)) allCells.add(c)
+  if (fight.options.record) for (const e of effects) for (const c of zoneCells(e.zone, cell, casterCell)) allCells.add(c)
   const mainElement = effects.find(e => e.element >= 0 && e.element <= 4)?.element
   engine.emit(fight, {
     t: 'cast',
