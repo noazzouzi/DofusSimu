@@ -53,7 +53,7 @@ export {
   buffActiveAtNextTurn, buildThreat, flagAtNextTurn, hpEff, nextTurnApMp, pacifistStates, ThreatModelImpl, type EnemyThreat,
 } from './threat'
 export { buildPotential, damageWeightOf, PotentialModelImpl, type ValueWeights } from './potential'
-export { canKillNow, killProbability, lethalSplit, lifeToKill } from './kill'
+export { canKillNow, killProbability, killProbabilityParts, lethalSplit, lifeToKill, type CastPart } from './kill'
 export { bestDpt, enemyThreatIn, pendingDotOn, restOfTurn, valueOf, type ValueOptions } from './value'
 export { generateCasts, quickEstimate, type GenerateOptions } from './candidates'
 export { createPerception, type PerceptionX } from './perception'

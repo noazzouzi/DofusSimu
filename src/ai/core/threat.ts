@@ -111,6 +111,11 @@ export interface EnemyThreat {
   /** PA restants sur la case de lancer retenue (le DPT est calculé avec ces PA). */
   apAt: Float64Array
   dmg: Float64Array
+  /**
+   * Débordement attendu sur l'allié : PA laissés par le sac à dos sur une autre cible (lancers par cible plafonnés)
+   * dépensés sur lui, Σ_{a ≠ b} π_a·hit_b·dpt(e, b, PA restants après a).
+   */
+  spill: Float64Array
   /** dpt complet (hit = 1) sur l'allié. */
   full: Float64Array
   score: Float64Array
@@ -202,6 +207,8 @@ export class ThreatModelImpl implements ThreatModel {
   enemies: EnemyThreat[] = []
   /** incoming par id de combattant. */
   inc = new Float64Array(0)
+  /** Part « dégâts » de l'incoming (sans la valeur Pacifiste ni `extraIncoming`), par id : diagnostic, T-threat. */
+  incDmg = new Float64Array(0)
   /** Diagnostic (bancs) : lignes « PV » réutilisées / recalculées. */
   hpReuse = 0
   hpBuilt = 0
@@ -264,12 +271,14 @@ export class ThreatModelImpl implements ThreatModel {
     const n = s.fighters.length
     if (this.inc.length < n) {
       this.inc = new Float64Array(n)
+      this.incDmg = new Float64Array(n)
       this.allyIndex = new Int16Array(n)
       this.enemyIndex = new Int16Array(n)
     }
     const frame = this.frame
     const potential = this.perception?.potential
     this.inc.fill(0)
+    this.incDmg.fill(0)
     this.allyIndex.fill(-1)
     this.enemyIndex.fill(-1)
     // Alliés : empreinte « défenseurs » (PV, bouclier, PV max, PA, empreinte dégâts) et « attaquants » (relances).
@@ -327,9 +336,9 @@ export class ThreatModelImpl implements ThreatModel {
       for (let i = 0; i < this.allies.length; i++) {
         const a = this.allies[i]
         if (!order.before(row.e.id, a.id)) continue
-        let v = row.pi[i] * row.dmg[i]
-        v += this.zoneShare(row, i)
-        this.inc[a.id] += row.weight * v
+        const z = this.zoneShare(row, i) + row.spill[i]
+        this.inc[a.id] += row.weight * (row.pi[i] * row.dmg[i] + z)
+        this.incDmg[a.id] += row.weight * (row.pi[i] * row.full[i] * row.hit[i] + z)
       }
     }
     if (this.scenario?.extraIncoming) {
@@ -432,12 +441,13 @@ export class ThreatModelImpl implements ThreatModel {
       const m = Math.max(nA, 4)
       row = this.pool[k] = {
         e: undefined as unknown as Fighter, active: false, ap: 0, mp: 0, reachLo: null, reachHi: null, frac: 0, weight: 1,
-        hit: new Float64Array(m), apAt: new Float64Array(m), dmg: new Float64Array(m), full: new Float64Array(m),
+        hit: new Float64Array(m), apAt: new Float64Array(m), dmg: new Float64Array(m), full: new Float64Array(m), spill: new Float64Array(m),
         score: new Float64Array(m), pi: new Float64Array(m), best: new Int16Array(m), threat: 0, target: -1,
         hitsFromStart: false, pacifist: false, sig: 0, lethal: false, nA: 0,
       }
     }
     row.hit.fill(0)
+    row.spill.fill(0)
     row.apAt.fill(0)
     row.dmg.fill(0)
     row.full.fill(0)
@@ -489,6 +499,22 @@ export class ThreatModelImpl implements ThreatModel {
       row.score[i] = scoreOf(dmg, a, dmg >= he && dmg > 0 ? frame.dpt(a, e) : 0)
     }
     this.finishRow(row)
+    // Débordement (voir `EnemyThreat.spill`) : seulement pour les cibles probables (π > 5 %).
+    if (row.threat > 0 && nA > 1) {
+      let minCost = Infinity
+      const profiles = this.dpt.profiles.ofFighter(e)
+      for (let k = 0; k < profiles.length; k++) if (profiles[k].damage.length && profiles[k].apCost < minCost) minCost = profiles[k].apCost
+      for (let t = 0; t < nA; t++) {
+        if (row.pi[t] <= 0.05 || row.best[t] < 0 || row.hit[t] <= 0) continue
+        const left = row.apAt[t] - frame.turnNext(e, this.allies[t], row.apAt[t]).apUsed
+        if (left < minCost) continue
+        for (let i = 0; i < nA; i++) {
+          if (i === t || row.hit[i] <= 0 || row.best[i] < 0) continue
+          row.spill[i] += row.pi[t] * row.hit[i] * frame.dpt(e, this.allies[i], left)
+        }
+      }
+      for (let i = 0; i < nA; i++) row.threat += row.spill[i]
+    }
     return row
   }
 
@@ -500,7 +526,7 @@ export class ThreatModelImpl implements ThreatModel {
     row.threat = 0
     row.target = -1
     if (max <= 0) return
-    softmaxInto(row.score, nA, this.params.tauFrac * max, row.pi)
+    piOf(row.score, nA, this.params.tauFrac * max, row.pi)
     let bestPi = -1
     for (let i = 0; i < nA; i++) {
       row.threat += row.pi[i] * row.dmg[i]
@@ -522,6 +548,11 @@ export class ThreatModelImpl implements ThreatModel {
 
   incoming(id: number): number {
     return id < this.inc.length ? this.inc[id] : 0
+  }
+
+  /** Dégâts attendus seuls (sans la valeur d'un Pacifiste ni `extraIncoming`) sur l'allié avant son prochain tour. */
+  incomingDamage(id: number): number {
+    return id < this.incDmg.length ? this.incDmg[id] : 0
   }
 
   deathRisk(id: number): number {
@@ -641,7 +672,7 @@ export class ThreatModelImpl implements ThreatModel {
       let max = 0
       for (let i = 0; i < nA; i++) if (scores[i] > max) max = scores[i]
       if (max <= 0) pi.fill(0, 0, nA)
-      else softmaxInto(scores, nA, P.tauFrac * max, pi)
+      else piOf(scores, nA, P.tauFrac * max, pi)
       for (let i = 0; i < nA; i++) {
         const a = this.allies[i]
         if (!this.order.before(e.id, a.id)) continue
@@ -710,6 +741,15 @@ export class ThreatModelImpl implements ThreatModel {
     const key = `r${e.id}:${Math.round(dAp * 100)}:${Math.round(dMp * 100)}`
     const hit = this.deltaMemo.get(key)
     if (hit !== undefined) return hit
+    // Plus assez de PA pour le moindre sort à dégâts : l'ennemi ne frappe plus.
+    let minCost = Infinity
+    const profiles = this.dpt.profiles.ofFighter(e)
+    for (let k = 0; k < profiles.length; k++) if (profiles[k].damage.length && profiles[k].apCost < minCost) minCost = profiles[k].apCost
+    if (row.ap - dAp < minCost) {
+      const out = -this.contribution(e)
+      this.deltaMemo.set(key, out)
+      return out
+    }
     const nA = this.allies.length
     const scores = this.tmpScores
     const pi = this.tmpPi
@@ -732,7 +772,8 @@ export class ThreatModelImpl implements ThreatModel {
       const he = hpEff(a)
       scores[i] = scoreOf(dmg2[i], a, dmg2[i] >= he && dmg2[i] > 0 ? dt.dpt(a, e) : 0)
     }
-    const r = this.reaggregate(row, scores, dmg2, pi, nA)
+    // Retirer des PA/PM n'ajoute pas de dégâts (le lissage π peut produire un écart positif minime : écrêté).
+    const r = Math.min(0, this.reaggregate(row, scores, dmg2, pi, nA))
     this.deltaMemo.set(key, r)
     return r
   }
@@ -806,7 +847,7 @@ export class ThreatModelImpl implements ThreatModel {
       let max = 0
       for (let i = 0; i <= nA; i++) if (scores[i] > max) max = scores[i]
       if (max <= 0) pi.fill(0, 0, nA + 1)
-      else softmaxInto(scores, nA + 1, this.params.tauFrac * max, pi)
+      else piOf(scores, nA + 1, this.params.tauFrac * max, pi)
       for (let i = 0; i < nA; i++) {
         if (!this.order.before(e.id, this.allies[i].id)) continue
         delta += row.weight * (pi[i] * dmg2[i] - row.pi[i] * row.dmg[i])
@@ -826,7 +867,7 @@ export class ThreatModelImpl implements ThreatModel {
     let v = 0
     for (let i = 0; i < this.allies.length; i++) {
       if (!this.order.before(row.e.id, this.allies[i].id)) continue
-      v += row.weight * (row.pi[i] * row.dmg[i] + this.zoneShare(row, i))
+      v += row.weight * (row.pi[i] * row.dmg[i] + this.zoneShare(row, i) + row.spill[i])
     }
     return v
   }
@@ -906,7 +947,7 @@ export class ThreatModelImpl implements ThreatModel {
     let max = 0
     for (let i = 0; i < nA; i++) if (scores[i] > max) max = scores[i]
     if (max <= 0) pi.fill(0, 0, nA)
-    else softmaxInto(scores, nA, this.params.tauFrac * max, pi)
+    else piOf(scores, nA, this.params.tauFrac * max, pi)
     let delta = 0
     for (let i = 0; i < nA; i++) {
       if (!this.order.before(row.e.id, this.allies[i].id)) continue
@@ -923,6 +964,20 @@ const DECOY_ID = 32000
 /** Tampons de `movedDelta`. */
 const MOVED_OCC = new Int16Array(CELL_COUNT)
 const MOVED_REACH = createReachInfo()
+
+/**
+ * π = softmax(s/τ) (§6.5) restreint aux cibles de score > 0 : un allié hors d'atteinte (score nul) ne capte aucune
+ * masse (sinon e^(−1/0,25) ≈ 2 % de « masse fantôme » par allié inatteignable, retirée aux vraies cibles).
+ */
+function piOf(scores: ArrayLike<number>, n: number, tau: number, out: Float64Array): void {
+  softmaxInto(scores, n, tau, out)
+  let sum = 0
+  for (let i = 0; i < n; i++) {
+    if (!(scores[i] > 0)) out[i] = 0
+    sum += out[i]
+  }
+  if (sum > 0 && sum !== 1) for (let i = 0; i < n; i++) out[i] /= sum
+}
 
 function scoreOf(dmg: number, a: Fighter, threatA: number): number {
   const he = hpEff(a)

@@ -232,6 +232,15 @@ export interface CastDamage {
   /** Cible dans la zone hors de la case d'impact (lignes de zone de rayon ≥ 1 ; anneaux « hors centre »). */
   ringMean?: number
   ringVar?: number
+  /**
+   * Décomposition du meilleur placement : probabilité de critique `crit` (un seul tirage par lancer), espérance et
+   * variance du coup normal (`nMean`, `nVar`) et du coup critique (`cMean`, `cVar`) — `killProbabilityParts`.
+   */
+  crit?: number
+  nMean?: number
+  nVar?: number
+  cMean?: number
+  cVar?: number
 }
 
 /** Le sort `p` est-il « de mêlée » (portée max ≤ 1) ? */
@@ -258,26 +267,50 @@ export function castDamage(a: Fighter, d: Fighter, p: SpellProfileX, isWeapon: b
   let cv = 0
   let rm = 0
   let rv = 0
+  // Décomposition normal / critique par placement : [nMean, nVar, cMean, cVar].
+  const cp = CP
+  const rp = RP
+  cp.fill(0)
+  rp.fill(0)
+  const critPct = p.damage.length ? spellCritPct(a, p) : 0
   if (p.damage.length) {
-    const critPct = spellCritPct(a, p)
     for (const line of p.damage) {
       const center = zoneHitsCenter(line.zone)
       const ring = zoneRadius(line.zone) > 0
       if (!center && !ring) continue
       if (!matchesTargetMask(line.mask, a, d)) continue
-      const r = lineDamage(a, d, line, p.spellId, isWeapon, melee, eff, critPct)
+      if (line.gates && !line.gates.every(g => matchesTargetMask(g, a, d))) continue
       let w = line.p
       if (line.dotTurns > 0) w *= Math.min(line.dotTurns, 2) * 0.8
       else if (line.delayed > 0) w *= 0.8
+      const r = lineDamage(a, d, line, p.spellId, isWeapon, melee, eff, critPct)
       const m = w * r.mean
       const v = w * w * r.variance
+      const rn = lineDamage(a, d, line, p.spellId, isWeapon, melee, eff, 0)
+      const nm = w * rn.mean
+      const nv = w * w * rn.variance
+      let crm = nm
+      let crv = nv
+      if (critPct > 0) {
+        const rc = lineDamage(a, d, line, p.spellId, isWeapon, melee, eff, 100)
+        crm = w * rc.mean
+        crv = w * w * rc.variance
+      }
       if (center) {
         cm += m
         cv += v
+        cp[0] += nm
+        cp[1] += nv
+        cp[2] += crm
+        cp[3] += crv
       }
       if (ring) {
         rm += m
         rv += v
+        rp[0] += nm
+        rp[1] += nv
+        rp[2] += crm
+        rp[3] += crv
       }
     }
   }
@@ -285,6 +318,7 @@ export function castDamage(a: Fighter, d: Fighter, p: SpellProfileX, isWeapon: b
   out.centerVar = cv
   out.ringMean = rm
   out.ringVar = rv
+  const best = rm > cm ? rp : cp
   if (rm > cm) {
     out.mean = rm
     out.variance = rv
@@ -292,8 +326,15 @@ export function castDamage(a: Fighter, d: Fighter, p: SpellProfileX, isWeapon: b
     out.mean = cm
     out.variance = cv
   }
+  out.crit = critPct <= 0 ? 0 : critPct >= 100 ? 1 : critPct / 100
+  out.nMean = best[0]
+  out.nVar = best[1]
+  out.cMean = best[2]
+  out.cVar = best[3]
   return out
 }
+const CP = new Float64Array(4)
+const RP = new Float64Array(4)
 
 // ───────────────────────────── tour complet (sac à dos) ─────────────────────────────
 
@@ -388,7 +429,8 @@ export class DptTableImpl implements DptTable {
     if (!r) {
       castDamage(a, d, p, ks.isWeapon === true, 1, isMeleeSpell(p), this.tmp)
       const t = this.tmp
-      row[spellIndex] = r = { mean: t.mean, variance: t.variance, centerMean: t.centerMean, centerVar: t.centerVar, ringMean: t.ringMean, ringVar: t.ringVar }
+      row[spellIndex] = r = { mean: t.mean, variance: t.variance, centerMean: t.centerMean, centerVar: t.centerVar, ringMean: t.ringMean, ringVar: t.ringVar,
+        crit: t.crit, nMean: t.nMean, nVar: t.nVar, cMean: t.cMean, cVar: t.cVar }
     }
     return r
   }
@@ -645,6 +687,9 @@ class PairMemo {
   apB: Int8Array
   meanB: Float64Array
   varB: Float64Array
+  /** PA réellement dépensés par le sac à dos (emplacements A et B). */
+  usedA: Int8Array
+  usedB: Int8Array
   constructor(nn: number) {
     this.bestI = new Int16Array(nn).fill(-2)
     this.bestM = new Float64Array(nn)
@@ -654,6 +699,8 @@ class PairMemo {
     this.apB = new Int8Array(nn).fill(-1)
     this.meanB = new Float64Array(nn)
     this.varB = new Float64Array(nn)
+    this.usedA = new Int8Array(nn)
+    this.usedB = new Int8Array(nn)
   }
   copyFrom(o: PairMemo): void {
     this.bestI.set(o.bestI)
@@ -664,6 +711,8 @@ class PairMemo {
     this.apB.set(o.apB)
     this.meanB.set(o.meanB)
     this.varB.set(o.varB)
+    this.usedA.set(o.usedA)
+    this.usedB.set(o.usedB)
   }
   invalidate(k: number): void {
     this.bestI[k] = -2
@@ -675,13 +724,15 @@ class PairMemo {
     this.bestM[k] = m
   }
   /** Range (ap, mean, var) en emplacement A (l'ancien A passe en B). */
-  push(k: number, ap: number, mean: number, variance: number): void {
+  push(k: number, ap: number, mean: number, variance: number, used: number): void {
     this.apB[k] = this.apA[k]
     this.meanB[k] = this.meanA[k]
     this.varB[k] = this.varA[k]
+    this.usedB[k] = this.usedA[k]
     this.apA[k] = ap
     this.meanA[k] = mean
     this.varA[k] = variance
+    this.usedA[k] = used
   }
 }
 
@@ -713,8 +764,8 @@ export class DptFrame {
   private diff = new Uint8Array(0)
   /** Facteur de calibration par combattant. */
   private calib = new Float64Array(0)
-  /** Résultat partagé de `turnNext` (à lire immédiatement). */
-  readonly out = { mean: 0, variance: 0 }
+  /** Résultat partagé de `turnNext` (à lire immédiatement) ; `apUsed` = PA dépensés par le sac à dos. */
+  readonly out = { mean: 0, variance: 0, apUsed: 0 }
   /** Diagnostic : paires réutilisées / recalculées, ré-ancrages. */
   hits = 0
   misses = 0
@@ -823,7 +874,7 @@ export class DptFrame {
   }
 
   /** Sac à dos du prochain tour de `a` contre `d` avec `ap` PA (non calibré), dans `out`. */
-  turnNext(a: Fighter, d: Fighter, ap: number): { mean: number; variance: number } {
+  turnNext(a: Fighter, d: Fighter, ap: number): { mean: number; variance: number; apUsed: number } {
     const apInt = Math.max(0, Math.min(MAX_AP, Math.floor(ap + 1e-9)))
     const k = a.id * this.n + d.id
     const o = this.out
@@ -832,20 +883,23 @@ export class DptFrame {
       this.hits++
       o.mean = m.meanA[k]
       o.variance = m.varA[k]
+      o.apUsed = m.usedA[k]
       return o
     }
     if (m.apB[k] === apInt) {
       this.hits++
       o.mean = m.meanB[k]
       o.variance = m.varB[k]
+      o.apUsed = m.usedB[k]
       return o
     }
     this.misses++
     const t = this.table.turn(a, d, apInt, 'next')
-    m.push(k, apInt, t.mean, t.variance)
-    if (!(this.diff[a.id] & ATK) && !(this.diff[d.id] & DEF)) this.anchorMemo.push(k, apInt, t.mean, t.variance)
+    m.push(k, apInt, t.mean, t.variance, t.apUsed)
+    if (!(this.diff[a.id] & ATK) && !(this.diff[d.id] & DEF)) this.anchorMemo.push(k, apInt, t.mean, t.variance, t.apUsed)
     o.mean = t.mean
     o.variance = t.variance
+    o.apUsed = t.apUsed
     return o
   }
 

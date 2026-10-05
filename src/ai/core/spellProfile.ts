@@ -44,6 +44,8 @@ export interface DamageLineX extends DamageLine {
   p: number
   /** Ligne issue d'un sous-sort (lancé par le lanceur sur la case ciblée). */
   sub: boolean
+  /** Masques des effets « lance un sort » parents (hors parents « soi ») que la cible doit aussi vérifier. */
+  gates?: readonly string[]
   sides: MaskSides
   effect: EffectData
   /** Effet homologue de la liste critique (null : critique sans effet propre). */
@@ -200,7 +202,7 @@ function conditionalCast(e: EffectData): boolean {
 }
 
 function scanEffects(engine: Engine, acc: Acc, effects: readonly EffectData[], crits: readonly EffectData[], sub: boolean, depth: number,
-                     seen: Set<SpellLevelData>, weight = 1): void {
+                     seen: Set<SpellLevelData>, weight = 1, gates?: readonly string[]): void {
   const p = acc.p
   const probs = randomProbabilities(effects)
   // Sous-sorts conditionnels frères (paliers de PV, états) : une seule branche s'applique en général ⇒ poids 1/n.
@@ -228,7 +230,7 @@ function scanEffects(engine: Engine, acc: Acc, effects: readonly EffectData[], c
           critMin: ce ? diceMinOf(ce) : diceMinOf(e), critMax: ce ? diceMaxOf(ce) : diceMaxOf(e),
           zone: e.zone, mask: e.targetMask, lifeSteal: spec.steal, delayed: e.delay,
           dotTurns: isDot ? Math.max(1, e.triggerDuration ?? e.duration) : 0,
-          effectId: id, family: spec.family, p: prob, sub, sides, effect: e, critEffect: ce,
+          effectId: id, family: spec.family, p: prob, sub, sides, effect: e, critEffect: ce, gates,
         }
         p.damage.push(line)
         if (!isDot && e.delay <= 0 && spec.family !== 'hp') p.baseDamage += prob * meanOf(e)
@@ -329,7 +331,10 @@ function scanEffects(engine: Engine, acc: Acc, effects: readonly EffectData[], c
         const lvl = engine.data.spellLevel(e.diceNum, { grade: e.diceSide || undefined })
         if (lvl && !seen.has(lvl)) {
           seen.add(lvl)
-          scanEffects(engine, acc, lvl.effects, lvl.criticalEffects, true, depth + 1, seen, conditionalCast(e) && nCond > 1 ? prob / nCond : prob)
+          // Porte du sous-sort : il n'est lancé que sur les cibles du masque de l'effet parent (ex. la lance du
+          // Forgelance « a,P,F7139 ») ; un parent « soi » (C/c) le lance sur la case du lanceur (zone autour de lui).
+          const gate = maskSides(e.targetMask).selfOnly ? gates : [...(gates ?? []), e.targetMask]
+          scanEffects(engine, acc, lvl.effects, lvl.criticalEffects, true, depth + 1, seen, conditionalCast(e) && nCond > 1 ? prob / nCond : prob, gate)
           continue
         }
       }
