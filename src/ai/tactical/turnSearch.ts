@@ -12,7 +12,8 @@
  * pour depth < maxDepth : enfants = ⋃_{n ∈ beam} expand(n, c) pour c ∈ selectForSim(generate(n))
  *     expand : clone salé (même sel pour les frères), macro-action, V non terminale (continuation), split léthal
  *     beam = selectDiverse(enfants, largeur)
- * finals = finalize(topN(leaves, 2·largeur)) (déplacement de fin, V terminale) ; rollouts sur les `rollouts` meilleurs
+ * finals = finalize(topN(leaves, 2·largeur) ∪ topN(leaves sans continuation, largeur)) (déplacement de fin, V
+ *          terminale) ; rollouts sur les `rollouts` meilleurs
  * pass = finalize(root) ; plan = argmax(finals) si gain ≥ θ.value.minGain ou candidat obligatoire, sinon « rien »
  * ```
  * `selectDiverse` : tri par valeur, un emplacement réservé au meilleur enfant contenant une action non `damage` si sa
@@ -359,7 +360,16 @@ export function searchTurn(ctx: TacticalContext): SearchPlan {
   }
   // Plans complets : déplacement de fin et V terminale.
   const pass = finalize(ctx, rootNode)
-  const finals = leaves.sort(nodeOrder).slice(0, nFinals).map(n => finalize(ctx, n))
+  // Feuilles finalisées : les `nFinals` meilleures par valeur de classement, PLUS les meilleures sans le terme
+  // `continuation` (ajout au design). Le classement interne compte la valeur analytique des PA restants (§7) : une
+  // ligne de buffs (« Tirs Puissants, Sentinelle, Tirs Éloignés… ») y paraît meilleure qu'un coup encaissé, puis vaut
+  // moins que « rien » une fois terminale ; sans ce complément, le Crâ du Vortex (fast, largeur 1) passait son tour
+  // alors qu'un simple tir (feuille de profondeur 1) battait « rien ».
+  const ranked = leaves.sort(nodeOrder).slice(0, nFinals)
+  const cont = (n: SearchNode): number => n.v - (n.breakdown?.continuation ?? 0)
+  const settled = leaves.slice().sort((a, b) => cont(b) - cont(a) || keyOf(a).localeCompare(keyOf(b)))
+  for (const n of settled.slice(0, Math.max(1, Math.ceil(nFinals / 2)))) if (!ranked.includes(n)) ranked.push(n)
+  const finals = ranked.map(n => finalize(ctx, n))
   finals.sort(finalOrder)
   let pool = finals
   const rollouts = ctx.nested || ctx.noRollouts ? 0 : b.rollouts

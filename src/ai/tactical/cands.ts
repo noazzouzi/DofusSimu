@@ -11,7 +11,10 @@ import type { SearchNode, TacticalContext } from './node'
 
 const CANDS = new WeakMap<SearchNode, MacroAction[]>()
 
-/** Candidats génériques (C1-C8, priors `quick`) du combattant sur l'état du nœud, mis en cache. */
+/**
+ * Candidats génériques (C1-C8, priors `quick`) du combattant sur l'état du nœud, mis en cache ; prior corrigé pour
+ * les sorts lancés sur un ennemi invulnérable qu'ils ne peuvent pas rendre vulnérable (`correctInvulnerablePrior`).
+ */
 export function genericCands(ctx: TacticalContext, node: SearchNode): MacroAction[] {
   let c = CANDS.get(node)
   if (c) return c
