@@ -438,3 +438,38 @@ faisceau de largeur 1 (seule configuration mesurée positive, n = 64).
   à ses heures.
 - **Budget de recherche** : `standard` survit plus longtemps que `fast` ; mesurer un `fast` de largeur 2 avec la ligne
   de kill (coût ≈ ×2).
+
+### Vérification indépendante (tour 2, second vérificateur)
+
+Harnais propre (`.cache/tuning/verify/` : `vrun.mts` lit `summary.corruptedByRound` et `extra.corrupted`, morts, PA
+inutilisés par tour de joueur), arbres de travail au tag `base-tuning-r2` (81430e2) + **seuls** les diffs du réglage
+(aucune modification de l'agent « performances »), `fast`, **64 graines inédites** (`masterSeed` 7 et 8), 2 processus.
+
+| Bras | Tours | Corr. t7 / t12 / total | Premier mort | PA restants (tours avec kill) |
+|---|---|---|---|---|
+| B (81430e2) | 14,23 | 1,28 / 2,16 / 2,28 | 9,64 | 1,46 |
+| Code du tuner (K1 + KH) | 14,20 | 1,39 / 2,22 / 2,39 | 9,77 | 1,94 |
+| **K1 seul (= arbre vivant final, KH retiré)** | **14,88** | **1,36 / 2,39 / 2,59** | **10,47** | 1,90 |
+| K1 + KH + suite après le kill | 14,17 | 1,47 / 2,38 / 2,53 | 9,70 | 1,10 |
+| K1 + suite après le kill | 14,53 | 1,42 / 2,41 / 2,56 | 9,95 | 1,19 |
+
+- **Code du tuner contre B** : corrompus +0,11 ± 0,37 (+26 / −17), t7 +0,11 ± 0,27, t12 +0,06 ± 0,32, tours
+  −0,03 ± 0,79 (`masterSeed` 7 : +0,06 ± 0,57 ; 8 : +0,16 ± 0,47). Le +0,53 ± 0,34 annoncé **ne se reproduit pas**.
+- **KH** (K1 → K1 + KH) : corrompus −0,20 ± 0,29, t12 −0,17 ± 0,26, tours **−0,67 ± 0,61**, premier mort
+  **−0,70 ± 0,58** : nuisible (l'oracle optimiste lance la ligne de kill sur des monstres neufs qu'on ne tue pas).
+  Retiré — conclusion identique à l'autre vérification, déjà appliquée dans l'arbre vivant.
+- **K1 seul contre B** : corrompus +0,31 ± 0,36 (+31 / −15), t12 +0,23 ± 0,29, tours +0,64 ± 0,83, premier mort
+  **+0,83 ± 0,70**. Tendance positive, cohérente avec la mesure K1 du tuner (n = 64, +0,42 ± 0,36) : **gardé**.
+- **Défaut de la ligne de kill** : sa feuille s'arrête au kill ; en `fast`, aucune relance après la dernière action du
+  plan, et le faisceau ne peut pas reprendre ce préfixe (transpositions `seen`). Les PA restants aux tours avec kill
+  augmentent de +0,48 ± 0,28 (K1 + KH contre B). Correctif essayé : suite gloutonne après le kill (`selectForSim`),
+  feuille la plus profonde et meilleure feuille sans `continuation` finalisées. Effet : PA −0,72 ± 0,24, mais contre K1
+  corrompus −0,03 ± 0,38, tours −0,34 ± 0,92, premier mort −0,52 ± 0,79. **Non retenu** (aucun gain). Piste pour le
+  tour 3 : l'exposition après le kill pèse plus que les PA perdus.
+- **Prix du `SearchPricer`** (`standard` seulement) : code relu, correct (la référence d'une mort probable exclut les
+  racines forcées improbables ; une mort improbable reste comparée à toutes les actions). Je ne l'ai pas re-mesuré en
+  `standard` : runs abandonnés, machine saturée (charge ≈ 20).
+- **M-R20** (`ai-monster-fidelity`) : 13 / 13 sur le moteur de début de tour (81430e2) et sur l'arbre vivant actuel.
+  L'échec signalé ne se reproduit plus.
+- Aucune modification de `src/` ni des tests par ce vérificateur ; la suite IA / Vortex sur l'arbre vivant (autre
+  vérification, 09 h 36) : 333 réussis, 1 ignoré.
