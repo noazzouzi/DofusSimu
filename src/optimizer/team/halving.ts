@@ -1,5 +1,8 @@
 /**
- * Recherche de composition (niveau L5, docs/design/ai.md §15.6 points 3-5) — WP4b.
+ * Recherche de composition (niveau L5, docs/design/ai.md §15.6 points 3-5) — WP4b. OPT-IN depuis la décision du
+ * 2026-10-05 : la composition (les classes) est une entrée de l'utilisateur (team/userteam.ts) et le flux par défaut
+ * optimise les builds de cette composition (src/optimizer/builds.ts, commande `optimize`) ; cette recherche n'est lancée
+ * que par la commande explicite `team`.
  *
  *  - `successiveHalving` : les équipes candidates (top T0) passent des étages de plus en plus chers sur des graines
  *    COMMUNES (CRN) : T1 = micro-scénarios (`prefix12` + `phase2` pour le Vortex : objectif moyen des deux), 16 graines,

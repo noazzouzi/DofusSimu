@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "scenario": "vortex",
+  "description": "Composition de l'Œil de Vortex CHOISIE PAR L'UTILISATEUR : 1 Eniripsa, 1 Enutrof, 2 Crâs. Le simulateur ne change pas les classes ; il optimise les builds (preset, stuff avec exos et transcendances, points, variantes de sorts) et la stratégie de combat pour cette composition (npm run sim -- optimize vortex).",
+  "chosenBy": "utilisateur",
+  "decidedAt": "2026-10-05",
+  "members": [
+    { "class": "eniripsa" },
+    { "class": "enutrof" },
+    { "class": "cra" },
+    { "class": "cra" }
+  ],
+  "notes": [
+    "Décision de l'utilisateur (2026-10-05) : « Pour faciliter le boulot au simulateur et l'IA, je préfère que ce soit l'utilisateur qui détermine les classes/personnages pour un donjon. Du coup pour Vortex, je préfère une compo 1 eniripsa 1 enutrof 2 Cras. »",
+    "Builds par défaut (aucun « preset » ici) : version Vortex des presets de chaque classe — Eniripsa eniripsa_soin_vortex, Enutrof enutrof_retrait_pm_vortex, Crâ 1 cra_feu_vortex, Crâ 2 cra_air_entrave_vortex (deux Crâs = deux builds distincts par défaut) ; « optimize vortex » cherche les meilleurs builds et « optimize vortex --save-team » les écrit ici.",
+    "Format : README.md, section « Composition de l'utilisateur » (champs class, name, preset, stuff, role, variants, build, candidates, fixed)."
+  ]
+}

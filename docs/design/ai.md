@@ -1266,8 +1266,14 @@ hash ; en dernier recours, journal d'annulation (make/unmake) au lieu du clonage
 | L2 | meilleurs paramètres θ | criblage de sensibilité → CEM (espace log) → distillation `fast` ← `standard` | ≈ 3 000-6 000 combats `fast` |
 | L3 | meilleur stuff par personnage | proxy analytique + recuit, puis validation L1 | 5·10⁴ stuffs notés, ≈ 500 combats |
 | L4 | meilleures variantes de sorts | presets par rôle + bascules ciblées appariées | ≈ 200 combats/personnage |
-| L5 | meilleure équipe (19 classes) | T0 analytique → *successive halving* (T1 micro, T2 `fast`) → co-optimisation L2-L4 → validation `standard` | ≈ 1 h 20 sur 4 cœurs |
+| L5ᵤ | meilleurs builds pour la composition **choisie par l'utilisateur** (défaut, `optimize`) | options par membre (versions du scénario des presets de sa classe, stuffs L3) → criblage apparié membre par membre → *successive halving* des combinaisons (témoin = builds par défaut) → (L4, L2) → validation sur graines neuves | ≈ 450-3 200 combats `fast` (équipe du Vortex) |
+| L5 | meilleure équipe (19 classes) — **opt-in** (`team`) | T0 analytique → *successive halving* (T1 micro, T2 `fast`) → co-optimisation L2-L4 → validation `standard` | ≈ 1 h 20 sur 4 cœurs |
 | L\* | une ligne gagnante pour **cette** graine | rembobinage stratégique | démo uniquement |
+
+**Composition = entrée de l'utilisateur** (décision du 2026-10-05) : les classes de l'équipe d'un donjon sont choisies
+par l'utilisateur (`data/teams/<scénario>.json`, `--classes`, `--team` ; Vortex : 1 Eniripsa, 1 Enutrof, 2 Crâs) ; le
+flux par défaut optimise ce qui reste pour cette composition — builds (L3, L4) et stratégie (L2) — via L5ᵤ (§15.6 bis).
+La recherche de composition L5 n'est lancée que sur demande explicite (commande `team`).
 
 « Faire le maximum d'itérations » se lit donc à trois échelles : beaucoup de **nœuds** par tour (L0), beaucoup de
 **combats** par configuration (L1, `fast`/`scripted` sur 4 workers), beaucoup de **configurations** (L2-L5, filtrées
@@ -1330,7 +1336,10 @@ n'a jamais été lancé en 64 combats (`FightSummary.spellUse`), paires citées 
 débloquent une tactique (`requires`) ; seules les paires dont les deux sorts sont supportés. Évaluation appariée `fast`
 (16-32 graines), acceptation gloutonne si gain significatif, ≤ 6 bascules par personnage.
 
-### 15.6 Composition (L5, `team/*`)
+### 15.6 Composition (L5, `team/*`) — opt-in
+
+*Depuis le 2026-10-05, la composition est une entrée de l'utilisateur ; cette recherche n'est plus dans le flux par
+défaut (commande `team`, explicite). Le flux par défaut est §15.6 bis.*
 
 1. **Presets** (`data/ai/presets.json`, issus des fiches de classe) : 2-4 par classe (≈ 57), chacun avec rôle,
    élément, variantes des 22 paires, rotation `scripted`, stuff de départ (ex. `enutrof_retrait_pm_eau`,
@@ -1347,6 +1356,24 @@ débloquent une tactique (`requires`) ; seules les paires dont les deux sorts so
 4. **Co-optimisation** des 4 finalistes : L3 → L4 → L2 puis une seconde passe L3 → L4 (≈ 14 min par équipe).
 5. **Validation** `standard` : 4 équipes × 24 graines × variantes (≈ 9 min) ; rapport et replays de la gagnante.
 6. Option `evolve` (mutation d'un membre, croisement de stuffs) pour explorer hors du top T0.
+
+### 15.6 bis Builds d'une composition donnée (L5ᵤ, `builds.ts`, `team/userteam.ts`) — défaut
+
+1. **Composition** : fichier `data/teams/<scénario>.json` (classes, et facultativement build par défaut, candidats,
+   build imposé `fixed`, notes) ; équipe par défaut des commandes. Build par défaut d'un membre : la version du scénario
+   des presets de sa classe (`<preset>_<scénario>[_profil]`), le k-ième membre d'une classe prenant le k-ième build
+   (deux Crâs : `cra_feu_vortex`, `cra_air_entrave_vortex`).
+2. **Options par membre** : toutes les versions du scénario des presets de sa classe (profils équilibré, offensif,
+   défensif), les presets de base sans version du scénario avec un stuff construit par L3 (`<preset>@opt`, proxy du
+   scénario, Dofus à passif gardés), ou les `candidates` du fichier ; un membre `fixed` garde son build.
+3. **Criblage** membre par membre dans l'équipe de référence (graines communes, objectif façonné de `tune.ts`) ; les
+   `keep` meilleures options de chaque membre passent.
+4. **Successive halving** sur les combinaisons gardées (deux membres de même classe interchangeables), graines
+   cumulées, moitié gardée par étage, équipe de référence jouée comme témoin à chaque étage.
+5. Facultatif : **L4** (variantes) puis **L2** (θ) sur la meilleure affectation.
+6. **Validation** sur graines neuves contre la référence (appariée) ; rapport (en-tête « composition choisie par
+   l'utilisateur », tableaux victoires / objectif / corrompus / tours / première mort, Δ appariés) et meilleur replay.
+   Budgets `quick` / `normal` / `full` et plafond de combats (validation réservée d'abord).
 
 ### 15.7 Workers (`pool/*`)
 
@@ -1382,9 +1409,12 @@ corruptions par heure et par tueur, usage des tactiques, coups créatifs, causes
 médiane, meilleure victoire, échec typique) rejoués avec `record: true` et annotés.
 
 ```
-npm run sim -- fight vortex --team iop:killer,cra:killer,enutrof:mpLock,pandawa:placer --ai standard --seed 42 --replay out/r.json
-npm run sim -- batch vortex --team ... --ai fast --runs 500 --robust
-npm run sim -- optimize vortex --stages t0,halving,coopt,validate        # campagne complète ≈ 1 h 20 sur 4 cœurs
+npm run sim -- fight vortex --ai standard --seed 42 --replay out/r.json     # équipe de data/teams/vortex.json
+npm run sim -- batch vortex --classes eniripsa,enutrof,cra,cra --ai fast --runs 256 --robust
+npm run sim -- optimize vortex --budget normal --max-fights 900 --save-team  # builds de la composition (L5ᵤ)
+npm run sim -- stuff vortex --member 4 --profile defensive --out b.json     # L3 pour un membre
+npm run sim -- report docs/reports/<id>.json                                # rendu d'un résultat enregistré
+npm run sim -- team vortex --top 400 --coopt                                # L5, opt-in : ≈ 1 h 20 sur 4 cœurs
 ```
 
 ---

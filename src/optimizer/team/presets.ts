@@ -293,7 +293,13 @@ export function resolvePreset(text: string): Preset {
   if (exact) return exact
   const [cls, qual] = text.split(':').map(s => s.trim())
   const breedId = breedIdOf(cls)
-  if (breedId === undefined) throw new Error(`Classe inconnue : « ${cls} »`)
+  if (breedId === undefined) {
+    // Faute de frappe dans un identifiant de preset (`cra_fue_vortex`) : ni classe ni preset ; presets de la classe du
+    // préfixe proposés.
+    const guess = breedIdOf(cls.split(/[_\s]/)[0] ?? '')
+    const hint = guess !== undefined && cls.includes('_') ? ` — ni classe ni preset connu ; presets ${presetsOf(guess)[0].className} : ${presetsOf(guess).map(p => p.id).join(', ')}` : ''
+    throw new Error(`Classe inconnue : « ${cls} »${hint}`)
+  }
   const list = presetsOf(breedId)
   if (!qual) return list[0]
   const q = normalizeName(qual)

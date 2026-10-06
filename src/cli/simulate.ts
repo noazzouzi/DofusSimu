@@ -1,271 +1,124 @@
 /**
- * CLI de simulation (docs/design/ai.md §15.9) — WP4 : `npm run sim -- <commande> [options]`.
+ * CLI de simulation (docs/design/ai.md §15.9) : `npm run sim -- <commande> [options]`.
  *
- *   fight <scénario>   un combat (replay animé écrit dans web/public/replays/ + index.json lu par le visualiseur)
- *   batch <scénario>   Monte-Carlo sur N graines CRN (workers), IC de Wilson, arrêt séquentiel, causes d'échec,
- *                      variantes INCERTAINES (--robust), cache de campagne (runs/<campagne>.jsonl), replays notables
- *   bench              débit du pool (combats/s) pour 1, 2, 4 workers (banc B6 en ligne de commande)
- *   presets            liste des presets (classe, rôle, élément, stuff, PA/PM/PV calculés)
- *   tune | stuff | team | optimize | rewind | report   → lots suivants (WP4b), « non implémenté »
+ * COMPOSITION = ENTRÉE DE L'UTILISATEUR (décision du 2026-10-05) : les classes de l'équipe d'un donjon sont choisies par
+ * l'utilisateur — fichier d'équipe `data/teams/<scénario>.json` (équipe par défaut du scénario quand `--team` est
+ * absent), `--classes eniripsa,enutrof,cra,cra` ou `--team` (builds exacts) ; le simulateur optimise le reste (builds,
+ * variantes de sorts, stratégie θ) — src/optimizer/team/userteam.ts, src/optimizer/builds.ts.
+ *
+ *   fight <scénario>     un combat (replay animé écrit dans web/public/replays/ + index.json lu par le visualiseur)
+ *   batch <scénario>     Monte-Carlo sur N graines CRN (workers), IC de Wilson, arrêt séquentiel, causes d'échec,
+ *                        variantes INCERTAINES (--robust), cache de campagne (runs/<campagne>.jsonl), replays notables
+ *   optimize <scénario>  builds de la composition de l'utilisateur (presets, stuffs optimisés, criblage + halving
+ *                        appariés, variantes, θ) → rapport Markdown + JSON (docs/reports) et meilleur replay
+ *   stuff <scénario>     optimiseur de stuff pour UN membre (proxy du scénario) → build JSON réutilisable
+ *   report <fichier>     rendu Markdown d'un résultat enregistré (rapport JSON, résumé de batch)
+ *   tune <scénario>      réglage de θ (L2) pour l'équipe → fichier θ pour --theta
+ *   rewind <scénario>    rembobinage stratégique d'une graine perdue (optimiste, démo)
+ *   team <scénario>      recherche AUTOMATIQUE de composition (opt-in, jamais par défaut)
+ *   bench                débit du pool (combats/s) pour 1, 2, 4 workers (banc B6 en ligne de commande)
+ *   presets              liste des presets (classe, rôle, élément, stuff, PA/PM/PV calculés)
  *
  * Scénarios : identifiant du registre (src/dungeons : `vortex`, `skirmish`, `dummy`), combat de contrôle
  * `control:<carte>:<monstre>[*n][@grade],…` ou miroir `mirror[:<carte>]` (src/optimizer/runner.ts).
- * Équipe : `--team iop:killer,cra:feu,enutrof:mpLock,pandawa:placer` (preset exact ou classe:rôle|élément|mot, stuff
- * facultatif après '@' : `iop:killer@unstuffed`) — src/optimizer/team/presets.ts.
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import * as os from 'node:os'
-import { basename, dirname, join, relative, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
-import { loadTheta, type AIMode, type ThetaOverrides } from '../ai'
+import { dirname, join, relative } from 'node:path'
 import type { DataStore } from '../data/store'
 import { loadDataStore } from '../data/node'
 import { openCampaignCache, type FightCache } from '../optimizer/cache'
 import { notableSeeds, runBatch } from '../optimizer/montecarlo'
-import { createNodePool, defaultPoolSize } from '../optimizer/pool/node'
-import { createLocalPool, type ManagedPool } from '../optimizer/pool/pool'
-import { runMicro, runOne, toReplay, type RunResult } from '../optimizer/runner'
+import { defaultPoolSize } from '../optimizer/pool/node'
+import { runOne } from '../optimizer/runner'
 import { campaignSeeds } from '../optimizer/seeds'
 import { failReasons, variantMarginals, variantMinN, worstMarginal, worstVariant } from '../optimizer/stats'
-import { PRESETS, parseTeam, validatePreset, type StuffChoice } from '../optimizer/team/presets'
-import type { FightSpec, FightSummary, StopRule, WorkerTask } from '../optimizer/types'
-import type { TeamId } from '../core/types'
-import type { FightState } from '../engine/types'
-import type { Replay } from '../replay/types'
+import { PRESETS, validatePreset, type StuffChoice } from '../optimizer/team/presets'
+import { compositionClasses } from '../optimizer/team/userteam'
+import type { StopRule } from '../optimizer/types'
+import {
+  bool,
+  DEFAULT_TEAM,
+  dataDirOf,
+  describe,
+  fighterTable,
+  num,
+  parseArgs,
+  pct,
+  replayDirOf,
+  REPO_ROOT,
+  saveReplay,
+  specOf,
+  str,
+  teamChoiceOf,
+  teamLine,
+  withPool,
+  writeFightReplay,
+  type Args,
+} from './common'
+import { cmdOptimize, cmdReport, cmdRewind, cmdStuff, cmdTeam, cmdTune } from './optimize'
+
+export { DEFAULT_TEAM, fighterTable, parseArgs, parseParams, REPLAY_DIR, writeReplay, type Args, type ReplayIndexEntry } from './common'
 
 const COMMANDS = ['fight', 'batch', 'bench', 'presets', 'tune', 'stuff', 'team', 'optimize', 'rewind', 'report'] as const
-const MODES: readonly AIMode[] = ['scripted', 'fast', 'standard', 'deep']
 
-/** Équipe par défaut (exemple du design §15.9). */
-export const DEFAULT_TEAM = 'iop:killer,cra:killer,enutrof:mpLock,pandawa:placer'
-/** Racine du dépôt (src/cli → ../..). */
-const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url))
-/** Dossier des replays lus par le visualiseur (index.json). */
-export const REPLAY_DIR = join(REPO_ROOT, 'web', 'public', 'replays')
-
-function usage(): string {
+export function usage(): string {
   return [
     'Usage : npm run sim -- <commande> [options]',
     '',
-    '  fight <scénario>  [--team T] [--ai scripted|fast|standard|deep] [--policy ai|random] [--seed N] [--placement c1,c2,…]',
-    '                    [--stuff default|unstuffed|naked|<stuff>] [--robust] [--replay <fichier>|auto|none] [--replay-dir D] [--json]',
-    '  batch <scénario>  [--team T] [--ai M] [--runs N] [--workers W] [--master-seed S] [--robust]',
-    '                    [--min-n N --max-n N --half-width H] [--campaign nom] [--cache-version v] [--micro prefix12|phase2|poutch]',
-    '                    [--replays] [--replay-dir D] [--json]',
-    '  bench             [--workers 1,2,4] [--runs N] [--ai M] [--scenario S] [--team T]',
-    '  presets           [--class iop] [--stuff S]',
+    '  COMPOSITION = CHOIX DE L\'UTILISATEUR : les classes viennent du fichier d\'équipe du scénario',
+    '  (data/teams/<scénario>.json, ex. data/teams/vortex.json = Eniripsa, Enutrof, Crâ, Crâ), de --classes ou de --team ;',
+    '  le simulateur optimise les builds (preset, stuff, exos, points, variantes) et la stratégie pour cette composition.',
     '',
-    `  Équipe par défaut : ${DEFAULT_TEAM}`,
-    '  Équipe (--team) : membres séparés par des virgules, chacun <preset> ou <classe>[:rôle|élément], stuff facultatif',
-    '    après « @ » (par membre, prioritaire sur --stuff) : cra_feu_zone@vortex_cra_feu,iop:killer@unstuffed ; les presets',
-    '    dérivés (« extends », ex. cra_feu_vortex) sont des alias <base>@<stuff> (même IA, stuff et points du stuff)',
+    '  fight <scénario>    [équipe] [--ai scripted|fast|standard|deep] [--policy ai|random] [--seed N] [--placement c1,c2,…]',
+    '                      [--stuff default|unstuffed|naked|<stuff>] [--robust] [--replay <fichier>|auto|none] [--replay-dir D] [--json]',
+    '  batch <scénario>    [équipe] [--ai M] [--runs N] [--workers W] [--master-seed S] [--robust]',
+    '                      [--min-n N --max-n N --half-width H] [--campaign nom] [--cache-version v] [--micro prefix12|phase2|poutch]',
+    '                      [--replays] [--replay-dir D] [--json]',
+    '  optimize <scénario> [--classes C | --team-file F | --team T] [--budget quick|normal|full] [--max-fights N] [--workers W]',
+    '                      [--master-seed S] [--keep K] [--screen-seeds N] [--halving 16,32,64] [--validate N]',
+    '                      [--screen-kind full|prefix12|phase2] [--variants|--no-variants] [--tune-theta [--theta-paths a,b]] [--no-stuff-search]',
+    '                      [--profile balanced|defensive|offensive] [--stuff-iterations N] [--campaign nom|--no-cache]',
+    '                      [--id nom] [--out-dir docs/reports] [--save-team [fichier]] [--no-replays] [--dry-run] [--json]',
+    '  stuff <scénario>    --member <n°|classe|preset[@stuff]> [équipe] [--profile P] [--iterations N] [--seed S]',
+    '                      [--out fichier.json] [--validate N --workers W] [--json]',
+    '  report <fichier>    rapport JSON (optimize/team) ou résumé de batch (runs/*.summary.json) → Markdown [--out F.md]',
+    '  tune <scénario>     [équipe] [--seeds N] [--keep K] [--generations G] [--population P] [--validate N] [--paths a,b]',
+    '                      [--workers W] [--out theta.json]',
+    '  rewind <scénario>   [équipe] --seed N [--max-resumes K] [--robust-seeds S] [--replay auto|none|<fichier>]',
+    '  team <scénario>     RECHERCHE AUTOMATIQUE DE COMPOSITION (opt-in) [--top N] [--t1-seeds N --t1-keep K] [--t2-seeds N',
+    '                      --t2-keep K] [--finalists N] [--coopt] [--no-calibrate] [--validate N] [--workers W] [--id nom]',
+    '  bench               [--workers 1,2,4] [--runs N] [--ai M] [--scenario S] [équipe]',
+    '  presets             [--class iop] [--stuff S]',
+    '',
+    '  Équipe (--team, --classes et --team-file sont exclusifs ; sans aucune, le fichier d\'équipe du scénario) :',
+    '    --team T          builds exacts : membres séparés par des virgules, chacun <preset> ou <classe>[:rôle|élément],',
+    '                      stuff facultatif après « @ » (cra_feu_zone@vortex_cra_feu,iop:killer@unstuffed) ; les presets',
+    '                      dérivés (« extends », ex. cra_feu_vortex) sont des alias <base>@<stuff>',
+    '    --classes C       classes seules, doublons permis (eniripsa,enutrof,cra,cra ≡ eni,enu,cra*2 ≡ 7,3,9,9) : build',
+    '                      par défaut de chaque classe pour le scénario (version du scénario de ses presets, ex. cra_feu_vortex)',
+    '    --team-file F     fichier d\'équipe (JSON, voir README « Composition de l\'utilisateur »)',
+    '    (rien)            fichier du scénario data/teams/<scénario>.json (--teams-dir D), sinon l\'équipe d\'exemple',
+    `                      ${DEFAULT_TEAM}`,
     '  Scénario : vortex | skirmish | dummy | control:<carte>:<monstre>[*n][@grade],… | mirror[:<carte>]',
     '  Options communes : --theta θ.json (surcharge), --noise τ (bruit des monstres), --param clé=valeur (répétable par virgules)',
+    '  Exemples (Vortex, composition de l\'utilisateur Eniripsa + Enutrof + 2 Crâs, data/teams/vortex.json) :',
+    '    npm run sim -- fight vortex --seed 3',
+    '    npm run sim -- batch vortex --runs 128 --workers 3',
+    '    npm run sim -- optimize vortex --dry-run                (options de chaque membre et combats prévus)',
+    '    npm run sim -- optimize vortex --budget quick --workers 3',
+    '    npm run sim -- optimize vortex --classes eniripsa,enutrof,cra,cra --budget normal --max-fights 900 --save-team',
+    '    npm run sim -- stuff vortex --member 4 --out runs/cra2-build.json',
     `  Commandes : ${COMMANDS.join(' | ')}`,
   ].join('\n')
-}
-
-// ───────────────────────────── arguments ─────────────────────────────
-
-export interface Args {
-  positional: string[]
-  flags: Map<string, string | true>
-}
-
-/** `--clé valeur`, `--clé=valeur`, `--drapeau` (booléen si suivi d'une autre option ou de rien). */
-export function parseArgs(argv: readonly string[]): Args {
-  const positional: string[] = []
-  const flags = new Map<string, string | true>()
-  for (let i = 0; i < argv.length; i++) {
-    const a = argv[i]
-    if (!a.startsWith('--')) {
-      positional.push(a)
-      continue
-    }
-    const eq = a.indexOf('=')
-    if (eq > 0) flags.set(a.slice(2, eq), a.slice(eq + 1))
-    else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) flags.set(a.slice(2), argv[++i])
-    else flags.set(a.slice(2), true)
-  }
-  return { positional, flags }
-}
-
-const str = (a: Args, k: string): string | undefined => {
-  const v = a.flags.get(k)
-  return typeof v === 'string' ? v : undefined
-}
-const num = (a: Args, k: string, def: number): number => {
-  const v = str(a, k)
-  if (v === undefined) return def
-  const n = Number(v)
-  if (!Number.isFinite(n)) throw new Error(`--${k} : nombre attendu (« ${v} »)`)
-  return n
-}
-const bool = (a: Args, k: string): boolean => a.flags.has(k) && a.flags.get(k) !== 'false'
-
-function modeOf(a: Args, def: AIMode): AIMode {
-  const m = (str(a, 'ai') ?? def) as AIMode
-  if (!MODES.includes(m)) throw new Error(`--ai : ${MODES.join('|')} attendu (« ${m} »)`)
-  return m
-}
-
-/** θ : défaut + surcharge facultative `--theta fichier.json`. */
-function thetaOf(a: Args) {
-  const file = str(a, 'theta')
-  return loadTheta(file ? (JSON.parse(readFileSync(resolve(file), 'utf8')) as ThetaOverrides) : undefined)
-}
-
-/** Liste d'entiers `1,2,3` (cases de placement). */
-function intList(text: string, flag: string): number[] {
-  const out = text.split(',').map(x => Number(x.trim()))
-  if (!out.every(Number.isInteger)) throw new Error(`--${flag} : liste d'entiers attendue (« ${text} »)`)
-  return out
-}
-
-/**
- * Paramètres de scénario imposés : `--param clé=valeur,clé2=valeur2` (nombre, booléen, liste `a;b;c` de nombres, ou
- * texte) — ex. `--param maxRounds=40,arrivalRounds=1;6;11;16;21`.
- */
-export function parseParams(text: string | undefined): Record<string, number | string | boolean | number[]> | undefined {
-  if (!text) return undefined
-  const out: Record<string, number | string | boolean | number[]> = {}
-  for (const part of text.split(',').map(x => x.trim()).filter(Boolean)) {
-    const eq = part.indexOf('=')
-    if (eq <= 0) throw new Error(`--param : clé=valeur attendu (« ${part} »)`)
-    const k = part.slice(0, eq)
-    const v = part.slice(eq + 1)
-    if (v === 'true' || v === 'false') out[k] = v === 'true'
-    else if (v.includes(';')) out[k] = v.split(';').map(Number)
-    else if (v !== '' && Number.isFinite(Number(v))) out[k] = Number(v)
-    else out[k] = v
-  }
-  return out
-}
-
-function specOf(a: Args, data: DataStore, scenarioId: string, defMode: AIMode): FightSpec {
-  const policy = str(a, 'policy') ?? 'ai'
-  if (policy !== 'ai' && policy !== 'random') throw new Error(`--policy : ai|random attendu (« ${policy} »)`)
-  const placement = str(a, 'placement')
-  const params = parseParams(str(a, 'param'))
-  return {
-    scenarioId,
-    placement: placement ? intList(placement, 'placement') : undefined,
-    params,
-    team: parseTeam(str(a, 'team') ?? DEFAULT_TEAM, data, { stuff: (str(a, 'stuff') ?? 'default') as StuffChoice }),
-    mode: modeOf(a, defMode),
-    theta: thetaOf(a),
-    variantPolicy: bool(a, 'robust') ? 'sampled' : 'default',
-    monsterNoise: num(a, 'noise', 0),
-    playerPolicy: policy === 'random' ? 'random' : undefined,
-  }
-}
-
-const pct = (x: number): string => `${(100 * x).toFixed(1)} %`
-
-/** Dossier des replays (`--replay-dir`, défaut web/public/replays). */
-const replayDirOf = (a: Args): string => resolve(str(a, 'replay-dir') ?? REPLAY_DIR)
-/** Dossier des données (`--data`, défaut 'data'), partagé par le processus principal et les workers. */
-const dataDirOf = (a: Args): string => str(a, 'data') ?? 'data'
-
-function describe(s: FightSummary): string {
-  return [
-    `${s.win ? 'VICTOIRE' : 'DÉFAITE'} en ${s.rounds} tours (${s.endReason}${s.failReason ? ` — ${s.failReason}` : ''})`,
-    `morts ${s.deaths}, PV restants ${pct(s.hpLeftPct)}, dégâts subis ${Math.round(s.damageTaken)}, progression ${pct(s.progress)}, score ${s.score.toFixed(3)}`,
-    `variante ${s.variant}, nœuds IA ${s.nodes}, coups créatifs ${s.creativeActions}, effets inconnus ${s.unknownEffects}, empreinte ${s.eventsHash}`,
-  ].join('\n')
-}
-
-// ───────────────────────────── replays ─────────────────────────────
-
-export interface ReplayIndexEntry {
-  file: string
-  title: string
-  scenario?: string
-  seed?: number
-  win?: boolean
-  rounds?: number
-  createdAt?: string
-}
-
-/** Écrit un replay et met à jour `index.json` du même dossier (entrée remplacée si le fichier existe déjà). */
-export function writeReplay(file: string, replay: Replay, entry: Omit<ReplayIndexEntry, 'file'>): string {
-  const path = resolve(file)
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, JSON.stringify(replay))
-  const indexPath = join(dirname(path), 'index.json')
-  let list: ReplayIndexEntry[] = []
-  if (existsSync(indexPath)) {
-    try {
-      const raw = JSON.parse(readFileSync(indexPath, 'utf8')) as unknown
-      const arr = Array.isArray(raw) ? raw : (raw as { replays?: unknown[] })?.replays
-      if (Array.isArray(arr)) list = arr as ReplayIndexEntry[]
-    } catch {
-      /* index illisible : reconstruit */
-    }
-  }
-  const name = basename(path)
-  list = list.filter(e => e.file !== name)
-  list.unshift({ file: name, ...entry })
-  writeFileSync(indexPath, JSON.stringify({ replays: list }, null, 2) + '\n')
-  return path
-}
-
-/**
- * Tableau des personnages (et invocations alliées) d'un combat : PV restants, dégâts infligés/subis, soins, retraits,
- * kills (métriques du moteur).
- */
-export function fighterTable(fight: FightState, team: TeamId = 0): string {
-  const rows = [['', 'PV', 'dégâts', 'subis', 'soins', 'PA/PM retirés', 'kills']]
-  for (const f of fight.fighters) {
-    if (f.team !== team) continue
-    const m = fight.metrics[f.id]
-    if (f.kind === 'summon' && !(m?.damageDealt || m?.healingDone)) continue
-    rows.push([
-      `${f.kind === 'summon' ? '  ↳ ' : ''}${f.name}${f.role ? ` (${f.role})` : ''}`,
-      f.alive ? `${f.hp}/${f.maxHp}` : 'mort',
-      String(Math.round(m?.damageDealt ?? 0)),
-      String(Math.round(m?.damageTaken ?? 0)),
-      String(Math.round(m?.healingDone ?? 0)),
-      `${(m?.apRemoved ?? 0).toFixed(0)}/${(m?.mpRemoved ?? 0).toFixed(0)}`,
-      String(m?.kills ?? 0),
-    ])
-  }
-  const widths = rows[0].map((_, j) => Math.max(...rows.map(r => r[j].length)))
-  return rows.map(r => r.map((c, j) => (j === 0 ? c.padEnd(widths[j]) : c.padStart(widths[j]))).join('  ')).join('\n')
-}
-
-/** Écrit le replay d'un combat joué avec `record: true` (`label` : suffixe du nom de fichier). */
-function writeFightReplay(data: DataStore, spec: FightSpec, res: RunResult, out: string | undefined, label: string, dir = REPLAY_DIR, title?: string): string {
-  const seed = res.summary.seed
-  const createdAt = new Date().toISOString()
-  const replay = toReplay(data, spec, res, { generator: 'dofussimu-cli (npm run sim)', createdAt, title })
-  const scen = spec.scenarioId.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '')
-  const file = out ?? join(dir, `${scen}-${spec.mode}-${label}-s${seed}.json`)
-  return writeReplay(file, replay, {
-    title: replay.meta?.title ?? file,
-    scenario: spec.scenarioId,
-    seed,
-    win: res.summary.win,
-    rounds: res.summary.rounds,
-    createdAt,
-  })
-}
-
-/**
- * Rejoue une graine avec enregistrement et écrit son replay (`kind` : combat complet, ou le micro-scénario du lot —
- * le replay montre alors exactement ce qui a été évalué).
- */
-function saveReplay(data: DataStore, spec: FightSpec, seed: number, out: string | undefined, label: string, dir = REPLAY_DIR, title?: string, kind: WorkerTask['kind'] = 'full'): string {
-  if (kind === 't0') throw new Error("Pas de replay pour une tâche 't0' (modèle analytique)")
-  const res = kind === 'full' ? runOne(data, spec, seed, { record: true }) : runMicro(data, spec, seed, kind, { record: true })
-  return writeFightReplay(data, spec, res, out, kind === 'full' ? label : `${kind}-${label}`, dir, title)
 }
 
 // ───────────────────────────── commandes ─────────────────────────────
 
 function cmdFight(a: Args, data: DataStore): number {
   const scenarioId = a.positional[0] ?? 'vortex'
-  const spec = specOf(a, data, scenarioId, 'fast')
+  const choice = teamChoiceOf(a, data, scenarioId)
+  const spec = specOf(a, data, scenarioId, 'fast', choice)
   const seed = num(a, 'seed', 1) >>> 0
   const replayFlag = bool(a, 'no-replay') ? 'none' : str(a, 'replay') ?? 'auto'
   const t0 = performance.now()
@@ -273,8 +126,9 @@ function cmdFight(a: Args, data: DataStore): number {
   const res = runOne(data, spec, seed, { record: replayFlag !== 'none' })
   const ms = performance.now() - t0
   const { summary } = res
-  if (bool(a, 'json')) console.log(JSON.stringify({ summary, ms }, null, 2))
+  if (bool(a, 'json')) console.log(JSON.stringify({ summary, ms, team: choice.options?.map(o => o.id) ?? spec.team.map(m => m.presetId) }, null, 2))
   else {
+    console.log(teamLine(choice))
     console.log(`${scenarioId} — ${spec.mode}${spec.playerPolicy === 'random' ? ' (aléatoire)' : ''}, graine ${seed} (${ms.toFixed(0)} ms)\n${describe(summary)}`)
     console.log(fighterTable(res.fight, res.fight.fighters.find(f => f.kind === 'player')?.team ?? 0))
   }
@@ -285,19 +139,10 @@ function cmdFight(a: Args, data: DataStore): number {
   return 0
 }
 
-async function withPool<T>(workers: number, f: (pool: ManagedPool) => Promise<T>, data: DataStore, dataDir = 'data'): Promise<T> {
-  // Les workers chargent le MÊME dossier de données que le processus principal (`--data`).
-  const pool = workers > 0 ? createNodePool(workers, { dataDir: resolve(dataDir) }) : createLocalPool(data)
-  try {
-    return await f(pool)
-  } finally {
-    await pool.close()
-  }
-}
-
 async function cmdBatch(a: Args, data: DataStore): Promise<number> {
   const scenarioId = a.positional[0] ?? 'vortex'
-  const spec = specOf(a, data, scenarioId, 'fast')
+  const choice = teamChoiceOf(a, data, scenarioId)
+  const spec = specOf(a, data, scenarioId, 'fast', choice)
   const runs = num(a, 'runs', 100)
   const workers = num(a, 'workers', defaultPoolSize())
   const master = num(a, 'master-seed', 1) >>> 0
@@ -311,6 +156,7 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
   const t0 = performance.now()
   let last = 0
   let shown = 0
+  if (!bool(a, 'json')) console.log(teamLine(choice))
   const run = await withPool(
     workers,
     pool =>
@@ -343,8 +189,12 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
   const out = {
     scenarioId,
     mode: spec.mode,
+    // Type de combat (micro-scénario `--micro` : « victoire » = micro-scénario réussi) — relu par `report`.
+    kind,
     policy: spec.playerPolicy ?? 'ai',
     team: spec.team.map(m => m.presetId),
+    builds: choice.options?.map(o => o.id),
+    composition: choice.composition && { classes: compositionClasses(choice.composition), source: choice.composition.source, file: choice.composition.file, chosenBy: choice.composition.chosenBy },
     workers,
     masterSeed: master,
     result: r,
@@ -357,9 +207,10 @@ async function cmdBatch(a: Args, data: DataStore): Promise<number> {
     seconds: ms / 1000,
     fightsPerSecond: run.computed / Math.max(1e-9, ms / 1000),
   }
-  const summaryFile = join(REPO_ROOT, 'runs', `${campaign ?? `batch-${scenarioId.replace(/[^A-Za-z0-9]+/g, '-')}-${spec.mode}${kind === 'full' ? '' : `-${kind}`}`}.summary.json`)
+  const summaryFile = join(REPO_ROOT, 'runs', `${campaign?.replace(/[^A-Za-z0-9._-]+/g, '_') ?? `batch-${scenarioId.replace(/[^A-Za-z0-9]+/g, '-')}-${spec.mode}${kind === 'full' ? '' : `-${kind}`}`}.summary.json`)
   mkdirSync(dirname(summaryFile), { recursive: true })
-  writeFileSync(summaryFile, JSON.stringify({ ...out, summaries: run.summaries }, null, 1))
+  // `spec` (équipe et builds complets, θ) : la commande `report` peut rendre ce lot plus tard.
+  writeFileSync(summaryFile, JSON.stringify({ ...out, spec, summaries: run.summaries }, null, 1))
   if (bool(a, 'json')) console.log(JSON.stringify(out, null, 2))
   else {
     console.log(`${scenarioId} — ${spec.mode}${spec.playerPolicy === 'random' ? ' (aléatoire)' : ''}, ${r.n} combats (${run.computed} joués, ${run.cached} en cache) en ${(ms / 1000).toFixed(1)} s (${out.fightsPerSecond.toFixed(2)} combats/s, ${workers} worker(s))`)
@@ -463,8 +314,20 @@ export async function main(argv: string[]): Promise<number> {
         return await cmdBench(a, data)
       case 'presets':
         return cmdPresets(a, data)
+      case 'optimize':
+        return await cmdOptimize(a, data)
+      case 'stuff':
+        return await cmdStuff(a, data)
+      case 'report':
+        return cmdReport(a, data)
+      case 'tune':
+        return await cmdTune(a, data)
+      case 'rewind':
+        return cmdRewind(a, data)
+      case 'team':
+        return await cmdTeam(a, data)
       default:
-        console.error(`« ${cmd} » : non implémenté (lot WP4b : réglage θ, stuff, composition, rembobinage, rapport).`)
+        console.error(`« ${cmd} » : commande inconnue`)
         return 2
     }
   } catch (e) {

@@ -8,6 +8,10 @@
  * usage des tactiques, coups créatifs, causes d'échec, historique d'optimisation (L2-L5), rembobinage (optimiste) et
  * trois replays (victoire médiane, meilleure victoire, échec typique) rejoués avec `record: true`.
  *
+ * En-tête de composition (`composition`) : « composition choisie par l'utilisateur » (fichier d'équipe, `--classes`,
+ * `--team` : les classes ne sont pas optimisées) ou « cherchée automatiquement » (commande `team`, opt-in) ; section
+ * « Recherche des builds » (`builds`, src/optimizer/builds.ts) : options essayées, criblage, halving, validation.
+ *
  * Le rapport n'invente rien : chaque nombre vient d'un lot de combats joués (ou du proxy, signalé comme tel). La date
  * est fournie par l'appelant (`createdAt`) : aucune horloge dans le code de simulation.
  */
@@ -22,6 +26,7 @@ import { PRIMARY_STAT_NAMES_FR, type PrimaryStat } from '../stats/characteristic
 import { EFFECT_PASSIVE_SPELL } from '../stats/effects'
 import type { FightCache } from './cache'
 import { notableSeeds, type FightExecutor } from './montecarlo'
+import type { BuildsReport, FightMetrics } from './builds'
 import type { RewindResult } from './rewind'
 import { runOne, toReplay } from './runner'
 import { campaignSeeds } from './seeds'
@@ -50,6 +55,8 @@ export interface ReportMember {
   className: string
   presetId: string
   presetLabel?: string
+  /** Build retenu par `optimize` (preset dérivé, `preset@stuff`, `preset@opt`…), si différent de l'identité IA. */
+  buildId?: string
   role?: string
   element?: string
   stats: { ap: number; mp: number; range: number; hp: number; mainStat: string; mainValue: number; critical: number; power: number }
@@ -112,9 +119,25 @@ export interface OptimizationReport {
   variants?: { accepted: { member: string; pair: number; from: string; to: string; reason: string }[]; base: number; final: number }
   tune?: { accepted: boolean; diff: number; z: number; selected: string[] }
   campaign?: { stages: { name: string; teams: number; kept: string[] }[]; t0Evaluated?: number }
+  /**
+   * Origine de la composition : 'user' (choisie par l'utilisateur — fichier d'équipe, `--classes`, `--team` ; les classes
+   * ne sont pas optimisées) ou 'search' (recherche automatique de composition, commande `team`, opt-in).
+   */
+  composition?: ReportComposition
+  /** Recherche des builds pour la composition fixée (commande `optimize`, src/optimizer/builds.ts). */
+  builds?: BuildsReport
   rewind?: { seed: number; failRound: number; attempts: number; winningLine?: string; from?: number; robust?: string; replay?: string }
   replays: ReportReplay[]
   notes: string[]
+}
+
+export interface ReportComposition {
+  kind: 'user' | 'search'
+  classes: string[]
+  /** Libellé lisible (source comprise). */
+  text: string
+  file?: string
+  decidedAt?: string
 }
 
 // ───────────────────────────── construction ─────────────────────────────
@@ -285,11 +308,17 @@ export interface ReportInput {
   rewind?: RewindResult & { seed: number }
   history?: readonly string[]
   notes?: readonly string[]
+  composition?: ReportComposition
+  builds?: BuildsReport
 }
 
 /** Construit le rapport (sans écrire de fichier). */
 export function buildReport(data: GameDataStore, input: ReportInput): OptimizationReport {
   const team = input.spec.team.map(m => describeMember(data, m))
+  if (input.builds) team.forEach((m, i) => {
+    const id = input.builds!.slots[i]?.chosen
+    if (id && id !== m.presetId) m.buildId = id
+  })
   const notes = [...(input.notes ?? [])]
   const passives = team.flatMap(m => m.items.filter(i => i.passiveUnsimulated).map(i => `${m.name} : ${i.name}`))
   if (passives.length) notes.push(`Sorts passifs d’objets NON simulés par le moteur (seules leurs lignes de caractéristiques comptent) : ${passives.join(' ; ')}.`)
@@ -334,6 +363,9 @@ export function buildReport(data: GameDataStore, input: ReportInput): Optimizati
       final: input.variants.final.objective,
     }
   }
+  if (input.composition) report.composition = input.composition
+  else if (input.campaign) report.composition = { kind: 'search', classes: team.map(m => m.className), text: 'composition cherchée automatiquement (commande `team`, opt-in)' }
+  if (input.builds) report.builds = input.builds
   if (input.tune) report.tune = { accepted: input.tune.accepted, diff: input.tune.validation.paired.diff, z: input.tune.validation.paired.z, selected: input.tune.selected }
   if (input.campaign) {
     report.campaign = {
@@ -352,6 +384,55 @@ export function buildReport(data: GameDataStore, input: ReportInput): Optimizati
 
 const pct = (x: number) => `${(100 * x).toFixed(1)} %`
 const esc = (s: string) => s.replace(/\|/g, '\\|')
+const signed = (x: number, d = 3) => `${x >= 0 ? '+' : ''}${x.toFixed(d)}`
+
+/** Cellules de mesures d'un lot (victoires, objectif, corrompus, tours, première mort). */
+function metricCells(m: FightMetrics): string {
+  return `${m.wins}/${m.n} | ${m.objective.toFixed(3)} | ${m.corrupted.toFixed(1)} | ${m.rounds.toFixed(1)} | ${m.firstDeath.toFixed(1)}`
+}
+
+/** Section « Recherche des builds » (composition fixée). */
+function renderBuilds(b: BuildsReport, L: string[]): void {
+  L.push('## Recherche des builds (composition fixée)', '')
+  L.push(`Budget \`${b.budget}\`, IA \`${b.mode}\`, criblage \`${b.screenKind}\` sur ${b.screenSeeds} graine(s), graine maîtresse ${b.masterSeed}${b.maxFights !== undefined ? `, plafond ${b.maxFights} combats` : ''} ; ${b.fights} combats nouveaux joués. Objectif = score façonné (victoire ≈ 1 ; défaite = 0,8 × progression + départage de survie) ; « 1re mort » = tour de la première mort d’un personnage (tours du combat s’il n’y en a pas) ; Δ = différence APPARIÉE avec la référence (mêmes graines), z = |Δ| / erreur type (0 sous 2 graines).${b.screenKind !== 'full' ? ` Criblage sur le micro-scénario \`${b.screenKind}\` : « victoire » = micro-scénario réussi (pas le donjon), corrompus et tours propres au micro-scénario ; halving et validation en combats complets.` : ''}`, '')
+  L.push('| Personnage | Classe | Build de référence | Options essayées | Build retenu |')
+  L.push('|---|---|---|---|---|')
+  for (const s of b.slots) L.push(`| ${esc(s.name)} | ${esc(s.className)}${s.fixed ? ' (imposé)' : ''} | \`${s.reference}\` | ${s.options.map(o => `\`${o.id}\``).join(', ')} | **\`${s.chosen}\`** |`)
+  L.push('')
+  const notes = b.slots.flatMap(s => s.options.filter(o => o.note).map(o => `\`${o.id}\` : ${o.note}`))
+  if (notes.length) L.push(...[...new Set(notes)].map(n => `- ${n}`), '')
+  for (const s of b.slots) {
+    if (!s.screen) continue
+    L.push(`### Criblage — ${s.name} (${s.className})`, '')
+    L.push('| Option | Origine | Victoires | Objectif | Corrompus | Tours | 1re mort | Δ (z) | Gardée |')
+    L.push('|---|---|---|---|---|---|---|---|---|')
+    for (const e of s.screen.slice().sort((x, y) => y.metrics.objective - x.metrics.objective)) {
+      L.push(`| \`${e.option}\`${e.option === s.reference ? ' (réf.)' : ''} | ${e.origin} | ${metricCells(e.metrics)} | ${signed(e.diff)} (${e.z.toFixed(1)}) | ${e.kept ? 'oui' : ''} |`)
+    }
+    L.push('')
+  }
+  for (const h of b.halving) {
+    L.push(`### Halving — ${h.name} (${h.seeds} graines)`, '')
+    L.push('| Rang | Affectation | Victoires | Objectif | Corrompus | Tours | 1re mort | Δ (z) | Gardée |')
+    L.push('|---|---|---|---|---|---|---|---|---|')
+    for (const e of h.entries.slice().sort((x, y) => x.rank - y.rank)) {
+      L.push(`| ${e.rank} | ${e.control ? '**témoin** ' : ''}${e.options.map(o => `\`${o}\``).join(', ')} | ${metricCells(e.metrics)} | ${e.control ? '—' : `${signed(e.diff)} (${e.z.toFixed(1)})`} | ${e.kept ? 'oui' : ''} |`)
+    }
+    L.push('')
+  }
+  const v = b.validation
+  L.push(`### Validation (${v.seeds} graines neuves)`, '')
+  L.push('| Configuration | Victoires | IC 95 % | Objectif | Corrompus | Tours | 1re mort |')
+  L.push('|---|---|---|---|---|---|---|')
+  const row = (label: string, m: FightMetrics) => L.push(`| ${label} | ${m.wins}/${m.n} | ${pct(m.wilson95[0])} – ${pct(m.wilson95[1])} | ${m.objective.toFixed(3)} | ${m.corrupted.toFixed(1)} | ${m.rounds.toFixed(1)} | ${m.firstDeath.toFixed(1)} |`)
+  row(`optimisée : ${v.best.options.map(o => `\`${o}\``).join(', ')}${b.variants ? ' (+ variantes)' : ''}${b.theta?.accepted ? ' (+ θ)' : ''}`, v.best.metrics)
+  if (!v.same) row(`référence : ${v.reference.options.map(o => `\`${o}\``).join(', ')}`, v.reference.metrics)
+  L.push('')
+  if (!v.same) L.push(`Différence appariée (optimisée − référence) : objectif ${signed(v.paired.diff)} ± ${v.paired.se.toFixed(3)} (z ${v.paired.z.toFixed(2)}), victoires ${signed(100 * v.paired.winDiff, 1)} points. Retenue : **${v.chosen === 'best' ? 'configuration optimisée' : 'référence (gain non confirmé)'}**.`, '')
+  else L.push('La meilleure configuration est la référence (builds par défaut).', '')
+  for (const n of b.notes) L.push(`- ${n}`)
+  if (b.notes.length) L.push('')
+}
 
 /** Rendu Markdown (français) d'un rapport. */
 export function renderMarkdown(r: OptimizationReport): string {
@@ -360,6 +441,11 @@ export function renderMarkdown(r: OptimizationReport): string {
   L.push(`# ${r.title}`, '')
   if (r.createdAt) L.push(`*Généré le ${r.createdAt}* — scénario \`${r.scenarioId}\`, mode \`${res.mode}\`, ${res.n} combats.`, '')
   else L.push(`Scénario \`${r.scenarioId}\`, mode \`${res.mode}\`, ${res.n} combats.`, '')
+  if (r.composition?.kind === 'user') {
+    L.push(`**Composition choisie par l’utilisateur** : ${r.composition.classes.join(', ')}${r.composition.file ? ` (\`${r.composition.file}\`${r.composition.decidedAt ? `, décision du ${r.composition.decidedAt}` : ''})` : ''}.${r.builds ? ' Les classes ne sont pas optimisées : le simulateur cherche les builds (preset, stuff, exos, points, variantes de sorts) et la stratégie de combat pour cette composition.' : ''}`, '')
+  } else if (r.composition?.kind === 'search') {
+    L.push('**Composition cherchée automatiquement** (commande `team`, opt-in) : la composition est normalement choisie par l’utilisateur (`data/teams/<scénario>.json`, `--classes`).', '')
+  }
   L.push('## Résultat', '')
   L.push(`| Taux de victoire | IC 95 % (Wilson) | Objectif moyen | Tours moyens | Morts moyennes | PV restants (p10) | Heures utilisées |`)
   L.push('|---|---|---|---|---|---|---|')
@@ -377,15 +463,21 @@ export function renderMarkdown(r: OptimizationReport): string {
   const tac = Object.entries(res.tactics).sort((a, b) => b[1] - a[1])
   L.push(`Tactiques utilisées : ${tac.length ? tac.map(([k, v]) => `${k} ×${v}`).join(', ') : 'aucune'} ; coups créatifs : ${res.creativeActions} ; effets non simulés rencontrés : ${res.unknownEffects} ; nœuds simulés : ${res.nodes}.`, '')
 
+  // Build retenu de chaque membre (rapports d'`optimize` ; repli sur la section des builds pour un JSON plus ancien).
+  const buildIdOf = (m: ReportMember, i: number): string | undefined => {
+    const id = m.buildId ?? r.builds?.slots[i]?.chosen
+    return id && id !== m.presetId ? id : undefined
+  }
   L.push('## Équipe', '')
   L.push('| Personnage | Classe | Preset | Rôle | Élément | PA/PM/PO | PV | Carac. principale | CC | Puissance |')
   L.push('|---|---|---|---|---|---|---|---|---|---|')
-  for (const m of r.team) {
-    L.push(`| ${esc(m.name)} | ${esc(m.className)} | \`${m.presetId}\` | ${m.role ?? ''} | ${m.element ?? ''} | ${m.stats.ap}/${m.stats.mp}/${m.stats.range} | ${m.stats.hp} | ${m.stats.mainStat} ${m.stats.mainValue} | ${m.stats.critical} | ${m.stats.power} |`)
+  for (const [i, m] of r.team.entries()) {
+    L.push(`| ${esc(m.name)} | ${esc(m.className)} | \`${buildIdOf(m, i) ?? m.presetId}\` | ${m.role ?? ''} | ${m.element ?? ''} | ${m.stats.ap}/${m.stats.mp}/${m.stats.range} | ${m.stats.hp} | ${m.stats.mainStat} ${m.stats.mainValue} | ${m.stats.critical} | ${m.stats.power} |`)
   }
   L.push('')
-  for (const m of r.team) {
-    L.push(`### ${m.name} — ${m.className} (${m.presetLabel ?? m.presetId})`, '')
+  for (const [i, m] of r.team.entries()) {
+    const b = buildIdOf(m, i)
+    L.push(`### ${m.name} — ${m.className} (${m.presetLabel ?? m.presetId}${b ? ` — build \`${b}\`` : ''})`, '')
     L.push('| Emplacement | Objet | Niv. | Panoplie | Forgemagie |')
     L.push('|---|---|---|---|---|')
     for (const it of m.items) L.push(`| ${it.slot} | ${esc(it.name)}${it.passiveUnsimulated ? ' ⁽¹⁾' : ''} | ${it.level} | ${esc(it.set ?? '')} | ${it.forgemagie.join(', ')} |`)
@@ -410,6 +502,8 @@ export function renderMarkdown(r: OptimizationReport): string {
   if (r.plan.cheapHours) L.push(`Heures bon marché pour le Vortex (coût PVe, table de repli) : ${r.plan.cheapHours.join(', ')}.`, '')
   for (const d of r.plan.doctrine) L.push(`- ${d}`)
   if (r.plan.doctrine.length) L.push('')
+
+  if (r.builds) renderBuilds(r.builds, L)
 
   const changes = Object.entries(r.theta.changes)
   L.push('## Paramètres de stratégie θ', '')

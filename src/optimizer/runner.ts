@@ -430,6 +430,11 @@ function summarize(p: Prepared, seed: number, s: ScenarioSummary): FightSummary 
   const st = p.controllers.stats()
   const spellUse: Record<number, number> = {}
   for (const k of Object.keys(p.spellUse).map(Number).sort((a, b) => a - b)) spellUse[k] = p.spellUse[k]
+  // Première mort d'un personnage (registre public des morts, ordre chronologique).
+  const firstDeath = (fight.deaths ?? []).find(d => {
+    const v = fight.fighters[d.fighter]
+    return v?.team === p.playerTeam && v.kind === 'player'
+  })
   return {
     seed,
     variant: p.variant,
@@ -452,6 +457,7 @@ function summarize(p: Prepared, seed: number, s: ScenarioSummary): FightSummary 
     unknownEffects: fight.unknownEffects ?? 0,
     nodes: st.nodes,
     eventsHash: fightDigest(fight),
+    ...(firstDeath ? { firstDeathRound: firstDeath.round } : {}),
   }
 }
 
