@@ -28,7 +28,8 @@
   l'équipe méta) corrompent **2,9 monstres de moins** qu'un Crâ Feu + un Crâ Terre (6,84 contre 9,78, ± 1,65, n = 32)
   et ne gagnent jamais ; toutes les paires qui contiennent un Crâ Terre font 8,3 à 10,1 corrompus, toutes celles qui
   n'en ont pas 6,0 à 7,5 (n = 32). La Terre est l'élément faible des **Méjaires** (−14 %, auteurs du *Pacifiste*) et presque
-  neutre sur les Brabuzars (3 %) ; les deux Crâs Terre infligent chacun 10 000 à 13 000 dégâts par combat aux Méjaires.
+  neutre sur les Brabuzars (3 %) ; les deux Crâs Terre infligent chacun 11 000 à 13 800 dégâts par combat aux Méjaires
+  (voir la Vérification : la paire Terre fait aussi plus de dégâts aux Harpilles).
 - **Comparaison avec l'équipe de référence hors composition** R (Crâ Feu / Enutrof / Iop Terre déf. / Eniripsa, la
   meilleure équipe des campagnes précédentes) sur les 88 graines communes : la composition de l'utilisateur, bien
   construite, fait **mieux** que R : +2,30 ± 1,11 corrompus, +3,8 ± 2,1 tours, 7 victoires contre 0.
@@ -639,3 +640,105 @@ cumulés par tour : 0, 0, 0, 0, 1, 1, 2, 3, 3, 3, 3, 4, 4, 6, 6, 7, 7, 7, 8, 8, 
   d'échec, graines gagnantes), builds de l'équipe recommandée, séquence par vague.
 - `.cache/userteam/` (hors dépôt) : harnais, résultats bruts (`out/<bras>/ms<masterSeed>.c<k>.jsonl`), sorties de
   l'optimiseur (`opt/`), replays (`rep/`, `best-replay-*.json`), séquences (`seq/`).
+
+## Vérification (vérificateur adverse, 2026-10-06)
+
+*Section en cours de rédaction : la mesure (b) sur graines fraîches tourne (`.cache/verify-userteam/`) ; (a), (c) et (d)
+sont terminés.*
+
+### (a) Validité en jeu des 7 stuffs ajoutés et diff de `presets.json`
+
+Recalcul indépendant (`.cache/verify-userteam/valid/validate-indep.mts`, copie étendue du validateur de
+docs/reports/vortex-stuffs.md) à partir des données brutes seules (`data/dofusdb/equipment.json`, `item-sets.json`,
+`breeds.json`, `data/research/characteristics-map.json`, `forgemagie.json`), puis comparaison avec `computeBuildStats` :
+**les 7 stuffs ajoutés sont valides, ainsi que les 8 autres stuffs Vortex du tableau « Candidats »** (dont
+`vortex_enutrof_eau` et `vortex_eniripsa_feu` de l'équipe recommandée), sans aucun écart de caractéristique avec
+`computeBuildStats`.
+
+- Emplacements : 1 objet par emplacement, 2 anneaux différents, 6 Dofus / trophées / prysmaradites, 1 familier ou
+  monture ; tous les objets de niveau ≤ 200 ; aucun Dofus ni trophée en double ; exactement 1 prysmaradite par stuff ;
+  pas deux trophées de la même famille (Impétueux + Arcaniste dans `vortex_cra_terre_mono_off`).
+- Conditions : la seule est `CA>299&CS>299` (Baguette de Torkélonia, `vortex_cra_terre_mono_off`) : vraie sur l'état
+  final (Agilité 500, Force 1 168) et aussi sans les lignes de la baguette elle-même (Agilité 440, Force 1 108).
+- Panoplies : palier appliqué au nombre réel d'objets ; elles correspondent toutes au tableau « Candidats ».
+- Forgemagie : au plus 1 ligne par objet (jamais exo + transcendance sur le même objet) ; exos limités à PA, PM, PO,
+  **un seul de chaque par personnage**, jamais sur un objet qui porte déjà la ligne (positive ou négative), et chacun
+  nécessaire (sans lui : 11 PA, 5 PM ou 5 PO ; pas d'exo PO quand le stuff a déjà 6 PO) ; chaque transcendance est une
+  rune réelle (Ta Do Per So, Rata Vi, Pata Ré Pou, Pata Do Cri, Rata So, Ta Ré Per Eau), de niveau ≤ celui de l'objet,
+  densité de ligne ≤ 100 ; 6 transcendances par stuff ; aucune forgemagie sur un Dofus, trophée, familier ou monture.
+- Points : 995 / 995 dépensés selon les paliers de `breeds.json` (Force/Agilité 398 = 992 points + 3 Vi ; 200 = 300 points
+  + 695 Vi) ; parchemins +100 dans les six caractéristiques.
+- Valeurs : PV, PA/PM/PO, % résistances, Ré Pou, Ret PM, points et panoplies du tableau « Candidats » identiques au
+  recalcul pour les 15 lignes ; les 7 stuffs sont exactement les meilleurs stuffs des sorties de l'optimiseur
+  (`.cache/userteam/opt/*.json`, mêmes objets, mêmes points) et le tableau des proxys (départ → retenu) y correspond.
+- `git diff base-userteam -- data/ai/presets.json` : **ajouts seulement**. Comparaison sémantique : les 48 stuffs et
+  91 presets du tag sont identiques et dans le même ordre (la seule ligne « supprimée » du diff textuel est la ligne de
+  `steamer_soutien_vortex_off`, réécrite avec une virgule finale) ; 7 stuffs et 7 presets dérivés ajoutés, sans doublon
+  d'identifiant ; chaque preset dérivé `extends` un preset de base existant de la même classe et du même élément que
+  son stuff. `simulate.ts presets` les liste tous « OK », 12 PA / 6 PM / 6 PO.
+
+### (c) Tableaux du rapport contre les données brutes
+
+Recalcul indépendant (`.cache/verify-userteam/check/tables.py`, sans `ana.cjs`) à partir de
+`.cache/userteam/out/*/*.jsonl` : **les 7 tableaux de mesures (criblage, variantes, Jugement 64, halving 64 / 128 / 256,
+comparaison avec R) concordent cellule par cellule** (495 cellules : n, victoires et IC de Wilson, corrompus t13 / t19 /
+total, tours, premier mort, différences appariées ± IC, Pacifiste, poussées, dégâts infligés et subis). Les 46 lignes
+correspondantes de `docs/reports/vortex-equipe-utilisateur.json` concordent aussi. Vérifiés également
+(`check/claims.py`) : 15 victoires / 256 dont 7 sans mort, tour de victoire moyen 46,4, 19 combats à 19 / 19 (15
+victoires + 4 limites de tours avec 2-3 morts), répartition des corrompus (35 / 115 / 68 / 17 / 21), causes d'échec
+(174 « vagues non corrompues », 49 submersions), corrompus par vague (3,00 / 3,63 / 1,86 / 0,80 / 0,36), liste des 15
+graines gagnantes, tableaux par personnage et par source de dégâts (Brabuzar 17 799 dont 9 575 poussées / 8 224
+*Neutralisation* ; Harpille 11 331 dont 5 529 poison), victoires discordantes Terre + Terre / recommandée (10 / 13 / 2),
+7 victoires contre 0 face à R sur les 88 graines communes, volume (1 600 combats hors R, dont 32 repris). Les 8
+bascules de variantes changent bien la paire annoncée (bit du preset `cra_terre_mono` inversé sur le bon membre), et les
+tableaux de builds de l'équipe recommandée listent exactement les objets et la forgemagie des stuffs.
+
+Seule imprécision trouvée : « les deux Crâs Terre infligent chacun 10 000 à 13 000 dégâts par combat aux Méjaires » —
+les données donnent 11 063 à 13 754 (Terre + Terre et recommandée, 224 combats avec ce détail) ; corrigé dans le
+résumé.
+
+### (d) Tests
+
+`npx tsc --noEmit` : propre. `npx vitest run tests/opt-* tests/stats-* tests/data-*` : **28 fichiers, 313 tests, tous
+verts** (8 min 17 s, 1 processus) ; l'arbre de travail est inchangé après les tests.
+
+### (b) Nouvelle mesure sur graines fraîches
+
+**Protocole.** Arbre figé `.cache/verify-userteam/tree` = `git archive HEAD` (2952f45 : `src/`, `data/` complets) ;
+`src/ai`, `src/engine`, `src/dungeons` et `data/ai/presets.json` y sont identiques à l'arbre de la campagne (diff vide).
+Harnais indépendant `.cache/verify-userteam/run.mts` : `runOne` du dépôt (`record: false`), mesures lues uniquement dans
+`FightSummary` (victoire, tours, `firstDeathRound`, `corruptedByRound`) et dans le résumé officiel du scénario
+(`extra.corrupted`, égal au dernier `corruptedByRound` dans 100 % des combats) — sans le décodage d'événements de
+`.cache/userteam/run.mts`. IA `fast`, variante `default`, θ par défaut, ordre des membres de la campagne (Crâ A,
+Enutrof, Crâ B, Eniripsa). Graines `campaignSeeds(81..88, 32)` = 256 graines **jamais jouées** (intersection vide avec
+toutes les graines de `.cache/userteam` et `.cache/compo`, et aucune n'apparaît dans `docs/` ni `.cache/`). Mêmes
+graines pour tous les bras (appariement), 3 processus. Contrôle : la graine 963351236 rejouée par ce harnais donne la
+même victoire au tour 42 sans mort, même `eventsHash` (458909491) que la CLI.
+
+Différences appariées avec la recommandée ± demi-largeur de l'IC 95 % ; « 1er mort » = tour de fin si personne ne meurt.
+
+| Bras | n | Victoires [IC 95 % Wilson] | Corr. t13 | Corr. t19 | Corr. total | Tours survécus | 1er mort | Victoires discordantes (bras / réf., McNemar) |
+|---|---|---|---|---|---|---|---|---|
+| **Crâ Terre + Crâ Terre (déf.)** — recommandée | 256 | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 4,79 | 6,77 | 9,38 | 30,81 | 22,88 | — |
+| Crâ Terre + Crâ Terre | 256 | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 4,95 (+0,16 ± 0,16) | 6,96 (+0,19 ± 0,18) | 9,42 (+0,04 ± 0,60) | 30,15 (−0,66 ± 1,18) | 20,89 (−1,99 ± 0,95) | 10 / 10 (p = 1,00) |
+| Crâ Feu + Crâ Terre (déf.) | 256 | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 4,54 (−0,25 ± 0,16) | 6,51 (−0,26 ± 0,18) | 8,75 (−0,64 ± 0,60) | 29,80 (−1,01 ± 1,16) | 21,28 (−1,60 ± 1,00) | 10 / 10 (p = 1,00) |
+
+Lecture :
+
+- **Taux de victoire vérifié de l'équipe recommandée : 10 / 256 = 3,9 % [IC 95 % Wilson 2,1 % – 7,0 %]** (6 des 10
+  victoires sans mort). Le 5,9 % [3,6 – 9,4 %] du rapport est mesuré sur les graines qui ont servi à choisir l'équipe
+  (biais de sélection entre deux bras à égalité) ; l'écart 15 / 256 contre 10 / 256 n'est pas significatif (z = 1,03,
+  p = 0,31) et les moyennes concordent (corrompus 9,38 contre 9,65, tours 30,8 contre 31,3, premier mort 22,9 contre
+  22,8). Toutes graines confondues (512) : 25 / 512 = 4,9 % [3,3 – 7,1 %].
+- **Les trois bras gagnent exactement autant** (10 / 256 chacun ; victoires discordantes 10 / 10) : aucune
+  différence de victoires n'est mesurable entre eux à 256 graines.
+- **Terre + Terre (déf.) contre Terre + Terre** : corruption finale identique (+0,04 ± 0,60), comme dans le rapport
+  (−0,11 ± 0,60) ; Terre + Terre corrompt un peu plus tôt (+0,16 ± 0,16 au tour 13, +0,19 ± 0,18 au tour 19, à la limite
+  de la significativité, même signe que dans le rapport) ; la recommandée **retarde le premier mort de 1,99 ± 0,95
+  tour** (rapport : +1,54 ± 0,96) — l'argument de départage du rapport se confirme, sur les deux moitiés des graines
+  (+1,55 ± 1,42 sur 81-84, +2,43 ± 1,27 sur 85-88).
+- **Crâ Feu + Crâ Terre (déf.)**, la paire écartée au halving 64 alors qu'elle devançait la référence Feu + Terre
+  (+0,39 ± 1,22, voir plus bas) : **−0,64 ± 0,60 corrompu** et premier mort −1,60 ± 1,00 face à la recommandée (−0,67
+  ± 0,57 face à Terre + Terre) ; l'écart est net sur la première moitié des graines (−1,16 ± 0,85) et nul sur la seconde
+  (−0,11 ± 0,83). Deux Crâs Terre restent donc devant un Crâ Feu + un Crâ Terre, mais de ≈ 0,6 corrompu, pas de 1,1
+  comme Terre + Terre contre Feu + Terre (équilibré) dans le rapport.
