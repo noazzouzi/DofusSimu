@@ -20,6 +20,9 @@
  *      de l'étoile positif en `standard` : la référence « sans tuer m » du `SearchPricer` exclut les morts improbables)
  *  P18 monstre neuf à 900 PV à 3 cases, kill bien payé à l'heure courante                → marqué (sans indice « kill
  *      payé » hors contrat : essai KH retiré à la vérification du tour 2)
+ *  P20 zombie à 500 PV dont le créneau est PASSÉ dans ce cycle, kill hors étoile payé +600 → épargné (il revient au tour
+ *      du Vortex avec ses PV de résurrection : re-kill sans tempo, θ.vortex.zombieRezDebit, tuning-log tour 5) ; ablation
+ *      sans le débit : tué. P20b : même scène avec un zombie qui joue AVANT le Vortex (le kill lui retire son tour) → tué
  *
  * Prix : P4, P5 (fast), P7 et P12 utilisent les prix publiés par le modèle. Là où le puzzle suppose une décision
  * stratégique donnée (contrat de corruption de P5 et P16 en `standard`, contrat « glyphe puis kill » de P6, interdiction
@@ -33,7 +36,7 @@ import { createMonsterBrain } from '../src/ai/monster/brain'
 import { createPerception, createView, type PerceptionX } from '../src/ai/core'
 import { createTeamController } from '../src/ai/team/controller'
 import type { Blackboard } from '../src/ai/types'
-import { IKARGN, VORTEX_DEFAULT_PARAMS } from '../src/dungeons/vortex/constants'
+import { IKARGN, MEJAIRE, VORTEX_DEFAULT_PARAMS } from '../src/dungeons/vortex/constants'
 import {
   currentHour, deathHours, forecastHours, hasStar, isWaveMonster, lineCells, nextVortexSlot,
 } from '../src/dungeons/vortex/clock'
@@ -324,6 +327,57 @@ describe('puzzles du Vortex (modèle WP3 réel)', () => {
     }, 120_000)
   }
 
+  // Tour 5 du réglage : re-kill d'un zombie hors étoile qui ne lui retire aucun tour (son créneau est passé dans ce cycle) :
+  // V(s) gagnait pente × PV retirés (≈ +500) + kill[h], alors que le zombie revient au tour du Vortex avec 20-30 % de ses
+  // PV de base (1 320 ici) et une heure de mort de plus ; `deathValue` débite désormais pente × PV de résurrection.
+  // Ordre de jeu (graine 5) : Ikargn > Crâ > Méjaire > … > Vortex — l'Ikargn a déjà joué quand le Crâ joue, la Méjaire non.
+  for (const mode of MODES) {
+    for (const debit of [1, 0]) {
+      it(`P20 (${mode}${debit ? '' : ', ablation sans débit'}) : zombie dont le créneau est passé, kill hors étoile payé — ${debit ? 'épargné' : 'tué'}`, () => {
+        const sc = vortexScene()
+        sc.turnOf(sc.cra, 1)
+        sc.engine.kill(sc.fight, sc.ika, sc.cra) // heure de mort I ; zombie au tour du Vortex
+        sc.turnOf(sc.cra, 2)
+        const hour = currentHour(sc.fight)
+        expect(sc.ika.alive && deathHours(sc.ika) !== 0 && !hasStar(sc.ika)).toBe(true)
+        const slots = forecastHours(sc.fight, 2, VORTEX_DEFAULT_PARAMS)
+        expect(slots.slice(1, nextVortexSlot(slots, 1)).some(x => x.fighterId === sc.ika.id)).toBe(false)
+        bring(sc, sc.ika, sc.cra, 500)
+        const ika = sc.ika.id
+        // Prix du kill à l'heure courante imposé positif (+600, indice `kill`) : seul le débit de résurrection peut l'écarter.
+        const model = withContract(vortexModel(loadTheta({ vortex: { zombieRezDebit: debit } })), bb => {
+          const row = bb.prices.kill.get(ika)
+          if (row) row[hour] = 600
+        }, [{ kind: 'kill', targetId: ika, weight: 600 }])
+        const d = decide(sc.as(sc.cra), mode, { scenario: model, seed: 5 })
+        const keys = d.plan.actions.map(a => a.key).join(' | ')
+        const s = play(sc, sc.cra, d.plan.actions, 'average')
+        expect(s.fighters[ika].alive, keys).toBe(debit === 1)
+      }, 120_000)
+    }
+
+    it(`P20b (${mode}) : zombie qui joue avant le Vortex, kill hors étoile payé — tué (le kill lui retire son tour)`, () => {
+      const sc = vortexScene()
+      const mej = sc.fight.fighters.find(f => f.monsterId === MEJAIRE && f.alive)!
+      sc.turnOf(sc.cra, 1)
+      sc.engine.kill(sc.fight, mej, sc.cra)
+      sc.turnOf(sc.cra, 2)
+      const hour = currentHour(sc.fight)
+      expect(mej.alive && deathHours(mej) !== 0 && !hasStar(mej)).toBe(true)
+      const slots = forecastHours(sc.fight, 2, VORTEX_DEFAULT_PARAMS)
+      expect(slots.slice(1, nextVortexSlot(slots, 1)).some(x => x.fighterId === mej.id)).toBe(true)
+      bring(sc, mej, sc.cra, 500)
+      const model = withContract(vortexModel(), bb => {
+        const row = bb.prices.kill.get(mej.id)
+        if (row) row[hour] = 600
+      }, [{ kind: 'kill', targetId: mej.id, weight: 600 }])
+      const d = decide(sc.as(sc.cra), mode, { scenario: model, seed: 5 })
+      const keys = d.plan.actions.map(a => a.key).join(' | ')
+      const s = play(sc, sc.cra, d.plan.actions, 'average')
+      expect(s.fighters[mej.id].alive, keys).toBe(false)
+    }, 120_000)
+  }
+
   it('P16 (standard) : corruption — deux sorts sûrs plutôt qu\'un sort qui ne tue que sur coup critique', () => {
     const sc = vortexScene()
     sc.turnOf(sc.cra, 1)
@@ -409,3 +463,4 @@ describe('puzzles du Vortex (modèle WP3 réel)', () => {
     expect(hitters.size).toBeGreaterThanOrEqual(2)
   }, 300_000)
 })
+

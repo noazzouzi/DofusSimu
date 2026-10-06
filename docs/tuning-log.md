@@ -1124,3 +1124,195 @@ Moyennes (n = 192) : équipe stuffée avant 26,77 tours, corrompus 2,27 / 4,48 /
   Vortex), à valider sur les combats qui atteignent 17 corrompus ; GKL : ne pas inscrire ses nœuds dans `seen` / ne la
   lancer que si le pas de kill de la ligne directe fait baisser V ; mesurer l'équipe avec l'Iop défensif comme référence
   (seule source de victoires mesurée) et juger les victoires sur n ≥ 384.
+
+## Tour 5
+
+### Protocole
+
+- Référence « avant » : tag git `base-tuning-r5` (= commit 42b60a6, aucun écart avec HEAD au début du tour). Équipe CHOISIE
+  PAR L'UTILISATEUR, `data/teams/vortex.json` dans l'ordre du fichier (Eniripsa `eniripsa_soin_vortex`, Enutrof
+  `enutrof_retrait_pm_vortex`, Crâ `cra_terre_mono_vortex`, Crâ `cra_terre_mono_vortex_def`) ; IA `fast`, variante
+  `default`, règles 2.42 (docs/research/vortex-audit.md). Ni l'équipe, ni les presets, ni les règles ne sont touchés.
+- Entrées : trois analyses indépendantes de l'IA sur cette équipe (`.cache/tuning/r5/analysis-waves/`,
+  `analysis-pacifiste/`, `analysis-survival/` : replays avec `aiNote`, prototypes, criblages de 32 à 254 graines).
+- Harnais `.cache/tuning/r5/tune/` (hors dépôt) : `mktree.sh` (arbre figé = `git archive base-tuning-r5`), `mkvar.sh`
+  (arbre figé + fichiers vivants), `run.mts` (un combat par graine ; équipe = `vortex.json` de l'arbre ; mêmes champs
+  que `.cache/verify-userteam/run.mts` — corrompus officiels, `eventsHash` — plus morts, *Action !* et survivants,
+  lancers de Mot de Reconstitution, Pacifiste posé par l'équipe sur un allié, part des tours pacifiés à partir du tour
+  13), `batch.sh` (4 processus, reprise sur les graines déjà jouées), `queue.sh` (file de bras), `pair.cjs` (Δ apparié
+  ± IC 95 %, victoires avec IC de Wilson, paires discordantes et McNemar exact, découpage par `masterSeed`), `mech.mts`
+  (re-kills de zombies par les joueurs : étoile, tour retiré ou non). Résultats bruts : `out/<bras>/*.jsonl` ; notes de
+  reprise : `NOTES.txt`.
+- Contrôles : l'arbre figé reproduit à l'empreinte près la ligne ORD de la vérification de l'équipe (graine 49482207) ;
+  les arbres de variantes reproduisent les combats des analystes (RECON30 : 3596196518 ; ZREZ2 : 1009030989).
+- Graines (aucune déjà jouée par les tours précédents, la campagne de l'équipe ou les analystes — `masterSeed` 1-8,
+  31-36, 51-58, 81-88, 101-103) : **V** = `campaignSeeds(141..144, 32)` (128 graines, décision par changement) ;
+  **F** = `campaignSeeds(151..158, 32)` (256 graines, mesure finale appariée) ; fumée `standard` : 3 premières graines
+  de `masterSeed` 145.
+- **Constat de mesure.** La corrélation entre la référence et une variante sur la même graine est presque nulle :
+  ρ = 0,18 (corrompus), 0,10 (tours), 0,11 (premier mort), 0,17 (victoire) ; au mieux 7 combats sur 128 restent
+  identiques. L'appariement ne réduit donc presque pas le bruit : à n = 128, IC 95 % ≈ ± 0,9 corrompu, ± 1,9 tour,
+  ± 1,4 tour de premier mort, ± 5 points de victoires ; à n = 256 : ± 0,6 / ± 1,3 / ± 0,95. Seul « corrompus au tour
+  13 » (± 0,2) détecte un effet de 0,2-0,3. Le jeu V est en outre « chanceux » pour la référence (13 victoires / 128,
+  10,2 %, contre 4,3-4,7 % sur ORD et F) : n'importe quelle variante y perd des victoires par simple régression vers la
+  moyenne (attendu sous l'hypothèse nulle ≈ +6 / −12) ; les victoires se jugent donc sur F et sur V + F.
+- Règle : un changement n'est gardé que s'il va dans le bon sens sur V (128 graines, 4 `masterSeed`) ET sur un second
+  jeu indépendant (criblage de l'analyste), sans dégrader significativement la survie ; le paquet final est mesuré sur F
+  (256 graines inédites).
+
+### Mesure de référence (`base-tuning-r5`, `fast`)
+
+| Métrique | V (`masterSeed` 141-144, n = 128) | F (`masterSeed` 151-158, n = 256) |
+|---|---|---|
+| Victoires | 13 / 128 = 10,2 % [6,0 – 16,6] | 12 / 256 = 4,7 % [2,7 – 8,0] |
+| Corrompus (total) / tour 13 / 19 / 25 | 10,44 / 4,81 / 6,91 / 8,73 | 9,50 / 4,80 / 6,84 / 8,47 |
+| Tours survécus | 32,66 | 31,13 |
+| Premier mort (tour) | 24,18 | 22,32 |
+| Morts | 3,59 | 3,82 |
+| *Action !* (19 / 19) | 16 (12,5 %), 13 gagnés | 14 (5,5 %), 12 gagnés |
+| Causes d'échec | vague non corrompue 89, submersion 15, croix 8, limite 3 | vague non corrompue 172, submersion 47, croix 16, défaite 5, limite 3, burst raté 1 |
+| Tours pacifiés (tour ≥ 13) | 26 % | 28 % (Eniripsa 29, Crâ 22, Enutrof 23, Crâ déf. 29) |
+
+### Propositions reçues et fusion
+
+| Proposition (analyste) | Bras de ce tour | Statut |
+|---|---|---|
+| ZREZ2 : débiter les PV de résurrection d'un re-kill de zombie hors étoile qui ne lui retire aucun tour (vagues 1) | `zrez2` | **gardé** |
+| Bandes de pré-dégâts à 0,45-0,55·E au lieu de 0,8·E, avec ZREZ2 (vagues 2) | `zrez2band` (0,5) | rejeté (n'ajoute rien) |
+| Variante : débiter TOUS les re-kills hors étoile (ZREZ de l'analyste) | `zrezall` | rejeté (survie) |
+| Auto-pacification : Boîte à Outils / Corruption sur un allié non pacifié (pacifiste 1 + survie 3, fusionnées) | `selfpac` (cause racine dans la valeur) | rejeté |
+| Mot de Reconstitution réservé aux alliés < 30 % PV (survie 1, RECON30) | `recon` | rejeté |
+| Focus des Méjaires jamais tuées ×1,6 (pacifiste 2, MF16) | `mf16` | rejeté (survie) |
+| Limite de 60 tours portée à 80 (survie 2) | — | hors périmètre (règle du scénario, `constants.ts`) ; à décider par l'utilisateur |
+| Placement anti-Heuristique en phase 2 (pacifiste 3) ; « sauvetage » d'étoile par la glyphe (vagues 3) ; réalisme du suivi (vagues 4) ; coût de file dans `futureOf` (vagues 5) ; menace d'une Méjaire pacifiée (pacifiste 4) ; `deathRisk` sans Pacifiste (pacifiste 5) ; collisions du Brabuzar (survie 4) ; risque par exposition (survie 5, mesuré neutre par l'analyste) | — | non essayés (effets attendus < 0,5 corrompu, sous le seuil mesurable ; risques élevés pour vagues 5) |
+| KITE, LOCK / LOCK0, PCAL (pacifiste 6-7) ; tactiques de phase 2 (survie 6) | — | non poursuivis (négatifs ou neutres chez l'analyste) |
+
+### Expériences (V, n = 128, appariées sur `base-tuning-r5`)
+
+| Bras | Victoires (Wilson) | Corr. total | Corr. t13 | Corr. t19 | Corr. t25 | Tours | Premier mort | Morts | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| Référence | 13 (10,2 % [6,0-16,6]) | 10,44 | 4,81 | 6,91 | 8,73 | 32,66 | 24,18 | 3,59 | |
+| `recon` (RECON30) | 6 (+4 / −11, p = 0,12) | −0,77 ± 0,85 | −0,13 ± 0,22 | −0,01 | −0,26 ± 0,42 | −0,78 ± 1,89 | −1,06 ± 1,31 | +0,20 ± 0,23 | Reconstitution 3,0 → 0,8 / combat |
+| **`zrez2`** | 10 (+8 / −11) | **+0,34 ± 0,95** | **+0,25 ± 0,21** | +0,16 ± 0,26 | +0,38 ± 0,46 | +0,02 ± 1,96 | −0,24 ± 1,46 | +0,08 ± 0,26 | |
+| `selfpac` | 10 (+5 / −8) | −0,53 ± 0,67 | +0,03 ± 0,14 | +0,05 | −0,05 ± 0,34 | −1,08 ± 1,47 | −0,90 ± 1,12 | +0,12 ± 0,19 | Boîte à Outils sur un joueur 1,47 → 0,62 / combat |
+| `zrez2band` | 10 (+8 / −11) | +0,30 ± 0,92 | +0,30 ± 0,25 | +0,29 ± 0,28 | +0,45 ± 0,47 | −0,16 ± 1,76 | −0,30 ± 1,52 | +0,13 ± 0,25 | contre `zrez2` : +0,05 / +0,13 / +0,07 (t13 / t19 / t25), corr. −0,04 |
+| `mf16` | 5 (+4 / −12, p = 0,08) | −0,19 ± 0,96 | +0,04 | +0,13 | +0,19 | −0,77 ± 2,06 | **−2,01 ± 1,39** | +0,22 ± 0,23 | submersions 15 → 24 |
+| `zrezall` | 5 (+5 / −13, p = 0,10) | −0,79 ± 1,03 | +0,19 ± 0,22 | −0,09 | −0,30 ± 0,51 | −1,04 ± 2,09 | **−1,70 ± 1,66** | **+0,24 ± 0,24** | contre `zrez2` : corr. **−1,13 ± 0,94**, t25 **−0,68 ± 0,48**, premier mort **−1,46 ± 1,43** |
+
+Lecture des bras :
+
+- **RECON30** (filtre de `generate.ts` : pas d'Insoignable ≥ 2 tours sur un allié à ≥ 30 % PV ; θ `team.incurableHpMax`
+  dans l'arbre d'essai). L'analyste mesurait +21 / −7 victoires et +0,51 corrompu sur 254 graines (ORD 81-86 + TTd 85-86,
+  référence à 3,1 % de victoires, donc « malchanceuse »), mais déjà −0,66 sur ms 85-86. Sur les graines inédites V :
+  tout est négatif, morts +0,20. Cumul 382 graines : corrompus ≈ +0,1, victoires 21 → 28 (non significatif). Non
+  confirmé ⇒ **rejeté**.
+- **SELFPAC** (cause racine de l'auto-pacification, `evaluate.ts`) : un Pacifiste posé par l'équipe sur un allié qui
+  pouvait frapper à la racine coûte w_inc·max(pacifistFactor·Pot_racine, part Pacifiste de son incoming) — le même
+  événement qu'une Méjaire qui le pacifierait à coup sûr. Le mécanisme bouge (Boîte à Outils sur un joueur 1,47 → 0,62 /
+  combat ; graine-sonde 1531215875 : 4 → 0) mais tout le reste baisse (tours −1,1, premier mort −0,9) ; le filtre brut
+  de l'analyste (BOITE, n = 32) donnait déjà −0,68. Les +3 PA / +3 PM de la Boîte servent (fuite, glyphes, soins de
+  l'Eniripsa) plus que le Pacifiste ne coûte. **Rejeté** ; ni filtre ni coût.
+- **MF16** (pente ×1,6 sur une Méjaire jamais tuée) : premier mort −2,0 ± 1,4 (significatif), submersions +9 : les
+  dégâts quittent Harpilles et Brabuzars. **Rejeté** (comme au tour 4 avec l'ancienne équipe).
+- **ZREZ « tout »** (débit sur tout re-kill hors étoile, même s'il retire un tour au zombie) : la corruption précoce
+  monte encore (t13 +0,19) mais la survie s'effondre (morts +0,24, premier mort −1,7) et le total recule de 1,1 par
+  rapport à ZREZ2 : **le tour retiré à un zombie protège l'équipe** ; le test de créneau de ZREZ2 est indispensable.
+- **Bandes à 0,5·E avec ZREZ2** : identiques à ZREZ2 (écarts < 0,15) ⇒ **rejeté** (complexité sans effet).
+
+### Mécanisme de ZREZ2 (`mech.mts`, 32 graines de `masterSeed` 141)
+
+| Par combat (joueurs) | Référence | ZREZ2 |
+|---|---|---|
+| Re-kills de zombie hors étoile qui lui retirent un tour | 7,44 | 7,66 |
+| Re-kills de zombie hors étoile qui ne lui retirent AUCUN tour | **3,75** | **1,03** |
+| Kills de zombie sous étoile (corruptions) | 9,47 | 10,34 |
+
+Le zombie tué « pour rien » revenait au tour du Vortex avec 20-30 % de ses PV de base (1 320-1 980, plus que les
+≈ 700 qu'il avait) et une heure de mort de plus ; ces kills disparaissent aux trois quarts et les PA vont aux kills
+sous étoile.
+
+### Mesure finale (F : `masterSeed` 151-158, n = 256 graines inédites, appariée, `fast`)
+
+« Avant » = `base-tuning-r5` ; « après » = code final du dépôt (= arbre `zrez2` ; empreintes identiques vérifiées sur
+4 graines de F avec un arbre construit depuis les fichiers vivants).
+
+| Métrique | Avant | Après | Δ apparié (IC 95 %) |
+|---|---|---|---|
+| **Victoires** | 12 / 256 = **4,7 %** [2,7 – 8,0] | 14 / 256 = **5,5 %** [3,3 – 9,0] | +12 / −10 (McNemar p = 0,83) |
+| Corrompus (total) | 9,50 | 9,96 | **+0,46 ± 0,61** (+120 / −107) |
+| Corrompus au tour 13 / 19 / 25 | 4,80 / 6,84 / 8,47 | 4,82 / 6,92 / 8,57 | +0,02 ± 0,15 / +0,09 ± 0,18 / +0,09 ± 0,32 |
+| Tours survécus | 31,13 | 31,68 | +0,56 ± 1,32 |
+| Premier mort (tour) | 22,32 | 23,23 | **+0,92 ± 0,95** (+124 / −118) |
+| Morts | 3,82 | 3,75 | −0,08 ± 0,14 |
+| *Action !* (19 / 19) | 14 (5,5 %) | 23 (9,0 %) | +0,04 ± 0,04 (+21 / −12) |
+| Victoires sans mort ; tour moyen des victoires | 3 ; 49,1 | 10 ; 46,8 | |
+| Causes d'échec | vague non corrompue 172, submersion 47, croix 16, défaite 5, limite 3, burst raté 1 | vague non corrompue 181, submersion 41, limite 9, croix 5, défaite 4, burst raté 2 | |
+
+Par `masterSeed` (corrompus) : 151 −0,56, 152 +0,41, 153 +0,44, 154 +2,03, 155 −0,28, 156 +0,28, 157 +0,13,
+158 +1,25 (positif sur 6 / 8). Cumul V + F (n = 384) : victoires 25 → 24, corrompus **+0,42 ± 0,52**, t13
++0,10 ± 0,12, tours +0,38 ± 1,09, premier mort +0,53 ± 0,80, morts −0,03. Avec le criblage de l'analyste
+(`masterSeed` 103, n = 48 : +0,79 ± 1,50, tours +2,7) : **trois jeux de graines indépendants positifs** sur la
+corruption, aucun signal négatif sur la survie. L'effet sur les victoires n'est pas démontré (+2 sur F, −3 sur le jeu
+V « chanceux », −1 au cumul).
+
+Victoire reproductible du code final (perdue par l'avant au tour 30) : graine **632641322**, `npx tsx src/cli/simulate.ts
+fight vortex --ai fast --seed 632641322 --json` ⇒ « Le Vortex est vaincu », tour 42, aucun mort ; replay
+`.cache/tuning/r5/tune/rep/cli-s632641322.json`. Autres victoires de F sans mort : 3779616324 (tour 46), 412077139
+(44 ; gagnée au tour 60 par l'avant), 3395498487 (44).
+
+### Changements gardés (tour 5)
+
+1. `src/dungeons/vortex/model.ts` — **débit de résurrection d'un re-kill de zombie sans tempo** (`rezDebit`, appelé par
+   `deathValue`) : mort d'un zombie (heures de mort ≠ 0) hors étoile, alors que la dernière prévision d'horloge
+   (`lastSlots`) ne lui donne AUCUN créneau avant le prochain tour du Vortex ⇒ prix `kill[m][h]` − θ·pente·PV de
+   résurrection (`resurrection` de `abstract.ts`, heure h ajoutée au masque). Un kill qui retire un tour au zombie garde
+   son prix.
+2. θ `vortex.zombieRezDebit` = 1 (`src/ai/theta.ts`, `data/ai/theta-default.json`) ; 0 rétablit l'ancien comportement
+   (ablation : `--theta θ.json` avec `{"vortex":{"zombieRezDebit":0}}`). Utilisé seulement par le modèle du Vortex (ni
+   le MonsterBrain ni les combats génériques).
+3. `tests/ai-puzzles-vortex.test.ts` — **P20** (`fast` et `standard`) : zombie Ikargn à 500 PV dont le créneau est passé,
+   kill hors étoile imposé à +600 avec indice `kill` ⇒ épargné ; ablation `zombieRezDebit` 0 (= code d'avant) ⇒ tué, ce
+   qui montre que le puzzle discrimine. **P20b** : même scène avec une Méjaire zombie qui joue avant le Vortex ⇒ tuée
+   (pas de débit quand le kill retire un tour).
+
+### Rejetés (code non gardé ; arbres et diffs dans `.cache/tuning/r5/tune/trees/`)
+
+RECON30 (`recon`), cause racine de l'auto-pacification (`selfpac`), MF16 (`mf16`), ZREZ sur tous les re-kills
+(`zrezall`), bandes à 0,5·E (`zrez2band`). Voir le tableau des expériences.
+
+### Vérifications
+
+- `npx tsc --noEmit` vert ; `npx vitest run tests/ai-* tests/vortex-*` : **335 réussis, 1 ignoré** (33 fichiers ; dont
+  `ai-team-control`, puzzles génériques et Vortex, P20 / P20b).
+- Fumée `standard` (3 graines de `masterSeed` 145, avant / après) : aucune erreur ; 0 / 3 victoires dans les deux bras, corrompus 9,3 → 8,3 (3 graines : bruit) ; 60-110 s par combat. ZREZ2 agit aussi en `standard` (P20 `standard`).
+- θ global : la seule clé ajoutée (`vortex.zombieRezDebit`) n'est lue que par `VortexAIModel.deathValue` ; aucune
+  valeur existante de θ n'est modifiée. Ablation exacte : la graine 632641322 rejouée par la CLI avec
+  `{"vortex":{"zombieRezDebit":0}}` redonne le combat d'avant à l'empreinte près (défaite au tour 30, `eventsHash`
+  3782741430, identique à la ligne de la référence F).
+
+### Modes d'échec restants
+
+1. **Vague non corrompue au déverrouillage** (181 / 256 = 71 % après) : les vagues 3-5 se corrompent trop lentement
+   (corrompus 6,9 au tour 19 et 8,6 au tour 25 sur 19) ; c'est la cause d'échec dominante, avant la submersion (41).
+2. **Pacifiste** : 21-28 % des tours de joueur à partir du tour 13 commencent pacifiés (Eniripsa 28 %, Crâ 23 %, Enutrof
+   21 %, Crâ déf. 27 %) ; aucune des corrections de l'IA essayées (ce tour : MF16, auto-pacification ; tour 4 : PCAL,
+   CPAC, SPG, MJ ; analyste : KITE, LOCK) ne le réduit de façon mesurable.
+3. **Fin de partie tardive** : ZREZ2 fait passer les combats à 19 / 19 de 14 à 23 / 256, mais les nouveaux arrivent tard
+   (*Action !* au tour ≈ 42 avec ≈ 2,9 survivants) : 14 victoires seulement, 9 « limite de tours » (60, règle du
+   scénario ; l'analyste survie estime +1,6 point de victoires à 80 tours — décision de l'utilisateur).
+4. **Mesure** : à ρ ≈ 0,1-0,2, n = 256 ne résout que ± 0,6 corrompu et ± 3 points de victoires ; un levier de
+   +1 point de victoires demande ≈ 1 500 graines par bras.
+
+### Pistes pour le tour 6
+
+- Rendre le potentiel cohérent avec ZREZ2 (`killValueFor` : un re-kill futur sans tempo est aussi débité).
+- Corruption des vagues 3-5 : les fenêtres d'étoile perdues parce que leur titulaire est pacifié (35 % aux tours 13-24
+  d'après l'analyste vagues) restent le levier principal ; essayer le « sauvetage » par la glyphe du joueur précédent
+  (proposition vagues 3) sur ≥ 512 graines.
+- Juger les victoires sur ≥ 512 graines par bras, ou sur des indicateurs moins bruités (corrompus au tour 13-19,
+  combats atteignant 19 / 19).
+
+### `masterSeed` utilisées ce tour
+
+141, 142, 143, 144 (32 graines chacune, V) ; 151 à 158 (32 graines chacune, F) ; 145 (3 premières graines, fumée
+`standard`). Les analystes ont utilisé 81-88 (ORD / TTd), 101, 102, 103.

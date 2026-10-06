@@ -41,7 +41,7 @@ import type { ControllerProvider } from '../../engine/runner'
 import type { Fighter, FightState } from '../../engine/types'
 import { CELL_COUNT, CELL_X, CELL_Y, distance } from '../../map/geometry'
 import type { AbsAction, CandidateHint, ClockSlot, KeyDecisionReason, MicroResult, ScenarioAIModel, ScenarioParams, ScenarioPlan } from '../types'
-import { absFromFight, absParamsOf, type AbsMonster, type AbsState } from './abstract'
+import { absFromFight, absParamsOf, resurrection, type AbsMonster, type AbsState } from './abstract'
 import { planBurst, type VortexBurstPlan } from './burst'
 import { checkForecast, currentHour, deathHours, forecastHours, hasStar, isCorrupted, isWaveMonster, lineCells, nextVortexSlot } from './clock'
 import { GLYPH_PLANNER_BONUS, HOUR_CELL, HOUR_COUNT, MEJAIRE, nextHour, SPELL, VORTEX, VORTEX_SCENARIO_ID, WAVE_MONSTER_IDS, type VortexParams } from './constants'
@@ -471,9 +471,30 @@ export class VortexAIModel implements ScenarioAIModel {
     const star = hasStar(victim) || (r0 !== undefined && hasStar(r0) && newDeathHour(r0, victim) === 0)
     if (star) return row ? row[0] : this.theta.vortex.corruptKill
     const h = newDeathHour(r0, victim) || currentHour(leaf)
-    if (row && h >= 1 && h <= HOUR_COUNT) return row[h]
+    if (row && h >= 1 && h <= HOUR_COUNT) return row[h] - this.rezDebit(root, victim, r0, h, bb)
     // Monstre sans prix (apparu depuis la mise à jour) : mort non planifiée (coût zombie + Vortex si l'heure est neuve).
     return this.unplannedDeath(root, victim, h)
+  }
+
+  /**
+   * Re-kill d'un zombie hors étoile qui ne lui retire AUCUN tour (tuning-log, tour 5) : V(s) gagne pente × PV retirés,
+   * mais le zombie revient au tour du Vortex avec ses PV de résurrection (20-30 % + XI) — souvent PLUS que ceux qu'il
+   * avait (≈ 700 en moyenne) — et une heure de mort de plus. Si son créneau est déjà passé dans ce cycle (aucun tour du
+   * zombie avant le prochain tour du Vortex), la mort ne rapporte rien en tempo : on débite pente × PV de résurrection.
+   * Un kill qui lui retire un tour garde son prix (le débiter aussi coûtait de la survie).
+   */
+  private rezDebit(root: FightState, victim: Fighter, r0: Fighter | undefined, h: number, bb: Blackboard): number {
+    const k = this.theta.vortex.zombieRezDebit
+    const r0h = r0 ? deathHours(r0) : 0
+    const sl = this.lastSlots
+    if (!(k > 0) || r0h === 0 || !sl) return 0
+    for (let i = 1; i < sl.length; i++) {
+      if (sl[i].isVortex) break
+      if (sl[i].fighterId === victim.id) return 0
+    }
+    const slope = bb.prices.hp.get(victim.id)?.slope ?? this.theta.vortex.waveHpSlope
+    const rez = resurrection({ hours: r0h | (1 << (h - 1)), maxHp: victim.maxHp, baseMaxHp: victim.baseMaxHp }, absParamsOf(root)).hp
+    return k * slope * rez
   }
 
   /**

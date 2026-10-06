@@ -169,6 +169,8 @@ export interface ThetaVortex {
   killMax: number
   /** Indice (top-8) du placement initial retenu (§12.10). */
   placementIndex: number
+  /** Débit (× pente × PV de résurrection) d'un re-kill de zombie hors étoile qui ne lui retire aucun tour (0 : aucun). */
+  zombieRezDebit: number
 }
 
 /** Burst de phase 2 (§12.9). */

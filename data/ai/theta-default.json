@@ -95,7 +95,8 @@
     "vortexKill": 20000,
     "killMin": -3000,
     "killMax": 4000,
-    "placementIndex": 0
+    "placementIndex": 0,
+    "zombieRezDebit": 1
   },
   "burst": {
     "minCommit": 0.6,
