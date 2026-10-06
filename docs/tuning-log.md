@@ -1316,3 +1316,93 @@ RECON30 (`recon`), cause racine de l'auto-pacification (`selfpac`), MF16 (`mf16`
 
 141, 142, 143, 144 (32 graines chacune, V) ; 151 à 158 (32 graines chacune, F) ; 145 (3 premières graines, fumée
 `standard`). Les analystes ont utilisé 81-88 (ORD / TTd), 101, 102, 103.
+
+### Vérification (tour 5)
+
+Vérification indépendante (harnais `.cache/tuning/r5/verify/` : `run.mts` du réglage à l'identique, `batch.sh`,
+`queue.sh`, `pair.cjs`, `seeds.mts` et `mech.mts` du réglage avec d'autres chemins ; résultats bruts `out/`, notes de
+reprise `NOTES.txt`). Arbres de travail git : **avant** = `base-tuning-r5` ; **après** = `base-tuning-r5` + les quatre
+fichiers vivants du tour (`model.ts`, `theta.ts`, `theta-default.json`, `ai-puzzles-vortex.test.ts` ; diff identique à
+`git diff base-tuning-r5`). Équipe `data/teams/vortex.json` (builds épinglés), IA `fast`, variante `default`,
+4 processus. Contrôle du harnais : graine 632641322 ⇒ empreintes identiques à celles du réglage dans les deux bras
+(après : victoire au tour 42, 1529257450 ; avant : défaite au tour 30, 3782741430).
+
+**Graines inédites** : `campaignSeeds(201..216, 32)` = **512 graines**, aucune parmi les 1 725 graines présentes dans
+les fichiers `.jsonl` de `.cache/` (réglages, analystes, campagnes). Fumée `standard` : 2 premières graines de
+`masterSeed` 217.
+
+**Relecture du code (ZREZ2).** `rezDebit` est correct : `lastSlots[0]` est le créneau du joueur qui décide, la boucle
+s'arrête au premier créneau du Vortex, et seul un zombie (heures de mort ≠ 0 à la racine) tué hors étoile sans créneau
+avant ce tour du Vortex est débité, de pente × PV de résurrection. L'heure h est ajoutée au masque, ce qui compte le
+bonus de vitalité de l'heure XI, et la pente est celle de `damageWeight`. L'ordre des créneaux ne change pas pendant le
+tour du joueur (une glyphe décale l'heure, pas l'ordre), donc le test de créneau reste valide sur toute la recherche.
+Hors phases de vagues, les prix `kill` sont vides (attente, burst) : aucun débit. Le même prix sert au préfiltre `quick`
+(`killValueNow` ⇒ `deathValue(s, s, e)`), ce qui est cohérent. Il ne sert pas au potentiel (`killValueFor`) ni à
+`revivedValue` ; c'est une piste du tour 6, déjà notée. La clé θ `vortex.zombieRezDebit` n'est lue que par
+`VortexAIModel` ; aucune autre valeur de θ ne change. Aucun bogue trouvé, aucune correction.
+
+Les tableaux du réglage se recalculent à l'identique depuis ses lignes brutes (F : +0,46 ± 0,61 ; V + F : +0,42 ± 0,52,
+victoires 25 → 24).
+
+| Δ apparié (après − avant), `fast`, n = 512 (`masterSeed` 201-216) | Avant | Après | Δ (IC 95 %) |
+|---|---|---|---|
+| **Victoires** | 21 / 512 = **4,1 %** [2,7 – 6,2] | 31 / 512 = **6,1 %** [4,3 – 8,5] | +29 / −19 (McNemar p = 0,19) |
+| Corrompus (total) | 9,40 | 9,86 | **+0,46 ± 0,41** (+243 / −207) |
+| Corrompus au tour 13 / 19 / 25 | 4,85 / 6,81 / 8,36 | 4,89 / 6,95 / 8,56 | +0,04 ± 0,11 / **+0,14 ± 0,13** / +0,20 ± 0,22 |
+| Tours survécus | 30,84 | 31,58 | +0,74 ± 0,89 |
+| Premier mort (tour ; tours du combat s'il n'y en a pas) | 22,79 | 23,25 | +0,46 ± 0,67 |
+| Morts | 3,83 | 3,76 | −0,07 ± 0,10 |
+| *Action !* (19 / 19) | 30 | 40 | +0,02 ± 0,03 |
+| Victoires sans mort ; tour moyen des victoires | 10 ; 48,9 | 12 ; 49,5 | |
+| Tours pacifiés (tour ≥ 13) | 28 % | 27 % | |
+| Causes d'échec | vague non corrompue 371, submersion 76, croix 21, défaite 11, limite 10, burst raté 2 | vague non corrompue 349, submersion 82, croix 24, défaite 12, limite 12, burst raté 2 | |
+
+Corrompus par `masterSeed` : 201 +0,72, 202 +0,88, 203 −1,28, 204 +1,75, 205 +0,28, 206 −0,38, 207 −1,09, 208 −0,09,
+209 −0,16, 210 +0,41, 211 +1,31, 212 +0,16, 213 +2,00, 214 +0,94, 215 +1,09, 216 +0,78 (positif sur 11 / 16).
+Par moitiés : 201-208 +0,10 ± 0,58 (victoires 14 → 14) ; 209-216 +0,82 ± 0,57 (victoires 7 → 17, p = 0,05). Deux
+moitiés de 256 graines diffèrent donc de 0,7 corrompu, à peu près l'IC de chacune : une seule mesure de 256 graines ne
+suffit pas à juger ce changement.
+
+**Cumul de toutes les mesures appariées** (réglage V 128 + F 256, vérification 512 ; n = 896) : victoires 46 → 55
+(5,1 % → 6,1 %, +49 / −40, p = 0,40), corrompus **+0,44 ± 0,32**, t13 +0,07 ± 0,08, t19 **+0,13 ± 0,10**, t25
+**+0,20 ± 0,17**, tours +0,59 ± 0,69, premier mort +0,49 ± 0,51, morts −0,05 ± 0,08.
+
+**Mécanisme sur graines inédites** (`mech.mts`, 32 graines de `masterSeed` 201 ; empreintes identiques au lot, 32 / 32
+dans chaque bras) : re-kills de zombie hors étoile sans tour retiré 3,44 → **0,84** par combat ; avec tour retiré
+7,56 → 7,78 ; kills de zombie sous étoile (corruptions) 9,72 → **10,56**. Le mécanisme annoncé se reproduit.
+
+**Victoires du code final reproduites par la CLI** (arbre vivant, `npx tsx src/cli/simulate.ts fight vortex --ai fast
+--seed N --json`, empreintes identiques au lot). Toutes trois sont perdues par l'avant aux tours 29-30 (vague non
+corrompue au déverrouillage, 4 morts) :
+
+- **3290233078** : tour 42, aucun mort.
+- **4169276871** : tour 43, aucun mort.
+- **780417895** : tour 44, aucun mort.
+
+Replays dans `.cache/tuning/r5/verify/rep/cli-s<graine>.json`.
+
+**Fumée `standard`** (2 graines de `masterSeed` 217, avant / après) : aucune erreur ; 0 / 2 victoires dans les deux
+bras, corrompus 7,0 → 10,0 (2 graines : bruit) ; 74-106 s par combat.
+
+**Tests** (arbre vivant) : `npx tsc --noEmit` vert ; `npx vitest run tests/ai-* tests/vortex-*` : **335 réussis,
+1 ignoré**. Les combats de contrôle `ai-team-control` passent (5 / 5), ainsi que les puzzles du Vortex (23 / 23 : P20 et
+P20b en `fast` et en `standard`, ablation comprise).
+
+**Verdict : ZREZ2 gardé.**
+
+- **Corruption.** Le gain tient sur 512 graines inédites (+0,46 ± 0,41, borne basse > 0), au même niveau que celui
+  annoncé (+0,46 sur F). Au cumul (n = 896), il est significatif sur le total et aux tours 19 et 25.
+- **Victoires.** Elles vont dans le même sens (+10 sur 512, +9 au cumul) sans être démontrées (p = 0,19 et 0,40).
+- **Survie.** Aucun signal négatif : tours, premier mort et morts sont neutres ou positifs.
+- **Code.** Aucun changement n'est retiré ni corrigé.
+
+**Métriques vérifiées du code final** (512 graines inédites, `fast`, équipe épinglée) :
+
+| Métrique | Valeur |
+|---|---|
+| Victoires | **31 / 512 = 6,1 % [IC 95 % Wilson 4,3 – 8,5 %]** |
+| Corrompus | 9,86 / 19 |
+| Tours survécus | 31,58 |
+| Premier mort | tour 23,25 (22,64 sur les 499 combats avec au moins un mort) |
+
+`masterSeed` utilisées par la vérification : 201 à 216 (32 graines chacune), 217 (2 premières graines, `standard`).

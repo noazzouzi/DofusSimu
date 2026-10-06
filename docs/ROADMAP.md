@@ -29,5 +29,7 @@ Chaque checkpoint est commité et poussé dans un état utilisable.
       (équipe par défaut des commandes), `--classes`, commandes `optimize` (criblage membre par membre + successive
       halving appariés, validation, rapport Markdown/JSON, meilleur replay, `--save-team`), `stuff`, `report`, `tune`,
       `rewind` ; la recherche automatique de composition (`team`, `src/optimizer/team/halving.ts`) reste disponible
-      en opt-in seulement (campagne interrompue : `docs/reports/vortex-composition.md`). **À produire** : builds
-      optimisés de l'équipe Eniripsa/Enutrof/2 Crâs et rapport final Vortex (stuffs, sorts, déroulé, replay).
+      en opt-in seulement (campagne interrompue : `docs/reports/vortex-composition.md`). **Livrés** : builds de
+      l'équipe Eniripsa/Enutrof/2 Crâs Terre (`docs/reports/vortex-equipe-utilisateur.md`) et rapport final Vortex
+      (`docs/reports/vortex-rapport-final.md` : stuffs, sorts, déroulé vague par vague, replay gagnant ; 31 / 512 =
+      6,1 % de victoires vérifiées en IA `fast`).

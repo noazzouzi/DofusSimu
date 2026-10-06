@@ -1,16 +1,25 @@
 {
- "replays": [
-  {
-   "file": "vortex-premiere-victoire.json",
-   "title": "Œil de Vortex — PREMIÈRE VICTOIRE : 19/19 corrompus, Vortex vaincu au tour 45, 0 mort(s)"
-  },
-  {
-   "file": "vortex-meilleur-combat-regles-242.json",
-   "title": "Œil de Vortex — meilleur combat du jour : 14 monstres corrompus, 41 tours (défaite)"
-  },
-  {
-   "file": "vortex-premier-combat.json",
-   "title": "Œil de Vortex — premier combat de l'IA complète (défaite)"
-  }
- ]
+  "replays": [
+    {
+      "file": "vortex-equipe-utilisateur-victoire-s3290233078.json",
+      "title": "Œil de Vortex — équipe de l'utilisateur (Eniripsa, Enutrof, 2 Crâs Terre) : VICTOIRE au tour 42, 19/19 corrompus, 0 mort (graine 3290233078, IA fast)",
+      "scenario": "vortex",
+      "seed": 3290233078,
+      "win": true,
+      "rounds": 42,
+      "createdAt": "2026-10-06T13:01:06.261Z"
+    },
+    {
+      "file": "vortex-premiere-victoire.json",
+      "title": "Œil de Vortex — PREMIÈRE VICTOIRE : 19/19 corrompus, Vortex vaincu au tour 45, 0 mort(s)"
+    },
+    {
+      "file": "vortex-meilleur-combat-regles-242.json",
+      "title": "Œil de Vortex — meilleur combat du jour : 14 monstres corrompus, 41 tours (défaite)"
+    },
+    {
+      "file": "vortex-premier-combat.json",
+      "title": "Œil de Vortex — premier combat de l'IA complète (défaite)"
+    }
+  ]
 }
