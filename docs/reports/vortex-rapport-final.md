@@ -847,3 +847,22 @@ deux fois (19 lignes) et 7 passages de texte (liste ci-dessous). Aucun changemen
 
 Sur les 256 combats de ce rapport : 9,73 corrompus sur 19 (9,82 sur les 768), 31,3 tours survécus, premier mort au
 tour 23,1, 17 combats à *Action !* dont 11 gagnés.
+
+## 8. Addendum (2026-10-06) — limite de tours retirée
+
+Le jeu n'a pas de limite de tours (docs/research/vortex-audit.md) ; la simulation arrêtait les combats au tour 60, ce
+qui faisait perdre « à la limite » des combats à 19 / 19 corrompus en pleine phase 2 (19 des 768 combats mesurés
+ci-dessus). La limite du Vortex est désormais de 150 tours (simple filet de sécurité, commit bfc8cc0). L'IA ne lit pas
+cette limite : les combats sont identiques jusqu'au tour 60, et seuls ces 19 combats changent. Rejoués exactement
+(`fight vortex --ai fast --seed N`) : **7 victoires** (tours 61 à 74), 10 défaites par mort de l'équipe (tours 62 à 84),
+2 combats encore non conclus au tour 150.
+
+| Échantillon | Victoires (limite 60) | Victoires (limite 150) | IC 95 % (Wilson) |
+|---|---|---|---|
+| Vérificateur, 512 combats | 31 (6,1 %) | **35 (6,8 %)** | 5,0 – 9,4 % |
+| Ce rapport, 256 combats | 11 (4,3 %) | **14 (5,5 %)** | 3,3 – 9,0 % |
+| Ensemble, 768 combats | 42 (5,5 %) | **49 (6,4 %)** | 4,9 – 8,3 % |
+
+Taux de victoire de référence du code final (IA `fast`, équipe de l'utilisateur) : **6,4 % [4,9 – 8,3 %] sur 768 combats
+inédits**. Les combats gagnés au-delà du tour 60 sont longs (phase 2 de 20 à 37 tours) : la phase 2 contre le Vortex
+reste le point faible de la fin de partie.

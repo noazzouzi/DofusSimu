@@ -13,14 +13,17 @@ Chaque checkpoint est commité et poussé dans un état utilisable.
 - [x] **CP3 — Moteur de combat + replays animés** : état de combat, PA/PM, ligne de vue, déplacements & tacle,
       4 familles d'effets (212 effectId), déclencheurs, invocations, glyphes/pièges ; 856 sorts testés sans
       exception (`docs/engine-coverage.md`) ; visualiseur animé (démo synthétique — les vrais combats arrivent au CP4).
-- [~] **CP4 — IA & Vortex** : IA des monstres (profils officiels + Vortex en 2 phases), IA de groupe (commandant,
+- [x] **CP4 — IA & Vortex** : IA des monstres (profils officiels + Vortex en 2 phases), IA de groupe (commandant,
       recherche de tour fast/standard/deep, rollouts, 8 tactiques créatives), scénario Vortex (vagues, horloge de
       l'Auroraire, corruption) et planificateur d'heures ; combats complets joués et animés (`web/public/replays/`).
       Réglage itératif (`docs/tuning-log.md`, 3 tours mesurés en apparié + vérifications adverses) : ligne de mise à
       mort, recherche fast de largeur 3 ; moteur ≈ 2,5× plus rapide (copie-sur-écriture, caches vérifiés bit à bit).
       Audit de fidélité du Vortex (`docs/research/vortex-audit.md`) : règles corrigées selon la 2.42 (vagues tous les
-      6 tours, ressuscités −1 PM, boss de rang 1 à 4). **En cours** : première victoire.
-- [~] **CP5 — Optimiseurs** : **la composition d'équipe est une ENTRÉE de l'utilisateur** (décision du 2026-10-05 :
+      6 tours, ressuscités −1 PM, boss de rang 1 à 4 ; plus de limite de tours à 60). Réglage sur l'équipe de
+      l'utilisateur (tour 5). **Le simulateur gagne le Vortex** : 6,4 % de victoires [IC 95 % 4,9 – 8,3 %] sur 768
+      combats inédits en IA `fast` (replays gagnants dans le visualiseur). Pistes : vagues 3-5 trop lentes à corrompre,
+      Pacifiste (25-28 % des tours), phase 2 longue.
+- [x] **CP5 — Optimiseurs** : **la composition d'équipe est une ENTRÉE de l'utilisateur** (décision du 2026-10-05 :
       « je préfère que ce soit l'utilisateur qui détermine les classes/personnages pour un donjon » ; Vortex =
       1 Eniripsa, 1 Enutrof, 2 Crâs, `data/teams/vortex.json`) ; **l'optimisation porte sur les builds et la
       stratégie** de cette composition : preset élément/rôle de chaque personnage, stuff optimal (exos,
@@ -31,5 +34,5 @@ Chaque checkpoint est commité et poussé dans un état utilisable.
       `rewind` ; la recherche automatique de composition (`team`, `src/optimizer/team/halving.ts`) reste disponible
       en opt-in seulement (campagne interrompue : `docs/reports/vortex-composition.md`). **Livrés** : builds de
       l'équipe Eniripsa/Enutrof/2 Crâs Terre (`docs/reports/vortex-equipe-utilisateur.md`) et rapport final Vortex
-      (`docs/reports/vortex-rapport-final.md` : stuffs, sorts, déroulé vague par vague, replay gagnant ; 31 / 512 =
-      6,1 % de victoires vérifiées en IA `fast`).
+      (`docs/reports/vortex-rapport-final.md` : stuffs, sorts, déroulé vague par vague, replay gagnant ; 49 / 768 =
+      6,4 % de victoires vérifiées en IA `fast`, limite de tours retirée).
