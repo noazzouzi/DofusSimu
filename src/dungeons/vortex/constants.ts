@@ -360,7 +360,9 @@ export const VORTEX_DEFAULT_PARAMS: Readonly<VortexParams> = {
   unlockVortexTurn: 26,
   actionDelay: 1,
   glyphTrigger: 'enter',
-  maxRounds: 60,
+  // Le jeu n'a pas de limite de tours (docs/research/vortex-audit.md) : 150 n'est qu'un filet de sécurité de la
+  // simulation. À 60, des combats à 19 / 19 corrompus étaient perdus « à la limite » pendant la phase 2 (tour 5).
+  maxRounds: 150,
 }
 
 /**
