@@ -11274,5 +11274,327 @@
   "data/teams/vortex.json (2952f45) : défaut Crâ Feu + Crâ Air = −2,1 ± 1,5 corrompus sous la paire recommandée (ms 51) ; deux builds identiques Terre + Terre sont parmi les meilleurs",
   "optimizeStuff : pools de départ dépendant de data/ai/presets.json → un stuff publié n’est reproductible qu’avec le presets.json de sa campagne",
   "simulate fight écrit dans web/public/replays (fichier + index.json) par défaut"
- ]
+ ],
+ "verification": {
+  "date": "2026-10-06",
+  "by": "vérificateur adverse",
+  "verdict": "Builds valides, presets.json en ajouts seulement, tableaux conformes aux données brutes (reproductibles), tests verts ; classement confirmé sur 256 graines inédites ; taux de victoire vérifié de l'équipe recommandée 10/256 = 3,9 % [2,1 – 7,0 %] (5,9 % du rapport mesuré sur les graines du choix, écart non significatif p = 0,31).",
+  "recommendedTeam": "cra_terre_mono_vortex,enutrof_retrait_pm_vortex,cra_terre_mono_vortex_def,eniripsa_soin_vortex",
+  "verifiedWinRate": {
+   "wins": 10,
+   "n": 256,
+   "rate": 0.039,
+   "wilson95": [
+    0.021,
+    0.07
+   ],
+   "ai": "fast",
+   "masterSeeds": [
+    81,
+    82,
+    83,
+    84,
+    85,
+    86,
+    87,
+    88
+   ]
+  },
+  "protocol": {
+   "tree": ".cache/verify-userteam/tree = git archive 2952f45 (HEAD au moment de la mesure ; src/ et data/ inchangés depuis) (src, data) ; src/ai, src/engine, src/dungeons, data/ai/presets.json identiques à .cache/userteam/tree",
+   "harness": ".cache/verify-userteam/run.mts (runOne, record false ; FightSummary + summarize().extra.corrupted)",
+   "seeds": "campaignSeeds(81..88, 32) — jamais jouées",
+   "pairing": "mêmes graines pour tous les bras",
+   "fights": 1312
+  },
+  "freshSeeds": [
+   {
+    "arm": "TTd",
+    "team": "cra_terre_mono_vortex,enutrof_retrait_pm_vortex,cra_terre_mono_vortex_def,eniripsa_soin_vortex",
+    "n": 256,
+    "wins": 10,
+    "winRate": 0.039,
+    "wilson95": [
+     0.021,
+     0.07
+    ],
+    "winsWithoutDeath": 6,
+    "corrupted": {
+     "r13": 4.793,
+     "r19": 6.773,
+     "total": 9.383
+    },
+    "roundsSurvived": 30.809,
+    "firstDeath": 22.875,
+    "failReasons": {
+     "vague non corrompue au déverrouillage": 187,
+     "submersion": 41,
+     "win": 10,
+     "mort sur la croix de l’Auroraire": 8,
+     "limite de tours": 3,
+     "burst raté": 2,
+     "défaite": 5
+    }
+   },
+   {
+    "arm": "TT",
+    "team": "cra_terre_mono_vortex,enutrof_retrait_pm_vortex,cra_terre_mono_vortex,eniripsa_soin_vortex",
+    "n": 256,
+    "wins": 10,
+    "winRate": 0.039,
+    "wilson95": [
+     0.021,
+     0.07
+    ],
+    "winsWithoutDeath": 3,
+    "corrupted": {
+     "r13": 4.949,
+     "r19": 6.961,
+     "total": 9.418
+    },
+    "roundsSurvived": 30.152,
+    "firstDeath": 20.887,
+    "failReasons": {
+     "vague non corrompue au déverrouillage": 143,
+     "submersion": 71,
+     "mort sur la croix de l’Auroraire": 14,
+     "défaite": 11,
+     "win": 10,
+     "limite de tours": 5,
+     "burst raté": 2
+    },
+    "pairedVsRecommended": {
+     "c13": {
+      "diff": 0.156,
+      "ci95": 0.156
+     },
+     "c19": {
+      "diff": 0.188,
+      "ci95": 0.184
+     },
+     "corr": {
+      "diff": 0.035,
+      "ci95": 0.599
+     },
+     "rounds": {
+      "diff": -0.656,
+      "ci95": 1.178
+     },
+     "firstDeath": {
+      "diff": -1.988,
+      "ci95": 0.953
+     }
+    },
+    "discordantWins": {
+     "arm": 10,
+     "recommended": 10,
+     "mcnemarP": 1.0
+    }
+   },
+   {
+    "arm": "FTd",
+    "team": "cra_feu_vortex,enutrof_retrait_pm_vortex,cra_terre_mono_vortex_def,eniripsa_soin_vortex",
+    "n": 256,
+    "wins": 10,
+    "winRate": 0.039,
+    "wilson95": [
+     0.021,
+     0.07
+    ],
+    "winsWithoutDeath": 5,
+    "corrupted": {
+     "r13": 4.543,
+     "r19": 6.512,
+     "total": 8.746
+    },
+    "roundsSurvived": 29.801,
+    "firstDeath": 21.277,
+    "failReasons": {
+     "vague non corrompue au déverrouillage": 161,
+     "défaite": 5,
+     "submersion": 68,
+     "limite de tours": 3,
+     "win": 10,
+     "burst raté": 2,
+     "mort sur la croix de l’Auroraire": 7
+    },
+    "pairedVsRecommended": {
+     "c13": {
+      "diff": -0.25,
+      "ci95": 0.159
+     },
+     "c19": {
+      "diff": -0.262,
+      "ci95": 0.179
+     },
+     "corr": {
+      "diff": -0.637,
+      "ci95": 0.596
+     },
+     "rounds": {
+      "diff": -1.008,
+      "ci95": 1.164
+     },
+     "firstDeath": {
+      "diff": -1.598,
+      "ci95": 1.001
+     }
+    },
+    "discordantWins": {
+     "arm": 10,
+     "recommended": 10,
+     "mcnemarP": 1.0
+    }
+   },
+   {
+    "arm": "FA",
+    "team": "cra_feu_vortex,enutrof_retrait_pm_vortex,cra_air_entrave_vortex,eniripsa_soin_vortex",
+    "n": 256,
+    "wins": 3,
+    "winRate": 0.012,
+    "wilson95": [
+     0.004,
+     0.034
+    ],
+    "winsWithoutDeath": 0,
+    "corrupted": {
+     "r13": 4.168,
+     "r19": 6.059,
+     "total": 7.578
+    },
+    "roundsSurvived": 27.973,
+    "firstDeath": 20.527,
+    "failReasons": {
+     "vague non corrompue au déverrouillage": 144,
+     "défaite": 9,
+     "submersion": 94,
+     "mort sur la croix de l’Auroraire": 4,
+     "win": 3,
+     "limite de tours": 2
+    },
+    "pairedVsRecommended": {
+     "c13": {
+      "diff": -0.625,
+      "ci95": 0.141
+     },
+     "c19": {
+      "diff": -0.715,
+      "ci95": 0.19
+     },
+     "corr": {
+      "diff": -1.805,
+      "ci95": 0.523
+     },
+     "rounds": {
+      "diff": -2.836,
+      "ci95": 0.95
+     },
+     "firstDeath": {
+      "diff": -2.348,
+      "ci95": 0.923
+     }
+    },
+    "discordantWins": {
+     "arm": 3,
+     "recommended": 10,
+     "mcnemarP": 0.092
+    }
+   },
+   {
+    "arm": "ORD",
+    "team": "eniripsa_soin_vortex,enutrof_retrait_pm_vortex,cra_terre_mono_vortex,cra_terre_mono_vortex_def",
+    "n": 256,
+    "wins": 11,
+    "winRate": 0.043,
+    "wilson95": [
+     0.024,
+     0.075
+    ],
+    "winsWithoutDeath": 7,
+    "corrupted": {
+     "r13": 4.723,
+     "r19": 6.781,
+     "total": 9.469
+    },
+    "roundsSurvived": 31.273,
+    "firstDeath": 22.887,
+    "failReasons": {
+     "vague non corrompue au déverrouillage": 160,
+     "submersion": 52,
+     "win": 11,
+     "burst raté": 4,
+     "mort sur la croix de l’Auroraire": 15,
+     "défaite": 6,
+     "limite de tours": 8
+    },
+    "pairedVsRecommended": {
+     "c13": {
+      "diff": -0.07,
+      "ci95": 0.15
+     },
+     "c19": {
+      "diff": 0.008,
+      "ci95": 0.189
+     },
+     "corr": {
+      "diff": 0.086,
+      "ci95": 0.642
+     },
+     "rounds": {
+      "diff": 0.465,
+      "ci95": 1.285
+     },
+     "firstDeath": {
+      "diff": 0.012,
+      "ci95": 1.032
+     }
+    },
+    "discordantWins": {
+     "arm": 11,
+     "recommended": 10,
+     "mcnemarP": 1.0
+    }
+   }
+  ],
+  "ranking": [
+   "TTd",
+   "TT",
+   "FTd",
+   "FA"
+  ],
+  "replication": {
+   "arm": "U_TTd",
+   "seeds": 32,
+   "identical": 32,
+   "fields": "victoire, tours, morts, corrompus final/t13/t19, premier mort, cause d échec"
+  },
+  "buildValidity": {
+   "checked": 15,
+   "new": 7,
+   "valid": true,
+   "statMismatches": 0,
+   "script": ".cache/verify-userteam/valid/validate-indep.mts"
+  },
+  "presetsDiff": {
+   "onlyAdditions": true,
+   "stuffs": [
+    48,
+    55
+   ],
+   "presets": [
+    91,
+    98
+   ]
+  },
+  "reportTables": {
+   "cellsChecked": 495,
+   "mismatches": 0,
+   "jsonRowsChecked": 46,
+   "script": ".cache/verify-userteam/check/tables.py"
+  },
+  "tests": {
+   "tsc": "ok",
+   "vitest": "tests/opt-* tests/stats-* tests/data-* : 28 fichiers, 313 tests verts"
+  }
+ }
 }

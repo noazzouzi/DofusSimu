@@ -5,14 +5,27 @@
   "chosenBy": "utilisateur",
   "decidedAt": "2026-10-05",
   "members": [
-    { "class": "eniripsa" },
-    { "class": "enutrof" },
-    { "class": "cra" },
-    { "class": "cra" }
+    {
+      "class": "eniripsa",
+      "preset": "eniripsa_soin_vortex"
+    },
+    {
+      "class": "enutrof",
+      "preset": "enutrof_retrait_pm_vortex"
+    },
+    {
+      "class": "cra",
+      "preset": "cra_terre_mono_vortex"
+    },
+    {
+      "class": "cra",
+      "preset": "cra_terre_mono_vortex_def"
+    }
   ],
   "notes": [
     "Décision de l'utilisateur (2026-10-05) : « Pour faciliter le boulot au simulateur et l'IA, je préfère que ce soit l'utilisateur qui détermine les classes/personnages pour un donjon. Du coup pour Vortex, je préfère une compo 1 eniripsa 1 enutrof 2 Cras. »",
     "Builds par défaut (aucun « preset » ici) : version Vortex des presets de chaque classe — Eniripsa eniripsa_soin_vortex, Enutrof enutrof_retrait_pm_vortex, Crâ 1 cra_feu_vortex, Crâ 2 cra_air_entrave_vortex (deux Crâs = deux builds distincts par défaut) ; « optimize vortex » cherche les meilleurs builds et « optimize vortex --save-team » les écrit ici.",
-    "Format : README.md, section « Composition de l'utilisateur » (champs class, name, preset, stuff, role, variants, build, candidates, fixed)."
+    "Format : README.md, section « Composition de l'utilisateur » (champs class, name, preset, stuff, role, variants, build, candidates, fixed).",
+    "Builds épinglés le 2026-10-06 (campagne docs/reports/vortex-equipe-utilisateur.md, vérifiée sur 256 graines inédites) : deux Crâs Terre mono-cible (l'un en stuff défensif), Enutrof retrait PM Eau, Eniripsa soin Feu — 3,9 % de victoires [IC 95 % 2,1 – 7,0 %] en IA fast (4,9 % sur 512 graines) ; Crâ Feu + Crâ Air (ancien défaut) : 1,2 %."
   ]
 }

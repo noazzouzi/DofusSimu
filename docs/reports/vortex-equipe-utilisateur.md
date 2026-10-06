@@ -24,6 +24,9 @@
   9,65 monstres corrompus sur 19 en moyenne, 31,3 tours survécus, premier mort au tour 22,8 ; 7 des 15 victoires sans
   aucun mort. Variante à deux Crâs Terre équilibrés (`cra_terre_mono_vortex` ×2) : 12 / 256 = 4,7 % [2,7 % – 8,0 %],
   même corruption (−0,11 ± 0,60 pour la recommandée), mais premier mort plus tôt (−1,54 ± 0,96 tour, significatif).
+  **Vérifié sur 256 graines inédites** (`masterSeed` 81-88, section Vérification) : **10 / 256 = 3,9 % [2,1 % – 7,0 %]**
+  (le 5,9 % est mesuré sur les graines du choix) ; classement confirmé (même corruption que Terre + Terre, premier mort
+  +2,0 ± 1,0 tour ; Feu + Terre déf. −0,6 ± 0,6 corrompu ; Feu + Air −1,8 ± 0,5).
 - **Le levier de cette composition est l'élément Terre des Crâs** : deux Crâs Feu (la paire « naturelle », proche de
   l'équipe méta) corrompent **2,9 monstres de moins** qu'un Crâ Feu + un Crâ Terre (6,84 contre 9,78, ± 1,65, n = 32)
   et ne gagnent jamais ; toutes les paires qui contiennent un Crâ Terre font 8,3 à 10,1 corrompus, toutes celles qui
@@ -643,8 +646,19 @@ cumulés par tour : 0, 0, 0, 0, 1, 1, 2, 3, 3, 3, 3, 4, 4, 6, 6, 7, 7, 7, 8, 8, 
 
 ## Vérification (vérificateur adverse, 2026-10-06)
 
-*Section en cours de rédaction : la mesure (b) sur graines fraîches tourne (`.cache/verify-userteam/`) ; (a), (c) et (d)
-sont terminés.*
+**Verdict** : les 7 stuffs ajoutés sont valides en jeu et `presets.json` ne fait qu'**ajouter** des entrées ; les
+tableaux du rapport concordent exactement avec les données brutes, elles-mêmes reproductibles (32 combats rejoués à
+l'identique) ; tsc et les 313 tests visés passent. **Le classement se confirme sur 256 graines inédites** : la
+recommandée `cra_terre_mono_vortex,enutrof_retrait_pm_vortex,cra_terre_mono_vortex_def,eniripsa_soin_vortex` reste
+première (même corruption que deux Crâs Terre équilibrés, premier mort +2,0 ± 1,0 tour plus tard ; Feu + Terre déf.
+−0,6 ± 0,6 corrompu ; Feu + Air, le défaut actuel, −1,8 ± 0,5). **Son taux de victoire vérifié est 10 / 256 = 3,9 %
+[IC 95 % Wilson 2,1 % – 7,0 %]**, et non 5,9 % : le chiffre du rapport est mesuré sur les graines qui ont servi au choix
+(écart non significatif, p = 0,31). Les trois meilleures paires gagnent exactement autant (10 / 256) : aucune
+différence de victoires n'est mesurable entre elles.
+
+Fichiers : `.cache/verify-userteam/` (arbre figé `tree/`, harnais `run.mts` / `worker.sh` / `queue.sh` / `jobs.txt`,
+graines `seeds/`, résultats bruts `out/<bras>/ms<masterSeed>.c<k>.jsonl`, analyse `ana.py` / `mkb.py` /
+`res-81-88-TTd.json`, contrôles `valid/` et `check/`).
 
 ### (a) Validité en jeu des 7 stuffs ajoutés et diff de `presets.json`
 
@@ -677,6 +691,71 @@ docs/reports/vortex-stuffs.md) à partir des données brutes seules (`data/dofus
   d'identifiant ; chaque preset dérivé `extends` un preset de base existant de la même classe et du même élément que
   son stuff. `simulate.ts presets` les liste tous « OK », 12 PA / 6 PM / 6 PO.
 
+### (b) Nouvelle mesure sur graines fraîches
+
+**Protocole.** Arbre figé `.cache/verify-userteam/tree` = `git archive 2952f45` (HEAD au moment de la mesure ; `src/` et `data/` complets, inchangés depuis) ;
+`src/ai`, `src/engine`, `src/dungeons` et `data/ai/presets.json` y sont identiques à l'arbre de la campagne (diff vide).
+Harnais indépendant `.cache/verify-userteam/run.mts` : `runOne` du dépôt (`record: false`), mesures lues uniquement dans
+`FightSummary` (victoire, tours, `firstDeathRound`, `corruptedByRound`) et dans le résumé officiel du scénario
+(`extra.corrupted`, égal au dernier `corruptedByRound` dans 100 % des combats) — sans le décodage d'événements de
+`.cache/userteam/run.mts`. IA `fast`, variante `default`, θ par défaut, ordre des membres de la campagne (Crâ A,
+Enutrof, Crâ B, Eniripsa) sauf mention. Graines `campaignSeeds(81..88, 32)` = 256 graines **jamais jouées**
+(intersection vide avec toutes les graines de `.cache/userteam` et `.cache/compo` ; aucune n'apparaît dans `docs/` ni
+`.cache/`). Mêmes graines pour tous les bras (appariement), 3 processus, 1 312 combats en tout, aucun échec.
+
+**Reproductibilité des données de la campagne.** 32 combats de la recommandée tirés de quatre unités de la campagne
+(`masterSeed` 55 c0, 56 c1, 57 c2, 58 c3) rejoués par ce harnais dans cet arbre : **32 / 32 identiques** (victoire,
+tours, morts, corrompus finaux et aux tours 13 / 19, premier mort, cause d'échec). La graine gagnante 963351236 donne la
+même victoire au tour 42 sans mort, même `eventsHash` (458909491) que la CLI.
+
+Différences appariées avec la recommandée ± demi-largeur de l'IC 95 % ; « 1er mort » = tour de fin si personne ne meurt.
+
+| Bras | n | Victoires [IC 95 % Wilson] | Corr. t13 | Corr. t19 | Corr. total | Tours survécus | 1er mort | Victoires discordantes (bras / réf., McNemar) |
+|---|---|---|---|---|---|---|---|---|
+| **Crâ Terre + Crâ Terre (déf.)** — recommandée | 256 | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 4,79 | 6,77 | 9,38 | 30,81 | 22,88 | — |
+| Recommandée, ordre du fichier d'équipe (Eniripsa, Enutrof, Crâ, Crâ déf.) | 256 | 11 / 256 = 4,3 % [2,4 – 7,5 %] | 4,72 (−0,07 ± 0,15) | 6,78 (+0,01 ± 0,19) | 9,47 (+0,09 ± 0,64) | 31,27 (+0,46 ± 1,28) | 22,89 (+0,01 ± 1,03) | 11 / 10 (p = 1,00) |
+| Crâ Terre + Crâ Terre | 256 | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 4,95 (+0,16 ± 0,16) | 6,96 (+0,19 ± 0,18) | 9,42 (+0,04 ± 0,60) | 30,15 (−0,66 ± 1,18) | 20,89 (−1,99 ± 0,95) | 10 / 10 (p = 1,00) |
+| Crâ Feu + Crâ Terre (déf.) | 256 | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 4,54 (−0,25 ± 0,16) | 6,51 (−0,26 ± 0,18) | 8,75 (−0,64 ± 0,60) | 29,80 (−1,01 ± 1,16) | 21,28 (−1,60 ± 1,00) | 10 / 10 (p = 1,00) |
+| Crâ Feu + Crâ Air entrave (défaut actuel de `data/teams/vortex.json`) | 256 | 3 / 256 = 1,2 % [0,4 – 3,4 %] | 4,17 (−0,62 ± 0,14) | 6,06 (−0,71 ± 0,19) | 7,58 (−1,80 ± 0,52) | 27,97 (−2,84 ± 0,95) | 20,53 (−2,35 ± 0,92) | 3 / 10 (p = 0,09) |
+
+Lecture :
+
+- **Taux de victoire vérifié de l'équipe recommandée : 10 / 256 = 3,9 % [IC 95 % Wilson 2,1 % – 7,0 %]** (6 des 10
+  victoires sans mort). Le 5,9 % [3,6 – 9,4 %] du rapport est mesuré sur les graines qui ont servi à choisir l'équipe
+  (biais de sélection entre deux bras à égalité) ; l'écart 15 / 256 contre 10 / 256 n'est pas significatif (z = 1,03,
+  p = 0,31) et les moyennes concordent (corrompus 9,38 contre 9,65, tours 30,8 contre 31,3, premier mort 22,9 contre
+  22,8). Toutes graines confondues (512) : 25 / 512 = 4,9 % [3,3 – 7,1 %].
+- **Les trois meilleures paires gagnent exactement autant** (10 / 256 chacune ; victoires discordantes 10 / 10) :
+  aucune différence de victoires n'est mesurable entre elles à 256 graines ; le classement repose sur la corruption et
+  la survie.
+- **Terre + Terre (déf.) contre Terre + Terre** : corruption finale identique (+0,04 ± 0,60), comme dans le rapport
+  (−0,11 ± 0,60) ; Terre + Terre corrompt un peu plus tôt (+0,16 ± 0,16 au tour 13, +0,19 ± 0,18 au tour 19, à la limite
+  de la significativité, même signe que dans le rapport) ; la recommandée **retarde le premier mort de 1,99 ± 0,95
+  tour** (rapport : +1,54 ± 0,96) — l'argument de départage du rapport se confirme, sur les deux moitiés des graines
+  (+1,55 ± 1,42 sur 81-84, +2,43 ± 1,27 sur 85-88).
+- **Crâ Feu + Crâ Terre (déf.)**, la paire écartée au halving 64 alors qu'elle devançait la référence Feu + Terre
+  (voir les remarques) : **−0,64 ± 0,60 corrompu** et premier mort −1,60 ± 1,00 face à la recommandée (−0,67 ± 0,57 face
+  à Terre + Terre) ; l'écart est net sur la première moitié des graines (−1,16 ± 0,85) et nul sur la seconde (−0,11 ±
+  0,83). Deux Crâs Terre restent donc devant un Crâ Feu + un Crâ Terre, de ≈ 0,6 corrompu (le rapport donnait 1,1 pour
+  Terre + Terre contre Feu + Terre équilibré).
+- **Crâ Feu + Crâ Air entrave, les builds par défaut actuels de `data/teams/vortex.json`** : **−1,80 ± 0,52 corrompu**,
+  −2,8 ± 1,0 tours, premier mort −2,4 ± 0,9, 3 / 256 = 1,2 % [0,4 – 3,4 %] de victoires (3 contre 10, McNemar p = 0,09) ;
+  le rapport donnait −2,1 ± 1,5 à 32 graines. La note produit du rapport (changer ce défaut pour la recommandée) se
+  confirme.
+- **Ordre des membres** : la recommandée dans l'ordre du fichier d'équipe (Eniripsa, Enutrof, Crâ, Crâ déf. — l'ordre
+  que `--save-team` écrirait dans `data/teams/vortex.json`) donne les mêmes résultats (+0,09 ± 0,64 corrompu, premier
+  mort +0,01 ± 1,03, 11 victoires contre 10) : les combats changent graine par graine mais pas en moyenne ; le taux
+  vérifié vaut pour les deux ordres.
+
+**Classement vérifié (256 graines inédites, IA `fast`)** :
+
+| Rang | Paire de Crâs (Enutrof `enutrof_retrait_pm_vortex`, Eniripsa `eniripsa_soin_vortex`) | Victoires | Corrompus | Tours | 1er mort |
+|---|---|---|---|---|---|
+| 1 | **Terre + Terre déf.** (`cra_terre_mono_vortex` + `cra_terre_mono_vortex_def`) — recommandée | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 9,38 | 30,8 | 22,9 |
+| 2 | Terre + Terre (`cra_terre_mono_vortex` ×2) | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 9,42 (+0,04 ± 0,60) | 30,2 | 20,9 (−2,0 ± 1,0) |
+| 3 | Feu + Terre déf. (`cra_feu_vortex` + `cra_terre_mono_vortex_def`) | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 8,75 (−0,64 ± 0,60) | 29,8 | 21,3 (−1,6 ± 1,0) |
+| 4 | Feu + Air entrave (`cra_feu_vortex` + `cra_air_entrave_vortex`, défaut actuel) | 3 / 256 = 1,2 % [0,4 – 3,4 %] | 7,58 (−1,80 ± 0,52) | 28,0 | 20,5 (−2,4 ± 0,9) |
+
 ### (c) Tableaux du rapport contre les données brutes
 
 Recalcul indépendant (`.cache/verify-userteam/check/tables.py`, sans `ana.cjs`) à partir de
@@ -702,43 +781,22 @@ résumé.
 `npx tsc --noEmit` : propre. `npx vitest run tests/opt-* tests/stats-* tests/data-*` : **28 fichiers, 313 tests, tous
 verts** (8 min 17 s, 1 processus) ; l'arbre de travail est inchangé après les tests.
 
-### (b) Nouvelle mesure sur graines fraîches
+### Remarques (méthode et texte)
 
-**Protocole.** Arbre figé `.cache/verify-userteam/tree` = `git archive HEAD` (2952f45 : `src/`, `data/` complets) ;
-`src/ai`, `src/engine`, `src/dungeons` et `data/ai/presets.json` y sont identiques à l'arbre de la campagne (diff vide).
-Harnais indépendant `.cache/verify-userteam/run.mts` : `runOne` du dépôt (`record: false`), mesures lues uniquement dans
-`FightSummary` (victoire, tours, `firstDeathRound`, `corruptedByRound`) et dans le résumé officiel du scénario
-(`extra.corrupted`, égal au dernier `corruptedByRound` dans 100 % des combats) — sans le décodage d'événements de
-`.cache/userteam/run.mts`. IA `fast`, variante `default`, θ par défaut, ordre des membres de la campagne (Crâ A,
-Enutrof, Crâ B, Eniripsa). Graines `campaignSeeds(81..88, 32)` = 256 graines **jamais jouées** (intersection vide avec
-toutes les graines de `.cache/userteam` et `.cache/compo`, et aucune n'apparaît dans `docs/` ni `.cache/`). Mêmes
-graines pour tous les bras (appariement), 3 processus. Contrôle : la graine 963351236 rejouée par ce harnais donne la
-même victoire au tour 42 sans mort, même `eventsHash` (458909491) que la CLI.
-
-Différences appariées avec la recommandée ± demi-largeur de l'IC 95 % ; « 1er mort » = tour de fin si personne ne meurt.
-
-| Bras | n | Victoires [IC 95 % Wilson] | Corr. t13 | Corr. t19 | Corr. total | Tours survécus | 1er mort | Victoires discordantes (bras / réf., McNemar) |
-|---|---|---|---|---|---|---|---|---|
-| **Crâ Terre + Crâ Terre (déf.)** — recommandée | 256 | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 4,79 | 6,77 | 9,38 | 30,81 | 22,88 | — |
-| Crâ Terre + Crâ Terre | 256 | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 4,95 (+0,16 ± 0,16) | 6,96 (+0,19 ± 0,18) | 9,42 (+0,04 ± 0,60) | 30,15 (−0,66 ± 1,18) | 20,89 (−1,99 ± 0,95) | 10 / 10 (p = 1,00) |
-| Crâ Feu + Crâ Terre (déf.) | 256 | 10 / 256 = 3,9 % [2,1 – 7,0 %] | 4,54 (−0,25 ± 0,16) | 6,51 (−0,26 ± 0,18) | 8,75 (−0,64 ± 0,60) | 29,80 (−1,01 ± 1,16) | 21,28 (−1,60 ± 1,00) | 10 / 10 (p = 1,00) |
-
-Lecture :
-
-- **Taux de victoire vérifié de l'équipe recommandée : 10 / 256 = 3,9 % [IC 95 % Wilson 2,1 % – 7,0 %]** (6 des 10
-  victoires sans mort). Le 5,9 % [3,6 – 9,4 %] du rapport est mesuré sur les graines qui ont servi à choisir l'équipe
-  (biais de sélection entre deux bras à égalité) ; l'écart 15 / 256 contre 10 / 256 n'est pas significatif (z = 1,03,
-  p = 0,31) et les moyennes concordent (corrompus 9,38 contre 9,65, tours 30,8 contre 31,3, premier mort 22,9 contre
-  22,8). Toutes graines confondues (512) : 25 / 512 = 4,9 % [3,3 – 7,1 %].
-- **Les trois bras gagnent exactement autant** (10 / 256 chacun ; victoires discordantes 10 / 10) : aucune
-  différence de victoires n'est mesurable entre eux à 256 graines.
-- **Terre + Terre (déf.) contre Terre + Terre** : corruption finale identique (+0,04 ± 0,60), comme dans le rapport
-  (−0,11 ± 0,60) ; Terre + Terre corrompt un peu plus tôt (+0,16 ± 0,16 au tour 13, +0,19 ± 0,18 au tour 19, à la limite
-  de la significativité, même signe que dans le rapport) ; la recommandée **retarde le premier mort de 1,99 ± 0,95
-  tour** (rapport : +1,54 ± 0,96) — l'argument de départage du rapport se confirme, sur les deux moitiés des graines
-  (+1,55 ± 1,42 sur 81-84, +2,43 ± 1,27 sur 85-88).
-- **Crâ Feu + Crâ Terre (déf.)**, la paire écartée au halving 64 alors qu'elle devançait la référence Feu + Terre
-  (+0,39 ± 1,22, voir plus bas) : **−0,64 ± 0,60 corrompu** et premier mort −1,60 ± 1,00 face à la recommandée (−0,67
-  ± 0,57 face à Terre + Terre) ; l'écart est net sur la première moitié des graines (−1,16 ± 0,85) et nul sur la seconde
-  (−0,11 ± 0,83). Deux Crâs Terre restent donc devant un Crâ Feu + un Crâ Terre, mais de ≈ 0,6 corrompu, pas de 1,1
-  comme Terre + Terre contre Feu + Terre (équilibré) dans le rapport.
+- **Halving 64** : Crâ Feu + Crâ Terre (déf.) (9,53 corrompus, +0,39 ± 1,22 sur la référence Feu + Terre, à −0,42 ±
+  1,42 de la recommandée) a été abandonnée tandis que la référence Feu + Terre (9,14) continuait à 128 graines ; elle
+  n'a donc jamais été mesurée au-delà de 64 graines. La mesure ci-dessus comble ce trou : elle reste derrière.
+- **Mécanisme « Terre contre Méjaires »** : plausible mais pas démontré par les données. Dans Feu + Terre, le Crâ **Feu**
+  inflige plus aux Méjaires (11 900 par combat) que le Crâ Terre (9 300) (72 combats avec ce détail) ; et le gain d'une
+  paire Terre porte autant sur les Harpilles (39 % de résistance Feu) que sur les Méjaires : dégâts des deux Crâs,
+  Terre + Terre contre Feu + Feu, 24 800 contre 15 600 sur les Méjaires et 24 200 contre 17 600 sur les Harpilles.
+- **Résumé du message de fin de campagne** « toute paire avec un Crâ Terre bat toute paire sans Crâ Terre d'environ 2 à 3
+  corrompus » : à 32 graines, les paires avec Crâ Terre font 8,31 à 10,09 et celles sans 6,00 à 7,53 — l'écart minimal
+  entre les deux groupes est de 0,8 ; 2 à 3 corrompus est l'écart entre les meilleures paires Terre et les paires sans
+  Terre (le texte du rapport, qui donne les deux fourchettes, est exact).
+- **Portée des variantes** : seules des bascules d'un Crâ Terre ont été mesurées (7 bascules à 32 graines, Jugement à
+  64) ; les 22 variantes de l'Eniripsa et de l'Enutrof sont celles de leurs presets, non re-optimisées pour cette
+  composition. « Aucun levier de build restant » vaut pour les leviers mesurés, à la puissance de 32-64 graines (sauf
+  le profil de stuff du 2ᵉ Crâ, mesuré à 256).
+- Corrigé dans le texte : « 10 000 à 13 000 dégâts aux Méjaires » → 11 000 à 13 800 (résumé). Ajouté au résumé : le
+  taux de victoire vérifié sur graines fraîches. Rien à corriger dans `data/ai/presets.json`.
