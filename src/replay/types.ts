@@ -8,6 +8,7 @@
 import type { TeamId } from '../core/types'
 import type { MapData } from '../data/model'
 import type { FightEvent, FighterKind } from '../engine/types'
+import type { StuffSheet } from '../stats/sheet'
 
 /** Membre de l'équipe décrit dans les métadonnées (composition, rôle, stuff résumé). */
 export interface ReplayTeamMember {
@@ -22,6 +23,8 @@ export interface ReplayTeamMember {
   notes?: string
   /** Id du combattant correspondant dans le combat. */
   fighterId?: number
+  /** Fiche de stuff complète (section « Stuffs » du visualiseur) ; absente des replays antérieurs. */
+  sheet?: StuffSheet
 }
 
 /** Informations complémentaires sur un combattant (affichées dans le panneau de détails). */

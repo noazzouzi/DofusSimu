@@ -1,5 +1,6 @@
 /**
- * Point d'entrée du visualiseur : choix de la source du replay, thème, fichiers, API globale.
+ * Point d'entrée du visualiseur : sections « Combats » et « Stuffs » (`#stuffs`), choix de la source du replay, thème,
+ * fichiers, API globale.
  *
  * Sources (par priorité) : balise <script type="application/json" id="replay-data"> embarquée,
  * paramètre `?replay=<url>`, sinon le replay de démonstration intégré. Le menu liste aussi les
@@ -7,10 +8,12 @@
  * ou appeler `window.loadReplay(replay)`.
  */
 import './styles.css'
+import stuffCatalog from 'virtual:dofussimu-stuffs'
 import { createDemoReplay } from '@/replay/demo'
 import type { Replay } from '@/replay/types'
 import { ReplayError, parseReplay } from '@/replay/validate'
 import { ViewerApp } from './app'
+import { StuffsView } from './stuffs'
 import { applyThemePref, loadThemePref, type ThemePref } from './theme'
 import { THEME_ICONS } from './ui/icons'
 
@@ -57,6 +60,47 @@ themeBtn.addEventListener('click', () => {
 })
 window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change', () => app.refreshTheme())
 
+// ───────────────────────────── sections ─────────────────────────────
+
+type View = 'combats' | 'stuffs'
+const stuffs = new StuffsView($('stuffs-view'), stuffCatalog)
+let combatTitle = document.title
+
+function currentView(): View {
+  return location.hash.replace(/^#\/?/, '').split('/')[0] === 'stuffs' ? 'stuffs' : 'combats'
+}
+
+function route(): void {
+  const view = currentView()
+  const wasCombats = document.body.dataset.view !== 'stuffs'
+  document.body.dataset.view = view
+  $('combat-view').hidden = view !== 'combats'
+  $('stuffs-view').hidden = view !== 'stuffs'
+  for (const a of document.querySelectorAll<HTMLAnchorElement>('.view-tab')) {
+    if (a.dataset.view === view) a.setAttribute('aria-current', 'page')
+    else a.removeAttribute('aria-current')
+  }
+  if (view === 'stuffs') {
+    if (wasCombats) combatTitle = document.title
+    app.getPlayer()?.pause()
+    document.title = 'Stuffs · DofusSimu'
+  } else {
+    document.title = combatTitle
+  }
+}
+window.addEventListener('hashchange', route)
+route()
+
+// « Voir le stuff » (panneau du combattant) : stuff de ce personnage dans le combat chargé.
+document.addEventListener('click', e => {
+  const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-open-stuff]')
+  if (!btn) return
+  const id = btn.dataset.openStuff
+  stuffs.showReplayFighter(id ? Number(id) : undefined)
+  location.hash = '#stuffs'
+  window.scrollTo(0, 0)
+})
+
 // ───────────────────────────── notifications ─────────────────────────────
 
 let toastTimer = 0
@@ -98,7 +142,7 @@ async function openSource(key: string): Promise<void> {
   if (!src) return
   try {
     const replay = await src.get()
-    app.load(replay)
+    show(replay)
     currentKey = key
     renderSelect()
     if (replay.warnings?.length) toast(`« ${src.label} » : ${replay.warnings.join(' · ')}`, true)
@@ -119,11 +163,21 @@ select.addEventListener('change', () => void openSource(select.value))
 let demoCache: Replay | null = null
 addSource({ key: 'demo', label: 'Démo — Œil de Vortex (intégrée)', get: () => (demoCache ??= createDemoReplay()) })
 
+/** Affiche un replay (section « Combats ») et les stuffs de ses personnages (section « Stuffs »). */
+function show(replay: Replay): void {
+  app.load(replay)
+  stuffs.setReplay(replay)
+  if (currentView() === 'stuffs') {
+    combatTitle = document.title
+    document.title = 'Stuffs · DofusSimu'
+  }
+}
+
 /** Charge un replay fourni directement (fichier, API). */
 function loadDirect(replay: Replay, label: string): void {
   const key = `direct:${Date.now()}`
   addSource({ key, label, get: () => replay })
-  app.load(replay)
+  show(replay)
   currentKey = key
   renderSelect()
   if (replay.warnings?.length) toast(`${label} : ${replay.warnings.join(' · ')}`, true)

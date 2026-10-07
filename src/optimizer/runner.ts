@@ -41,6 +41,7 @@ import type { Replay, ReplayMeta, ReplayTeamMember } from '../replay/types'
 import { computeBuildStats } from '../stats/build'
 import { sampleVariant, variantKeyOf } from './seeds'
 import { buildSummary, findPreset } from './team/presets'
+import { memberSheet } from './team/sheets'
 import type { FightSpec, FightSummary, MemberSpec, WorkerTask } from './types'
 
 export interface RunOptions {
@@ -540,6 +541,7 @@ export function toReplay(data: DataStore, spec: FightSpec, result: RunResult, ex
       build: buildSummary(m, data),
       notes: preset ? `${preset.label} (${preset.id})` : m.presetId,
       fighterId: chars[i]?.id,
+      sheet: memberSheet(m, data),
     }
   })
   const scenario = resolveScenario(spec.scenarioId)

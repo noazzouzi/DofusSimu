@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="description" content="DofusSimu — visualiseur animé des combats simulés (Dofus)." />
+    <meta name="description" content="DofusSimu — visualiseur animé des combats simulés et stuffs des personnages (Dofus)." />
     <title>DofusSimu · Combats</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 3 29 16 16 29 3 16Z' fill='%23c2621c'/%3E%3Cpath d='M16 9 23 16 16 23 9 16Z' fill='%23fff3df'/%3E%3C/svg%3E" />
     <!--
@@ -21,15 +21,19 @@
         </svg>
         <div class="brand-text">
           <strong>DofusSimu</strong>
-          <span>Visualiseur de combats</span>
+          <span>Simulateur de combats</span>
         </div>
       </div>
+      <nav class="view-tabs" aria-label="Sections">
+        <a class="view-tab" href="#combats" data-view="combats">Combats</a>
+        <a class="view-tab" href="#stuffs" data-view="stuffs">Stuffs</a>
+      </nav>
       <div class="topbar-actions">
-        <label class="select-wrap" title="Choisir un replay">
+        <label class="select-wrap replay-only" title="Choisir un replay">
           <span class="sr-only">Replay</span>
           <select id="replay-select"></select>
         </label>
-        <button id="open-file" class="btn" type="button" title="Ouvrir un fichier replay (.json)">
+        <button id="open-file" class="btn replay-only" type="button" title="Ouvrir un fichier replay (.json)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4H10l2 2h5.5A2.5 2.5 0 0 1 20 8.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 17.5Z" /></svg>
           <span>Ouvrir</span>
         </button>
@@ -38,7 +42,7 @@
       </div>
     </header>
 
-    <main class="layout">
+    <main class="layout" id="combat-view">
       <section class="stage-col" aria-label="Combat">
         <div class="fight-head" id="fight-head">
           <div class="fh-row">
@@ -98,6 +102,8 @@
         </section>
       </aside>
     </main>
+
+    <main class="stuffs" id="stuffs-view" hidden aria-labelledby="sv-title"></main>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script type="module" src="./src/main.ts"></script>

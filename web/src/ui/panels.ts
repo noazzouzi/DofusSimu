@@ -119,11 +119,14 @@ export function renderDetails(el: HTMLElement, f: FighterView | undefined, state
         team.length
           ? `<div class="d-section"><h4>Composition</h4><dl class="kv">${team
               .map(m => `<dt>${esc(m.name)}${m.role ? ` · ${esc(m.role)}` : ''}</dt><dd>${esc(m.build ?? m.breed ?? '')}</dd>`)
-              .join('')}</dl></div>`
+              .join('')}</dl>${
+              team.some(m => m.sheet) ? '<button class="link-btn" type="button" data-open-stuff="">Voir les stuffs de l’équipe</button>' : ''
+            }</div>`
           : ''
       }`
     return
   }
+  const sheetOf = (replay.meta?.team ?? []).find(m => m.fighterId === f.id && m.sheet)
   const info = replay.meta?.fighters?.[String(f.id)]
   const isCur = state.current === f.id && state.turnActive
   const sub = [kindLabel(f), `niv. ${f.level}`, f.role && !/boss/i.test(f.role) ? f.role : '', f.wave ? `vague ${f.wave}` : '']
@@ -162,6 +165,7 @@ export function renderDetails(el: HTMLElement, f: FighterView | undefined, state
           ${isCur ? '<span class="tag turn">Joue</span>' : follow ? '' : ''}
         </h3>
         <p>${esc(sub)}${summoner ? ` · invoqué par ${esc(summoner.name)}` : ''}</p>
+        ${sheetOf ? `<button class="link-btn" type="button" data-open-stuff="${f.id}">Voir son stuff</button>` : ''}
       </div>
     </div>
     <div class="d-bars">

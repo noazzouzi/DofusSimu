@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 import { fileURLToPath } from 'node:url'
+import { stuffsPlugin } from './web/plugins/stuffs'
 
 // `vite build --mode single` produit un unique fichier HTML autonome (publiable tel quel).
 export default defineConfig(({ mode }) => ({
@@ -10,7 +11,8 @@ export default defineConfig(({ mode }) => ({
   // visualiseur) ; non copié dans la version « fichier unique ».
   publicDir: mode === 'single' ? false : 'public',
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
-  plugins: mode === 'single' ? [viteSingleFile()] : [],
+  // stuffsPlugin : module virtuel des fiches de stuff des équipes (section « Stuffs », web/plugins/stuffs.ts).
+  plugins: mode === 'single' ? [stuffsPlugin(), viteSingleFile()] : [stuffsPlugin()],
   build: {
     outDir: mode === 'single' ? '../dist-single' : '../dist',
     emptyOutDir: true,

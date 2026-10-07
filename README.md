@@ -12,7 +12,7 @@ Démo cible : **Œil de Vortex** (donjon de dimension Xélorium, niveau 200, com
 
 ```bash
 npm install
-npm run dev          # interface web (visualiseur) sur http://localhost:5173
+npm run dev          # interface web sur http://localhost:5173 : combats (replays) et stuffs (#stuffs)
 npm test             # tests unitaires
 npm run fetch:data   # (re)télécharge les données du jeu depuis l'API DofusDB
 ```
@@ -110,6 +110,30 @@ plafond `--max-fights` ; `--dry-run` affiche les options et le nombre de combats
 rares : un taux de victoire se juge sur 128-256 graines au moins ; le criblage compare corrompus, tours et première
 mort sur graines communes.
 
+### Interface web : combats et stuffs
+
+`npm run dev` ouvre l'interface, en deux sections (onglets en haut de page) :
+
+- **Combats** : replays animés (`web/public/replays/`, un fichier ou `?replay=<url>`), journal, détails des combattants ;
+- **Stuffs** (`#stuffs`) : le stuff complet de chaque personnage de l'équipe du donjon (`data/teams/<scénario>.json`),
+  exactement le build que la CLI fait combattre : les 16 objets (icônes DofusDB, jets, plages du jeu, exos et
+  transcendances, conditions), panoplies et bonus actifs, caractéristiques finales (primaires décomposées en points /
+  parchemins / équipement, dommages et résistances par élément, tacle, fuite, retraits), variantes des 22 sorts, et une
+  comparaison des personnages. Les fiches sont calculées au démarrage de Vite (module virtuel, `web/plugins/stuffs.ts`)
+  et rechargées quand un fichier de `data/teams/` change. Les replays récents embarquent aussi la fiche de chaque
+  personnage (`meta.team[].sheet`) : « Voir son stuff » dans le panneau d'un personnage affiche le stuff de ce combat.
+
+**Modifier l'équipe** (bouton de la section Stuffs, avec `npm run dev` seulement : la version construite est en lecture
+seule) : ajouter, retirer ou changer la classe d'un personnage (1 à 8), choisir son preset (identité de l'IA : rôle,
+rotation, variantes) et son rôle, charger un stuff enregistré (`data/ai/presets.json`), changer chaque objet (recherche
+par nom, panoplie ou type, filtre de niveau), ajouter ou retirer des lignes de forgemagie (exos, overs et transcendances
+réalistes de l'objet), répartir les points, régler les parchemins, basculer les variantes de sorts, ou **importer un lien
+RoxxSolver** (`https://roxxsolver.com/solver?build=…` : objets, forgemagie, points et parchemins ; classe changée si le
+lien en a une autre ; le paramètre `config` du solveur est ignoré). Chaque modification est recalculée par le moteur ;
+« Enregistrer » écrit `data/teams/<scénario>.json` (l'équipe des commandes de la CLI), « Enregistrer sous… » un nouveau
+fichier `data/teams/<nom>.json` à utiliser avec `--team-file`. Un build modifié est écrit en entier (`build`) et reste
+le point de départ d'`optimize`, sauf s'il est imposé (case « Build imposé » = `fixed`).
+
 ## Architecture
 
 | Dossier | Rôle |
@@ -127,7 +151,7 @@ mort sur graines communes.
 | `src/optimizer` | Monte-Carlo, optimiseur de stuff (exos, transcendances, points), variantes, θ, builds d'une composition donnée (`builds.ts`), recherche de composition (opt-in), rapports |
 | `src/cli` | Ligne de commande (`npm run sim -- …`) : fight, batch, optimize, stuff, report, tune, rewind, team, bench, presets |
 | `data/teams/` | Composition choisie par l'utilisateur pour chaque donjon (`vortex.json`) |
-| `web/` | Interface : visualiseur de combats animés, constructeur d'équipe, calculateur |
+| `web/` | Interface : visualiseur de combats animés, stuffs des personnages (`web/src/stuffs.ts`), constructeur d'équipe, calculateur |
 
 Voir [`docs/ROADMAP.md`](docs/ROADMAP.md) pour l'avancement par checkpoint.
 

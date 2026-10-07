@@ -1798,3 +1798,68 @@ body.dragging .drop-hint {
     letter-spacing: 0;
   }
 }
+
+/* ───────────────────────── sections (Combats / Stuffs) ───────────────────────── */
+
+.view-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  flex: none;
+}
+.view-tab {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 999px;
+  color: var(--text-2);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.view-tab:hover {
+  color: var(--text);
+  background: var(--surface-3);
+}
+.view-tab[aria-current='page'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+body[data-view='stuffs'] .replay-only,
+.layout[hidden] {
+  display: none;
+}
+
+/* lien d'action discret (« Voir son stuff », « Tout déplier ») */
+.link-btn {
+  appearance: none;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--ink-accent);
+  font-weight: 600;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ink-accent) 40%, transparent);
+  text-underline-offset: 3px;
+}
+.link-btn:hover {
+  text-decoration-color: currentColor;
+}
+.d-title .link-btn {
+  margin-top: 4px;
+}
+.d-section .link-btn {
+  margin-top: 8px;
+}
+
+@media (max-width: 560px) {
+  .view-tab {
+    padding: 0 10px;
+  }
+}
