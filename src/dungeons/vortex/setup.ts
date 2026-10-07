@@ -67,6 +67,7 @@ import {
   SPELL,
   VORTEX,
   VORTEX_MAP_ID,
+  VORTEX_PLACEMENTS,
   VORTEX_SCENARIO_ID,
   VORTEX_STATE_KEY,
   WAVE_COUNT,
@@ -127,13 +128,21 @@ export function createVortexFight(engine: Engine, team: Fighter[], o: FightSetup
     f.cell = placement[i]
     f.tags.startCell = f.cell
   })
-  // Vague 1 : Vortex (case `vortexCell`) + (N − 1) monstres sur les cases bleues.
+  // Vague 1 : placement observé (`enemyPlacement`, cases de chaque monstre), sinon configuration historique : Vortex sur
+  // `vortexCell` + (N − 1) monstres sur les cases bleues dans l'ordre `BLUE_SPAWN_ORDER`. Monstres sans case dans le
+  // placement (5 personnages et plus) : cases bleues libres suivantes.
   const wave1 = waveComposition(p.players)[0]
-  const blue = BLUE_SPAWN_ORDER.filter(c => c !== p.vortexCell)
-  let bi = 0
+  const placed = p.enemyPlacement > 0 ? VORTEX_PLACEMENTS[p.enemyPlacement] : {}
+  const taken = new Set<number>()
+  const cellOf = (monsterId: number): number => {
+    const fixed = monsterId === VORTEX ? p.vortexCell : placed[monsterId]
+    const cell = fixed !== undefined && !taken.has(fixed) ? fixed : BLUE_SPAWN_ORDER.find(c => !taken.has(c) && c !== p.vortexCell && !Object.values(placed).includes(c))!
+    taken.add(cell)
+    return cell
+  }
   const monsters = wave1.map(monsterId => {
     const boss = monsterId === VORTEX
-    const cell = boss ? p.vortexCell : blue[bi++ % blue.length]
+    const cell = cellOf(monsterId)
     const m = createMonsterFighter(engine.data, { monsterId, grade: boss ? p.bossGrade : p.monsterGrade, team: 1, cell })
     m.wave = 1
     m.tags.startCell = cell
@@ -256,6 +265,17 @@ export function corruptedCount(fight: FightState): number {
 }
 
 /**
+ * Cases d'apparition des vagues 2 à 5 (`waveSpawn`, INCERTAIN) : cases de départ de la vague 1 de gauche à droite puis
+ * les autres cases bleues (`placement`), ou toutes les cases bleues dans l'ordre historique (`blueOrder`).
+ */
+export function waveSpawnCells(p: Pick<VortexParams, 'enemyPlacement' | 'waveSpawn'>): readonly number[] {
+  const rule = p.waveSpawn === 'auto' ? (p.enemyPlacement > 0 ? 'placement' : 'blueOrder') : p.waveSpawn
+  if (rule === 'blueOrder' || p.enemyPlacement <= 0) return BLUE_SPAWN_ORDER
+  const first = Object.values(VORTEX_PLACEMENTS[p.enemyPlacement]).sort((a, b) => a - b)
+  return [...first, ...BLUE_SPAWN_ORDER.filter(c => !first.includes(c))]
+}
+
+/**
  * Fait apparaître la vague `w` (2..5) au tour courant (composition N = `players`). `roundStart` : appel depuis
  * `onRoundStart` (un arrivant placé en tête de timeline joue dès ce tour de jeu, `insertNewcomers`).
  */
@@ -264,7 +284,7 @@ export function spawnVortexWave(engine: Engine, fight: FightState, w: number, o:
   if (!vx || w < 2 || w > WAVE_COUNT) return []
   const specs = waveComposition(vx.players)[w - 1].map(monsterId => ({ monsterId, grade: vx.monsterGrade }))
   const until = vx.arrivalInvulnerableTurns > 0 ? fight.round + vx.arrivalInvulnerableTurns : undefined
-  const res = spawnWave(engine, fight, specs, { team: 1, wave: w, total: WAVE_COUNT, cells: BLUE_SPAWN_ORDER, invulnerableUntilRound: until, roundStart: o.roundStart })
+  const res = spawnWave(engine, fight, specs, { team: 1, wave: w, total: WAVE_COUNT, cells: waveSpawnCells(vx), invulnerableUntilRound: until, roundStart: o.roundStart })
   // Ordre canonique : chaque arrivant après la racine qui le précède dans la timeline.
   const order = vx.slotOrder.slice()
   for (const f of res.fighters) {

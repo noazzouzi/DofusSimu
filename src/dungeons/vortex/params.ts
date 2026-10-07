@@ -16,7 +16,10 @@ import type { ScenarioParams, UncertainParam } from '../types'
 import {
   BLUE_START_CELLS,
   bossGradeFor,
+  VORTEX,
   VORTEX_DEFAULT_PARAMS,
+  VORTEX_PLACEMENT_COUNT,
+  VORTEX_PLACEMENTS,
   VORTEX_STATE_KEY,
   VORTEX_UNCERTAIN,
   WAVE_COUNT,
@@ -51,6 +54,10 @@ export function validateVortexParams(p: VortexParams): string[] {
   for (const k of ['monsterGrade', 'bossGrade'] as const) {
     if (!Number.isInteger(p[k]) || p[k] < 1 || p[k] > 5) errors.push(`${k} doit être un grade de 1 à 5 (reçu ${p[k]})`)
   }
+  if (!Number.isInteger(p.enemyPlacement) || p.enemyPlacement < 0 || p.enemyPlacement > VORTEX_PLACEMENT_COUNT) {
+    errors.push(`enemyPlacement doit être un placement de 1 à ${VORTEX_PLACEMENT_COUNT} (0 = configuration historique), reçu ${p.enemyPlacement}`)
+  }
+  if (!['auto', 'placement', 'blueOrder'].includes(p.waveSpawn)) errors.push(`waveSpawn inconnu : ${String(p.waveSpawn)} (auto, placement, blueOrder)`)
   if (!BLUE_START_CELLS.includes(p.vortexCell)) errors.push(`vortexCell doit être une case bleue (${BLUE_START_CELLS.join(', ')}), reçu ${p.vortexCell}`)
   if (p.startingTeamRule !== 'average' && p.startingTeamRule !== 'best') errors.push(`startingTeamRule inconnue : ${String(p.startingTeamRule)}`)
   const ar = p.arrivalRounds
@@ -86,6 +93,8 @@ export function resolveVortexParams(params: ScenarioParams | Partial<VortexParam
     // Rang du boss dérivé du nombre de personnages s'il n'est pas imposé (rang 1 à 4 joueurs).
     bossGrade: num(r.bossGrade, Number.isFinite(players) ? bossGradeFor(players) : d.bossGrade),
     vortexCell: num(r.vortexCell, d.vortexCell),
+    enemyPlacement: num(r.enemyPlacement, d.enemyPlacement),
+    waveSpawn: typeof r.waveSpawn === 'string' ? (r.waveSpawn as VortexParams['waveSpawn']) : d.waveSpawn,
     startingTeamRule: r.startingTeamRule === 'best' || r.startingTeamRule === 'average' ? r.startingTeamRule : r.startingTeamRule === undefined ? d.startingTeamRule : (r.startingTeamRule as 'best'),
     arrivalRounds: nums(r.arrivalRounds, d.arrivalRounds),
     arrivalInvulnerableTurns: num(r.arrivalInvulnerableTurns, d.arrivalInvulnerableTurns),
@@ -102,6 +111,8 @@ export function resolveVortexParams(params: ScenarioParams | Partial<VortexParam
   }
   const errors = validateVortexParams(p)
   if (errors.length) throw new Error(`Paramètres du Vortex invalides : ${errors.join(' ; ')}`)
+  // Un placement impose la case du Vortex.
+  if (p.enemyPlacement > 0) p.vortexCell = VORTEX_PLACEMENTS[p.enemyPlacement][VORTEX]
   return p
 }
 
@@ -227,6 +238,8 @@ export function paramsOf(v: VortexState): VortexParams {
     monsterGrade: v.monsterGrade,
     bossGrade: v.bossGrade,
     vortexCell: v.vortexCell,
+    enemyPlacement: v.enemyPlacement,
+    waveSpawn: v.waveSpawn,
     startingTeamRule: v.startingTeamRule,
     arrivalRounds: v.arrivalRounds,
     arrivalInvulnerableTurns: v.arrivalInvulnerableTurns,

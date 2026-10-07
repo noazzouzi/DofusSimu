@@ -57,10 +57,11 @@ import {
   type Args,
 } from './common'
 import { cmdOptimize, cmdReport, cmdRewind, cmdStuff, cmdTeam, cmdTune } from './optimize'
+import { cmdScenario } from './scenario'
 
 export { DEFAULT_TEAM, fighterTable, parseArgs, parseParams, REPLAY_DIR, writeReplay, type Args, type ReplayIndexEntry } from './common'
 
-const COMMANDS = ['fight', 'batch', 'bench', 'presets', 'tune', 'stuff', 'team', 'optimize', 'rewind', 'report'] as const
+const COMMANDS = ['fight', 'batch', 'bench', 'presets', 'tune', 'stuff', 'team', 'optimize', 'rewind', 'report', 'scenario'] as const
 
 export function usage(): string {
   return [
@@ -86,6 +87,9 @@ export function usage(): string {
     '  tune <scénario>     [équipe] [--seeds N] [--keep K] [--generations G] [--population P] [--validate N] [--paths a,b]',
     '                      [--workers W] [--out theta.json]',
     '  rewind <scénario>   [équipe] --seed N [--max-resumes K] [--robust-seeds S] [--replay auto|none|<fichier>]',
+    '  scenario <scénario> --enemy-placement N|all [équipe] [--refs K] [--seed S] [--ai M] [--rolls average|random] [--check R]',
+    '                      [--out fichier] [--force] [--no-replay] [--json]   scénario de combat figé par placement des monstres',
+    '                      (data/scenarios/<scénario>/placement-N.json) ; --from <fichier> [--check R] [--save] : le rejouer',
     '  team <scénario>     RECHERCHE AUTOMATIQUE DE COMPOSITION (opt-in) [--top N] [--t1-seeds N --t1-keep K] [--t2-seeds N',
     '                      --t2-keep K] [--finalists N] [--coopt] [--no-calibrate] [--validate N] [--workers W] [--id nom]',
     '  bench               [--workers 1,2,4] [--runs N] [--ai M] [--scenario S] [équipe]',
@@ -109,6 +113,8 @@ export function usage(): string {
     '    npm run sim -- optimize vortex --budget quick --workers 3',
     '    npm run sim -- optimize vortex --classes eniripsa,enutrof,cra,cra --budget normal --max-fights 900 --save-team',
     '    npm run sim -- stuff vortex --member 4 --out runs/cra2-build.json',
+    '    npm run sim -- fight vortex --param enemyPlacement=3   (placement 3 des monstres, voir VORTEX_PLACEMENTS)',
+    '    npm run sim -- scenario vortex --enemy-placement 5 --refs 8 --check 64',
     `  Commandes : ${COMMANDS.join(' | ')}`,
   ].join('\n')
 }
@@ -326,6 +332,8 @@ export async function main(argv: string[]): Promise<number> {
         return cmdRewind(a, data)
       case 'team':
         return await cmdTeam(a, data)
+      case 'scenario':
+        return cmdScenario(a, data)
       default:
         console.error(`« ${cmd} » : commande inconnue`)
         return 2

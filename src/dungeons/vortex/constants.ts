@@ -36,6 +36,29 @@ export const MEJAIRE = 3836
 export const HARPILLE = 3837
 export const BUBOXOR = 3838
 export const BRABUZAR = 3839
+/**
+ * Placements des monstres de la vague 1 (4 personnages : Vortex, Ikargn, Méjaire, Harpille) — relevés sur les captures
+ * du jeu fournies par l'utilisateur le 2026-10-06 (« Placement 1 … 10 », cases bleues 268 → 277 de gauche à droite).
+ * Le Vortex occupe tour à tour chacune des 10 cases, les monstres sont toujours espacés d'une case. Index 0 =
+ * configuration historique du simulateur (Vortex sur `vortexCell`, autres monstres dans `BLUE_SPAWN_ORDER`), qui ne
+ * correspond à aucun placement observé : défaut tant que les campagnes et tests antérieurs s'y réfèrent.
+ */
+export const VORTEX_PLACEMENTS: readonly Readonly<Record<number, number>>[] = [
+  {},
+  { [VORTEX]: 268, [IKARGN]: 270, [MEJAIRE]: 272, [HARPILLE]: 274 },
+  { [VORTEX]: 269, [IKARGN]: 271, [MEJAIRE]: 273, [HARPILLE]: 275 },
+  { [VORTEX]: 270, [IKARGN]: 268, [MEJAIRE]: 272, [HARPILLE]: 274 },
+  { [VORTEX]: 271, [IKARGN]: 269, [MEJAIRE]: 273, [HARPILLE]: 275 },
+  { [VORTEX]: 272, [IKARGN]: 270, [MEJAIRE]: 268, [HARPILLE]: 274 },
+  { [VORTEX]: 273, [IKARGN]: 271, [MEJAIRE]: 269, [HARPILLE]: 275 },
+  { [VORTEX]: 274, [IKARGN]: 272, [MEJAIRE]: 270, [HARPILLE]: 268 },
+  { [VORTEX]: 275, [IKARGN]: 273, [MEJAIRE]: 271, [HARPILLE]: 269 },
+  { [VORTEX]: 276, [IKARGN]: 274, [MEJAIRE]: 272, [HARPILLE]: 270 },
+  { [VORTEX]: 277, [IKARGN]: 275, [MEJAIRE]: 273, [HARPILLE]: 271 },
+]
+/** Nombre de placements observés (1 … 10). */
+export const VORTEX_PLACEMENT_COUNT = VORTEX_PLACEMENTS.length - 1
+
 /** Monstres de vague (hors boss et Auroraire). */
 export const WAVE_MONSTER_IDS: readonly number[] = [IKARGN, MEJAIRE, HARPILLE, BUBOXOR, BRABUZAR]
 /** Invocation-horloge (statique : 0 PA / 0 PM, invulnérable, indéplaçable). */
@@ -324,6 +347,17 @@ export interface VortexParams {
   monsterGrade: number
   bossGrade: number
   vortexCell: number
+  /**
+   * Placement des monstres de la vague 1 (`VORTEX_PLACEMENTS`, 1 … 10) ; 0 = configuration historique. Un placement
+   * impose la case du Vortex (`vortexCell` est alors ignoré).
+   */
+  enemyPlacement: number
+  /**
+   * Cases d'apparition des vagues 2 à 5 — INCERTAIN (« sur les cases où la vague 1 a commencé », JOL) : 'placement' =
+   * les cases de départ de la vague 1 (de gauche à droite), puis les autres cases bleues ; 'blueOrder' = toutes les
+   * cases bleues dans l'ordre historique `BLUE_SPAWN_ORDER` ; 'auto' = 'placement' avec un placement, sinon 'blueOrder'.
+   */
+  waveSpawn: 'auto' | 'placement' | 'blueOrder'
   /** Équipe qui commence : moyenne d'initiative (mechanics.md §8) ou meilleur combattant (moteur actuel). */
   startingTeamRule: 'average' | 'best'
   arrivalRounds: readonly number[]
@@ -347,6 +381,8 @@ export const VORTEX_DEFAULT_PARAMS: Readonly<VortexParams> = {
   monsterGrade: DEFAULT_MONSTER_GRADE,
   bossGrade: DEFAULT_BOSS_GRADE,
   vortexCell: VORTEX_DEFAULT_CELL,
+  enemyPlacement: 0,
+  waveSpawn: 'auto',
   startingTeamRule: 'average',
   arrivalRounds: ARRIVAL_ROUNDS_DEFAULT,
   arrivalInvulnerableTurns: 1,
