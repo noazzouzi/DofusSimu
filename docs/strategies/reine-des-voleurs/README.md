@@ -269,7 +269,7 @@ T Terristocrate, U Doublure, # pilier        + = bombe bleue tournante, ! = inte
    448  .   .   .   D   .   .   .            462  .   .   +   .   .   .
 ```
 
-Le schéma complet est dans `synthesis/schema.txt`. La colonne part du pilier rouge et descend en diagonale vers la gauche de l'écran, une case sur deux. Les bombes rouges se posent à droite de chaque Crâ (355, 382, 409, 436). La bombe bleue tourne d'un Crâ à l'autre.
+Le schéma complet est dans `formation.png` (ce dossier) et `tools/reine-des-voleurs/schema.txt`. La colonne part du pilier rouge et descend en diagonale vers la gauche de l'écran, une case sur deux. Les bombes rouges se posent à droite de chaque Crâ (355, 382, 409, 436). La bombe bleue tourne d'un Crâ à l'autre.
 
 ### 5.2 Pourquoi ce placement (mesures [S])
 
@@ -284,7 +284,7 @@ Le schéma complet est dans `synthesis/schema.txt`. La colonne part du pilier ro
   - Explosion au même tour (le moteur actuel) : 12 ordres sur 24, et **12 sur 12 si le Crâ de 380 joue avant celui de 451**. Mets donc le Crâ le plus rapide en 380.
   - En revanche, il **échoue** avec la lecture « bombe en diagonale vers le haut » (0 sur 24). C'est l'objet de la question 1.
 - **Pas de Mort en Sursis au tour 1.** Aucune des cases 354, 381, 380 et 451 n'est atteignable par la Reine au tour 1. Il lui faudrait au moins 8 à 11 PM [D] (data/bombes-placement.txt). Les cases 325 et 369 sont exposées et ont été exclues.
-- **Les placements proposés précédemment** ({340, 367, 378, 451} et {354, 378, 381, 451}) étaient pensés pour le moteur actuel, avec un pas de côté du poseur à chaque tour. Sans ce pas de côté, ils meurent tous au tour 2 dans le modèle du jeu réel [S] (synthesis/robustesse.txt).
+- **Les placements proposés précédemment** ({340, 367, 378, 451} et {354, 378, 381, 451}) étaient pensés pour le moteur actuel, avec un pas de côté du poseur à chaque tour. Sans ce pas de côté, ils meurent tous au tour 2 dans le modèle du jeu réel [S] (tools/reine-des-voleurs/robustesse.txt).
 
 ### 5.3 Déroulé des premiers tours [R]
 
