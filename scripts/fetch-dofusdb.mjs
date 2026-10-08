@@ -18,6 +18,11 @@
 //                             automatiquement sur "vortex".
 //   --max-depth=N             profondeur max. de la fermeture transitive sorts/invocations (défaut 20,
 //                             simple garde-fou : la fermeture s'arrête dès qu'elle est stable)
+//   --game-version=X.Y        version du jeu inscrite dans manifest.json (game.version) ; sans cette option,
+//                             elle est déduite du schéma des grades de monstres (3.6 ou 3.7, l'API ne la publie pas)
+//
+// Garde-fou : l'extraction échoue (sans écrire monsters.json) si un boss a un grade sans ses 5 résistances en %,
+// ce qui arriverait en silence si DofusDB renommait encore ses champs (schéma 3.7 : scripts/lib/dofusdb-normalize.mjs).
 //
 // Sorties (data/dofusdb/) : breeds.json (+ rôles), class-spells.json, item-spells.json,
 //   spell-states.json, effects.json, characteristics.json, item-types.json, equipment.json,
@@ -33,6 +38,8 @@ import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+// Grades de monstres : lecture des schémas DofusDB 3.6 et 3.7, garde-fou des résistances des boss (§10 de la doc).
+import { assertBossResistances, gameVersionInfo, normGrade, summarizeGradeSchemas } from './lib/dofusdb-normalize.mjs';
 
 // ------------------------------------------------------------------------------------
 // Configuration
@@ -58,6 +65,7 @@ const MONSTER_SPELLS_SCOPE = String(opt('monster-spells', 'all'));
 // "objets" se stabilisait exactement à la profondeur 8).
 const MAX_DEPTH = Number(opt('max-depth', 20));
 const MONSTER_SPELLS_MAX_BYTES = 40 * 1024 * 1024;
+const GAME_VERSION = opt('game-version', undefined);
 
 const VORTEX_DUNGEON_ID = 87;
 const VORTEX_ACHIEVEMENTS = [1156, 1157, 1158, 1159, 6243];
@@ -508,38 +516,6 @@ function effectListRefs(effects) {
 /** Arrondit les flottants (characRatios…) à 6 décimales. */
 const round6 = (x) => (typeof x === 'number' && !Number.isInteger(x) ? Math.round(x * 1e6) / 1e6 : x);
 
-/** Grade de monstre normalisé (bonusCharacteristics : seulement les valeurs non nulles). */
-function normGrade(g) {
-  const bonus = {};
-  for (const [k, v] of Object.entries(g.bonusCharacteristics ?? {})) if (v) bonus[k] = v;
-  return compact({
-    grade: g.grade,
-    level: g.level,
-    lifePoints: g.lifePoints,
-    actionPoints: g.actionPoints,
-    movementPoints: g.movementPoints,
-    vitality: g.vitality,
-    wisdom: g.wisdom,
-    strength: g.strength,
-    intelligence: g.intelligence,
-    chance: g.chance,
-    agility: g.agility,
-    neutralResistance: g.neutralResistance,
-    earthResistance: g.earthResistance,
-    fireResistance: g.fireResistance,
-    waterResistance: g.waterResistance,
-    airResistance: g.airResistance,
-    paDodge: g.paDodge,
-    pmDodge: g.pmDodge,
-    damageReflect: g.damageReflect,
-    bonusRange: g.bonusRange,
-    gradeXp: g.gradeXp,
-    startingSpellId: g.startingSpellId || undefined,
-    hiddenLevel: g.hiddenLevel || undefined,
-    bonusCharacteristics: Object.keys(bonus).length ? bonus : undefined,
-  });
-}
-
 /** "1,220;1,220;0,null" -> [1,1,0] (grade du sort par grade du monstre ; 0 = sort indisponible). */
 function parseSpellGrades(s) {
   if (typeof s !== 'string' || !s) return [];
@@ -876,6 +852,13 @@ async function stepMonsters() {
   log('== Monstres (tous), races');
   const monsters = await fetchAll('monsters', [], MONSTER_SELECT);
   const monstersById = new Map(monsters.map((m) => [m.id, m]));
+  // Schéma des grades bruts (3.6 / 3.7 / inconnu) et clés que la normalisation ignore : journalisés et inscrits dans
+  // manifest.json, pour qu'un nouveau renommage de l'API se voie au lieu de vider des champs en silence.
+  const gradeSummary = summarizeGradeSchemas(monsters);
+  log(`  schémas des grades : ${JSON.stringify(gradeSummary.gradeSchemas)}`);
+  if (Object.keys(gradeSummary.unknownKeys).length) {
+    log(`  ATTENTION : clés de grade inconnues, ignorées par la normalisation : ${JSON.stringify(gradeSummary.unknownKeys)}`);
+  }
   const out = monsters.map((m) =>
     compact({
       id: m.id,
@@ -913,6 +896,11 @@ async function stepMonsters() {
       hideInBestiary: m.hideInBestiary || undefined,
     }),
   );
+  // Garde-fou : refuse (avant écriture) un boss dont un grade a perdu ses résistances.
+  assertBossResistances(out);
+  if (!out.some((m) => m.tags)) {
+    log("  ATTENTION : aucun monstre n'a de tags (constaté sur /monsters/<id> en 3.7 pour Vortex, Kimbo et Merkator) ; l'IA s'en sert (archetype.ts : 'summon').");
+  }
   await writeOut('monsters.json', out);
 
   const races = await fetchAll('monster-races');
@@ -925,7 +913,7 @@ async function stepMonsters() {
     },
     { count: races.length },
   );
-  return { monsters, monstersById, monstersOut: out };
+  return { monsters, monstersById, monstersOut: out, gradeSummary };
 }
 
 async function stepClassSpells({ breedOut, rolesOut, variants, monstersById }) {
@@ -1274,6 +1262,9 @@ async function main() {
   checks.breedCount = breeds.breedOut.length;
   checks.equipmentCount = eq.equipment.length;
   checks.vortexBossGrades = monsters.monstersOut.find((m) => m.id === 3835)?.grades.map((g) => [g.grade, g.level, g.lifePoints, g.actionPoints, g.movementPoints]);
+  // Résistances % (N/T/F/E/A) et esquives PA/PM du Vortex au grade 5 : 3.6 = [6,33,12,21,28,0,20], 3.7 = esquive PA −24.
+  const vortexG5 = monsters.monstersOut.find((m) => m.id === 3835)?.grades.find((g) => g.grade === 5);
+  checks.vortexBossResPctAndDodge = vortexG5 && [vortexG5.neutralResistance, vortexG5.earthResistance, vortexG5.fireResistance, vortexG5.waterResistance, vortexG5.airResistance, vortexG5.paDodge, vortexG5.pmDodge];
   checks.vortexSpellsPresent = [5068, 5070, 5062, 5066, 5064].every((id) => ms.file.spells.some((s) => s.id === id));
   log('== Contrôles', JSON.stringify(checks));
 
@@ -1281,6 +1272,11 @@ async function main() {
     generatedBy: 'scripts/fetch-dofusdb.mjs',
     fetchedAt: new Date().toISOString(),
     api: API,
+    game: {
+      ...gameVersionInfo(monsters.gradeSummary.gradeSchemas, GAME_VERSION),
+      gradeSchemas: monsters.gradeSummary.gradeSchemas,
+      unknownGradeKeys: monsters.gradeSummary.unknownKeys,
+    },
     sourceServices: [...sourceUrls].sort(),
     options: { monsterSpellsScope: ms.file.scope, maxDepth: MAX_DEPTH, pageSize: PAGE_SIZE },
     files: Object.fromEntries(written.map((w) => [w.file, { bytes: w.bytes, count: w.count }])),

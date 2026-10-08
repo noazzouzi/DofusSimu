@@ -2,6 +2,14 @@
   "generatedBy": "scripts/fetch-dofusdb.mjs",
   "fetchedAt": "2026-10-04T18:51:19.455Z",
   "api": "https://api.dofusdb.fr",
+  "game": {
+    "version": "3.6",
+    "source": "renseignée à la main le 2026-10-08 (pas par le script) : extraction du 2026-10-04, avant la mise à jour 3.7 du 2026-10-06 ; grades au schéma 3.6 (neutralResistance, paDodge…)",
+    "gradeSchemas": {
+      "3.6": 26970
+    },
+    "unknownGradeKeys": {}
+  },
   "sourceServices": [
     "https://api.dofusdb.fr/achievement-objectives",
     "https://api.dofusdb.fr/achievements",

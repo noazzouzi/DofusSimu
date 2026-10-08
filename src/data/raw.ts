@@ -248,10 +248,18 @@ export interface RawSpellStatesFile {
  * Part EN % des caractéristiques de l'invocateur reçue par une invocation (bombes, tourelles, arbres, poupées…) —
  * pas un bonus fixe (valeurs 50/75/100/200, PV de base à 0) ; cf. model.ts SummonerShare. Clés observées :
  * lifePoints, strength, intelligence, chance, agility, wisdom, <élément>Resistance, bonus<Élément>Damage,
- * tackleEvade, tackleBlock (+ aPRemoval selon la doc API).
+ * tackleEvade, tackleBlock (+ aPRemoval selon la doc API). Depuis le schéma DofusDB 3.7, l'extraction renomme les
+ * clés comme celles des grades (scripts/lib/dofusdb-normalize.mjs) : mêmes noms qu'en 3.6, plus les nouveaux champs
+ * facultatifs de RawMonsterGrade (`<élément>ResistanceFlat`, `criticalDamageReduction`…).
  */
 export type RawMonsterBonusCharacteristics = Partial<Record<string, number>>
 
+/**
+ * Grade de monstre de data/dofusdb/monsters.json. Les clés sont celles du schéma DofusDB 3.6 ; une extraction faite
+ * sur le schéma 3.7 (2026-10-06) est ramenée à ces clés par scripts/lib/dofusdb-normalize.mjs, et les champs apparus
+ * en 3.7 sont écrits sous les noms facultatifs ci-dessous, seulement s'ils sont non nuls (docs/research/dofusdb-api.md
+ * §10). Les données extraites le 2026-10-04 (3.6) n'en contiennent aucun.
+ */
 export interface RawMonsterGrade {
   grade: number
   level: number
@@ -270,15 +278,57 @@ export interface RawMonsterGrade {
   fireResistance?: number
   waterResistance?: number
   airResistance?: number
-  /** Esquive PA / PM. */
+  /**
+   * Esquive PA / PM : bonus fixes, ajoutés à Sagesse/10 par le moteur (engine/factory.ts). 3.7 : `paLostDodge` /
+   * `mpLostDodge`, même grandeur ; `paLostDodge` est devenu négatif (Vortex −24 = −30 % de 80) avec la baisse de 30 %
+   * de l'esquive PA des monstres.
+   */
   paDodge?: number
   pmDodge?: number
   damageReflect?: number
+  /** 3.7 : `rangeBonus`. */
   bonusRange?: number
+  /** 3.7 : `xp`. */
   gradeXp?: number
   /** Id de SPELL-LEVEL (pas de sort) lancé automatiquement à l'apparition. */
   startingSpellId?: number
   hiddenLevel?: number
+  // ── Champs apparus avec le schéma 3.7 (absents des données 3.6 ; écrits seulement s'ils sont non nuls) ──
+  /** Résistances fixes (3.7 : `reduction<Élément>Flat`). */
+  neutralResistanceFlat?: number
+  earthResistanceFlat?: number
+  fireResistanceFlat?: number
+  waterResistanceFlat?: number
+  airResistanceFlat?: number
+  /** Résistances critique et poussée (fixes). Kimbo : poussée 9999. */
+  criticalDamageReduction?: number
+  pushDamageReduction?: number
+  /** Tacle (3.7 : `tackleBonus`) et fuite : bonus ajoutés à Agilité/10 par le moteur (INCERTAIN : bonus ou total). */
+  tackleBlock?: number
+  tackleEvade?: number
+  /** Bonus d'initiative, ajouté à Force + Intelligence + Chance + Agilité par le moteur (Vortex 15000). */
+  initiativeBonus?: number
+  /** Dommages fixes et par élément (3.7 : `<élément>DamageBonus`, renommés comme dans bonusCharacteristics 3.6). */
+  damageBonus?: number
+  bonusNeutralDamage?: number
+  bonusEarthDamage?: number
+  bonusFireDamage?: number
+  bonusWaterDamage?: number
+  bonusAirDamage?: number
+  /** % critique, dommages critiques, dommages de poussée, soins, dommages et puissance des pièges. */
+  criticalHitBonus?: number
+  criticalDamageBonus?: number
+  pushDamageBonus?: number
+  healBonus?: number
+  trapDamageBonus?: number
+  trapDamageBonusPercent?: number
+  /** Retrait PA / PM. */
+  apAttack?: number
+  mpAttack?: number
+  /** INCERTAIN (Puissance ou % de dommages ?) : conservé tel quel, non converti en caractéristique. */
+  percentDamageBonus?: number
+  /** Invocations simultanées : conservé tel quel, non converti (le moteur lit `stats.summons` dans les masques). */
+  maxSummon?: number
   /** Part (%) des caractéristiques de l'invocateur (cf. RawMonsterBonusCharacteristics). */
   bonusCharacteristics?: RawMonsterBonusCharacteristics
 }
@@ -645,6 +695,16 @@ export interface RawManifest {
   equipmentTypes: Record<string, RawEquipmentSlot>
   checks: Record<string, unknown>
   http?: Record<string, number>
+  /**
+   * Version du jeu des données : `--game-version`, sinon déduite du schéma des grades de monstres (3.6 ou 3.7), avec
+   * le bilan des schémas de grades et les clés de grade inconnues (scripts/lib/dofusdb-normalize.mjs).
+   */
+  game?: {
+    version: string
+    source: string
+    gradeSchemas?: Record<string, number>
+    unknownGradeKeys?: Record<string, number>
+  }
 }
 
 // ───────────────────────────── cartes (data/maps/<mapId>.json) ─────────────────────────────
