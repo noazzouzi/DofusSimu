@@ -21,6 +21,11 @@
  *  - pénalités : ×0,85 par PA sous 12, ×0,9 par PM sous 6, ×0,95 par PO sous le besoin de la rotation (5 si un sort
  *    de la rotation a une portée modifiable ≥ 3, sinon 0) ; bonus d'initiative facultatif (`initiativeWeight`).
  *
+ * Cibles : `ProxyOptions.targets` (sinon, défaut historique, le mix du Vortex ; `strictTargets` interdit ce défaut) ;
+ * chaque cible peut porter des caractéristiques imposées et des états (`ProxyTarget.stats`/`states`, boss « en
+ * combat » : résistances effectives, « −50 % à distance », phase), appliqués aux cibles, aux monstres qui frappent et à
+ * la cible synthétique de la forme fermée (`applyTargetOverrides`).
+ *
  * Deux évaluations :
  *  - `exact(stats)` : vrais combattants (src/engine/factory) et `DptTable` sur chaque cible du mix (≈ 0,3-0,9 ms) —
  *    sert à re-noter les meilleurs candidats ;
@@ -43,7 +48,7 @@ import type { RoleId } from '../../ai/types'
 import { Element, ELEMENT_FIXED_DAMAGE, ELEMENT_MAIN_STAT, ELEMENT_RES_FIXED, ELEMENT_RES_PCT, type StatKey, type Stats } from '../../core/types'
 import type { DataStore } from '../../data/store'
 import { VORTEX_TARGET_MIX } from '../../dungeons/generic/dummy'
-import { createEngine, type Engine } from '../../engine'
+import type { Engine } from '../../engine'
 import { resolveElement } from '../../engine/effects/damage/pipeline'
 import { createMonsterFighter, createPlayerFighter } from '../../engine/factory'
 import { bumpRev } from '../../engine/rev'
@@ -52,6 +57,10 @@ import type { Fighter } from '../../engine/types'
 import { copyStats } from '../../stats/fastStats'
 import { RUNE_WEIGHT_PER_POINT } from '../../stats/forgemagie'
 import { detLog } from './detmath'
+import { applyTargetOverrides, proxyEngine } from './targetFighter'
+
+// Moteur partagé et surcharges des cibles : targetFighter.ts (sans dépendance au Vortex), ré-exportés ici.
+export { applyTargetOverrides, proxyEngine, type TargetOverrides } from './targetFighter'
 
 // ───────────────────────────── paramètres ─────────────────────────────
 
@@ -88,10 +97,28 @@ export interface ProxyMember {
   name?: string
 }
 
+/**
+ * Monstre d'un mix (cibles frappées ou monstres qui frappent). `stats` et `states` décrivent le monstre TEL QU'IL EST
+ * EN COMBAT quand le combattant de fabrique (`createMonsterFighter`, « nu » : ni sort de départ, ni état) ne suffit
+ * pas (theorycraft contre un boss, docs/design/theorycraft.md §1.4) ; absents, le monstre est celui de la fabrique
+ * (comportement historique, nombres inchangés).
+ */
 export interface ProxyTarget {
   monsterId: number
   weight: number
   grade?: number
+  /**
+   * Caractéristiques IMPOSÉES après `createMonsterFighter` (valeurs finales, pas des bonus) : résistances effectives
+   * (`fireResPct`…), `rangedResPct`/`meleeResPct` (ex. 50 pour « −50 % de dommages à distance »), dommages finaux…
+   * Les dérivées des caractéristiques principales sont recalculées (`applyTargetOverrides`) sauf si elles sont
+   * elles-mêmes imposées.
+   */
+  stats?: Partial<Stats>
+  /**
+   * États posés sur le monstre (ids spell-states) : ses sorts de phase (`statesCriterion`, ex. Solar « E575 ») deviennent
+   * lançables pour les dégâts reçus, et les lignes conditionnées par l'état de la cible s'appliquent pour le DPT.
+   */
+  states?: number[]
 }
 
 /**
@@ -105,8 +132,17 @@ export interface ProxyPushModel {
 }
 
 export interface ProxyOptions {
-  /** Mix de cibles (défaut : mix du Vortex, `VORTEX_TARGET_MIX`). */
+  /**
+   * Mix de cibles (DPT). ABSENT ⇒ mix du Vortex (`VORTEX_TARGET_MIX`, défaut historique conservé pour l'optimiseur du
+   * Vortex et les outils qui s'en servent) — et `incoming`, s'il est absent aussi, reprend ce mix. Tout autre usage
+   * (theorycraft contre un boss) passe ses cibles explicitement et active `strictTargets`.
+   */
   targets?: readonly ProxyTarget[]
+  /**
+   * Refuser le défaut silencieux du Vortex : erreur si `targets` est absent ou vide (theorycraft, docs/design/
+   * theorycraft.md §0 point 3). Défaut faux.
+   */
+  strictTargets?: boolean
   /**
    * Mix des monstres qui FRAPPENT le personnage (EHP) ; défaut : `targets`. Poids = part des tours d'attaque (exposition),
    * pas le nombre de monstres (ex. `VORTEX_INCOMING_MIX`, calibré sur les dégâts subis en combat).
@@ -274,15 +310,6 @@ function countCasts(casts: readonly number[]): Map<number, number> {
 
 // ───────────────────────────── contexte ─────────────────────────────
 
-const ENGINES = new WeakMap<DataStore, Engine>()
-
-/** Moteur partagé par donnée (profils de sorts et tables DPT mis en cache). */
-export function proxyEngine(data: DataStore): Engine {
-  let e = ENGINES.get(data)
-  if (!e) ENGINES.set(data, (e = createEngine(data)))
-  return e
-}
-
 /**
  * Contexte d'évaluation d'un personnage (voir l'en-tête). Construit une fois par (classe, variantes, rôle, cibles) à
  * partir de caractéristiques de référence (stuff de départ) : rotations par PA, lignes reçues, poids des
@@ -336,13 +363,17 @@ export class ProxyContext {
     this.mpTarget = opts.mpTarget ?? 6
     this.initiativeWeight = opts.initiativeWeight ?? 0
     if (opts.incomingPush && opts.incomingPush.share > 0 && opts.incomingPush.bonus > 0) this.push = { ...opts.incomingPush }
+    if (opts.strictTargets && !opts.targets?.length) {
+      throw new Error('Proxy de stuff : cibles absentes (`targets`) alors que `strictTargets` est actif — le mix du Vortex ne sert pas de défaut ici ; passer la cible explicitement (ex. le boss et son grade).')
+    }
     const mix: readonly ProxyTarget[] = opts.targets ?? VORTEX_TARGET_MIX
     const grade = opts.grade ?? 5
+    // Combattants des mix : fabrique, puis surcharges de la cible (caractéristiques imposées, états ; sans effet si absentes).
     this.targets = mix.map((t, i) => {
       const f = createMonsterFighter(data, { monsterId: t.monsterId, grade: t.grade ?? grade, team: 1 })
       f.id = 1 + i
       f.tags.referenceTarget = true
-      return f
+      return applyTargetOverrides(f, t)
     })
     this.weights = mix.map(t => t.weight)
     if (opts.incoming) {
@@ -350,15 +381,16 @@ export class ProxyContext {
         const f = createMonsterFighter(data, { monsterId: t.monsterId, grade: t.grade ?? grade, team: 1 })
         f.id = 101 + i
         f.tags.referenceTarget = true
-        return f
+        return applyTargetOverrides(f, t)
       })
       this.incWeights = opts.incoming.map(t => t.weight)
     } else {
       this.incTargets = this.targets
       this.incWeights = this.weights
     }
-    // Cible synthétique : premier monstre du mix, défenses et parades moyennées.
-    const synth = createMonsterFighter(data, { monsterId: mix[0].monsterId, grade: mix[0].grade ?? grade, team: 1 })
+    // Cible synthétique : premier monstre du mix (avec ses surcharges : caractéristiques hors défenses, états), défenses
+    // et parades moyennées sur les cibles SURCHARGÉES (exact et forme fermée voient les mêmes défenses).
+    const synth = applyTargetOverrides(createMonsterFighter(data, { monsterId: mix[0].monsterId, grade: mix[0].grade ?? grade, team: 1 }), mix[0])
     synth.id = 1 + mix.length
     synth.tags.referenceTarget = true
     for (const k of TARGET_KEYS) synth.stats[k] = weightedAverage(this.targets, this.weights, k)

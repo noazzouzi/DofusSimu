@@ -4,6 +4,7 @@
  */
 export * from './detmath'
 export * from './proxy'
+export * from './profiles'
 export * from './pools'
 export * from './exos'
 export * from './points'
