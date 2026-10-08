@@ -1799,7 +1799,7 @@ body.dragging .drop-hint {
   }
 }
 
-/* ───────────────────────── sections (Combats / Stuffs) ───────────────────────── */
+/* ───────────────────────── sections (Combats / Stuffs / Boss) ───────────────────────── */
 
 .view-tabs {
   display: flex;
@@ -1829,7 +1829,7 @@ body.dragging .drop-hint {
   background: var(--accent);
   color: var(--accent-ink);
 }
-body[data-view='stuffs'] .replay-only,
+body[data-view]:not([data-view='combats']) .replay-only,
 .layout[hidden] {
   display: none;
 }
