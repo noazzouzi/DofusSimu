@@ -2,8 +2,9 @@
  * Theorycraft contre un boss — rendu texte (français, CLI) de la question (1) « quel stuff est le plus intéressant
  * contre ce boss ? » (`StuffVsBossResult`, src/theorycraft/stuff.ts ; docs/design/theorycraft.md §1.9).
  *
- * Sections : boss et personnage ; tableau comparatif (départ, stuff du preset, génériques, puis optimisés : logJ, DPT
- * soutenu, DPT du proxy, PV, PV effectifs, dégâts reçus, PA/PM/PO) ; meilleur stuff détaillé (posture, dégâts reçus par
+ * Sections : boss et personnage ; tableau comparatif (départ, stuff du preset, génériques, puis optimisés : score de
+ * classement — logJ du proxy ou logJ soutenu, `ranking` —, DPT soutenu, DPT du proxy, PV, PV effectifs, dégâts reçus,
+ * PA/PM/PO, pénalité de l'objectif) ; meilleur stuff détaillé (posture, dégâts reçus par
  * élément, objets par emplacement avec forgemagie, points et parchemins, objets changés, DPT par sort) ; autres stuffs
  * du top (objets changés) ; comparaison des éléments (option `elements: 'all'`) ; équivalences des caractéristiques ;
  * hypothèses et avertissements ; statistiques de la recherche.
@@ -42,17 +43,22 @@ function shorten(s: string, max: number): string {
   return s.length <= max ? s : `${s.slice(0, max - 1)}…`
 }
 
-function row(e: StuffEvaluation, startLogJ: number | null): string[] {
-  const delta = e.logJ !== null && startLogJ !== null && e.origin !== 'start' && e.origin !== 'user' ? ` (${signed(e.logJ - startLogJ, 3)})` : ''
+/** Score qui classe les stuffs du résultat (logJ du proxy, ou logJ soutenu : `ranking`). */
+type Rank = (e: StuffEvaluation) => number | null
+
+function row(e: StuffEvaluation, rank: Rank, startRank: number | null): string[] {
+  const v = rank(e)
+  const delta = v !== null && startRank !== null && e.origin !== 'start' && e.origin !== 'user' ? ` (${signed(v - startRank, 3)})` : ''
   return [
     shorten(e.label, 60) + (e.valid ? '' : ' [invalide]'),
-    e.logJ === null ? '—' : `${num(e.logJ, 3)}${delta}`,
+    v === null ? '—' : `${num(v, 3)}${delta}`,
     num(e.damage.steady),
     num(e.damage.proxy),
     num(e.survival.hp),
     num(e.survival.ehp) + (e.survival.capped ? '*' : ''),
     num(e.survival.incoming),
     `${e.ap}/${e.mp}/${e.range}`,
+    e.penalty < 1 - 1e-9 ? `×${num(e.penalty, 3)}` : '—',
   ]
 }
 
@@ -96,20 +102,26 @@ export function formatStuffVsBoss(r: StuffVsBossResult, opts: FormatStuffOptions
   out.push('')
 
   // ── Tableau comparatif ──
-  const startLogJ = r.start.logJ
+  const sustained = r.ranking.by === 'sustained'
+  const rank: Rank = e => (sustained ? e.logJSustained : e.logJ)
+  const scoreName = sustained ? 'logJ soutenu' : 'logJ'
+  const startRank = rank(r.start)
   out.push('Comparaison')
-  const header = ['Stuff', 'logJ (écart au départ)', 'DPT soutenu', 'DPT proxy', 'PV', 'PVe', 'Reçus/tour', 'PA/PM/PO']
-  const rows = [...r.comparison.map(e => row(e, startLogJ)), ...r.top.filter(e => e.origin === 'optimized').map(e => row(e, startLogJ))]
+  const header = ['Stuff', `${scoreName} (écart au départ)`, 'DPT soutenu', 'DPT proxy', 'PV', 'PVe', 'Reçus/tour', 'PA/PM/PO', 'Pénalité']
+  const rows = [...r.comparison.map(e => row(e, rank, startRank)), ...r.top.filter(e => e.origin === 'optimized').map(e => row(e, rank, startRank))]
   out.push(...table(header, rows))
-  out.push('  DPT soutenu : rotation établie (relances amorties), meilleure posture, non calibré. DPT proxy : objectif de l’optimiseur (un tour, × calibration du preset).')
+  out.push(`  ${r.ranking.reason}`)
+  out.push('  DPT soutenu : rotation établie (relances amorties), meilleure posture, non calibré. DPT proxy : objectif de l’optimiseur (un tour, × calibration du preset, sans posture).')
   out.push('  PVe : PV effectifs (PV × dégâts reçus sans défense / avec défenses)' + (rows.some(x => x[5].endsWith('*')) ? ' ; * = plafond de 20 × PV atteint.' : '.'))
+  out.push(`  Pénalité : facteur de l’objectif pour PA/PM/PO sous les valeurs visées (12 PA, 6 PM, ${r.options.rangeNeed} PO ; ×0,85, ×0,9, ×0,95 par point manquant), compris dans ${scoreName} — un réglage, pas un effet du boss.`)
   if (!r.startValid) out.push('  Le stuff de départ est invalide : il n’est jamais retenu comme meilleur.')
   out.push('')
 
   // ── Meilleur stuff ──
   const best = r.best
-  const gain = best.logJ !== null && startLogJ !== null && best !== r.start && best.id !== r.start.id ? ` (${signed(best.logJ - startLogJ, 3)} par rapport au départ)` : ''
-  out.push(`Meilleur stuff : ${best.label} — logJ ${best.logJ === null ? '—' : num(best.logJ, 3)}${gain}`)
+  const bestRank = rank(best)
+  const gain = bestRank !== null && startRank !== null && best !== r.start && best.id !== r.start.id ? ` (${signed(bestRank - startRank, 3)} par rapport au départ)` : ''
+  out.push(`Meilleur stuff : ${best.label} — ${scoreName} ${bestRank === null ? '—' : num(bestRank, 3)}${gain}`)
   const d = best.damage
   out.push(
     `  DPT soutenu ${num(d.steady)} (rafale ${num(d.burst)}, période ${d.period || '?'} tour${d.period > 1 ? 's' : ''}, posture « ${d.stance.name} ») ; DPT proxy ${num(d.proxy)}`,
@@ -140,7 +152,10 @@ export function formatStuffVsBoss(r: StuffVsBossResult, opts: FormatStuffOptions
     const others = r.top.filter(e => e !== best && e.id !== best.id)
     if (others.length) {
       out.push('Autres stuffs du top (objets changés par rapport au départ)')
-      for (const e of others) out.push(`  ${e.label} — logJ ${e.logJ === null ? '—' : num(e.logJ, 3)}, DPT soutenu ${num(e.damage.steady)}, PVe ${num(e.survival.ehp)} : ${changesText(e)}`)
+      for (const e of others) {
+        const v = rank(e)
+        out.push(`  ${e.label} — ${scoreName} ${v === null ? '—' : num(v, 3)}, DPT soutenu ${num(e.damage.steady)}, PVe ${num(e.survival.ehp)} : ${changesText(e)}`)
+      }
       out.push('')
     }
   }
@@ -150,8 +165,11 @@ export function formatStuffVsBoss(r: StuffVsBossResult, opts: FormatStuffOptions
     out.push('Comparaison des éléments (une recherche par élément)')
     out.push(
       ...table(
-        ['Élément', 'Rés. du boss', 'logJ', 'DPT soutenu', 'PVe', ''],
-        r.elements.map(e => [e.label, `${num(e.bossResPct)} %`, e.best.logJ === null ? '—' : num(e.best.logJ, 3), num(e.best.damage.steady), num(e.best.survival.ehp), e.chosen ? '← retenu' : '']),
+        ['Élément', 'Rés. du boss', scoreName, 'DPT soutenu', 'PVe', ''],
+        r.elements.map(e => {
+          const v = rank(e.best)
+          return [e.label, `${num(e.bossResPct)} %`, v === null ? '—' : num(v, 3), num(e.best.damage.steady), num(e.best.survival.ehp), e.chosen ? '← retenu' : '']
+        }),
       ),
     )
     out.push('')

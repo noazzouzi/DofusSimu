@@ -1,18 +1,21 @@
 /**
  * Theorycraft — question (1) « quel stuff est le plus intéressant contre ce boss ? » (src/theorycraft/stuff.ts,
  * formatStuff.ts ; docs/design/theorycraft.md §1.7) : amélioration contre Merkator, builds valides et déterministes,
- * aucune graine `vortex_*`, top distinct, comparaison des éléments sur un boss à élément faible, import RoxxSolver,
- * départ invalide jamais retenu, équivalences des caractéristiques, rendu texte, pureté et performance.
+ * aucune graine `vortex_*`, top distinct et trié, comparaison des éléments sur un boss à élément faible (équivalences
+ * dans l'élément retenu), import RoxxSolver (pénalité de PO décisive signalée, PO visée réglable), départ invalide
+ * jamais retenu, classes à posture classées par le logJ soutenu (Zobal contre le Père Ver), équivalences des
+ * caractéristiques (part des pénalités séparée), rendu texte, pureté (dépendances transitives figées) et performance.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ELEMENT_RES_PCT, type Element } from '../src/core/types'
+import { STUFFS } from '../src/optimizer/team/presets'
 import { loadDataStore } from '../src/data/node'
 import { computeBuildStats } from '../src/stats/build'
 import { bossProfile } from '../src/theorycraft/bossProfile'
 import { formatStuffVsBoss } from '../src/theorycraft/formatStuff'
 import { DEFAULT_TOP, itemSetKey, statEquivalences, stuffVsBoss, type StuffProgress } from '../src/theorycraft/stuff'
-import type { BossProfile, PerElement, StuffEvaluation } from '../src/theorycraft/types'
+import type { BossProfile, PerElement, StuffEvaluation, StuffVsBossResult } from '../src/theorycraft/types'
 import { runtimeImportClosure, runtimeImports } from './import-graph-helpers'
 
 const data = loadDataStore()
@@ -20,6 +23,7 @@ const MERKATOR = 3534
 const PERE_VER = 4726
 const HAREBOURG = 3416
 const SOLAR = 5100
+const VORTEX = 3835
 const BOUFTOU_ROYAL = 147
 /** Lien partagé par l'utilisateur (Crâ, 2026-10-06), le même que tests/stuff-editor.test.ts. */
 const ROXX =
@@ -42,6 +46,8 @@ function withResistances(p: BossProfile, res: PerElement): BossProfile {
 }
 
 const keysOf = (list: readonly StuffEvaluation[]) => list.map(e => itemSetKey(e.build))
+/** Score de classement d'un stuff dans son résultat (logJ du proxy, ou logJ soutenu). */
+const rankOf = (r: StuffVsBossResult, e: StuffEvaluation) => (r.ranking.by === 'sustained' ? e.logJSustained : e.logJ)
 
 describe('stuffVsBoss : Crâ Terre contre Merkator (−50 % à distance)', () => {
   it('le stuff optimisé améliore logJ et PV effectifs par rapport au stuff du preset', () => {
@@ -51,6 +57,7 @@ describe('stuffVsBoss : Crâ Terre contre Merkator (−50 % à distance)', () =>
     expect(cra.start.origin).toBe('start')
     expect(cra.comparison[0]).toEqual(cra.start)
     expect(cra.comparison[0].id).toBe('start')
+    expect(cra.ranking.by).toBe('proxy')
     expect(cra.best.origin).toBe('optimized')
     expect(cra.best.logJ!).toBeGreaterThan(cra.start.logJ! + 0.01)
     expect(cra.best.survival.ehp).toBeGreaterThan(cra.start.survival.ehp)
@@ -79,6 +86,11 @@ describe('stuffVsBoss : Crâ Terre contre Merkator (−50 % à distance)', () =>
   it('aucune graine ni stuff comparé `vortex_*` ; stuffs génériques notés', () => {
     expect(cra.search.seedStuffs.length).toBeGreaterThan(0)
     expect(cra.search.seedStuffs.filter(id => id.startsWith('vortex_'))).toEqual([])
+    // Les graines `vortex_*` ont bien été PROPOSÉES par l'optimiseur et écartées par le filtre (pas seulement absentes).
+    const vortexIds = Object.keys(STUFFS).filter(id => id.startsWith('vortex_'))
+    expect(vortexIds.length).toBeGreaterThan(40)
+    expect(cra.search.excludedSeeds).toEqual(expect.arrayContaining(vortexIds))
+    expect(cra.search.seedStuffs.filter(id => cra.search.excludedSeeds.includes(id))).toEqual([])
     expect(cra.comparison.filter(e => e.id.includes('vortex'))).toEqual([])
     const generics = cra.comparison.filter(e => e.origin === 'generic').map(e => e.id)
     expect(generics).toEqual(expect.arrayContaining(['generic:feu', 'generic:eau', 'generic:air', 'generic:tank', 'generic:retrait']))
@@ -121,20 +133,24 @@ describe('stuffVsBoss : Crâ Terre contre Merkator (−50 % à distance)', () =>
     }
   })
 
-  it('équivalences des caractéristiques finies et documentées (référence : Force)', () => {
+  it('équivalences des caractéristiques finies et documentées (référence : Force), pénalités d’objectif à part', () => {
     const w = cra.statWeights
     expect(w.reference).toBe('strength')
     expect(w.notes.length).toBeGreaterThanOrEqual(2)
+    expect(w.notes.some(n => /pénalités de l’objectif/.test(n))).toBe(true)
     expect(w.items.length).toBeGreaterThan(5)
     for (const e of w.items) {
       expect(Number.isFinite(e.perPoint) && e.perPoint > 0).toBe(true)
       expect(e.inReference !== null && Number.isFinite(e.inReference)).toBe(true)
-      expect(e.text).toMatch(/≈ .* Force$/)
+      expect(e.text).toMatch(e.objectivePenalty ? /≈ .* Force, dont .* de pénalité d’objectif \(.* pour les effets modélisés\)$/ : /≈ .* Force$/)
     }
     const ap = w.items.find(e => e.stat === 'ap')!
     expect(ap.text).toMatch(/^1 PA \(sous le plafond\) ≈ /)
-    // Un PA vaut bien plus qu'un point de Force ; un point de Force vaut 1 Force.
-    expect(ap.inReference!).toBeGreaterThan(50)
+    // La pénalité de l'objectif (×0,85 par PA manquant : ln(1/0,85) par point) est séparée de la part modélisée, qui
+    // reste nettement positive (un PA de plus = plus de sorts lancés) : un PA vaut bien plus qu'un point de Force.
+    expect(ap.objectivePenalty!).toBeCloseTo(-Math.log(0.85), 9)
+    expect(ap.modeledInReference!).toBeGreaterThan(50)
+    expect(ap.modeledInReference!).toBeLessThan(ap.inReference!)
     expect(w.items.find(e => e.stat === 'strength')!.inReference).toBeCloseTo(1, 9)
   })
 
@@ -179,6 +195,10 @@ describe('stuffVsBoss : déterminisme et options', () => {
     for (const e of r.elements!) expect(chosen[0].best.logJ!).toBeGreaterThanOrEqual(e.best.logJ!)
     expect(r.best.element).toBe('fire')
     expect(r.search.runs).toBe(4)
+    // Équivalences dans l'élément RETENU (contexte du proxy construit au meilleur stuff, pas au départ Terre).
+    expect(r.statWeights.reference).toBe('intelligence')
+    expect(r.statWeights.notes.some(n => /principale .*ne vaut rien/.test(n))).toBe(false)
+    expect(r.statWeights.items.find(e => e.stat === 'ap')!.modeledInReference!).toBeGreaterThan(0)
   })
 
   it('import RoxxSolver (lien réel) évalué contre un boss : parchemins complétés et signalés, preset de la classe', () => {
@@ -203,6 +223,30 @@ describe('stuffVsBoss : déterminisme et options', () => {
     expect(raw.start.survival.hp).toBeLessThan(r.start.survival.hp)
   })
 
+  it('RoxxSolver 12/6/0 : la pénalité de PO, seule, place le stuff de l’utilisateur derrière — signalé ; PO visée réglable', () => {
+    const r = stuffVsBoss(data, { roxx: ROXX }, merkator, { ...QUICK, top: 2 })
+    expect(r.start.range).toBe(0)
+    expect(r.start.penalty).toBeCloseTo(0.95 ** 6, 9)
+    expect(r.options.rangeNeed).toBe(6)
+    const noPen = (e: StuffEvaluation) => e.logJ! - Math.log(e.penalty)
+    // Sans pénalités, le stuff de l'utilisateur passerait devant le meilleur : avertissement chiffré, bonus de PO du Crâ cités.
+    expect(r.best.logJ!).toBeGreaterThan(r.start.logJ!)
+    expect(noPen(r.start)).toBeGreaterThan(noPen(r.best))
+    const w = r.warnings.find(x => /Pénalités d'objectif décisives/.test(x))
+    expect(w).toMatch(/12\/6\/0/)
+    expect(w).toMatch(/Tirs Éloignés/)
+    expect(w).toMatch(/rangeNeed/)
+    // Le tableau texte montre la pénalité de chaque ligne.
+    const text = formatStuffVsBoss(r)
+    expect(text).toMatch(/Pénalité/)
+    expect(text).toContain('×0,735')
+    // PO visée abaissée (bonus de PO de la classe) : plus de pénalité de PO.
+    const low = stuffVsBoss(data, { roxx: ROXX }, merkator, { ...QUICK, top: 1, rangeNeed: 0 })
+    expect(low.options.rangeNeed).toBe(0)
+    expect(low.start.penalty).toBe(1)
+    expect(low.start.logJ!).toBeCloseTo(noPen(r.start), 9)
+  })
+
   it('build fourni : variantes du preset désigné, départ = stuff de l’utilisateur', () => {
     const own = cra.top[1].build
     const r = stuffVsBoss(data, { build: own, presetId: 'cra_terre_mono' }, merkator, { ...QUICK, top: 2 })
@@ -225,6 +269,9 @@ describe('stuffVsBoss : déterminisme et options', () => {
     expect(r.assumptions.some(a => /génériques non évalués/.test(a))).toBe(true)
     expect(r.options.fixed).toEqual([])
     expect(r.warnings.some(w => /départ est invalide/.test(w))).toBe(true)
+    // Le boss inflige ~4 par tour : PVe plafonnés à 20 × PV ; la survie ne départage plus que par les PV bruts (dit).
+    expect(r.best.survival.capped).toBe(true)
+    expect(r.warnings.some(w => /plafonnés.*PV bruts/.test(w))).toBe(true)
   })
 
   it('Père Ver (invulnérable à distance) : Crâ sans dégâts, signalé ; référence des équivalences = Vitalité', () => {
@@ -239,6 +286,49 @@ describe('stuffVsBoss : déterminisme et options', () => {
     expect(r.best.damage.stance.id).not.toBe('base')
     expect(r.best.damage.steady).toBeGreaterThan(1000)
     expect(r.warnings.some(w => /Posture de classe/.test(w))).toBe(true)
+  })
+
+  it('Zobal contre le Père Ver (proxy aveugle : DPT 0 sans posture) : classement soutenu, le meilleur garde son DPT soutenu', () => {
+    const r = stuffVsBoss(data, { preset: 'zobal_psychopathe' }, bossProfile(data, PERE_VER), { ...QUICK, top: 3 })
+    expect(r.start.damage.proxy).toBe(0)
+    expect(r.start.damage.steady).toBeGreaterThan(1000)
+    expect(r.ranking.by).toBe('sustained')
+    expect(r.ranking.reason).toMatch(/logJ SOUTENU/)
+    // Avant correction : « meilleur » stuff à 464 de DPT soutenu contre 1 852 au départ (−75 %), tout en survie.
+    expect(r.best.damage.steady).toBeGreaterThanOrEqual(0.85 * r.start.damage.steady)
+    expect(r.best.logJSustained!).toBeGreaterThanOrEqual(r.start.logJSustained!)
+    for (let i = 1; i < r.top.length; i++) expect(r.top[i].logJSustained!).toBeLessThanOrEqual(r.top[i - 1].logJSustained!)
+    // logJ soutenu = logJ du proxy avec le terme de DPT remplacé (même PVe, UTIL et pénalités).
+    expect(r.start.logJSustained! - r.start.logJ!).toBeGreaterThan(1)
+    // La caractéristique principale vaut quelque chose (DPT soutenu en posture), pas « aucun dégât ».
+    expect(r.statWeights.reference).toBe('strength')
+    expect(r.statWeights.notes.some(n => /principale .*ne vaut rien/.test(n))).toBe(false)
+    expect(r.statWeights.notes.some(n => /Classement soutenu/.test(n))).toBe(true)
+    expect(r.search.polish).toBeDefined()
+    for (const e of r.top) expect(computeBuildStats(e.build, data).valid).toBe(true)
+    // Objets imposés (Dofus à passif du départ) portés par tous les stuffs proposés, affinés compris.
+    for (const e of r.top) for (const id of r.options.fixed) expect(e.build.items.some(i => i.itemId === id)).toBe(true)
+    // Affinage déterministe.
+    const again = stuffVsBoss(data, { preset: 'zobal_psychopathe' }, bossProfile(data, PERE_VER), { ...QUICK, top: 3 })
+    expect(keysOf(again.top)).toEqual(keysOf(r.top))
+    expect(again.top.map(e => e.logJSustained)).toEqual(r.top.map(e => e.logJSustained))
+  })
+
+  it('top trié par le score de classement même avec une recherche courte (second passage du tri distinct)', () => {
+    for (const preset of ['zobal_psychopathe', 'enutrof_retrait_pm_eau']) {
+      const r = stuffVsBoss(data, { preset }, bossProfile(data, VORTEX), { ...QUICK, top: 3 })
+      const ranks = r.top.map(e => rankOf(r, e)!)
+      for (let i = 1; i < ranks.length; i++) expect(ranks[i]).toBeLessThanOrEqual(ranks[i - 1])
+      expect(r.best).toEqual(r.top[0])
+    }
+  })
+
+  it('le meilleur stuff qui perd du DPT soutenu par rapport au départ est signalé, chiffré', () => {
+    // Zobal Rempart (tank : a = 0,2, b = 0,8) contre le Comte Harebourg : la survie l'emporte sur les dégâts.
+    const r = stuffVsBoss(data, { preset: 'zobal_rempart' }, bossProfile(data, HAREBOURG), { ...QUICK, top: 1 })
+    const loss = 1 - r.best.damage.steady / r.start.damage.steady
+    expect(loss).toBeGreaterThan(0.15)
+    expect(r.warnings.some(w => w.includes(`perd ${Math.round(100 * loss)} % de DPT soutenu`))).toBe(true)
   })
 })
 
@@ -261,12 +351,29 @@ describe('statEquivalences', () => {
     expect(none.items).toEqual([])
     expect(none.notes.some(n => /Aucune caractéristique de référence/.test(n))).toBe(true)
   })
+
+  it('PA/PM/PO : part des pénalités d’objectif séparée ; « aucun dégât » seulement sans DPT soutenu ; jamais « -0 »', () => {
+    const pen = -Math.log(0.85)
+    const w = statEquivalences({ strength: 0.001, ap: pen + 0.2, mp: -Math.log(0.9) }, 'earth', { penalties: { ap: pen, mp: -Math.log(0.9) }, steady: 1500 })
+    const ap = w.items.find(i => i.stat === 'ap')!
+    expect(ap.objectivePenalty).toBeCloseTo(pen, 12)
+    expect(ap.modeledInReference).toBeCloseTo(200, 9)
+    expect(ap.text).toBe(`1 PA (sous le plafond) ≈ ${Math.round((pen + 0.2) / 0.001)} Force, dont ${Math.round(pen / 0.001)} de pénalité d’objectif (200 pour les effets modélisés)`)
+    const mp = w.items.find(i => i.stat === 'mp')!
+    expect(mp.modeledInReference).toBeCloseTo(0, 9)
+    expect(mp.text).toMatch(/\(0 pour les effets modélisés\)$/)
+    expect(mp.text).not.toMatch(/-0/)
+    // Référence en Vitalité alors que le DPT soutenu n'est pas nul : pas de « aucun dégât ».
+    const vit = statEquivalences({ strength: 0, vitality: 0.002 }, 'earth', { steady: 900 })
+    expect(vit.reference).toBe('vitality')
+    expect(vit.notes.some(n => /aucun dégât/.test(n))).toBe(false)
+  })
 })
 
 describe('formatStuffVsBoss', () => {
   it('rendu texte français : boss, comparaison, meilleur stuff, sorts, équivalences, hypothèses', () => {
     const text = formatStuffVsBoss(cra)
-    for (const s of ['Stuff contre Merkator (3534)', 'réduction distance 50 %', 'Comparaison', 'Meilleur stuff', 'Objets :', 'Objets changés', 'DPT soutenu par sort', 'Équivalences des caractéristiques', 'Hypothèses', 'Recherche :'])
+    for (const s of ['Stuff contre Merkator (3534)', 'réduction distance 50 %', 'Comparaison', 'Pénalité', cra.ranking.reason, 'Meilleur stuff', 'Objets :', 'Objets changés', 'DPT soutenu par sort', 'Équivalences des caractéristiques', 'Hypothèses', 'Recherche :'])
       expect(text).toContain(s)
     expect(text).toContain(cra.best.items[0].name)
     expect(text).toContain(cra.best.damage.spells[0].name)
@@ -286,5 +393,24 @@ describe('pureté', () => {
     const index = runtimeImportClosure(['src/theorycraft/index.ts']).files
     expect(index).not.toContain('src/theorycraft/stuff.ts')
     expect(index).not.toContain('src/optimizer/stuff/proxy.ts')
+  })
+
+  it('dépendances TRANSITIVES de stuff.ts vers src/dungeons : seulement celles du proxy et de l’optimiseur, liste figée (en-tête)', () => {
+    const dungeons = (entries: string[]) => runtimeImportClosure(entries).files.filter(f => f.startsWith('src/dungeons/'))
+    const mine = dungeons(['src/theorycraft/stuff.ts'])
+    // stuff.ts n'ajoute rien à ce que tirent déjà proxy.ts et search.ts…
+    expect(mine.filter(f => !dungeons(['src/optimizer/stuff/proxy.ts', 'src/optimizer/stuff/search.ts']).includes(f))).toEqual([])
+    // … et toute nouvelle dépendance au Vortex (ou à un autre donjon) fait échouer ce test : à documenter dans l'en-tête.
+    const known = [
+      'src/dungeons/generic/dummy.ts',
+      'src/dungeons/generic/skirmish.ts',
+      'src/dungeons/vortex/clock.ts',
+      'src/dungeons/vortex/constants.ts',
+      'src/dungeons/vortex/params.ts',
+      'src/dungeons/vortex/placement.ts',
+      'src/dungeons/waves.ts',
+    ]
+    expect(mine.filter(f => !known.includes(f))).toEqual([])
+    expect(runtimeImportClosure(['src/theorycraft/stuff.ts']).external.filter(e => e.spec.startsWith('node:'))).toEqual([])
   })
 })

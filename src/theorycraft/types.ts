@@ -365,6 +365,13 @@ export interface StuffEvaluation {
    * seulement à personnage, rôle, profil et boss égaux ; null pour un build invalide.
    */
   logJ: number | null
+  /**
+   * logJ SOUTENU : le même logJ où le DPT du proxy est remplacé par le DPT soutenu (`damage.steady`, × calibration du
+   * preset pour rester à l'échelle du proxy) — a·ln(DPT soutenu) + b·ln PVe + ln(1 + c·UTIL) + ln(pénalités). Classe
+   * les stuffs quand le proxy ne voit pas les dégâts de la classe (posture, `StuffVsBossResult.ranking`) ; null pour
+   * un build invalide.
+   */
+  logJSustained: number | null
   damage: StuffDamage
   survival: StuffSurvival
   /** UTIL du rôle (retrait, soins, tacle…) et pénalité (PA/PM/PO sous les objectifs). */
@@ -391,10 +398,21 @@ export interface StuffEvaluation {
 export interface StatEquivalence {
   stat: StatKey
   label: string
-  /** Gain de logJ par point (différences finies de la forme fermée, au meilleur stuff ; PA/PM/PO : un point sous le plafond). */
+  /**
+   * Gain du score de classement par point (différences finies de la forme fermée d'un contexte du proxy construit AU
+   * meilleur stuff — son élément, sa rotation ; DPT soutenu en posture quand `ranking.by = 'sustained'`) ; PA/PM/PO :
+   * un point sous le plafond.
+   */
   perPoint: number
   /** Points de la caractéristique de référence qui valent un point de `stat` (null : référence sans valeur). */
   inReference: number | null
+  /**
+   * PA, PM et PO : part de `perPoint` due aux seules pénalités de l'objectif (×0,85 par PA, ×0,9 par PM, ×0,95 par PO
+   * sous les valeurs visées) — un réglage de l'objectif, pas un effet modélisé contre le boss (absent : aucune).
+   */
+  objectivePenalty?: number
+  /** `inReference` sans la part `objectivePenalty` : valeur du point pour les dégâts, la survie et l'utilité modélisés. */
+  modeledInReference?: number | null
   /** Valeur par unité de poids de rune (forgemagie), relative à la référence (1 = autant qu'une unité de poids de la référence). */
   perRuneWeight: number | null
   /** Phrase affichée (« 1 PA ≈ 212 Force »). */
@@ -473,6 +491,8 @@ export interface StuffVsBossResult {
     keepPassives: boolean
     fixed: number[]
     exclude: number[]
+    /** PO visée par l'objectif (pénalité ×0,95 par PO manquante ; 0 au contact). */
+    rangeNeed: number
   }
   /** Stuff de départ de l'optimisation (stuff du preset, ou stuff de l'utilisateur) ; aussi en tête de `comparison`. */
   start: StuffEvaluation
@@ -487,11 +507,20 @@ export interface StuffVsBossResult {
   best: StuffEvaluation
   /**
    * Meilleurs stuffs DISTINCTS (au moins `options.minDifferences` objets de différence, places restantes complétées par
-   * des ensembles d'objets simplement différents), re-notés en exact, meilleur d'abord.
+   * des ensembles d'objets simplement différents), re-notés en exact, triés par le score de `ranking` (meilleur
+   * d'abord). Candidats : stuffs de la recherche ET stuffs de référence valides (départ, stuff du preset, génériques) —
+   * un stuff de référence que rien ne bat reste devant.
    */
   top: StuffEvaluation[]
   /** Comparaison des quatre éléments (option `elements: 'all'`). */
   elements?: StuffElementOption[]
+  /**
+   * Score qui CLASSE les stuffs (meilleur, top, éléments) : `proxy` = logJ du proxy (objectif de l'optimiseur) ;
+   * `sustained` = logJ soutenu (`StuffEvaluation.logJSustained`), retenu quand le proxy ne voit pas les dégâts de la
+   * classe (posture de classe que le proxy ne pose pas) — stuffs de référence et candidats de la recherche classés
+   * ensemble. `reason` : explication affichée.
+   */
+  ranking: { by: 'proxy' | 'sustained'; reason: string }
   statWeights: StuffStatWeights
   assumptions: string[]
   warnings: string[]
@@ -503,5 +532,12 @@ export interface StuffVsBossResult {
     pools: { examined: number; kept: number; setBlocks: number }
     /** Stuffs méta gardés comme graines (identifiants de STUFFS ; jamais `vortex_*`). */
     seedStuffs: string[]
+    /** Stuffs méta proposés comme graines et écartés par `theorySeedFilter` (stuffs `vortex_*`, objets trop hauts). */
+    excludedSeeds: string[]
+    /**
+     * Affinage en DPT soutenu (classement soutenu seulement) : durée, montées lancées et gain de logJ soutenu sur le
+     * meilleur stuff d'avant l'affinage (0 : rien trouvé de mieux).
+     */
+    polish?: { ms: number; starts: number; gain: number }
   }
 }

@@ -9,7 +9,8 @@
  *     élémentaire la plus haute du build ; un lien sans parchemins reçoit 100 partout (`fillScrolls`, signalé).
  *  2. Cible : `bossProxyOptions(profile, { role, profile, melee })` (target.ts) — cibles EXPLICITES (`strictTargets`),
  *     jamais le mix du Vortex ; « au contact » selon le preset (même liste que la campagne des stuffs,
- *     `MELEE_PRESET` de src/optimizer/builds.ts) sauf option `melee`.
+ *     `MELEE_PRESET` de src/optimizer/builds.ts) sauf option `melee` ; PO visée 6 à distance sauf option `rangeNeed`
+ *     (bonus de PO temporaires de la classe listés, non déduits).
  *  3. Références notées dans UN contexte de proxy commun (construit comme celui de l'optimiseur : build de départ comme
  *     référence) : départ, stuff du preset (quand le départ est le stuff de l'utilisateur), stuffs génériques de
  *     data/ai/presets.json hors stuffs de scénario (`theorySeedFilter` : jamais de `vortex_*`, objets ≤ niveau).
@@ -18,17 +19,28 @@
  *     `seed + 1`…) ; Dofus à sort passif du départ imposés (`keepPassives`, comme la commande CLI `stuff` : le proxy
  *     les valorise à 0) ; `elements: 'all'` : une recherche par élément (points du preset reportés sur la
  *     caractéristique de l'élément, stuff générique de l'élément comme départ ; le départ réel pour son propre élément).
- *  5. Tous les candidats re-notés en EXACT dans le contexte commun (logJ comparables entre recherches et éléments) :
- *     meilleur + `top` stuffs DISTINCTS (au moins `minDifferences` objets d'écart entre eux, défaut 2 — sinon le top
+ *  5. Classement commun : candidats de la recherche re-notés en EXACT dans le contexte commun (logJ comparables entre
+ *     recherches et éléments) ET stuffs de référence valides qui portent les objets imposés (départ, preset,
+ *     génériques). Score : logJ du proxy ; mais le proxy ne pose aucune posture de classe — quand, au départ, le DPT
+ *     soutenu sans posture est sous 1/1,2 du DPT en meilleure posture (Zobal, Forgelance, Pandawa… : DPT du proxy
+ *     souvent nul), le score est le logJ SOUTENU (`logJSustained` : DPT du proxy remplacé par le DPT soutenu en posture
+ *     × calibration) et un AFFINAGE en DPT soutenu suit (`polishSustained` : montées par coordonnées depuis les 3
+ *     stuffs distincts les mieux classés, objets de tous les candidats, forgemagie re-planifiée ; ≈ 0,1-0,3 s). Sans
+ *     cela, contre le Père Ver, le « meilleur » stuff d'un Zobal Psychopathe perdait 75 % de DPT soutenu (1 852 → 464).
+ *     Meilleur + `top` stuffs DISTINCTS (au moins `minDifferences` objets d'écart entre eux, défaut 2 — sinon le top
  *     n'offre que des variantes d'une même coiffe ; places restantes complétées par des ensembles d'objets simplement
- *     différents). Un départ invalide (stuff de niveau 200 joué plus bas…) n'est jamais présenté comme meilleur
- *     (`startValid`) ; un départ valide que rien ne bat reste le meilleur (signalé).
+ *     différents), triés par le score. Un départ invalide (stuff de niveau 200 joué plus bas…) n'est jamais présenté
+ *     comme meilleur (`startValid`) ; un stuff de référence que rien ne bat reste le meilleur (signalé).
  *  6. Pour chaque stuff présenté : DPT du proxy (objectif de l'optimiseur : un tour, relances ignorées, calibration du
  *     preset, sans posture) ET DPT SOUTENU en régime établi (rotation.ts, `steady`, meilleure posture de stances.ts,
  *     phases attaquables pondérées) avec le détail par sort ; PV, PV effectifs, dégâts reçus par tour (exact) et par
  *     élément (forme fermée) ; logJ ; PA/PM/PO ; objets changés par rapport au départ ; fiche (`buildStuffSheet`).
- *  7. Poids marginaux des caractéristiques au meilleur stuff (`statWeightsAt`) traduits en équivalences lisibles
- *     (`statEquivalences`).
+ *  7. Poids marginaux des caractéristiques au meilleur stuff (`statWeightsAt` d'un contexte du proxy construit À ce
+ *     stuff : le contexte commun fige rotation et éléments sur le départ ; classement soutenu : part des dégâts tirée du
+ *     DPT soutenu en posture) traduits en équivalences lisibles (`statEquivalences`), la part des PA/PM/PO due aux
+ *     pénalités de l'objectif séparée de la part modélisée.
+ *  8. Avertissements chiffrés : perte de DPT soutenu du meilleur stuff par rapport au départ (> 15 %), pénalités
+ *     d'objectif qui décident seules de l'ordre entre le départ et le meilleur, posture, PV effectifs plafonnés…
  *
  * Réglages par défaut MESURÉS (scratchpad du 2026-10-08, 8 presets × 5 boss : Merkator, Père Ver, Vortex, Solar,
  * Comte Harebourg). Sans les 49 graines `vortex_*`, la recherche ne part que de 8 graines et le recuit compte
@@ -43,28 +55,32 @@
  * boss par sac à dos (pas l'IA réelle), aucune position ni ligne de vue ; les CLASSEMENTS valent plus que les valeurs
  * absolues.
  *
- * Module d'ANALYSE : il tire le proxy de stuff et l'optimiseur (donc, indirectement, le mix du Vortex de proxy.ts — jamais
- * utilisé : cibles toujours explicites) ; il n'importe rien de src/dungeons et n'est PAS exporté par index.ts (API
- * pure). Déterministe (graines fixes, départages par clé).
+ * Module d'ANALYSE : il tire le proxy de stuff et l'optimiseur, donc INDIRECTEMENT (par proxy.ts et search.ts, jamais
+ * directement) src/dungeons/vortex/{clock,constants,params,placement}.ts, src/dungeons/generic/{dummy,skirmish}.ts et
+ * src/dungeons/waves.ts — liste figée par tests/theory-stuff.test.ts ; le mix du Vortex de proxy.ts n'est jamais
+ * utilisé (cibles toujours explicites). Il n'est PAS exporté par index.ts (API pure). Déterministe (graines fixes,
+ * logarithme déterministe, départages par clé).
  */
 import type { RoleId } from '../ai/types'
 import { Element, ELEMENT_NAMES_FR, ELEMENT_RES_PCT, type StatKey, type Stats } from '../core/types'
 import type { GameDataStore } from '../data/store'
 import type { Fighter } from '../engine/types'
-import { hasPassive } from '../optimizer/stuff/pools'
+import { detLog } from '../optimizer/stuff/detmath'
+import { planForgemagie } from '../optimizer/stuff/exos'
+import { hasPassive, STUFF_POSITIONS } from '../optimizer/stuff/pools'
 import type { ExponentProfile } from '../optimizer/stuff/profiles'
-import { createProxyContext, ELEMENT_STAT, type ProxyContext, type ProxyScore } from '../optimizer/stuff/proxy'
+import { createProxyContext, ELEMENT_STAT, type ProxyContext, type ProxyMember, type ProxyOptions, type ProxyScore } from '../optimizer/stuff/proxy'
 import { optimizeStuff, theorySeedFilter, type StuffCandidate, type StuffResult } from '../optimizer/stuff/search'
 import { allocatePoints, BASE_PRESETS, presetBuild, resolvePreset, STUFFS, type Preset, type StuffTemplate } from '../optimizer/team/presets'
 import { roxxImport } from '../optimizer/team/roxx'
 import type { MemberSpec } from '../optimizer/types'
-import { computeBuildStats, fullScrolls, type CharacterBuild } from '../stats/build'
+import { computeBuildStats, fullScrolls, type CharacterBuild, type EquippedItem } from '../stats/build'
 import type { PrimaryStat } from '../stats/characteristicPoints'
 import { RUNE_WEIGHT_PER_POINT } from '../stats/forgemagie'
 import { buildStuffSheet, ROLE_LABELS_FR, statLabelFr, type StuffSheet } from '../stats/sheet'
 import { bossFighter, playerFighterFromStats, theoryDptTable, withStates, type TheoryCharacter } from './fighters'
 import { sustainedDamage } from './rotation'
-import { bestStance, STANCES } from './stances'
+import { bestStance, STANCES, type ClassStance } from './stances'
 import { bossProxyOptions } from './target'
 import type {
   BossProfile,
@@ -102,10 +118,22 @@ export const DEFAULT_LEVEL = 200
 const ROTATION_TURNS = 24
 /** Plafond de tours si la période n'est pas atteinte dans `ROTATION_TURNS` (même plafond que rotation.ts). */
 const ROTATION_TURNS_MAX = 240
+/** Affinage soutenu : balayages maximaux de chaque montée par coordonnées. */
+const POLISH_SWEEPS = 6
+/** Affinage soutenu : montées lancées depuis les stuffs distincts les mieux classés. */
+const POLISH_STARTS = 3
 /** Plafond des PV effectifs du proxy (× PV, proxy.ts). */
 const EHP_CAP = 20
-/** Écart toléré entre le DPT soutenu « sans posture » et « meilleure posture » avant d'avertir (classes à posture). */
+/**
+ * Écart toléré entre le DPT soutenu « sans posture » et « meilleure posture » (classes à posture) : au-delà, au stuff
+ * de départ, le proxy (qui ne pose aucune posture) ne voit pas les dégâts de la classe et les stuffs sont classés par
+ * le logJ soutenu ; au meilleur stuff, avertissement.
+ */
 const STANCE_GAP = 1.2
+/** Perte de DPT soutenu du meilleur stuff par rapport au départ (part du départ) au-delà de laquelle on avertit. */
+const DPT_LOSS_WARN = 0.15
+/** Pénalités de l'objectif du proxy (proxy.ts, `score`) — rappelées dans les textes seulement. */
+const PENALTY_TEXT = '×0,85 par PA, ×0,9 par PM et ×0,95 par PO sous les valeurs visées'
 
 /**
  * Presets joués au contact : PO non exigée (même liste que `MELEE_PRESET` de src/optimizer/builds.ts, campagne des
@@ -165,6 +193,11 @@ export interface StuffVsBossOptions {
   role?: RoleId
   /** Joué au contact (défaut : selon le preset). */
   melee?: boolean
+  /**
+   * PO visée par l'objectif (pénalité ×0,95 par PO manquante) ; défaut : 6 à distance, 0 au contact (target.ts). Les
+   * bonus de PO temporaires de la classe (Crâ : Tirs Éloignés, Sentinelle…) ne sont pas déduits : à abaisser ici.
+   */
+  rangeNeed?: number
   onProgress?: (p: StuffProgress) => void
 }
 
@@ -404,10 +437,9 @@ function spellBreakdown(env: Env, run: SteadyRun): { spells: StuffSpellLine[]; p
   return { spells, period }
 }
 
-/** DPT soutenu (meilleure posture), rafale et détail par sort ; `noStance` : soutenu sans aucun état (avertissement). */
-function damageOf(env: Env, stats: Stats, maxHp: number, proxyDpt: number): { damage: StuffDamage; noStance: number } {
+/** DPT soutenu pondéré par les phases, à la meilleure posture de la classe (stances.ts). */
+function bestSteady(env: Env, stats: Stats, maxHp: number): { run: SteadyRun; stance: ClassStance; base: Fighter } {
   const base = playerFighterFromStats(env.data, env.who, stats, maxHp)
-  const known = base.spells.map(s => s.spellId)
   const runs = new Map<string, SteadyRun>()
   const choice = bestStance(
     env.who.breedId,
@@ -416,19 +448,44 @@ function damageOf(env: Env, stats: Stats, maxHp: number, proxyDpt: number): { da
       runs.set(states.join(','), run)
       return run.steady
     },
-    { knownSpells: known },
+    { knownSpells: base.spells.map(s => s.spellId) },
   )
-  const run = runs.get(choice.stance.states.join(','))!
-  const noStance = choice.stance.states.length ? steadyOver(env, withStates(base, []), ROTATION_TURNS).steady : run.steady
+  return { run: runs.get(choice.stance.states.join(','))!, stance: choice.stance, base }
+}
+
+/** DPT soutenu (meilleure posture), rafale et détail par sort ; `noStance` : soutenu sans aucun état (avertissement). */
+function damageOf(env: Env, stats: Stats, maxHp: number, proxyDpt: number): { damage: StuffDamage; noStance: number; states: number[] } {
+  const { run, stance, base } = bestSteady(env, stats, maxHp)
+  const noStance = stance.states.length ? steadyOver(env, withStates(base, []), ROTATION_TURNS).steady : run.steady
   const { spells, period } = spellBreakdown(env, run)
   return {
-    damage: { proxy: proxyDpt, steady: run.steady, burst: run.burst, stance: { id: choice.stance.id, name: choice.stance.name }, period, spells },
+    damage: { proxy: proxyDpt, steady: run.steady, burst: run.burst, stance: { id: stance.id, name: stance.name }, period, spells },
     noStance,
+    states: stance.states.slice(),
   }
 }
 
+/**
+ * logJ soutenu : logJ du proxy dont le terme a·ln(DPT du proxy) est remplacé par a·ln(DPT soutenu × calibration du
+ * preset) — même échelle que le proxy ; PVe, UTIL et pénalités inchangés ; logarithme déterministe, comme le proxy.
+ */
+function sustainedLogJ(ctx: ProxyContext, logJ: number, proxyDpt: number, steady: number): number {
+  const cal = ctx.calibration > 0 ? ctx.calibration : 1
+  return logJ + ctx.exponents.a * (detLog(Math.max(1, steady * cal)) - detLog(Math.max(1, proxyDpt)))
+}
+
+/** Champs internes d'une évaluation (retirés de la sortie par `publicEval`). */
+interface Internal {
+  noStance: number
+  /** États de la posture retenue (poids marginaux du DPT soutenu). */
+  states: number[]
+  stats: Stats
+  maxHp: number
+}
+type Evaluated = StuffEvaluation & Internal
+
 /** Évaluation complète d'un build dans le contexte commun. */
-function evaluate(env: Env, build: CharacterBuild, meta: Meta): StuffEvaluation & { noStance: number; stats: Stats; maxHp: number } {
+function evaluate(env: Env, build: CharacterBuild, meta: Meta): Evaluated {
   const r = computeBuildStats(build, env.data)
   const score: ProxyScore = env.ctx.exact(r.stats, r.maxHp)
   const element = dominantElement(r.stats)
@@ -444,7 +501,7 @@ function evaluate(env: Env, build: CharacterBuild, meta: Meta): StuffEvaluation 
   })
   const items = itemLines(env.data, sheet)
   const inc = env.ctx.incomingByElement(r.stats)
-  const { damage, noStance } = damageOf(env, r.stats, r.maxHp, score.dpt)
+  const { damage, noStance, states } = damageOf(env, r.stats, r.maxHp, score.dpt)
   return {
     id: meta.id,
     origin: meta.origin,
@@ -453,6 +510,7 @@ function evaluate(env: Env, build: CharacterBuild, meta: Meta): StuffEvaluation 
     issues: r.issues.map(i => i.message),
     element,
     logJ: r.valid ? score.logJ : null,
+    logJSustained: r.valid ? sustainedLogJ(env.ctx, score.logJ, score.dpt, damage.steady) : null,
     damage,
     survival: {
       hp: r.maxHp,
@@ -475,14 +533,15 @@ function evaluate(env: Env, build: CharacterBuild, meta: Meta): StuffEvaluation 
     build,
     sheet,
     noStance,
+    states,
     stats: r.stats,
     maxHp: r.maxHp,
   }
 }
 
 /** Retire les champs internes d'une évaluation (sortie sérialisable). */
-function publicEval(e: StuffEvaluation & { noStance?: number; stats?: Stats; maxHp?: number }): StuffEvaluation {
-  const { noStance: _n, stats: _s, maxHp: _h, ...rest } = e
+function publicEval(e: StuffEvaluation & Partial<Internal>): StuffEvaluation {
+  const { noStance: _n, states: _t, stats: _s, maxHp: _h, ...rest } = e
   return rest
 }
 
@@ -500,24 +559,38 @@ const PCT_STATS: ReadonlySet<StatKey> = new Set<StatKey>([
 function readable(x: number): string {
   const a = Math.abs(x)
   const v = a >= 100 ? Math.round(x) : a >= 10 ? Math.round(x * 10) / 10 : Math.round(x * 100) / 100
-  return v.toLocaleString('fr-FR')
+  return (v === 0 ? 0 : v).toLocaleString('fr-FR') // jamais « -0 »
+}
+
+/** Contexte des équivalences (`statEquivalences`). */
+export interface StatEquivalenceOptions {
+  /**
+   * PA, PM, PO : part du poids due aux seules pénalités de l'objectif (∂ln pénalités pour un point sous le plafond) —
+   * affichée à part de la valeur modélisée.
+   */
+  penalties?: Partial<Record<'ap' | 'mp' | 'range', number>>
+  /** DPT soutenu du stuff : sous 1, la référence en Vitalité s'explique par l'absence de dégâts. */
+  steady?: number
+  /** Classement soutenu : nom de la posture dont le DPT soutenu donne la part des dégâts (note). */
+  sustainedStance?: string
 }
 
 /**
- * Équivalences lisibles des poids marginaux ∂logJ/∂point (`ProxyContext.statWeightsAt`, différences finies de la forme
- * fermée) : « 1 X ≈ N points de la référence ». Référence = caractéristique principale de l'élément du stuff ; si elle
- * ne vaut rien contre ce boss, la caractéristique élémentaire la plus utile (un Sram Air niveau 40 ne frappe qu'en
- * Terre et en Eau : sorts Air pas encore débloqués), sinon la Vitalité (dégâts nuls : résistances ≥ 100 %,
- * invulnérabilité). `perRuneWeight` : valeur par unité de poids de rune (`RUNE_WEIGHT_PER_POINT`), relative à la
- * référence — aide aux choix de forgemagie. Caractéristiques sans valeur (poids ≤ 0) omises ; tri par valeur par point
- * décroissante.
+ * Équivalences lisibles des poids marginaux ∂(score)/∂point (`weightsAtBest`) : « 1 X ≈ N points de la référence ».
+ * Référence = caractéristique principale de l'élément du stuff ; si elle ne vaut rien contre ce boss, la
+ * caractéristique élémentaire la plus utile (un Sram Air niveau 40 ne frappe qu'en Terre et en Eau : sorts Air pas
+ * encore débloqués), sinon la Vitalité (dégâts nuls : résistances ≥ 100 %, invulnérabilité). PA/PM/PO : la part due aux
+ * pénalités de l'objectif (`penalties`) est séparée de la part modélisée (dégâts, survie, utilité). `perRuneWeight` :
+ * valeur par unité de poids de rune (`RUNE_WEIGHT_PER_POINT`), relative à la référence — aide aux choix de
+ * forgemagie. Caractéristiques sans valeur (poids ≤ 0) omises ; tri par valeur par point décroissante.
  */
-export function statEquivalences(weights: Partial<Record<StatKey, number>>, element: StuffElement): StuffStatWeights {
+export function statEquivalences(weights: Partial<Record<StatKey, number>>, element: StuffElement, opts: StatEquivalenceOptions = {}): StuffStatWeights {
   const notes = [
-    'Poids marginaux ∂logJ/∂point de la forme fermée du proxy, au meilleur stuff : valables pour CE boss, CE rôle et CE profil, et pour de petits changements (linéarisation locale).',
-    'PA, PM et PO : valeur d’un point SOUS le plafond (12 PA, 6 PM, 6 PO) — au-delà du plafond un point ne vaut rien ; elle comprend la pénalité de l’objectif (×0,85 par PA manquant, ×0,9 par PM, ×0,95 par PO sous la portée voulue), seule valeur des PA quand les dégâts sont nuls.',
+    'Poids marginaux ∂logJ/∂point de la forme fermée d’un proxy construit AU meilleur stuff (son élément, sa rotation) : valables pour CE boss, CE rôle et CE profil, et pour de petits changements (linéarisation locale).',
+    `PA, PM et PO : valeur d’un point SOUS le plafond (12 PA, 6 PM, 6 PO) — au-delà du plafond un point ne vaut rien. Elle comprend les pénalités de l’objectif (${PENALTY_TEXT}) : un réglage de l’objectif, pas un effet du boss, affiché à part (« dont … de pénalité d’objectif »).`,
     '« Par poids de rune » : valeur pour une même dépense de forgemagie (poids des runes), relative à la référence.',
   ]
+  if (opts.sustainedStance) notes.push(`Classement soutenu : la part des dégâts vient du DPT soutenu en posture « ${opts.sustainedStance} » (différences finies de la rotation établie), pas du DPT du proxy.`)
   const main = ELEMENT_STAT[element]
   const positive = (k: StatKey) => (weights[k] ?? 0) > 1e-12
   const elemental = STUFF_ELEMENTS.map(e => ELEMENT_STAT[e])
@@ -525,16 +598,18 @@ export function statEquivalences(weights: Partial<Record<StatKey, number>>, elem
     .sort((x, y) => weights[y]! - weights[x]! || (x < y ? -1 : 1))
   const reference: StatKey | undefined = positive(main) ? main : (elemental[0] ?? (positive('vitality') ? 'vitality' : undefined))
   if (reference !== main) {
+    const noDamage = opts.steady === undefined || opts.steady < 1
     notes.push(
       reference === undefined
         ? 'Aucune caractéristique de référence n’a de valeur (ni dégâts ni survie mesurables) : pas d’équivalence.'
         : reference === 'vitality'
-          ? `La caractéristique principale (${statLabelFr(main)}) ne vaut rien ici (aucun dégât) : équivalences en Vitalité.`
-          : `La caractéristique principale (${statLabelFr(main)}) ne vaut rien ici (aucun sort de cet élément ne frappe ce boss) : équivalences en ${statLabelFr(reference)}, la caractéristique élémentaire la plus utile.`,
+          ? `La caractéristique principale (${statLabelFr(main)}) ne vaut rien ici (${noDamage ? 'aucun dégât' : 'aucune caractéristique élémentaire n’augmente les dégâts dans l’objectif'}) : équivalences en Vitalité.`
+          : `La caractéristique principale (${statLabelFr(main)}) ne vaut rien ici (aucun sort de cet élément dans la rotation contre ce boss) : équivalences en ${statLabelFr(reference)}, la caractéristique élémentaire la plus utile.`,
     )
   }
   const refW = reference ? weights[reference]! : 0
   const refRune = reference ? (RUNE_WEIGHT_PER_POINT[reference] ?? 1) : 1
+  const refLabel = reference ? statLabelFr(reference) : ''
   const items: StatEquivalence[] = (Object.keys(weights) as StatKey[])
     .filter(k => positive(k) && Number.isFinite(weights[k]!))
     .map(k => {
@@ -544,11 +619,83 @@ export function statEquivalences(weights: Partial<Record<StatKey, number>>, elem
       const perRuneWeight = reference && rune ? w / rune / (refW / refRune) : null
       const unit = PCT_STATS.has(k) ? `1 % ${statLabelFr(k)}` : `1 ${statLabelFr(k)}`
       const capped = k === 'ap' || k === 'mp' || k === 'range' ? ' (sous le plafond)' : ''
-      const text = reference && inReference !== null ? `${unit}${capped} ≈ ${readable(inReference)} ${statLabelFr(reference)}` : `${unit}${capped} : ${w.toExponential(2)} logJ`
-      return { stat: k, label: statLabelFr(k), perPoint: w, inReference, perRuneWeight, text }
+      const pen = k === 'ap' || k === 'mp' || k === 'range' ? opts.penalties?.[k] : undefined
+      const eq: StatEquivalence = { stat: k, label: statLabelFr(k), perPoint: w, inReference, perRuneWeight, text: '' }
+      if (pen !== undefined && pen > 1e-12) {
+        eq.objectivePenalty = pen
+        eq.modeledInReference = reference ? (w - pen) / refW : null
+      }
+      if (reference && inReference !== null) {
+        eq.text = `${unit}${capped} ≈ ${readable(inReference)} ${refLabel}`
+        if (eq.modeledInReference != null) eq.text += `, dont ${readable(pen! / refW)} de pénalité d’objectif (${readable(eq.modeledInReference)} pour les effets modélisés)`
+      } else eq.text = `${unit}${capped} : ${w.toExponential(2)} logJ`
+      return eq
     })
     .sort((x, y) => y.perPoint - x.perPoint || (x.stat < y.stat ? -1 : 1))
   return { reference: reference ?? main, referenceLabel: statLabelFr(reference ?? main), items, notes }
+}
+
+/** Pas des différences finies de `ProxyContext.statWeightsAt` (proxy.ts) : 10 unités de poids de rune, 1 PA/PM/PO. */
+function weightStep(k: StatKey): number {
+  return k === 'ap' || k === 'mp' || k === 'range' || k === 'summons' ? 1 : Math.max(1, Math.round(10 / RUNE_WEIGHT_PER_POINT[k]!))
+}
+
+/**
+ * Poids marginaux au meilleur stuff dans un contexte du proxy construit À ce stuff : la forme fermée fige sa rotation
+ * et ses éléments aux caractéristiques de référence — le contexte commun (départ) ignorerait les sorts d'un autre
+ * élément (meilleur stuff Feu d'un preset Terre, option `elements: 'all'`). Classement soutenu : terme de DPT du proxy
+ * retiré (a = 0) et remplacé par a·∂ln(DPT soutenu)/∂point (posture du meilleur stuff, mêmes pas que
+ * `statWeightsAt`). Rend aussi, pour PA/PM/PO, la part due aux pénalités de l'objectif (∂ln pénalités).
+ */
+function weightsAtBest(
+  env: Env,
+  member: ProxyMember,
+  options: ProxyOptions,
+  best: Pick<Evaluated, 'stats' | 'maxHp' | 'states' | 'element'>,
+  rankBy: RankBy,
+): { weights: Partial<Record<StatKey, number>>; penalties: Partial<Record<'ap' | 'mp' | 'range', number>> } {
+  const a = env.ctx.exponents.a
+  const ctx = createProxyContext(
+    env.data,
+    { ...member, element: best.element },
+    { stats: best.stats, maxHp: best.maxHp },
+    rankBy === 'sustained' ? { ...options, exponents: { ...env.ctx.exponents, a: 0 } } : options,
+  )
+  const weights = ctx.statWeightsAt(best.stats, best.maxHp)
+  const cap = (k: 'ap' | 'mp' | 'range') => (k === 'ap' ? ctx.apTarget : k === 'mp' ? ctx.mpTarget : 6)
+  if (rankBy === 'sustained' && a > 0) {
+    const cal = ctx.calibration > 0 ? ctx.calibration : 1
+    const lnSteady = (s: Stats, hp: number) =>
+      detLog(Math.max(1, steadyOver(env, withStates(playerFighterFromStats(env.data, env.who, s, hp), best.states), ROTATION_TURNS).steady * cal))
+    const base = lnSteady(best.stats, best.maxHp)
+    for (const k of Object.keys(RUNE_WEIGHT_PER_POINT) as StatKey[]) {
+      const s: Stats = { ...best.stats }
+      let hp = best.maxHp
+      let d: number
+      if (k === 'ap' || k === 'mp' || k === 'range') {
+        s[k] = Math.min(s[k], cap(k) - 1)
+        const lo = lnSteady(s, hp)
+        s[k] += 1
+        d = lnSteady(s, hp) - lo
+      } else {
+        const step = weightStep(k)
+        s[k] += step
+        if (k === 'vitality' || k === 'lifePoints') hp += step
+        d = (lnSteady(s, hp) - base) / step
+      }
+      weights[k] = (weights[k] ?? 0) + a * d
+    }
+  }
+  const penalties: Partial<Record<'ap' | 'mp' | 'range', number>> = {}
+  for (const k of ['ap', 'mp', 'range'] as const) {
+    const s: Stats = { ...best.stats }
+    s[k] = Math.min(s[k], cap(k) - 1)
+    const lo = ctx.surrogate(s, best.maxHp).penalty
+    s[k] += 1
+    const part = detLog(ctx.surrogate(s, best.maxHp).penalty) - detLog(lo)
+    if (part > 1e-12) penalties[k] = part
+  }
+  return { weights, penalties }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -590,37 +737,191 @@ function itemDifferences(a: CharacterBuild, b: CharacterBuild): number {
 
 /**
  * Les `n` meilleurs stuffs DISTINCTS (liste déjà triée) : chacun diffère d'au moins `minDiff` objets de ceux déjà
- * retenus (et de `taken`) ; places restantes complétées par des ensembles d'objets simplement différents.
+ * retenus ; places restantes complétées par des ensembles d'objets simplement différents. Rendus dans l'ordre de
+ * `sorted` (le second passage peut retenir un stuff mieux classé que ceux du premier : pas de numérotation trompeuse).
  */
-function pickDistinct<T extends { build: CharacterBuild }>(sorted: readonly T[], n: number, minDiff: number, taken: readonly CharacterBuild[]): T[] {
-  const out: T[] = []
-  const chosen = taken.slice()
+function pickDistinct<T extends { build: CharacterBuild }>(sorted: readonly T[], n: number, minDiff: number): T[] {
+  const out = new Set<T>()
+  const chosen: CharacterBuild[] = []
   for (const pass of minDiff > 1 ? [minDiff, 1] : [1]) {
     for (const p of sorted) {
-      if (out.length >= n) return out
-      if (out.includes(p)) continue
+      if (out.size >= n) break
+      if (out.has(p)) continue
       if (chosen.some(b => Math.max(itemDifferences(p.build, b), itemDifferences(b, p.build)) < pass)) continue
-      out.push(p)
+      out.add(p)
       chosen.push(p.build)
     }
+  }
+  return sorted.filter(p => out.has(p))
+}
+
+/** Score qui classe les stuffs (`StuffVsBossResult.ranking`). */
+type RankBy = 'proxy' | 'sustained'
+
+/** Candidat au classement : stuff de la recherche, ou stuff de référence déjà évalué (`ev`). */
+interface Pooled {
+  build: CharacterBuild
+  pointsId?: string
+  /** Score de classement (logJ, ou logJ soutenu). */
+  rank: number
+  key: string
+  /** Élément du stuff (caractéristique élémentaire la plus haute) — pas forcément celui de la recherche qui l'a trouvé. */
+  element: StuffElement
+  /** Élément de la recherche (absent : stuff de référence). */
+  run?: StuffElement
+  /** Stuff de référence (départ, preset, générique), déjà évalué. */
+  ev?: Evaluated
+  /** Produit par l'affinage soutenu (`polishSustained`). */
+  polished?: boolean
+}
+
+/** Ordre de classement : score décroissant ; à égalité, stuff de référence d'abord (un candidat identique au départ reste « le départ »), puis clé. */
+function byRank(a: Pooled, b: Pooled): number {
+  return b.rank - a.rank || (a.ev ? 0 : 1) - (b.ev ? 0 : 1) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0)
+}
+
+/** Le build porte-t-il tous ces objets (multiensemble) ? */
+function hasAll(build: CharacterBuild, ids: readonly number[]): boolean {
+  const left = build.items.map(i => i.itemId)
+  return ids.every(id => {
+    const k = left.indexOf(id)
+    if (k < 0) return false
+    left.splice(k, 1)
+    return true
+  })
+}
+
+/** Objets d'un build rangés par position (`STUFF_POSITIONS`, 0 = vide ; première position libre de leur emplacement). */
+function positionIds(data: GameDataStore, build: CharacterBuild): number[] {
+  const ids = STUFF_POSITIONS.map(() => 0)
+  for (const eq of build.items) {
+    const it = data.item(eq.itemId)
+    if (!it) continue
+    const p = STUFF_POSITIONS.findIndex((slot, i) => slot === it.slot && ids[i] === 0)
+    if (p >= 0) ids[p] = it.id
+  }
+  return ids
+}
+
+/**
+ * Build forgé d'un ensemble d'objets par position (points, parchemins et variantes de `base`) : forgemagie
+ * re-planifiée (`planForgemagie`, profil thlOptimized : exos PA/PM/PO utiles, ≤ 6 transcendances) aux poids `weights`,
+ * sur les caractéristiques SANS forgemagie ; si la forgemagie casse une condition d'objet, stuff sans forgemagie (même
+ * règle que la recherche). undefined : build invalide.
+ */
+function forgedBuild(data: GameDataStore, base: CharacterBuild, ids: readonly number[], weights: Partial<Record<StatKey, number>>): { build: CharacterBuild; stats: Stats; maxHp: number } | undefined {
+  const bare: CharacterBuild = { ...base, items: ids.filter(id => id > 0).map(itemId => ({ itemId })) }
+  const r0 = computeBuildStats(bare, data)
+  if (!r0.valid) return undefined
+  const plan = planForgemagie(
+    ids.map(id => (id > 0 ? (data.item(id) ?? null) : null)),
+    r0.stats,
+    { profile: 'thlOptimized', weights, rangeCap: 6 },
+  )
+  if (!plan.lines.some(l => l.length)) return { build: bare, stats: r0.stats, maxHp: r0.maxHp }
+  const items: EquippedItem[] = []
+  ids.forEach((id, i) => {
+    if (id > 0) items.push(plan.lines[i].length ? { itemId: id, exos: plan.lines[i].map(l => ({ ...l })) } : { itemId: id })
+  })
+  const build: CharacterBuild = { ...base, items }
+  const r = computeBuildStats(build, data)
+  return r.valid ? { build, stats: r.stats, maxHp: r.maxHp } : { build: bare, stats: r0.stats, maxHp: r0.maxHp }
+}
+
+interface PolishPoint {
+  build: CharacterBuild
+  stats: Stats
+  maxHp: number
+  rank: number
+}
+
+/**
+ * Affinage en DPT soutenu (classement soutenu seulement) : la recherche ne voit pas les dégâts en posture, ses stuffs
+ * privilégient la survie. Montée par coordonnées sur le logJ soutenu depuis `from` (stuff le mieux classé) : à chaque
+ * position, les objets du même emplacement portés par les `donors` (candidats de la recherche et stuffs de
+ * référence), forgemagie re-planifiée aux poids soutenus du point de départ (`weightsAtBest`), points de
+ * caractéristiques de `from` ; la meilleure amélioration valide (`computeBuildStats`) est gardée. Objets `locked`
+ * jamais retirés, objets non `allowed` jamais ajoutés ; au plus `POLISH_SWEEPS` balayages, positions et objets dans un
+ * ordre fixe (déterministe). undefined : rien n'améliore `from`.
+ */
+function polishSustained(
+  env: Env,
+  member: ProxyMember,
+  options: ProxyOptions,
+  from: CharacterBuild,
+  donors: readonly CharacterBuild[],
+  locked: (id: number) => boolean,
+  allowed: (id: number) => boolean,
+): PolishPoint | undefined {
+  const data = env.data
+  const rankAt = (stats: Stats, maxHp: number) => {
+    const score = env.ctx.exact(stats, maxHp)
+    return sustainedLogJ(env.ctx, score.logJ, score.dpt, bestSteady(env, stats, maxHp).run.steady)
+  }
+  const r0 = computeBuildStats(from, data)
+  if (!r0.valid) return undefined
+  const { stance } = bestSteady(env, r0.stats, r0.maxHp)
+  const { weights } = weightsAtBest(env, member, options, { stats: r0.stats, maxHp: r0.maxHp, states: stance.states.slice(), element: dominantElement(r0.stats) }, 'sustained')
+  // Objets essayés par emplacement (ids croissants).
+  const bySlot = new Map<string, number[]>()
+  for (const b of donors) {
+    for (const eq of b.items) {
+      const it = data.item(eq.itemId)
+      if (!it || !allowed(it.id)) continue
+      const list = bySlot.get(it.slot) ?? []
+      if (!list.includes(it.id)) list.push(it.id)
+      bySlot.set(it.slot, list)
+    }
+  }
+  for (const list of bySlot.values()) list.sort((a, b) => a - b)
+  const ids = positionIds(data, from)
+  const startRank = rankAt(r0.stats, r0.maxHp)
+  let cur: PolishPoint = { build: from, stats: r0.stats, maxHp: r0.maxHp, rank: startRank }
+  // Départ re-forgé aux poids soutenus (la forgemagie de la recherche visait le DPT sans posture).
+  const reforged = forgedBuild(data, from, ids, weights)
+  if (reforged) {
+    const rank = rankAt(reforged.stats, reforged.maxHp)
+    if (rank > cur.rank + 1e-9) cur = { ...reforged, rank }
+  }
+  for (let sweep = 0; sweep < POLISH_SWEEPS; sweep++) {
+    let improved = false
+    for (let p = 0; p < ids.length; p++) {
+      if (ids[p] > 0 && locked(ids[p])) continue
+      let move: { id: number; point: PolishPoint } | undefined
+      for (const id of bySlot.get(STUFF_POSITIONS[p]) ?? []) {
+        if (id === ids[p]) continue
+        const next = ids.slice()
+        next[p] = id
+        const f = forgedBuild(data, from, next, weights)
+        if (!f) continue
+        const rank = rankAt(f.stats, f.maxHp)
+        if (rank > (move?.point.rank ?? cur.rank) + 1e-9) move = { id, point: { ...f, rank } }
+      }
+      if (move) {
+        ids[p] = move.id
+        cur = move.point
+        improved = true
+      }
+    }
+    if (!improved) break
+  }
+  return cur.rank > startRank + 1e-9 ? cur : undefined
+}
+
+/** Sorts de la classe qui donnent de la PO (effet 117) : bonus temporaires, non déduits de la PO visée. */
+function rangeBuffs(f: Fighter): string[] {
+  const out: string[] = []
+  for (const s of f.spells) {
+    const po = s.level.effects.filter(e => e.effectId === 117 && e.diceNum > 0)
+    if (po.length) out.push(`${s.name} +${Math.max(...po.map(e => e.diceNum))} PO`)
   }
   return out
 }
 
-interface Pooled {
-  build: CharacterBuild
-  pointsId: string
-  logJ: number
-  key: string
-  /** Élément du stuff (caractéristique élémentaire la plus haute) — pas forcément celui de la recherche qui l'a trouvé. */
-  element: StuffElement
-  /** Élément de la recherche. */
-  run: StuffElement
-}
-
 /**
  * Stuff le plus intéressant contre un boss (voir l'en-tête) : comparaison des stuffs de référence, optimisation,
- * meilleur + `top` distincts, équivalences des caractéristiques, hypothèses et avertissements.
+ * classement commun (logJ du proxy, ou logJ soutenu pour une classe à posture), meilleur + `top` distincts,
+ * équivalences des caractéristiques, hypothèses et avertissements.
  */
 export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: BossProfile, opts: StuffVsBossOptions = {}): StuffVsBossResult {
   const t0 = performance.now()
@@ -648,14 +949,10 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
 
   // ── Cible et contexte commun (comme celui de l'optimiseur : build de départ comme référence) ──
   const target = bossProxyOptions(profile, { role, profile: expProfile, melee })
-  const options = target.options
+  const options: ProxyOptions = opts.rangeNeed !== undefined ? { ...target.options, rangeNeed: Math.max(0, Math.floor(opts.rangeNeed)) } : target.options
   const member: MemberSpec = { name: start.name, breedId: preset.breedId, presetId, build: start, variants, role }
-  const ctx = createProxyContext(
-    data,
-    { breedId: preset.breedId, level: buildLevel, variants, role, presetId, element: startElement, name: start.name },
-    { stats: startStats.stats, maxHp: startStats.maxHp },
-    options,
-  )
+  const proxyMember: ProxyMember = { breedId: preset.breedId, level: buildLevel, variants, role, presetId, element: startElement, name: start.name }
+  const ctx = createProxyContext(data, proxyMember, { stats: startStats.stats, maxHp: startStats.maxHp }, options)
   const table = theoryDptTable(data)
   const targets = (options.targets ?? []).map(t => bossFighter(data, t.monsterId, { grade: t.grade ?? profile.grade, stats: t.stats, states: t.states }))
   const weights = (options.targets ?? []).map(t => t.weight)
@@ -667,6 +964,16 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   const startValid = startStats.valid
   if (!startValid) warnings.push(`Le stuff de départ est invalide (${startStats.issues.filter(i => i.severity === 'error').map(i => i.message).slice(0, 3).join(' ; ')}) : il n'est jamais présenté comme meilleur.`)
 
+  // ── Score de classement. Le proxy ne pose aucune posture de classe : s'il ne voit au départ qu'une petite part des
+  // dégâts de la classe (Zobal, Forgelance, Pandawa…), les stuffs sont classés par le logJ soutenu. ──
+  const rankBy: RankBy = STANCES[preset.breedId] && startEval.noStance * STANCE_GAP < startEval.damage.steady ? 'sustained' : 'proxy'
+  const rankOf = (e: { logJ: number | null; logJSustained: number | null }) => (rankBy === 'sustained' ? e.logJSustained : e.logJ)
+  const rankLabel = rankBy === 'sustained' ? 'logJ soutenu' : 'logJ du proxy'
+  const rankingReason =
+    rankBy === 'sustained'
+      ? `Classement par le logJ SOUTENU : le proxy de l'optimiseur ne pose aucune posture de classe et ne voit au départ que ${Math.round(startEval.noStance)} de DPT soutenu sans posture, contre ${Math.round(startEval.damage.steady)} en « ${startEval.damage.stance.name} ». Le DPT du proxy est remplacé par le DPT soutenu en posture (× calibration du preset) pour classer ensemble stuffs de référence et candidats ; la recherche, elle, reste aveugle à ces dégâts (ses stuffs privilégient la survie).`
+      : 'Classement par le logJ du proxy (objectif de l’optimiseur) ; stuffs de référence et candidats de la recherche classés ensemble.'
+
   // ── Stuffs de référence : preset (si le départ est le stuff de l'utilisateur), génériques hors scénario ──
   const seedFilter = theorySeedFilter({ level: buildLevel })
   const genericIds = Object.keys(STUFFS)
@@ -675,7 +982,7 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
       const s: StuffTemplate = STUFFS[id]
       return seedFilter(id, s, data) && (!s.breeds || s.breeds.includes(preset.breedId))
     })
-  const refs: (StuffEvaluation & { noStance: number; stats: Stats; maxHp: number })[] = []
+  const refs: Evaluated[] = []
   if (ch.user) refs.push(evaluate(env, presetBuild(preset, data, { level: buildLevel, name: start.name }), { id: 'preset', origin: 'preset', label: `Stuff du preset (${stuffLabel(preset.stuff)})` }))
   for (const id of genericIds) {
     if (id === preset.stuff) continue // déjà la ligne de départ (preset) ou la ligne « stuff du preset » (utilisateur)
@@ -696,10 +1003,12 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   const tooHigh = (opts.fixed ?? []).filter(id => !wearable(id))
   if (tooHigh.length) warnings.push(`Objets imposés au-dessus du niveau ${buildLevel} ignorés : ${tooHigh.map(id => data.item(id)?.name ?? id).join(', ')}.`)
   const fixed = [...new Set([...passiveIds, ...(opts.fixed ?? []).filter(wearable)])].filter(id => !exclude.includes(id))
+  // Graines proposées par l'optimiseur : gardées (`seedStuffs`) ou écartées par `theorySeedFilter` (`excludedSeeds`).
   const seedStuffs = new Set<string>()
+  const excludedSeeds = new Set<string>()
   const recordingFilter = (id: string, s: StuffTemplate, d: GameDataStore) => {
     const ok = seedFilter(id, s, d)
-    if (ok) seedStuffs.add(id)
+    ;(ok ? seedStuffs : excludedSeeds).add(id)
     return ok
   }
   const runElements: StuffElement[] = elementsMode === 'all' ? STUFF_ELEMENTS.slice() : [startElement]
@@ -731,64 +1040,123 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
         if (c.key === 'start') continue
         const r = computeBuildStats(c.build, data)
         if (!r.valid) continue
-        const logJ = ctx.exact(r.stats, r.maxHp).logJ
-        pooled.push({ build: c.build, pointsId: c.pointsId, logJ, key: `${itemSetKey(c.build)}|${c.key}|${JSON.stringify(c.build.characteristicPoints)}`, element: dominantElement(r.stats), run: el })
+        // Candidats re-notés dans le contexte commun (logJ comparables entre recherches et éléments).
+        const score = ctx.exact(r.stats, r.maxHp)
+        const rank = rankBy === 'sustained' ? sustainedLogJ(ctx, score.logJ, score.dpt, bestSteady(env, r.stats, r.maxHp).run.steady) : score.logJ
+        pooled.push({ build: c.build, pointsId: c.pointsId, rank, key: `${itemSetKey(c.build)}|${c.key}|${JSON.stringify(c.build.characteristicPoints)}`, element: dominantElement(r.stats), run: el })
       }
       opts.onProgress?.({ step: 'optimize', label: `${elementLabel(el)}${restarts > 1 ? ` (recherche ${k + 1}/${restarts})` : ''}`, done: ++done, total })
     }
   }
 
-  // ── Meilleur + top distincts (ensembles d'objets), notés dans le contexte commun ──
-  pooled.sort((a, b) => b.logJ - a.logJ || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))
-  // Meilleur stuff de chaque élément, classé par SA caractéristique élémentaire (une recherche « Air » peut trouver un
-  // stuff Feu meilleur : il compte pour le Feu) ; à défaut, meilleur résultat de la recherche de l'élément (signalé).
-  const bestByElement = new Map<StuffElement, Pooled>()
-  for (const p of pooled) if (!bestByElement.has(p.element)) bestByElement.set(p.element, p)
-  const bestByRun = new Map<StuffElement, Pooled>()
-  for (const p of pooled) if (!bestByRun.has(p.run)) bestByRun.set(p.run, p)
-  const minDifferences = Math.max(1, Math.floor(opts.minDifferences ?? DEFAULT_MIN_DIFFERENCES))
-  const startBeats = startValid && startEval.logJ !== null && (!pooled.length || startEval.logJ >= pooled[0].logJ)
-  const distinct = pickDistinct(pooled, topN - (startBeats ? 1 : 0), minDifferences, startBeats ? [start] : [])
-  const optimized = distinct.map((p, i) => evaluate(env, p.build, { id: `top${i + 1}`, origin: 'optimized', label: `Optimisé n° ${i + 1}${elementsMode === 'all' ? ` (${elementLabel(p.element)})` : ''}`, pointsId: p.pointsId }))
-  const top = startBeats ? [startEval, ...optimized] : optimized
-  // Toujours au moins un candidat valide en pratique (le stuff vide est valide) : sinon, erreur plutôt qu'un départ
-  // invalide présenté comme meilleur.
-  if (!top.length) {
-    if (!startValid) throw new Error('Aucun stuff valide trouvé (départ invalide, objets imposés ou interdits trop contraignants).')
-    top.push(startEval)
+  // ── Classement commun : candidats de la recherche ET stuffs de référence valides (départ, preset, génériques) qui
+  // portent les objets imposés (un générique sans les Dofus gardés ne respecte pas `fixed`) ──
+  const candidates: Pooled[] = [...pooled]
+  for (const ev of [startEval, ...refs]) {
+    const r = rankOf(ev)
+    if (ev.valid && r !== null && hasAll(ev.build, fixed)) candidates.push({ build: ev.build, rank: r, key: `ref:${ev.id}`, element: ev.element, ev })
   }
+  candidates.sort(byRank)
+  const minDifferences = Math.max(1, Math.floor(opts.minDifferences ?? DEFAULT_MIN_DIFFERENCES))
+  // ── Affinage soutenu (classement soutenu) : la recherche est aveugle aux dégâts en posture ──
+  let polish: { ms: number; starts: number; gain: number } | undefined
+  if (rankBy === 'sustained' && candidates.length) {
+    const tp = performance.now()
+    const before = candidates[0].rank
+    // Objets essayés : ceux de tous les candidats et de tous les stuffs de référence.
+    const donors = [...candidates.map(p => p.build), ...refs.filter(e => !candidates.some(p => p.ev === e)).map(e => e.build)]
+    const starts = pickDistinct(candidates, POLISH_STARTS, minDifferences)
+    for (const from of starts) {
+      const point = polishSustained(env, proxyMember, options, from.build, donors, id => fixed.includes(id), id => !exclude.includes(id) && wearable(id))
+      if (!point) continue
+      const element = dominantElement(point.stats)
+      candidates.push({ build: point.build, rank: point.rank, key: `polish|${itemSetKey(point.build)}|${JSON.stringify(point.build.characteristicPoints)}`, element, run: from.run ?? element, polished: true })
+    }
+    candidates.sort(byRank)
+    polish = { ms: performance.now() - tp, starts: starts.length, gain: Math.max(0, candidates[0].rank - before) }
+    opts.onProgress?.({ step: 'evaluate', label: 'affinage en DPT soutenu', done: 1, total: 1 })
+  }
+  const evaluated = new Map<Pooled, Evaluated>()
+  let optimizedCount = 0
+  const evaluateCandidate = (p: Pooled, meta?: Meta): Evaluated => {
+    if (p.ev) return p.ev
+    let ev = evaluated.get(p)
+    if (!ev) {
+      if (!meta) {
+        optimizedCount++
+        const notes = [elementsMode === 'all' ? elementLabel(p.element) : '', p.polished ? 'affiné en DPT soutenu' : ''].filter(Boolean)
+        meta = { id: `top${optimizedCount}`, origin: 'optimized', label: `Optimisé n° ${optimizedCount}${notes.length ? ` (${notes.join(', ')})` : ''}`, ...(p.pointsId ? { pointsId: p.pointsId } : {}) }
+      }
+      ev = evaluate(env, p.build, meta)
+      evaluated.set(p, ev)
+    }
+    return ev
+  }
+  // Toujours au moins un candidat valide en pratique (départ valide, stuff vide valide) : sinon, erreur plutôt qu'un
+  // départ invalide présenté comme meilleur.
+  const top = pickDistinct(candidates, topN, minDifferences).map(p => evaluateCandidate(p))
+  if (!top.length) throw new Error('Aucun stuff valide trouvé (départ invalide, objets imposés ou interdits trop contraignants).')
   const best = top[0]
-  if (startBeats) warnings.push('Aucun stuff trouvé ne bat le stuff de départ contre ce boss (selon le proxy).')
   opts.onProgress?.({ step: 'evaluate', label: 'meilleurs stuffs', done: top.length, total: top.length })
 
-  // ── Éléments comparés ──
+  // ── Éléments comparés (candidats de la recherche seulement) ──
   let elements: StuffElementOption[] | undefined
   if (elementsMode === 'all') {
+    // Meilleur stuff de chaque élément, classé par SA caractéristique élémentaire (une recherche « Air » peut trouver un
+    // stuff Feu meilleur : il compte pour le Feu) ; à défaut, meilleur résultat de la recherche de l'élément (signalé).
+    const searched = candidates.filter(p => p.run !== undefined)
     const evals = STUFF_ELEMENTS.map(el => {
-      const p = bestByElement.get(el) ?? bestByRun.get(el)
+      const p = searched.find(x => x.element === el) ?? searched.find(x => x.run === el)
       if (p && p.element !== el) warnings.push(`Élément ${elementLabel(el)} : aucun stuff de cet élément parmi les candidats, meilleur résultat de sa recherche affiché (stuff ${elementLabel(p.element)}).`)
-      const inTop = p ? optimized.find(o => o.build === p.build) : undefined
-      const ev = inTop ?? (p ? evaluate(env, p.build, { id: `element:${el}`, origin: 'optimized', label: `Meilleur ${elementLabel(el)}`, pointsId: p.pointsId }) : undefined)
+      const ev = p ? evaluateCandidate(p, evaluated.has(p) ? undefined : { id: `element:${el}`, origin: 'optimized', label: `Meilleur ${elementLabel(el)}`, pointsId: p.pointsId }) : undefined
       return { el, ev }
     })
     let chosen: StuffElement | undefined
-    let bestLog = -Infinity
-    for (const { el, ev } of evals) if (ev?.logJ !== null && ev?.logJ !== undefined && ev.logJ > bestLog) [chosen, bestLog] = [el, ev.logJ]
+    let bestRank = -Infinity
+    for (const { el, ev } of evals) {
+      const r = ev ? rankOf(ev) : null
+      if (r !== null && r > bestRank) [chosen, bestRank] = [el, r]
+    }
     elements = evals
       .filter(x => x.ev)
       .map(({ el, ev }) => ({ element: el, label: elementLabel(el), bossResPct: bossResIn(env, el), best: publicEval(ev!), chosen: el === chosen }))
     assumptions.push('Comparaison des éléments : une recherche par élément avec les variantes de sorts du preset (non ré-optimisées pour l’élément), points du preset reportés sur la caractéristique de l’élément.')
   }
 
-  // ── Équivalences au meilleur stuff ──
-  const statWeights = statEquivalences(ctx.statWeightsAt(best.stats, best.maxHp), best.element)
+  // ── Équivalences au meilleur stuff (contexte du proxy construit à ce stuff) ──
+  const atBest = weightsAtBest(env, proxyMember, options, best, rankBy)
+  const statWeights = statEquivalences(atBest.weights, best.element, {
+    penalties: atBest.penalties,
+    steady: best.damage.steady,
+    ...(rankBy === 'sustained' ? { sustainedStance: best.damage.stance.name } : {}),
+  })
 
   // ── Avertissements ──
+  if (best === startEval) warnings.push(`Aucun stuff trouvé ne bat le stuff de départ contre ce boss (${rankLabel}).`)
+  else if (best.origin === 'generic' || best.origin === 'preset') warnings.push(`Le meilleur stuff est un stuff de référence (${best.label}) : la recherche n'a rien trouvé de mieux (${rankLabel}).`)
   if (best.damage.steady < 1) warnings.push('DPT soutenu nul contre ce boss (résistances ≥ 100 %, invulnérabilité ou sorts hors de portée) : le classement ne repose que sur la survie.')
-  if (best.survival.capped) warnings.push(`PV effectifs plafonnés (${EHP_CAP} × PV) : aucun dégât reçu calculable ou défenses saturées — la survie ne départage plus les stuffs.`)
-  if (STANCES[preset.breedId] && best.noStance * STANCE_GAP < best.damage.steady) {
+  if (best.survival.capped) warnings.push(`PV effectifs du meilleur stuff plafonnés (${EHP_CAP} × PV) : aucun dégât reçu calculable ou défenses saturées — les résistances ne départagent plus les stuffs, la survie ne compte plus que par les PV bruts (Vitalité).`)
+  if (rankBy === 'sustained') {
+    warnings.push(`Posture de classe : le proxy de l'optimiseur ne pose aucune posture (DPT soutenu sans posture ${Math.round(startEval.noStance)} contre ${Math.round(startEval.damage.steady)} en « ${startEval.damage.stance.name} » au départ) — la recherche ne voit pas ces dégâts ; stuffs CLASSÉS par le logJ soutenu (DPT soutenu en posture), stuffs de référence compris.`)
+  } else if (STANCES[preset.breedId] && best.noStance * STANCE_GAP < best.damage.steady) {
     warnings.push(
       `Posture de classe : le proxy de l'optimiseur ne pose aucune posture (DPT soutenu sans posture ${Math.round(best.noStance)} contre ${Math.round(best.damage.steady)} en « ${best.damage.stance.name} ») — l'objectif de la recherche sous-estime les dégâts de cette classe ; le DPT soutenu affiché, lui, utilise la meilleure posture.`,
+    )
+  }
+  const exps = ctx.exponents
+  const [s0, s1] = [startEval.damage.steady, best.damage.steady]
+  if (startValid && best !== startEval && s0 >= 1 && s1 < (1 - DPT_LOSS_WARN) * s0) {
+    warnings.push(
+      `Le meilleur stuff perd ${Math.round(100 * (1 - s1 / s0))} % de DPT soutenu par rapport au départ (${Math.round(s0)} → ${Math.round(s1)}) pour des PV effectifs ${Math.round(startEval.survival.ehp)} → ${Math.round(best.survival.ehp)} : arbitrage des exposants du rôle (a = ${fr(exps.a)}, b = ${fr(exps.b)})${rankBy === 'proxy' ? ' et du DPT du proxy (un tour isolé × calibration), qui n’est pas le DPT soutenu' : ''} — profil « offensive » pour privilégier les dégâts.`,
+    )
+  }
+  // Pénalités d'objectif décisives (PA/PM/PO sous les valeurs visées) : un réglage, pas un effet du boss.
+  const noPenalty = (e: Evaluated) => rankOf(e)! - detLog(e.penalty)
+  const buffs = melee || ctx.rangeNeed <= 0 ? [] : rangeBuffs(playerFighterFromStats(data, who, startStats.stats, startStats.maxHp))
+  if (startValid && best !== startEval && startEval.penalty < best.penalty && noPenalty(startEval) > noPenalty(best)) {
+    const po = startEval.range < ctx.rangeNeed
+    warnings.push(
+      `Pénalités d'objectif décisives : sans elles (${ctx.apTarget} PA, ${ctx.mpTarget} PM, ${ctx.rangeNeed} PO visés), « ${startEval.label} » (${startEval.ap}/${startEval.mp}/${startEval.range}, pénalité ×${fr(startEval.penalty, 3)}) passerait devant le meilleur stuff (${fr(noPenalty(startEval), 3)} contre ${fr(noPenalty(best), 3)}).${po && buffs.length ? ` Bonus de PO de la classe non déduits de la PO visée : ${buffs.join(', ')}.` : ''}${po ? ' Option rangeNeed pour ajuster la PO visée.' : ''}`,
     )
   }
   const removedPassives = best.changes.removed.filter(i => i.passive && wearable(i.itemId))
@@ -796,9 +1164,14 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   if (profile.level > buildLevel + 20) warnings.push(`Boss de niveau ${profile.level} pour un personnage de niveau ${buildLevel}.`)
 
   // ── Hypothèses ──
-  const exps = ctx.exponents
   assumptions.push(
-    `Objectif de l'optimiseur : logJ = a·ln DPT + b·ln PVe + ln(1 + c·UTIL) + ln(pénalités), rôle ${ROLE_LABELS_FR[role] ?? role} (a = ${fr(exps.a)}, b = ${fr(exps.b)}, c = ${fr(exps.c)}), profil ${expProfile} ; logJ n'est comparable qu'à personnage, rôle, profil et boss égaux.`,
+    `Objectif de l'optimiseur : logJ = a·ln DPT + b·ln PVe + ln(1 + c·UTIL) + ln(pénalités : ${PENALTY_TEXT}), rôle ${ROLE_LABELS_FR[role] ?? role} (a = ${fr(exps.a)}, b = ${fr(exps.b)}, c = ${fr(exps.c)}), profil ${expProfile} ; logJ n'est comparable qu'à personnage, rôle, profil et boss égaux.`,
+    rankingReason,
+    ...(polish
+      ? [
+          `Affinage en DPT soutenu (classement soutenu) : ${polish.starts} montée(s) par coordonnées sur le logJ soutenu depuis les stuffs distincts les mieux classés, avec les objets de tous les candidats et stuffs de référence, forgemagie re-planifiée aux poids soutenus, points de caractéristiques inchangés (gain sur le meilleur : ${fr(polish.gain, 3)}).`,
+        ]
+      : []),
     `Recherche : ${restarts} × ${fr(iterations)} itérations de recuit par élément (${restarts > 1 ? `graines ${seed} à ${seed + restarts - 1}` : `graine ${seed}`}), stuffs de départ des montées = départ + stuffs génériques hors scénario + glouton ; candidats re-notés en exact.`,
     'Jets max des objets ; forgemagie supposée réalisable : un exo PA, PM et PO au plus (s’ils sont utiles), jusqu’à 6 transcendances, aucun over (profil thlOptimized de l’optimiseur).',
     keepPassives
@@ -807,14 +1180,18 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
     'DPT : sorts de classe seulement (arme non lancée) ; ni invocations, glyphes, pièges, bombes, buffs entre sorts ni buffs d’équipe entre personnages ; aucune position, ligne de vue ni PM.',
     `DPT soutenu : rotation en régime établi (relances amorties), meilleure posture de classe supposée tenue tout le combat, NON calibré ; DPT du proxy : un tour isolé × calibration du preset (mesurée au Vortex), sans posture.`,
     'PV effectifs : rotations du boss estimées par sac à dos (borne haute, pas l’IA réelle), plafonnés à 20 × PV ; ni soins, boucliers, érosion ni kit défensif de classe.',
-    `Variantes de sorts du preset « ${presetId} »${melee ? ' ; joué au contact (PO non exigée)' : ' ; joué à distance (6 PO visées)'}.`,
+    `Variantes de sorts du preset « ${presetId} »${
+      melee
+        ? ' ; joué au contact (PO non exigée)'
+        : ` ; joué à distance (${ctx.rangeNeed} PO visées${opts.rangeNeed !== undefined ? ', option rangeNeed' : ''}${buffs.length ? ` ; bonus de PO temporaires de la classe NON déduits : ${buffs.join(', ')}` : ''})`
+    }.`,
     'Les CLASSEMENTS valent plus que les valeurs absolues.',
     ...target.assumptions,
     ...profile.assumptions.map(a => `Boss : ${a}`),
   )
   warnings.push(...profile.warnings.map(w => `Boss : ${w}`))
 
-  const comparison = [startEval, ...refs.sort((a, b) => (b.logJ ?? -Infinity) - (a.logJ ?? -Infinity) || (a.id < b.id ? -1 : 1))]
+  const comparison = [startEval, ...refs.sort((a, b) => (rankOf(b) ?? -Infinity) - (rankOf(a) ?? -Infinity) || (a.id < b.id ? -1 : 1))]
   return {
     version: 1,
     boss: {
@@ -844,13 +1221,14 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
       input: ch.input,
       variants,
     },
-    options: { level: buildLevel, iterations, restarts, profile: expProfile, top: topN, minDifferences, elements: elementsMode, seed, keepPassives, fixed, exclude },
+    options: { level: buildLevel, iterations, restarts, profile: expProfile, top: topN, minDifferences, elements: elementsMode, seed, keepPassives, fixed, exclude, rangeNeed: ctx.rangeNeed },
     start: publicEval(startEval),
     startValid,
     comparison: comparison.map(publicEval),
     best: publicEval(best),
     top: top.map(publicEval),
     ...(elements ? { elements } : {}),
+    ranking: { by: rankBy, reason: rankingReason },
     statWeights,
     assumptions,
     warnings,
@@ -860,6 +1238,8 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
       evaluations,
       pools: pools ?? { examined: 0, kept: 0, setBlocks: 0 },
       seedStuffs: [...seedStuffs].sort(),
+      excludedSeeds: [...excludedSeeds].sort(),
+      ...(polish ? { polish } : {}),
     },
   }
 }
