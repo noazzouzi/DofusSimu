@@ -114,14 +114,15 @@ export function rangedEdge(profile: BossProfile): string | undefined {
 
 /**
  * Style de jeu d'un preset contre ce boss (voir l'en-tête) : `explicit` (option `melee`) d'abord ; sinon au contact si
- * le boss n'est attaquable qu'au contact, si le preset est un preset de mêlée ou si `shape.contactShare` (part du DPT
- * soutenu portée par des coups au contact, `contactShare` de rotation.ts, mesurée avec le style de `playsMelee` ou le
- * choix explicite ; absente sans dégâts) atteint `CONTACT_SHARE` ; sinon à distance. `presetId` : preset de base
- * (`extends` d'un preset dérivé). Règle unique de `classes` et `stuff`.
+ * le boss n'est attaquable qu'au contact ; sinon, si `shape.contactShare` (part du DPT soutenu portée par des coups au
+ * contact, `contactShare` de rotation.ts, mesurée avec le style de `playsMelee` ou le choix explicite) est mesurée
+ * (absente sans dégâts), le style où passe la MAJORITÉ du DPT (au contact dès `CONTACT_SHARE`) — règle symétrique : un preset à
+ * distance contre Merkator passe au contact, un preset de mêlée contre un boss qui subit mieux les coups à distance
+ * (Hanshi) passe à distance ; sans dégâts mesurés, le style du preset. `presetId` : preset de base (`extends` d'un
+ * preset dérivé). Règle unique de `classes` et `stuff`.
  *
- * `reason` explique un style différent de celui du preset, ou un style contredit par la part mesurée (`mismatch`) :
- * preset de mêlée dont la majorité du DPT passe par des coups à distance (Hanshi, « −50 % au contact » : le preset
- * reste au contact, règle de la décision), choix explicite contraire à la part mesurée. Dans ces deux cas, DPT et
+ * `reason` explique un style différent de celui du preset, ou un style contredit par la part mesurée (`mismatch` :
+ * choix explicite ou boss attaquable seulement au contact, contraires à la part mesurée). Dans ce cas, DPT et
  * équivalences comptent toujours le coup que le boss subit le mieux (hits.ts) : le style ne fixe que la PO visée et le
  * coup retenu à égalité.
  */
@@ -132,9 +133,12 @@ export function resolveStyle(profile: BossProfile, presetId: string, shape?: { c
   let source: PlayStyle['source']
   if (explicit !== undefined) [contact, source] = [explicit, 'explicit']
   else if (meleeOnlyBoss(profile)) [contact, source] = [true, 'boss']
-  else if (presetContact) [contact, source] = [true, 'preset']
-  else if (share !== undefined && share >= CONTACT_SHARE) [contact, source] = [true, 'dpt']
-  else [contact, source] = [false, 'preset']
+  else if (share !== undefined) {
+    // Règle symétrique : le style où passe la majorité du DPT soutenu (un preset de mêlée contre un boss qui subit
+    // mieux les coups à distance, Hanshi, passe à distance ; un preset à distance contre Merkator passe au contact).
+    contact = share >= CONTACT_SHARE
+    source = contact === presetContact ? 'preset' : 'dpt'
+  } else [contact, source] = [presetContact, 'preset']
   // La majorité du DPT mesuré passe par des coups de l'autre style : le style décidé reste, la sortie le dit.
   const mismatch = share !== undefined && (contact ? share < CONTACT_SHARE : share >= CONTACT_SHARE)
   let reason: string | undefined
@@ -148,9 +152,12 @@ export function resolveStyle(profile: BossProfile, presetId: string, shape?: { c
   } else if (contact !== presetContact) {
     if (source === 'explicit') reason = 'choix explicite (option melee)'
     else if (source === 'boss') reason = 'le boss n\'est attaquable qu\'au contact'
-    else if (source === 'dpt') {
+    else if (source === 'dpt' && contact) {
       const edge = contactEdge(profile)
       reason = `${fmt(share! * 100)} % de son DPT soutenu contre ce boss passe par des coups au contact${edge ? `, que le boss subit mieux (${edge})` : ' (sorts qui ne frappent qu\'au contact)'}`
+    } else if (source === 'dpt') {
+      const edge = rangedEdge(profile)
+      reason = `${fmt((1 - share!) * 100)} % de son DPT soutenu contre ce boss passe par des coups à distance${edge ? `, que le boss subit mieux (${edge})` : ' (sorts qui ne frappent qu\'à distance)'}`
     }
   }
   return {

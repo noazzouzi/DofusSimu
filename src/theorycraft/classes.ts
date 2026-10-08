@@ -569,9 +569,23 @@ function byDptText(list: readonly PresetEvaluation[], ranged: number, edge: stri
 }
 
 /**
- * Hypothèse « au contact malgré leur DPT » : presets joués au contact (`contact` au total) dont moins de `CONTACT_SHARE`
- * du DPT soutenu passe par des coups au contact (`PlayStyle.mismatch`) — le boss subit mieux les coups à distance
- * (`edge`, `rangedEdge`) ; ils restent au contact (règle), DPT et équivalences comptent ces coups à distance.
+ * Hypothèse « joués à distance par leur DPT » : presets de mêlée (`melee` au total) dont moins de `CONTACT_SHARE` du DPT
+ * soutenu passe par des coups au contact (règle symétrique de `byDptText`), ce qui fait mieux subir au boss les coups à
+ * distance (`edge`, `rangedEdge`) ou vient de sorts qui ne frappent qu'à distance.
+ */
+function toRangeText(list: readonly PresetEvaluation[], melee: number, edge: string | undefined): string {
+  const { ids, same } = sharesText(list)
+  return (
+    `Joués à distance par leur DPT (moins de ${fmt(CONTACT_SHARE * 100)} % de leur DPT soutenu contre ce boss passe par des coups au contact) : ` +
+    `${list.length} preset(s) de mêlée sur ${melee}${same !== undefined ? ` (${same} % au contact chacun)` : ''}${edge ? ` — le boss subit mieux les coups à distance (${edge})` : ' — sorts qui ne frappent qu\'à distance'} : ${ids}.`
+  )
+}
+
+/**
+ * Hypothèse « au contact malgré leur DPT » : presets joués au contact parce que le boss n'est attaquable qu'au contact
+ * (`contact` au total), alors que moins de `CONTACT_SHARE` de leur DPT soutenu passe par des coups au contact
+ * (`PlayStyle.mismatch`, cas rare : le style des autres presets suit la majorité de leur DPT) ; ils restent au contact,
+ * DPT et équivalences comptent ces coups à distance.
  */
 function mismatchText(list: readonly PresetEvaluation[], contact: number, edge: string | undefined): string {
   const { ids, same } = sharesText(list)
@@ -656,9 +670,11 @@ export function rankClasses(data: GameDataStore, profile: BossProfile, opts: Ran
   const comp = suggestComposition(profile, evs, players)
   const composition = { members: comp.members, rules: COMPOSITION_RULES.slice(), notes: comp.notes }
 
-  // Presets à distance joués au contact parce que la majorité de leur DPT passe par des coups au contact.
-  const byDpt = evs.filter(e => e.style.source === 'dpt')
-  // Presets joués au contact dont la majorité du DPT passe par des coups à distance (preset de mêlée contre Hanshi).
+  // Presets dont le style suit la majorité de leur DPT plutôt que leur style de preset (règle symétrique) : à distance
+  // joués au contact (Merkator), de mêlée joués à distance (Hanshi).
+  const toContact = evs.filter(e => e.style.source === 'dpt' && e.style.contact)
+  const toRange = evs.filter(e => e.style.source === 'dpt' && !e.style.contact)
+  // Style imposé (boss attaquable seulement au contact) contredit par la majorité du DPT mesurée.
   const mismatched = evs.filter(e => e.style.mismatch)
   const assumptions = [
     ...profile.assumptions,
@@ -670,8 +686,9 @@ export function rankClasses(data: GameDataStore, profile: BossProfile, opts: Ran
         : 'Stuffs génériques des presets (6 stuffs méta de 12/2024, data/ai/presets.json, jets max), partagés entre classes d\'un même élément.',
     `Presets écrits à la main : ${presets.length} preset(s), 2 à 3 voies par classe, variantes de sorts fixées (d'autres variantes peuvent mieux convenir à ce boss).`,
     'DPT soutenu NON calibré : sac à dos analytique en régime établi (relances amorties), contre chaque phase attaquable pondérée ; meilleure posture de classe, tenue tout le combat (coût de changement non compté).',
-    `Jeu (colonne « Jeu » : style et part du DPT soutenu au contact) : au contact si le boss n'est attaquable qu'au contact, si le preset est un preset de mêlée ou si au moins ${fmt(CONTACT_SHARE * 100)} % de son DPT soutenu contre ce boss passe par des coups au contact (${level < PRESET_LEVEL ? 'personnage sans équipement, comme les mesures sous le niveau 200' : 'stuff du preset'}${mode === 'optimized' ? ', avant optimisation' : ''} ; sans dégâts, style du preset) — PO non exigée par l'objectif de l'optimiseur, et à égalité de la cible coups au contact (% mêlée) ; sinon à distance (${DEFAULT_RANGE_NEED} PO visées). Même règle que le meilleur stuff.`,
-    ...(byDpt.length ? [byDptText(byDpt, evs.filter(e => !e.style.presetContact).length, contactEdge(profile))] : []),
+    `Jeu (colonne « Jeu » : style et part du DPT soutenu au contact) : au contact si le boss n'est attaquable qu'au contact ; sinon le style où passe la majorité de son DPT soutenu contre ce boss (au contact dès ${fmt(CONTACT_SHARE * 100)} % de coups au contact ; ${level < PRESET_LEVEL ? 'personnage sans équipement, comme les mesures sous le niveau 200' : 'stuff du preset'}${mode === 'optimized' ? ', avant optimisation' : ''} ; sans dégâts, style du preset). Au contact : PO non exigée par l'objectif de l'optimiseur, et à égalité de la cible coups au contact (% mêlée) ; à distance : ${DEFAULT_RANGE_NEED} PO visées. Même règle que le meilleur stuff.`,
+    ...(toContact.length ? [byDptText(toContact, evs.filter(e => !e.style.presetContact).length, contactEdge(profile))] : []),
+    ...(toRange.length ? [toRangeText(toRange, evs.filter(e => e.style.presetContact).length, rangedEdge(profile))] : []),
     ...(mismatched.length ? [mismatchText(mismatched, evs.filter(e => e.style.contact).length, rangedEdge(profile))] : []),
     'Facteur d\'étalonnage du preset affiché à côté du DPT (data/ai/calibration.json, mini-combat contre un Buboxor au niveau 200 avec le stuff du preset) : INDICATIF — il rapporte les dégâts du moteur au sac à dos joué DANS le moteur (buffs et rampes vus), pas au DPT soutenu hors combat ; il ne corrige ni ne contrôle ce DPT, et ne dépend ni du boss, ni du niveau, ni d\'un stuff optimisé.',
     'Axes indépendants, sans note globale : un tour consacré au retrait ou au soin n\'est pas consacré aux dégâts.',

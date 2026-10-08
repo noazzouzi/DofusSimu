@@ -402,39 +402,33 @@ distance) ; à égalité, le style du personnage (au contact ⇒ mêlée). Les %
 suivent ce coup (une classe de contact valorise ses % mêlée). Un sort de portée minimale 2 ou plus ne frappe qu'à
 distance, un sort de portée 1 qu'au contact. L'IA du Vortex garde sa propre règle (mêlée ⇔ portée max ≤ 1).
 
-**Style de jeu (colonne « Jeu »).** Un preset à distance est joué au contact quand il y porte la majorité de son
-DPT ; un preset de mêlée reste au contact (limite ci-dessous). Un preset est joué **au contact** si le boss n'est
-attaquable qu'au contact (Père Ver), si son preset est un preset de mêlée (Iop Terre, Ouginak, Sacrieur, Zobal, Féca
-protecteur, Pandawa Saoul) ou si **au moins 50 % de son DPT soutenu contre ce boss** passe par des coups au contact ;
-sinon à distance. La part est mesurée avec le stuff du preset (avant toute optimisation ; sans équipement sous le
-niveau 200, comme les mesures du classement) ou, pour `stuff`, le stuff fourni ; sans aucun dégât (Kimbo sans fiche)
-elle n'est pas mesurée (« — ») et le preset garde son style. Deux causes font jouer un preset à distance au contact :
+**Style de jeu (colonne « Jeu »).** Un preset est joué dans le style où passe la **majorité de son DPT soutenu
+contre ce boss**. Il est joué **au contact** si le boss n'est attaquable qu'au contact (Père Ver) ou si **au moins
+50 %** de son DPT soutenu passe par des coups au contact ; sinon **à distance**. La règle est symétrique : elle vaut
+pour les presets à distance comme pour les presets de mêlée. La part est mesurée avec le stuff du preset (avant toute
+optimisation ; sans équipement sous le niveau 200, comme les mesures du classement) ou, pour `stuff`, le stuff fourni ;
+sans aucun dégât (Kimbo sans fiche) elle n'est pas mesurée (« — ») et le preset garde le style de son preset. Exemples :
 - le boss subit mieux les coups au contact : contre Merkator (−50 % à distance), tous les presets de base à distance
   (39 sur 39) frappent au contact (100 % chacun) et y sont joués, dont le Crâ Terre mono ;
+- le boss subit mieux les coups à distance : contre Hanshi (« réduction mêlée 50 % »), les sorts des presets de mêlée
+  lançables des deux façons (Pression, Épée de Iop, Pugilat pour le Iop Terre) comptent à distance ; le Iop Terre
+  (0 % au contact) y est joué **à distance**, avec 6 PO visées et ses % dommages distance valorisés (« distance* (0 %) »,
+  hypothèse « Joués à distance par leur DPT ») ;
 - ses sorts ne frappent qu'au contact (portée 1) : même contre un boss qui ne distingue pas les coups (Comte
   Harebourg, Solar, Vortex), `ecaflip_terre_entrave` (52 %), `forgelance_zone_terre` (87 %) et `iop_soutien` (79 %)
   sont joués au contact (« contact* », hypothèse « Joués au contact par leur DPT … sorts qui ne frappent qu'au
   contact »). Leur objectif ne vise donc plus de PO (`stuff`, `classes --optimize`) ; leur DPT soutenu par défaut ne
   change pas.
 
-Contre le Comte Harebourg, le Crâ Terre mono reste à distance (0 %) et le Iop Terre au contact (preset de mêlée,
-100 %). Le style décide de tout ce qui en dépend : la PO visée par l'objectif de l'optimiseur (6 à distance, aucune au
-contact : `--optimize`, `stuff`), le coup d'un sort lançable des deux façons quand le boss ne les distingue pas (au
-contact ⇒ mêlée, ses % dommages mêlée comptent), les libellés (« au contact » / « à distance ») et une explication
-quand il diffère du style du preset (« joué au contact : 100 % de son DPT soutenu contre ce boss passe par des coups au
-contact, que le boss subit mieux (−50 % à distance) »). La colonne « Jeu » donne le style et, entre parenthèses, la
-part du DPT soutenu au contact ; « * » marque un style différent de celui du preset, « ! » un style contredit par cette
-part. Règle unique (`resolveStyle`, `src/theorycraft/target.ts`) pour le classement et le meilleur stuff.
-
-**Limite : preset de mêlée contre un boss qui subit mieux les coups à distance.** La règle n'est pas symétrique : un
-preset de mêlée reste au contact même si la majorité de son DPT passe par des coups à distance. Contre Hanshi
-(« réduction mêlée 50 % »), les sorts des presets de mêlée lançables au contact comme à distance (Pression, Épée de
-Iop, Pugilat pour le Iop Terre) comptent à distance, le coup que le boss subit le mieux : le Iop Terre reste « au
-contact », sans PO visée, mais 0 % de son DPT soutenu passe au contact, et ses équivalences valorisent ses % dommages
-distance, pas ses % mêlée. La sortie le dit : « contact! (0 %) » dans la colonne « Jeu » (les 10 presets de mêlée
-contre Hanshi, de 0 à 43 %), hypothèse « Au contact malgré leur DPT », ligne « Jeu » du meilleur stuff (« joué au
-contact : preset de mêlée, mais seulement 0 % de son DPT soutenu contre ce boss passe par des coups au contact, le
-boss subissant mieux les coups à distance (−50 % au contact) : DPT et équivalences comptent ces coups à distance »).
+Contre le Comte Harebourg, le Crâ Terre mono reste à distance (0 %) et le Iop Terre au contact (100 %). Le style
+décide de tout ce qui en dépend : la PO visée par l'objectif de l'optimiseur (6 à distance, aucune au contact :
+`--optimize`, `stuff`), le coup d'un sort lançable des deux façons quand le boss ne les distingue pas (au contact ⇒
+mêlée, ses % dommages mêlée comptent), les libellés (« au contact » / « à distance ») et une explication quand il
+diffère du style du preset (« joué au contact : 100 % de son DPT soutenu contre ce boss passe par des coups au contact,
+que le boss subit mieux (−50 % à distance) »). La colonne « Jeu » donne le style et, entre parenthèses, la part du DPT
+soutenu au contact ; « * » marque un style différent de celui du preset, « ! » un style imposé (boss attaquable
+seulement au contact, choix explicite) que contredit cette part. Règle unique (`resolveStyle`,
+`src/theorycraft/target.ts`) pour le classement et le meilleur stuff.
 
 **Choix explicite.** `--range N` (`stuff`, option `rangeNeed` de l'API) impose la PO visée ; l'option `melee` de
 l'API impose le style. Ni l'un ni l'autre ne change le coup compté : un sort lançable des deux façons garde le coup
@@ -600,10 +594,6 @@ Chaque sortie liste les siennes ; voici l'ensemble, sans fard.
   (ou de départ) : l'objectif de l'optimiseur suit ce seul style (PO visée), même pour un personnage qui alternerait ;
   chaque sort lançable des deux façons garde le coup que le boss subit le mieux, quel que soit le style (choix
   explicite compris : il ne fixe que la PO visée et le coup retenu à égalité).
-- **Un preset de mêlée reste au contact**, même quand la majorité de son DPT passe par des coups à distance (Hanshi,
-  « réduction mêlée 50 % » : Iop Terre « contact! (0 %) ») : aucune PO visée, mais DPT et équivalences comptent ces
-  coups à distance. Signalé (« ! », hypothèse, ligne « Jeu ») ; la règle symétrique (le jouer à distance, 6 PO visées)
-  n'est pas appliquée.
 - Ni invocations (les vôtres comme celles du boss), ni glyphes, pièges, bombes, tourelles ; l'arme n'est pas lancée.
 - Ni rampes ni cumuls entre tours (Fureur, Colère de Iop au retour de relance, paliers de Flèche Dévorante), ni buffs
   entre sorts d'un même personnage, ni PA rendus en cours de tour. Poisons suivis tour par tour dans le DPT soutenu

@@ -141,25 +141,28 @@ describe('resolveStyle : règle unique et priorités', () => {
     expect(resolveStyle(merkator, 'cra_terre_mono')).toEqual({ contact: false, label: 'à distance', presetContact: false, source: 'preset' })
   })
 
-  it('règles sans mesure : preset de mêlée et boss attaquable seulement au contact, même sans DPT au contact', () => {
-    // Iop Terre : preset de mêlée, au contact quelle que soit la part mesurée ; aucune explication s'il y porte son DPT.
+  it('règle symétrique : le style où passe la majorité du DPT ; boss attaquable seulement au contact ; sans dégâts, style du preset', () => {
+    // Iop Terre : preset de mêlée qui porte son DPT au contact ; aucune explication.
     expect(resolveStyle(harebourg, 'iop_terre_burst', { contactShare: 1 })).toEqual({ contact: true, label: 'au contact', presetContact: true, source: 'preset', contactShare: 1 })
-    // Moins de 50 % au contact : il reste au contact (règle), mais la sortie dit que son DPT passe à distance.
+    // Hanshi (−50 % au contact) : tout son DPT passe à distance ⇒ joué à distance, et la sortie dit pourquoi.
     expect(resolveStyle(hanshi, 'iop_terre_burst', { contactShare: 0 })).toEqual({
-      contact: true,
-      label: 'au contact',
+      contact: false,
+      label: 'à distance',
       presetContact: true,
-      source: 'preset',
+      source: 'dpt',
       contactShare: 0,
-      mismatch: true,
-      reason:
-        'preset de mêlée, mais seulement 0 % de son DPT soutenu contre ce boss passe par des coups au contact, le boss subissant mieux les coups à distance (−50 % au contact) : DPT et équivalences comptent ces coups à distance (% dommages distance)',
+      reason: '100 % de son DPT soutenu contre ce boss passe par des coups à distance, que le boss subit mieux (−50 % au contact)',
     })
-    expect(resolveStyle(harebourg, 'iop_terre_burst', { contactShare: 0.2 }).reason).toMatch(/seulement 20 % .* \(sorts qui ne frappent qu'à distance\)/)
+    // Boss qui ne distingue pas les coups : sorts qui ne frappent qu'à distance.
+    expect(resolveStyle(harebourg, 'iop_terre_burst', { contactShare: 0.2 })).toMatchObject({ contact: false, source: 'dpt' })
+    expect(resolveStyle(harebourg, 'iop_terre_burst', { contactShare: 0.2 }).reason).toMatch(/^80 % .* \(sorts qui ne frappent qu'à distance\)$/)
+    // Seuil : 50 % au contact suffit.
+    expect(resolveStyle(harebourg, 'iop_terre_burst', { contactShare: 0.5 })).toMatchObject({ contact: true, source: 'preset' })
     // Père Ver (invulnérable à distance) : un preset à distance y est joué au contact, et la sortie dit pourquoi.
     expect(resolveStyle(pereVer, 'forgelance_zone_terre', { contactShare: 1 })).toMatchObject({ contact: true, source: 'boss', reason: 'le boss n\'est attaquable qu\'au contact' })
     // Sans dégâts (aucune part) : style du preset, sans explication.
     expect(resolveStyle(kimbo, 'cra_terre_mono', { contactShare: undefined })).toEqual({ contact: false, label: 'à distance', presetContact: false, source: 'preset' })
+    expect(resolveStyle(kimbo, 'iop_terre_burst', { contactShare: undefined })).toMatchObject({ contact: true, source: 'preset' })
   })
 
   it('choix explicite prioritaire, dans les deux sens (la part mesurée reste affichée, et sa contradiction signalée)', () => {
@@ -310,38 +313,39 @@ describe('même style dans la comparaison des classes et le meilleur stuff', () 
   })
 })
 
-describe('preset de mêlée contre Hanshi (−50 % au contact) : reste au contact, contradiction signalée', () => {
+describe('preset de mêlée contre Hanshi (−50 % au contact) : joué à distance, comme la majorité de son DPT (règle symétrique)', () => {
   const iop = stuffVsBoss(data, { preset: 'iop_terre_burst' }, hanshi, QUICK)
   const ranked = rankClasses(data, hanshi, { presets: ['iop_terre_burst', 'cra_terre_mono'].map(getPreset) })
 
-  it('style au contact (preset de mêlée), PO non exigée, mais DPT et équivalences à distance — et la sortie le dit', () => {
-    expect(iop.character.style).toMatchObject({ contact: true, presetContact: true, source: 'preset', contactShare: 0, mismatch: true })
-    expect(iop.options.rangeNeed).toBe(0)
+  it('style à distance (DPT), 6 PO visées, % dommages distance valorisés — et la sortie dit pourquoi', () => {
+    expect(iop.character.style).toMatchObject({ contact: false, presetContact: true, source: 'dpt', contactShare: 0 })
+    expect(iop.character.style.mismatch).toBeUndefined()
+    expect(iop.options.rangeNeed).toBe(6)
     expect(iop.best.damage.steady).toBeGreaterThan(0)
-    // Le DPT compte les coups à distance : % dommages distance valorisés, pas les % mêlée.
     const stats = iop.statWeights.items.map(x => x.stat)
     expect(stats).toContain('rangedDamagePct')
     expect(stats).not.toContain('meleeDamagePct')
     const text = formatStuffVsBoss(iop)
-    expect(text).toContain('élément Terre, au contact\n')
+    expect(text).toContain('élément Terre, à distance\n')
     expect(text).toContain(
-      'Jeu : joué au contact : preset de mêlée, mais seulement 0 % de son DPT soutenu contre ce boss passe par des coups au contact, le boss subissant mieux les coups à distance (−50 % au contact) : DPT et équivalences comptent ces coups à distance (% dommages distance) — PO non exigée.',
+      'Jeu : joué à distance : 100 % de son DPT soutenu contre ce boss passe par des coups à distance, que le boss subit mieux (−50 % au contact) — 6 PO visées.',
     )
     expect(text).not.toContain('% dommages mêlée valorisés')
   })
 
-  it('classes : même style, « ! » dans la colonne « Jeu », hypothèse qui liste les presets concernés', () => {
+  it('classes : même style, « * » dans la colonne « Jeu », hypothèse qui liste les presets concernés', () => {
     const ev = ranked.presets.find(e => e.presetId === 'iop_terre_burst')!
     expect(ev.style).toEqual(iop.character.style)
     const text = formatClasses(ranked, { presets: true })
-    expect(text).toMatch(/iop_terre_burst .* contact! \(0 %\)/)
+    expect(text).toMatch(/iop_terre_burst .* distance\* \(0 %\)/)
     expect(text).toMatch(/cra_terre_mono .* distance \(0 %\)/)
-    expect(text).toContain('« ! » = style contredit par cette part')
-    // Page web : même marque, explication en infobulle.
+    expect(text).not.toContain('« ! » = style contredit')
+    // Page web : même marque.
     const html = renderClasses(ranked, { axis: 'damage', sorts: new Map(), open: new Set() })
-    expect(html).toContain('contact! <small class="bv-sub">0 %</small>')
-    expect(html).toContain('! = contredit par cette part')
-    expect(ranked.assumptions.join('\n')).toMatch(/Au contact malgré leur DPT .* 1 preset\(s\) joué\(s\) au contact sur 1 \(0 % chacun\) — le boss subit mieux les coups à distance \(−50 % au contact\) : iop_terre_burst\./)
+    expect(html).toContain('distance* <small class="bv-sub">0 %</small>')
+    const assumptions = ranked.assumptions.join('\n')
+    expect(assumptions).toMatch(/Joués à distance par leur DPT .* 1 preset\(s\) de mêlée sur 1 \(0 % au contact chacun\) — le boss subit mieux les coups à distance \(−50 % au contact\) : iop_terre_burst\./)
+    expect(assumptions).not.toMatch(/Joués au contact par leur DPT/)
   })
 })
 
@@ -360,7 +364,7 @@ describe('même style sous le niveau 200 : classes et stuff mesurent sur le mêm
       expect(r.startValid, id).toBe(false)
       expect(r.character.style, id).toEqual(ev.style)
     }
-    expect(ranked.assumptions.join('\n')).toContain('(personnage sans équipement, comme les mesures sous le niveau 200 ; sans dégâts, style du preset)')
+    expect(ranked.assumptions.join('\n')).toContain('; personnage sans équipement, comme les mesures sous le niveau 200 ; sans dégâts, style du preset)')
   })
 })
 
