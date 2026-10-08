@@ -47,8 +47,12 @@ export interface Args {
   flags: Map<string, string | true>
 }
 
-/** `--clé valeur`, `--clé=valeur`, `--drapeau` (booléen si suivi d'une autre option ou de rien). */
-export function parseArgs(argv: readonly string[]): Args {
+/**
+ * `--clé valeur`, `--clé=valeur`, `--drapeau` (booléen si suivi d'une autre option ou de rien). Piège : un drapeau
+ * suivi d'un positionnel l'avale (`--json 147` ⇒ json = « 147 ») ; `booleans` liste les drapeaux qui ne prennent
+ * JAMAIS de valeur (sauf `--drapeau=valeur`), pour les commandes qui les déclarent (src/cli/theory.ts).
+ */
+export function parseArgs(argv: readonly string[], booleans?: ReadonlySet<string>): Args {
   const positional: string[] = []
   const flags = new Map<string, string | true>()
   for (let i = 0; i < argv.length; i++) {
@@ -59,7 +63,7 @@ export function parseArgs(argv: readonly string[]): Args {
     }
     const eq = a.indexOf('=')
     if (eq > 0) flags.set(a.slice(2, eq), a.slice(eq + 1))
-    else if (i + 1 < argv.length && !argv[i + 1].startsWith('--')) flags.set(a.slice(2), argv[++i])
+    else if (i + 1 < argv.length && !argv[i + 1].startsWith('--') && !booleans?.has(a.slice(2))) flags.set(a.slice(2), argv[++i])
     else flags.set(a.slice(2), true)
   }
   return { positional, flags }
