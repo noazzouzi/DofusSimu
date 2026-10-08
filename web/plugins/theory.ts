@@ -17,7 +17,8 @@
  * (`sharedStore`, web/plugins/store.ts) : chargées une seule fois.
  *
  * `id` : id de monstre d'un boss (Expéditions comprises), ou un nom résolu comme la CLI (`resolveBoss`). `players`
- * (1 à 8, défaut 4) et `grade` (1 au nombre de grades du boss) s'excluent. Les fiches manuelles `data/bosses/*.json`
+ * (1 à 8, défaut 4) et `grade` (1 au nombre de grades du boss) s'excluent ; avec `grade`, la composition du classement
+ * compte `playersForGrade(grade)` personnages (G + 3, 8 au plus), comme la CLI. Les fiches manuelles `data/bosses/*.json`
  * sont relues à chaque demande (une fiche modifiée s'applique sans redémarrer) ; une fiche illisible est signalée dans
  * les avertissements de la fiche du boss, qui est alors calculée sans fiche manuelle.
  *
@@ -45,6 +46,7 @@ import {
   type StuffInput,
   type StuffVsBossResult,
 } from '../../src/theorycraft/analysis'
+import { MAX_PLAYERS, playersForGrade } from '../../src/theorycraft/bosses'
 import { loadBossOverrides, nodeDungeonSource } from '../../src/theorycraft/node'
 import { HttpError, readJson, sendJson, sharedStore } from './store'
 
@@ -56,7 +58,7 @@ const API = '/api/theory/'
  * prendraient près de 6 min : au-delà, la CLI (`boss … classes --optimize --iterations N`).
  */
 export const THEORY_LIMITS = {
-  players: { min: 1, max: 8 },
+  players: { min: 1, max: MAX_PLAYERS },
   top: { min: 1, max: 10 },
   iterations: { min: 0, max: 200_000 },
   classesIterations: { min: 0, max: 10_000 },
@@ -183,13 +185,17 @@ export function theoryBoss(env: TheoryEnv, p: TheoryParams): BossProfileDetail {
   return profileOf(env, p)
 }
 
-/** POST classes : classement des classes contre le boss (stuffs des presets, ou optimisés contre lui). */
+/**
+ * POST classes : classement des classes contre le boss (stuffs des presets, ou optimisés contre lui). Composition de
+ * `players` personnages ; grade imposé : `playersForGrade(grade)` (G + 3, 8 au plus), comme la CLI
+ * (`boss … classes --grade G`).
+ */
 export function theoryClasses(env: TheoryEnv, p: TheoryParams): ClassRanking {
   const profile = profileOf(env, p)
   const stuff = oneOf(p.stuff, 'stuff', ['preset', 'optimized'] as const)
   const iterations = intParam(p.iterations, 'iterations', THEORY_LIMITS.classesIterations.min, THEORY_LIMITS.classesIterations.max)
   const expProfile = oneOf(p.profile, 'profile', PROFILES)
-  return rankClasses(env.data, profile, { stuff, iterations, profile: expProfile })
+  return rankClasses(env.data, profile, { stuff, iterations, profile: expProfile, players: profile.players ?? playersForGrade(profile.grade) })
 }
 
 /** Preset désigné par un texte (`cra_terre_mono`, `cra:terre`, `cra`) ; inconnu : erreur 400. */

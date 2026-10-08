@@ -132,7 +132,9 @@ describe('CLI theorycraft : fiche du boss', () => {
     expect(await main(['boss', 'merkator', '--details'])).toBe(0)
     const t = text()
     expect(t).toContain('Sorts du boss (grade 1, 4 sorts)')
-    expect(t).toMatch(/Sondage de Bronze\s+4011\s+5\s+3\s+1\s+∞\s+0\s+0\s+—\s+916/)
+    // Coup : mêlée ⇔ PO ≤ 1 (convention des dégâts reçus, hits.ts).
+    expect(t).toMatch(/Sondage de Bronze\s+4011\s+5\s+3\s+distance\s+1\s+∞\s+0\s+0\s+—\s+916/)
+    expect(t).toMatch(/Torpillage de glace\s+4010\s+5\s+1\s+mêlée\s+2\s+1\s/)
     expect(t).toContain('Mer Kantile (sort 4009, grade 1)')
     expect(t).toContain('[950] État « Indéplaçable » (97)')
     expect(t).toContain('[792] Lance le sort « Mer Veille » (4008, grade 1) (cible a ; déclencheur MPA ; zone A1)')
@@ -143,6 +145,10 @@ describe('CLI theorycraft : fiche du boss', () => {
     const tree = json<{ details: { startingSpellTree: { name: string; effects: { effectId: number; sub?: { name: string } }[] } } }>().details.startingSpellTree
     expect(tree.name).toBe('Mer Kantile')
     expect(tree.effects.filter(e => e.sub).map(e => e.sub!.name)).toContain('Mer Veille')
+    // Détail des dégâts pris sous un état du boss (`damageStates`, comme le tableau des sorts de `formatBoss`).
+    out = []
+    expect(await main(['boss', 'el piko', '--details'])).toBe(0)
+    expect(text()).toMatch(/Pikak\s+7200\s+3\s+1\s+mêlée\s.*dégâts selon l'état du boss 441/)
   })
 
   it('fiche manuelle appliquée par défaut (--bosses-dir), ignorée avec --no-overrides', async () => {

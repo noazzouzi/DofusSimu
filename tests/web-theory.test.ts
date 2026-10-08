@@ -1,8 +1,9 @@
 /**
  * Section « Boss » du visualiseur — routes de l'API du serveur de développement (web/plugins/theory.ts), testées sans
  * HTTP par leurs fonctions pures : index des boss (Expéditions), presets de base, fiche de Merkator (joueurs, grade,
- * nom), fiche manuelle appliquée ou illisible, classement des classes (effort plafonné), meilleur stuff (preset, lien
- * RoxxSolver), erreurs 400 / 404 / 405, aiguillage, et corps des POST refusés hors de la page elle-même (415, 403).
+ * nom), fiche manuelle appliquée ou illisible, classement des classes (effort plafonné, composition du grade imposé,
+ * rendu aligné sur la CLI), meilleur stuff (preset, lien RoxxSolver), erreurs 400 / 404 / 405, aiguillage, et corps des
+ * POST refusés hors de la page elle-même (415, 403).
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -12,6 +13,10 @@ import { Readable } from 'node:stream'
 import { afterAll, describe, expect, it } from 'vitest'
 import { loadDataStore } from '../src/data/node'
 import { BASE_PRESETS } from '../src/optimizer/team/presets'
+import { playersForGrade } from '../src/theorycraft/bosses'
+import { fmtNum } from '../src/theorycraft/formatBoss'
+import { formatClasses } from '../src/theorycraft/formatClasses'
+import { renderClasses } from '../web/src/boss-classes'
 import { HttpError, readJson } from '../web/plugins/store'
 import {
   theoryBoss,
@@ -32,6 +37,8 @@ const empty = join(tmp, 'vide')
 mkdirSync(empty)
 const env = theoryEnv(data, empty)
 const MERKATOR = 3534
+/** Résistances ≥ 100 % sans fiche manuelle : DPT soutenu nul pour tous les presets. */
+const KIMBO = 1045
 /** Lien partagé par l'utilisateur (Crâ, 2026-10-06), le même que tests/theory-stuff.test.ts. */
 const ROXX =
   'https://roxxsolver.com/solver?build=AQGbyAL__04SSQw1SU4QNUpOETdSN1F9eTSZVfR29RuDAuN29wK2Ax5LHvGQZAUB_wEpAAgBLgABAS4AAQEuAAEBCQABAQgAAQEuAAEBKQAIASkACA&config=AQEDtg0AAwIEVgQVBgwA9AEMAAcGAPQBBgALyAAPAP9_BQmH7MP-Ifr0_WoHJv8BARsIAAEgAQABIAEAASABAAEHAQABBgEAASABAAEbCAABGwgA'
@@ -128,7 +135,50 @@ describe('POST classes et stuff', () => {
     expect(r.axes.map(a => a.axis)).toEqual(['damage', 'survival', 'control', 'heal', 'team'])
     expect(r.composition.members).toHaveLength(4)
     expect(JSON.parse(JSON.stringify(r))).toEqual(r)
-    expect(theoryClasses(env, { id: MERKATOR, grade: 2 }).boss.grade).toBe(2)
+    // Grade imposé : composition de G + 3 personnages, comme la CLI (`boss … classes --grade G`).
+    const g = theoryClasses(env, { id: MERKATOR, grade: 2 })
+    expect(g.boss.grade).toBe(2)
+    expect(g.players).toBe(playersForGrade(2))
+    expect(g.players).toBe(5)
+    expect(g.composition.members).toHaveLength(5)
+  })
+
+  it('classes : rendu de la page aligné sur formatClasses (facteur d’étalonnage indicatif, pas de DPT « étalonné »)', () => {
+    const r = theoryClasses(env, { id: MERKATOR })
+    const html = renderClasses(r, { axis: 'damage', sorts: new Map(), open: new Set() })
+    const cli = formatClasses(r)
+    expect(html).toContain('>Étal. preset<')
+    expect(cli).toContain('Étal. preset')
+    expect(html).not.toMatch(/Étalonné/)
+    expect(cli).not.toMatch(/Étalonné/)
+    // Même facteur affiché par la page et par la CLI (preset du tableau Dégâts dont le facteur n'est pas 1) ; jamais le
+    // soutenu multiplié par ce facteur (ancienne cellule « 1 572 ×0,83 »).
+    const byId = new Map(r.presets.map(e => [e.presetId, e]))
+    const shown = r.axes.find(a => a.axis === 'damage')!.entries.map(x => byId.get(x.presetId)!).find(e => Math.abs(e.dpt.calibration - 1) > 0.005)!
+    expect(shown).toBeDefined()
+    const factor = `×${fmtNum(shown.dpt.calibration, 2)}`
+    expect(html).toContain(`>${factor}<`)
+    expect(cli).toContain(factor)
+    expect(html).not.toContain(`${fmtNum(shown.dpt.calibrated)} <small`)
+    // Résistances < 100 % : ni la page ni la CLI n'ont de colonne « Rés. levées ».
+    expect(html).not.toContain('Rés. levées')
+    expect(cli).not.toContain('Rés. levées')
+  })
+
+  it('classes : Kimbo sans fiche (résistances ≥ 100 %) — colonne « Rés. levées » sur la page comme dans la CLI', () => {
+    const r = theoryClasses(env, { id: KIMBO })
+    const html = renderClasses(r, { axis: 'damage', sorts: new Map(), open: new Set() })
+    const cli = formatClasses(r)
+    expect(r.presets.every(e => e.dpt.steady === 0)).toBe(true)
+    expect(cli).toContain('Rés. levées')
+    expect(html).toContain('>Rés. levées<')
+    // La valeur qui départage les DPT nuls (premier du tableau Dégâts) est affichée par les deux rendus.
+    const byId = new Map(r.presets.map(e => [e.presetId, e]))
+    const first = byId.get(r.axes.find(a => a.axis === 'damage')!.entries[0].presetId)!
+    expect(first.dpt.resLifted).toBeGreaterThan(0)
+    const lifted = fmtNum(first.dpt.resLifted!)
+    expect(html).toContain(`>${lifted}<`)
+    expect(cli).toContain(lifted)
   })
 
   it('classes : paramètres invalides ⇒ 400, boss inconnu ⇒ 404', () => {

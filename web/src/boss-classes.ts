@@ -38,7 +38,7 @@ export function axisValue(axis: RankingAxis, v: number): string {
 function axisNote(axis: RankingAxis, r: ClassRanking): string {
   switch (axis) {
     case 'damage':
-      return 'Valeur : DPT soutenu analytique (classement). « Étalonné » = × étalonnage moteur du preset (contrôle, data/ai/calibration.json).'
+      return 'Valeur : DPT soutenu analytique (classement). « Étal. preset » = facteur d’étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s’applique pas au DPT soutenu.'
     case 'survival':
       return r.stuff === 'optimized'
         ? 'PV effectifs du stuff seul (stuff optimisé de chaque preset) ; le kit défensif de la classe compte dans l’axe Soin.'
@@ -62,15 +62,38 @@ interface Row {
 const confidenceChip = (level: string) => `<span class="bv-conf ${attr(level)}">${esc(level)}</span>`
 const CONF_ORDER: Readonly<Record<string, number>> = { haute: 3, moyenne: 2, basse: 1 }
 
-/** Colonnes de détail propres à chaque axe (comme le rendu texte de la CLI). */
-function detailColumns(axis: RankingAxis): Column<Row>[] {
+/**
+ * Colonnes de détail propres à chaque axe, dans l'ordre du rendu texte de la CLI (`formatClasses`). Dégâts :
+ * « Rés. levées » (DPT soutenu si les résistances ≥ 100 % du boss étaient levées) quand un preset en porte une — boss
+ * sans fiche manuelle dont les résistances sont ≥ 100 % ; elle départage alors les DPT nuls du classement.
+ */
+function detailColumns(axis: RankingAxis, ranking: ClassRanking): Column<Row>[] {
   switch (axis) {
     case 'damage':
       return [
-        { key: 'cal', label: 'Étalonné', num: true, title: 'DPT × étalonnage moteur du preset (contrôle)', sort: r => r.e.dpt.calibrated, cell: r => `${fmtNum(r.e.dpt.calibrated)} <small class="bv-muted">×${fmtNum(r.e.dpt.calibration, 2)}</small>` },
-        { key: 'burst', label: 'Rafale', num: true, title: 'Meilleur tour isolé (relances ignorées)', sort: r => r.e.dpt.burst, cell: r => fmtNum(r.e.dpt.burst) },
+        {
+          key: 'cal',
+          label: 'Étal. preset',
+          num: true,
+          title: 'Facteur d’étalonnage du preset (data/ai/calibration.json, contre un Buboxor) : indicatif, il ne s’applique pas au DPT soutenu',
+          sort: r => r.e.dpt.calibration,
+          cell: r => `×${fmtNum(r.e.dpt.calibration, 2)}`,
+        },
+        { key: 'burst', label: 'Rafale', num: true, title: 'Premier tour d’un combat (relances et poisons actifs ignorés ; poisons comptés pour toute leur durée)', sort: r => r.e.dpt.burst, cell: r => fmtNum(r.e.dpt.burst) },
         { key: 'el', label: 'Élément (rés.)', sort: r => r.e.elementMatch.resPct, cell: r => elementChip(r.e.elementMatch.element, fmtPct(r.e.elementMatch.resPct)) },
         { key: 'stance', label: 'Posture', sort: r => r.e.stance.name, cell: r => (r.e.stance.id === 'base' ? '<span class="bv-muted">—</span>' : esc(r.e.stance.name)) },
+        ...(ranking.presets.some(e => e.dpt.resLifted !== undefined)
+          ? [
+              {
+                key: 'lifted',
+                label: 'Rés. levées',
+                num: true,
+                title: 'DPT soutenu si les résistances ≥ 100 % du boss étaient levées (aucune fiche manuelle ne les donne) : départage les DPT nuls',
+                sort: (r: Row) => r.e.dpt.resLifted ?? 0,
+                cell: (r: Row) => fmtNum(r.e.dpt.resLifted ?? 0),
+              },
+            ]
+          : []),
       ]
     case 'survival':
       return [
@@ -135,7 +158,7 @@ function axisTable(r: ClassRanking, axis: RankingAxis, ui: ClassesUi): string {
       },
     },
     { key: 'value', label: a.unit, num: true, sort: row => row.value, cell: row => `<b>${axisValue(axis, row.value)}</b>` },
-    ...detailColumns(axis),
+    ...detailColumns(axis, r),
     { key: 'conf', label: 'Confiance', sort: row => CONF_ORDER[row.e.confidence.level] ?? 0, cell: row => confidenceChip(row.e.confidence.level) },
     { key: 'go', label: '', cell: row => `<button type="button" class="link-btn" data-act="to-stuff" data-preset="${attr(row.e.presetId)}" title="Chercher le meilleur stuff de ce preset contre ce boss">Stuff</button>` },
   ]

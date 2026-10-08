@@ -40,7 +40,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { isMeleeSpell } from '../ai/core/dpt'
-import { createSpellProfileIndex, maskSides, type DamageLineX, type SpellProfileX } from '../ai/core/spellProfile'
+import { createSpellProfileIndex, maskSides, type DamageLineX } from '../ai/core/spellProfile'
 import { ELEMENT_FIXED_DAMAGE, ELEMENT_MAIN_STAT, ELEMENT_NAMES_FR, ELEMENT_RES_PCT, emptyStats, type Element, type StatKey, type Stats } from '../core/types'
 import { critChance } from '../damage/crit'
 import { damageRange, expectedDamage, explainDamage, meanPrepared, prepareDamage, type DamageExplanation, type DamageInput } from '../damage/damage'
@@ -52,8 +52,6 @@ import { DAMAGE_SPECS, resolveElement } from '../engine/effects/damage/pipeline'
 import { breedSpellIds } from '../engine/factory'
 import { compileTargetMask, matchesTargetMask } from '../engine/targetMask'
 import type { Fighter } from '../engine/types'
-import { distance, pointToCell } from '../map/geometry'
-import { zoneCells } from '../map/zones'
 import { EXPONENT_PROFILES, type ExponentProfile } from '../optimizer/stuff/profiles'
 import { BASE_PRESETS, breedIdOf, findPreset, normalizeName, presetBuild, resolvePreset, type Preset } from '../optimizer/team/presets'
 import { roxxImport } from '../optimizer/team/roxx'
@@ -82,10 +80,19 @@ import {
   type StuffVsBossOptions,
   type StuffVsBossResult,
 } from '../theorycraft/analysis'
+import { MAX_PLAYERS, playersForGrade } from '../theorycraft/bosses'
 import { bossFighter, playerFighterFromStats, theoryEngine } from '../theorycraft/fighters'
 import { bullets, fmtNum, fmtPct, section, textTable } from '../theorycraft/formatBoss'
+import { possibleHits } from '../theorycraft/hits'
 import { nodeDungeonSource } from '../theorycraft/node'
 import { bool, dataDirOf, REPO_ROOT, type Args } from './common'
+
+/**
+ * Taille maximale d'un groupe (`--players`) et taille de la composition pour un grade imposé (`--grade G` ⇒ G + 3
+ * joueurs, 8 au plus) : définies dans src/theorycraft/bosses.ts (même règle pour la CLI, `rankClasses` et la page web),
+ * ré-exportées ici pour les appelants de la CLI.
+ */
+export { MAX_PLAYERS, playersForGrade }
 
 /** Drapeaux sans valeur des commandes du theorycraft (`parseArgs(argv, THEORY_BOOLEAN_FLAGS)`). */
 export const THEORY_BOOLEAN_FLAGS: ReadonlySet<string> = new Set(['all', 'json', 'details', 'no-overrides', 'optimize', 'crit', 'trace', 'melee', 'distance'])
@@ -135,8 +142,6 @@ function checkOptions(a: Args, cmd: string): void {
   }
 }
 
-/** Taille maximale d'un groupe (réglage `--players`). */
-const MAX_PLAYERS = 8
 /** Profondeur maximale de l'arbre du sort de départ (comme les fermetures de bossProfile.ts). */
 const TREE_DEPTH = 4
 
@@ -549,16 +554,22 @@ function statesText(data: NodeDataStore, s: BossSpellDetail): string {
   return s.statesCondition.map(c => [...c.has.map(st), ...c.not.map(id => `sans ${st(id)}`)].join(' et ')).join(' | ')
 }
 
-/** Tableau de TOUS les sorts du boss (`--details`). */
+/**
+ * Tableau de TOUS les sorts du boss (`--details`). « Coup » : mêlée ⇔ PO ≤ 1, convention des dégâts REÇUS du
+ * theorycraft (hits.ts, `TheoryDptTable` côté monstre, comme la fiche) — les % de résistance mêlée ou distance du
+ * personnage s'y appliquent. Drapeaux : en plus de ceux de la fiche, les états du boss sous lesquels le détail des
+ * dégâts est pris (`damageStates`, comme `formatBoss`).
+ */
 function spellsTable(data: NodeDataStore, profile: BossProfileDetail): string {
   const elements = ['Neutre', 'Terre', 'Feu', 'Eau', 'Air']
   return textTable(
-    ['Sort', 'Id', 'PA', 'PO', 'Lancers/tour', '/cible', 'Relance', 'Init.', ...elements, 'Autre', 'États requis', 'Drapeaux'],
+    ['Sort', 'Id', 'PA', 'PO', 'Coup', 'Lancers/tour', '/cible', 'Relance', 'Init.', ...elements, 'Autre', 'États requis', 'Drapeaux'],
     profile.spells.map(s => [
       s.name,
       String(s.spellId),
       String(s.apCost),
       String(s.range),
+      s.range <= 1 ? 'mêlée' : 'distance',
       s.castsPerTurn ? String(s.castsPerTurn) : '∞',
       s.castsPerTarget ? String(s.castsPerTarget) : '∞',
       String(s.cooldown),
@@ -566,9 +577,13 @@ function spellsTable(data: NodeDataStore, profile: BossProfileDetail): string {
       ...s.damageByElement.map(v => (v > 0 ? fmtNum(v) : '—')),
       s.otherDamage > 0 ? fmtNum(s.otherDamage) : '—',
       statesText(data, s),
-      [...s.flags.map(f => FLAG_LABELS[f] ?? f), ...(s.summons.length ? [`invoque ${s.summons.join(', ')}`] : [])].join(', ') || '—',
+      [
+        ...s.flags.map(f => FLAG_LABELS[f] ?? f),
+        ...(s.damageStates?.length ? [`dégâts selon l'état du boss ${s.damageStates.join(', ')}`] : []),
+        ...(s.summons.length ? [`invoque ${s.summons.join(', ')}`] : []),
+      ].join(', ') || '—',
     ]),
-    'lrrrrrrrrrrrrrll',
+    'lrrrlrrrrrrrrrrll',
   )
 }
 
@@ -590,7 +605,7 @@ function showBoss(a: Args, data: NodeDataStore, { entry, profile }: BossChoice):
   }
   console.log('')
   console.log(section(`Sorts du boss (grade ${profile.grade}, ${profile.spells.length} sorts)`))
-  console.log('  Dégâts moyens par lancer contre un joueur à 0 % de résistance (critique pondéré) ; « Autre » : fixes et % de PV ; ∞ : sans limite.')
+  console.log('  Dégâts moyens par lancer contre un joueur à 0 % de résistance (critique pondéré) ; « Autre » : fixes et % de PV ; ∞ : sans limite ; « Coup » : mêlée si PO ≤ 1, convention du calcul — en jeu, mêlée dès que la cible est adjacente (résistances mêlée/distance du personnage).')
   console.log(spellsTable(data, profile))
   console.log('')
   console.log(section('Sort de départ'))
@@ -611,14 +626,6 @@ function showBoss(a: Args, data: NodeDataStore, { entry, profile }: BossChoice):
 }
 
 // ───────────────────────────── classes ─────────────────────────────
-
-/**
- * Taille de la composition pour un grade imposé (`--grade`) : inverse de `bossGradeFor` (grade = joueurs − 3, de 1 à
- * 5) — grade 1 : 4 joueurs (défaut), grade G de 2 à 5 : G + 3, au-delà : 8 (groupe maximal).
- */
-export function playersForGrade(grade: number): number {
-  return grade <= 1 ? 4 : Math.min(MAX_PLAYERS, grade + 3)
-}
 
 function cmdBossClasses(a: Args, data: NodeDataStore, { profile }: BossChoice): number {
   const optimize = bool(a, 'optimize')
@@ -1209,32 +1216,6 @@ function attackerStats(stats: Stats, elements: readonly number[], melees: readon
   return out
 }
 
-/** Case centrale de la carte (x 17, y −3) : lanceur fictif pour mesurer les zones centrées sur lui. */
-const PROBE_CELL = pointToCell(17, -3)
-
-/**
- * Coups possibles d'un sort sur un ennemi. Règle du jeu (docs/research/formulas.md §3.5, `isMeleeHit`) : mêlée ⇔
- * cible sur une case ADJACENTE au lanceur (distance 1), quelle que soit la portée du sort. Cible sur la case d'impact :
- * distance = portée min..max ; lignes centrées sur le lanceur (portée 0, sous-sorts « autour du lanceur ») : distances
- * des cases de leur zone (`zoneCells`). Aucun ennemi atteignable : heuristique de l'IA (`isMeleeSpell`, portée ≤ 1).
- * `keep` : lignes prises en compte (défaut : celles qui touchent un ennemi ; le calculateur : celles qui touchent SA
- * cible, `skipReason`).
- */
-export function possibleHits(prof: SpellProfileX, keep: (l: DamageLineX) => boolean = l => l.sides.enemy): { melee: boolean; range: boolean } {
-  let melee = prof.minRange <= 1 && prof.maxRange >= 1
-  let range = prof.maxRange >= 2
-  for (const l of prof.damage) {
-    if (!keep(l) || !(l.aroundCaster || prof.maxRange === 0)) continue
-    for (const cell of zoneCells(l.zone, PROBE_CELL, PROBE_CELL)) {
-      const d = distance(PROBE_CELL, cell)
-      if (d === 1) melee = true
-      else if (d >= 2) range = true
-    }
-  }
-  if (!melee && !range) return isMeleeSpell(prof) ? { melee: true, range: false } : { melee: false, range: true }
-  return { melee, range }
-}
-
 /** Le boss reçoit-il ce coup dans une phase ? */
 const takesHit = (v: Vulnerability, melee: boolean): boolean => v === true || v === (melee ? 'melee' : 'range')
 const hitName = (melee: boolean): string => (melee ? 'au contact' : 'à distance')
@@ -1282,8 +1263,8 @@ function skipReason(line: DamageLineX, caster: Fighter, target: Fighter): string
  * modificateurs de sort). Lignes « fixes » : `hpBasedDamage` (jet = PV de référence) ; lignes en % de PV : non
  * calculées (dépendent des PV du moment).
  *
- * Coup au contact ou à distance (`possibleHits`) : `opts.hit` l'impose ; sinon, si les deux sont possibles, les deux
- * sont calculés (`otherHit`). Contre un boss : résistances de chaque phase (`resGroups` : un tableau par jeu de
+ * Coup au contact ou à distance (`possibleHits` de src/theorycraft/hits.ts, la règle du DPT du theorycraft, restreinte
+ * aux lignes retenues) : `opts.hit` l'impose ; sinon, si les deux sont possibles, les deux sont calculés (`otherHit`). Contre un boss : résistances de chaque phase (`resGroups` : un tableau par jeu de
  * résistances, `phaseTables`, si elles diffèrent d'une phase à l'autre) ; un coup auquel il est invulnérable dans
  * toutes les phases d'un tableau (`vulnerable` des phases de la fiche : sort de départ, états, fiche manuelle) vaut 0
  * (avertissement qui cite la mécanique).

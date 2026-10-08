@@ -6,7 +6,8 @@
  *
  * Conventions : éléments indexés [Neutre, Terre, Feu, Eau, Air] (= `Element` de src/core/types) ; pourcentages en
  * points (25 = 25 %) ; dégâts en espérance (critique pondéré) ; « soutenu » = moyenne par tour avec relances amorties,
- * « rafale » = meilleur tour isolé (sac à dos sur les PA, relances ignorées).
+ * « rafale » = premier tour d'un combat (sac à dos sur les PA, tous les sorts prêts, aucun poison actif ; un poison posé
+ * compte pour toutes ses échéances, sans critique — rotation.ts).
  */
 import type { StatKey, Stats } from '../core/types'
 import type { CharacterBuild } from '../stats/build'
@@ -257,7 +258,11 @@ export interface SustainedDamage {
    * (`turns`) et penche vers la rafale sur un horizon court.
    */
   mean: number
-  /** Meilleur tour isolé (rafale, relances ignorées). */
+  /**
+   * Rafale : premier tour d'un combattant neuf (relances et poisons actifs ignorés). Avec la table du theorycraft, un
+   * poison posé compte pour toutes ses échéances, sans critique, et non plus selon l'heuristique « × min(durée, 2) ×
+   * 0,8 » du sac à dos de l'IA.
+   */
   burst: number
   /** Sorts lancés à chaque tour (ids). */
   casts: number[][]
@@ -388,7 +393,7 @@ export interface PresetEvaluation {
   dpt: {
     /** DPT soutenu en régime établi (rotation.ts `steady`), NON calibré, pondéré par les phases attaquables. */
     steady: number
-    /** Rafale (meilleur tour isolé), même pondération. */
+    /** Rafale (premier tour d'un combat, `SustainedDamage.burst`), même pondération. */
     burst: number
     byPhase: { phaseId: string; weight: number; steady: number }[]
     /** Soutenu de chaque posture évaluée. */
@@ -558,7 +563,7 @@ export interface StuffDamage {
   proxy: number
   /** DPT SOUTENU en régime établi (rotation.ts, relances amorties, meilleure posture, NON calibré) : valeur à comparer. */
   steady: number
-  /** Rafale (un tour isolé, relances ignorées, même posture, non calibrée). */
+  /** Rafale (premier tour d'un combat, `SustainedDamage.burst` : relances et poisons actifs ignorés ; même posture, non calibrée). */
   burst: number
   /** Posture de classe retenue (stances.ts ; « Sans posture » pour les classes qui n'en ont pas). */
   stance: { id: string; name: string }
