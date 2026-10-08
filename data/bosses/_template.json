@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "monsterId": 3534,
+  "name": "Merkator (EXEMPLE)",
+  "sources": [
+    { "url": "https://dofuswiki.fandom.com/wiki/Merkator", "date": "2026-10-07", "patch": "3.6" }
+  ],
+  "updatedAt": "2026-10-07",
+  "patch": "3.6",
+  "resPct": [14, 27, 16, 22, 12],
+  "stats": { "rangedResPct": 50 },
+  "phases": [
+    {
+      "id": "base",
+      "name": "Combat normal",
+      "states": [],
+      "weight": 1,
+      "resPct": null,
+      "vulnerable": true,
+      "notes": "Une phase = un ensemble d'états du boss (ids de spell-states) ; ses sorts dont la condition d'états est remplie y sont lançables. weight = part du combat (normalisée sur les phases). resPct : résistances de la phase, ou null pour garder celles de la fiche. vulnerable : true, false, \"melee\" ou \"range\"."
+    }
+  ],
+  "adds": [{ "monsterId": 3535, "grade": 1, "count": 2 }],
+  "excludeSpells": [],
+  "positionalSpells": [],
+  "mechanics": [
+    {
+      "kind": "reduced-range",
+      "summary": "EXEMPLE : dommages subis à distance réduits de moitié, jouer au corps à corps.",
+      "counters": ["melee"],
+      "punishes": ["range"]
+    }
+  ],
+  "notes": "MODÈLE de fiche manuelle (ignoré au chargement car son nom commence par « _ »). Copier vers <monsterId>.json, remplacer toutes les valeurs (celles-ci sont des EXEMPLES, non vérifiés), supprimer les clés inutiles. Règles : écrire avec ses propres mots, citer chaque source (URL, date, version du jeu), aucune extraction automatique ni copie de dofuspourlesnoobs (CGU), DofusWiki réutilisable avec attribution (CC-BY-SA). Schéma et effets de chaque clé : data/bosses/README.md."
+}
