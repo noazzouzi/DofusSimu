@@ -191,23 +191,25 @@ et invocations ne sont pas comptés : le total peut être sous-estimé) ; positi
 
 ## 6. État de l'implémentation (2026-10-08)
 
-*Relevé sur le code de `src/theorycraft/` et les commits `1fc0aa7..0d9a669` (e93fb34 à 0d9a669). Les en-têtes JSDoc
-des modules font foi pour le détail ; ce paragraphe résume ce qui existe et ce qui a changé par rapport aux §0-§5.*
+*Relevé sur le code de `src/theorycraft/` et les commits `1fc0aa7..0d9a669` (e93fb34 à 0d9a669), mis à jour après
+l'audit final (lots A et B, réconciliation de la CLI et de la page). Les en-têtes JSDoc des modules font foi pour le
+détail ; ce paragraphe résume ce qui existe et ce qui a changé par rapport aux §0-§5.*
 
 ### 6.1 Modules livrés
 
 | Module | Rôle | Pur ¹ |
 |---|---|---|
 | `src/theorycraft/types.ts` | Types partagés, sérialisables JSON (fiche, utilités, classement, stuff). | oui |
-| `bosses.ts` | Index (`listBosses` : 137 boss, 162 avec les Expéditions), `searchBosses`, `resolveBoss` (erreur qui liste les candidats), `bossGradeFor`. | oui |
+| `bosses.ts` | Index (`listBosses` : 137 boss, 162 avec les Expéditions), `searchBosses`, `resolveBoss` (erreur qui liste les candidats), `bossGradeFor` ; `MAX_PLAYERS` et `playersForGrade` (grade imposé G ⇒ composition de G + 3, 8 au plus : CLI, page et `rankClasses`). | oui |
 | `overrides.ts` | `parseBossOverrides` : validation stricte du schéma v1 des fiches manuelles. | oui |
 | `bossProfile.ts` | `bossProfile` → `BossProfileDetail` : grade, sort de départ appliqué, dégâts par sort, phases, mécaniques, avertissements, hypothèses ; `DATA_SNAPSHOT` (date et version des données). | oui |
 | `index.ts` | API publique PURE (ce qui précède), utilisable dans un navigateur. | oui |
 | `node.ts` | Seul accès disque : `nodeDungeonSource` (`dungeons.json`, règle « Expédition »), `loadBossOverrides` (`data/bosses`). | non |
 | `fighters.ts` | Combattants HORS COMBAT (personnage d'un build ou de caractéristiques, boss avec caractéristiques et états imposés), moteur partagé avec le proxy, ids et équipes distincts (`assertDistinct`). | oui |
-| `rotation.ts` | `sustainedDamage` : DPT soutenu tour par tour (`perTurn`, `mean`, `burst`, `casts`, `steady`, `period`). | oui |
+| `hits.ts` | Coups au contact ou à distance : `possibleHits` (règle du jeu, mêlée ⇔ cible adjacente ; fonction partagée avec le calculateur `degats`, filtre `keep` de ses lignes), `TheoryDptTable` (`theoryDptTableOf`) : sac à dos du theorycraft dont `perCast` retient, pour un personnage, le coup que la cible subit le mieux (style du personnage à égalité, `CONTACT_TAG`) et, pour un monstre, les conventions de la fiche ; `split` (part immédiate et poisons d'un lancer), `castLines` (forme fermée du proxy). L'IA du Vortex garde `isMeleeSpell`. | oui |
+| `rotation.ts` | `sustainedDamage` : DPT soutenu tour par tour (`perTurn`, `mean`, `burst`, `casts`, `steady`, `period`, `steadyBySpell`) ; poisons suivis d'un tour à l'autre avec la table du theorycraft. | oui |
 | `stances.ts` | `STANCES` (Zobal, Forgelance, Pandawa, Eliotrope, Steamer, Ouginak), `STANCE_NOTES`, `bestStance`. | oui |
-| `target.ts` | `bossProxyOptions` : fiche → `ProxyOptions` explicites (`strictTargets`), une cible par phase attaquable, dégâts reçus par phase qui frappe, adds de la fiche (exposition `ADD_EXPOSURE` 0,5), PO voulue 6 à distance. | oui ² |
+| `target.ts` | `bossProxyOptions` : fiche → `ProxyOptions` explicites (`strictTargets`), une cible par phase attaquable, dégâts reçus par phase qui frappe (boss à mi-vie, sorts exclus et positionnels retirés), adds de la fiche (exposition `ADD_EXPOSURE` 0,5), table du theorycraft (`theoryTable`, `contact`), PO voulue 6 à distance ; règles communes à `classes` et `stuff` : `playsMelee` (joué au contact si le boss n'est attaquable qu'au contact ou si le preset est de mêlée), `removalVoid`, `incomingCoherence`. | oui ² |
 | `utilities.ts` | `classUtilities` (utilités chiffrées depuis les profils de sorts NETTOYÉS, tours mixtes), `MECHANIC_RELEVANCE`, `relevance`, `CLASS_MODEL_LIMITS`, `CLASS_CONFIDENCE`. | oui |
 | `classes.ts` | `rankClasses` → `ClassRanking` (question 2). | non ³ |
 | `stuff.ts` | `stuffVsBoss` → `StuffVsBossResult` (question 1), `statEquivalences`, `dominantElement`. | non ³ |
@@ -216,10 +218,10 @@ des modules font foi pour le détail ; ce paragraphe résume ce qui existe et ce
 
 ¹ Aucun import `node:` ni de `src/dungeons` à l'exécution. Tests : aucun module sauf `node.ts` n'importe directement
 `node:`, `src/dungeons/vortex` ni `dummy` (`tests/theory-profile.test.ts`, qui suit aussi la fermeture d'`index.ts`) ;
-fermeture transitive sans `src/dungeons` ni proxy pour `fighters`, `rotation`, `stances`, `utilities`, `formatBoss`,
-`formatClasses` (graphe des imports d'exécution par le compilateur, `tests/import-graph-helpers.ts`, vérifié par
-mutation). ² N'importe que des types du proxy ; les exposants viennent de
-`profiles.ts`. ³ Tirent le proxy et l'optimiseur, donc INDIRECTEMENT des modules du Vortex
+fermeture transitive sans `src/dungeons` ni proxy pour `fighters`, `rotation` (donc `hits`), `stances`, `utilities`,
+`formatBoss`, `formatClasses` (graphe des imports d'exécution par le compilateur, `tests/import-graph-helpers.ts`,
+vérifié par mutation). ² N'importe que des types du proxy ; les exposants viennent de `profiles.ts`. ³ Tirent le
+proxy et l'optimiseur, donc INDIRECTEMENT des modules du Vortex
 (`src/dungeons/vortex/{clock,constants,params,placement}.ts`, `src/dungeons/generic/{dummy,skirmish}.ts`,
 `src/dungeons/waves.ts` : liste figée par `tests/theory-stuff.test.ts`) ; le mix du Vortex n'est jamais utilisé
 comme cible (`strictTargets`).
@@ -251,13 +253,18 @@ Hors de `src/theorycraft/` :
   (`web/plugins/theory.ts`, `web/src/boss.ts`) : chantiers d'interface conduits à part, qui étendent §2-§3 (options
   `--details`, `--no-overrides`, `--out`, calculateur `degats`, `GET /api/theory/presets`) ; description pour
   l'utilisateur : `docs/theorycraft.md`. Options déclarées par commande (`THEORY_OPTIONS` : une option inconnue est
-  une erreur) ; `degats` filtre les lignes par masque de cible comme le DPT (dpt.ts) et calcule un tableau par jeu de
-  résistances quand une fiche manuelle les donne par phase. Page : onglet Boss absent de la version construite, POST
-  acceptés seulement en JSON de la page elle-même, effort du classement optimisé plafonné (10 000 itérations).
+  une erreur) ; `degats` filtre les lignes par masque de cible comme le DPT (dpt.ts), prend ses coups possibles dans
+  `hits.ts` (`possibleHits`, plus de copie locale) et calcule un tableau par jeu de résistances quand une fiche
+  manuelle les donne par phase ; `boss --details` donne le coup de chaque sort du boss (mêlée ⇔ PO ≤ 1, convention
+  des dégâts reçus) et ses `damageStates`. Page : onglet Boss absent de la version construite, POST acceptés
+  seulement en JSON de la page elle-même, effort du classement optimisé plafonné (10 000 itérations) ; mêmes colonnes
+  et titres que les rendus texte (facteur « Étal. preset », pic présenté comme une estimation) et, grade imposé, même
+  composition que la CLI (`playersForGrade`).
 
-Tests : `tests/theory-{bosses,overrides,profile,target,rotation,stances,utilities,classes,stuff}.test.ts` (12, 9, 23,
-4, 10, 5, 17, 20 et 25 cas), `tests/opt-stuff-target.test.ts` (12), `tests/data-fetch-schema.test.ts`,
-`tests/data-fetch-script.test.ts`.
+Tests : `tests/theory-{bosses,overrides,profile,target,hits,rotation,stances,utilities,classes,stuff}.test.ts` (12, 9,
+27, 9, 7, 12, 5, 17, 26 et 30 cas), `tests/opt-stuff-target.test.ts` (14), `tests/data-fetch-schema.test.ts`,
+`tests/data-fetch-script.test.ts` ; CLI et page : `tests/cli-theory.test.ts`, `tests/web-theory.test.ts`,
+`tests/web-boss-ui.test.ts`.
 
 ### 6.2 Écarts à la conception
 
@@ -273,9 +280,25 @@ Tests : `tests/theory-{bosses,overrides,profile,target,rotation,stances,utilitie
   cible doivent avoir des ids ET des équipes distincts, sinon le masque de cible voit le lanceur lui-même.
 - **DPT soutenu (§1.5) : `steady` / `period`.** La moyenne sur 6 tours (`mean`) part d'un début de combat sans relance
   et penche vers la rafale (jusqu'à +2,05 % mesuré : Pandawa Saoul, Sram poisons). La suite des tours ne dépend que
-  des relances en cours : elle boucle dès qu'un état se répète ; `steady` = moyenne d'une période (1 à 5 tours pour
-  les presets de base), indépendante de l'horizon. **Toutes les analyses classent sur `steady`** ; `perTurn`, `mean`,
-  `burst` et `casts` sont restés identiques au bit près (395 cas comparés).
+  des relances en cours et des poisons actifs : elle boucle dès qu'un état se répète ; `steady` = moyenne d'une
+  période (1 à 5 tours pour les presets de base), indépendante de l'horizon, détaillée par sort (`steadyBySpell`).
+  **Toutes les analyses classent sur `steady`.**
+- **Coups au contact ou à distance (`hits.ts`, audit final).** Le sac à dos de l'IA range chaque sort d'après sa portée
+  max (mêlée ⇔ portée ≤ 1) : un sort de PO 1 à 8 y est « à distance », donc était nul contre le Père Ver (invulnérable
+  à distance) et pénalisé par le « −50 % à distance » de Merkator. Le theorycraft suit la règle du jeu (mêlée dès que la
+  cible est adjacente) : `TheoryDptTable` évalue un sort lançable des deux façons dans les deux cas et retient le coup
+  que la cible subit le mieux (à égalité, le style du personnage) ; les % dommages du lanceur suivent ce coup. Branchée
+  sur `sustainedDamage`, l'utilité « mêlée » et le proxy (option `theoryTable`) ; l'IA du Vortex garde sa règle. Plus
+  aucun preset de base n'a un DPT nul contre le Père Ver. Règle « au contact » unique (`playsMelee`) pour classes et
+  stuff.
+- **Poisons et rafale (audit final).** Le sac à dos compte un poison × min(durée, 2) × 0,8 à CHAQUE lancer, sans cumul
+  ni recouvrement (Flèche Tyrannique, cumul 1, lancée deux fois par tour : 3,2 échéances par tour au lieu d'une). Le
+  DPT soutenu suit désormais les instances actives sur la cible (une échéance par tour, sans critique, 6 au plus ;
+  plafond de cumul `maxStack` du niveau qui porte l'effet, 1 s'il retire d'abord ses propres effets) : un lancer vaut
+  sa part immédiate plus les échéances qu'il ajoute. Flèche Tyrannique seule = moteur (rejeu) ; Crâ Feu contre
+  Harebourg à 15 % du moteur (+58 % avant). La **rafale** (`burst`) devient le premier tour d'un combat (relances et
+  poisons actifs ignorés, échéances complètes des poisons posés). Le proxy de l'optimiseur (`perCast`) garde
+  l'heuristique.
 - **Fiche du boss (§1.2) : approximations ajoutées.** Un seul groupe aléatoire joué par liste d'effets (chaque ligne
   compte pour sa probabilité : Fwetage 640 au lieu de 3 201) ; branches selon la cible regroupées, la plus forte
   retenue (Trahison : ≈ 26 000 → 351 par lancer) ; poisons bornés à 6 tours ; sous-sorts lancés par un ALLIÉ du boss
@@ -305,26 +328,34 @@ Tests : `tests/theory-{bosses,overrides,profile,target,rotation,stances,utilitie
   optimisé depuis ce départ nu avec des graines ≤ niveau (`theorySeedFilter({ level })`).
 - **Composition (§1.8).** Règles écrites et seuils exportés (`COMPOSITION_RULES`, `COMPOSITION_THRESHOLDS`) : Dégâts ;
   Soin si un tour du boss retire ≥ 20 % des PV d'un personnage (médiane) et pas d'insoignable ; Protection si
-  insoignable ou érosion ≥ 20 % ; Retrait PM si le boss a des PM, retrait non puni et ≥ 1 PM retiré ; deuxième
-  dégât (autre élément faible à moins de 10 points préféré s'il atteint 85 % du DPT) ; Apport d'équipe ; places
-  restantes ; une classe au plus. Chaque membre a sa raison chiffrée, chaque règle écartée une note.
-- **Contrôle moteur (§4).** Prévu : DPT soutenu contre `measureCalibration` en mini-combat contre le BOSS. Livré :
-  l'étalonnage existant du preset (`calibrationOf`, `data/ai/calibration.json`, mini-combat contre un Buboxor) affiché à
-  côté du DPT, signalé au-delà de 10 % d'écart pour le podium et la composition — un contrôle, pas une correction, et
-  pas spécifique au boss.
+  insoignable (à la place du soin) ou érosion ≥ 20 % (en complément du soigneur) ; Retrait PM si le boss a des PM,
+  retrait non puni et ≥ 1 PM retiré ; deuxième dégât (autre élément faible parmi Terre, Feu, Eau et Air, à moins de
+  10 points du plus faible des quatre, préféré s'il atteint 85 % du DPT) ; Apport d'équipe ; places restantes ; une
+  classe au plus. Chaque membre a sa raison chiffrée, chaque règle écartée une note ; la première règle qui trouve le
+  groupe complet le signale et arrête la composition. Taille : `players` de la fiche, sinon `playersForGrade(grade)`.
+- **Contrôle moteur (§4) : non implémenté.** Prévu : DPT soutenu contre `measureCalibration` en mini-combat contre
+  le BOSS. Livré : seulement le facteur d'étalonnage du preset (`calibrationOf`, `data/ai/calibration.json`, dégâts du
+  moteur / sac à dos JOUÉ DANS le moteur, mini-combat contre un Buboxor), affiché à titre **indicatif** (« Étal.
+  preset ») : il ne s'applique pas au DPT soutenu hors combat, n'en est ni une correction ni un contrôle, et ne dépend
+  pas du boss (`calibrated` reste dans le JSON pour compatibilité ; plus d'avertissement d'écart). Un vrai contrôle
+  reste **recommandé** : mesures de l'audit final, ratio moteur / analytique de 0,63 à 1,73 selon le preset,
+  corrélation de rang de Spearman 0,67 à 0,88 sur 3 boss, ≈ 15 ms par couple preset × boss.
 - **Mode `optimized` des classes (§1.8).** Séquentiel (pas de pool de workers), montée par coordonnées seule par défaut
-  (`iterations` 0) : ≈ 15 s pour les 49 presets contre le Père Ver (2026-10-08). Il n'a PAS le classement soutenu de
-  `stuffVsBoss` : le stuff suit l'objectif J du rôle et l'optimiseur ne voit pas les postures (Père Ver :
-  `zobal_psychopathe` 1 852 → 538, `forgelance_zone_terre` 2 440 → 1 237 de DPT soutenu).
+  (`iterations` 0) : ≈ 18 s pour les 49 presets contre le Père Ver (2026-10-08, après l'audit final). Il n'a PAS le
+  classement soutenu de `stuffVsBoss` : le stuff suit l'objectif J du rôle et l'optimiseur ne voit pas les postures
+  (Père Ver, DPT soutenu générique → optimisé : `iop_soutien` 2 744 → 1 431, `forgelance_zone_terre` 2 469 → 2 078,
+  `zobal_psychopathe` 2 250 → 2 330).
 - **Stuff (§1.7).** Réglages mesurés : 30 000 itérations × 2 recherches (et non 3 000 ; sans les graines `vortex_*`,
   le recuit compte : écart moyen au meilleur logJ observé 0,003, ≈ 2,5 s par preset) ; une recherche par élément avec
-  `elements: 'all'`. Graines par `theorySeedFilter` (jamais de `vortex_*`), Dofus à sort passif du départ imposés,
+  `elements: 'all'`. Graines par `theorySeedFilter` (jamais de `vortex_*`), Dofus à sort passif du départ imposés (les
+  autres objets à sort passif non : `--fixed`, avertissement s'ils sont retirés),
   candidats re-notés en exact dans un contexte commun avec les stuffs de référence, top DISTINCT (2 objets d'écart).
   **Classement soutenu des classes à posture** : quand, au départ, le DPT soutenu sans posture est sous 1/1,2 de celui
   en meilleure posture, les stuffs sont classés par le logJ soutenu (DPT du proxy remplacé par le DPT soutenu en
   posture) puis affinés (`polishSustained`, montées par coordonnées) — Zobal Psychopathe contre le Père Ver : 464 de
-  DPT soutenu avant, 1 577 après. Équivalences calculées dans un contexte du proxy construit AU meilleur stuff, part
-  des PA/PM/PO due aux pénalités de l'objectif séparée. Avertissements chiffrés (perte de DPT > 15 %, pénalité qui
+  DPT soutenu avant, 1 577 après (mesure d'origine) ; avec les coups de l'audit final, meilleur stuff à 2 078 pour
+  un départ à 2 250 (PVe 5 173 → 9 395). Équivalences calculées dans un contexte du proxy construit AU meilleur stuff,
+  part des PA/PM/PO due aux pénalités de l'objectif séparée. Avertissements chiffrés (perte de DPT > 15 %, pénalité qui
   décide seule de l'ordre, PVe plafonnés). Départ invalide jamais présenté comme meilleur (`startValid`).
 - **Rendus (§1.9).** `report.ts` est devenu trois modules (`formatBoss.ts`, `formatClasses.ts`, `formatStuff.ts`) ;
   les résultats JSON (`ClassRanking`, `StuffVsBossResult`) servent la CLI (`--json`) et la page web.
@@ -333,7 +364,8 @@ Tests : `tests/theory-{bosses,overrides,profile,target,rotation,stances,utilitie
 
 - Fiches manuelles des boss (aucune) et vérification en jeu (protocole : `docs/theorycraft.md` §6).
 - Ré-extraction des données 3.7 (décision de l'utilisateur ; `DATA_SNAPSHOT` et tests épinglés à revoir).
-- Classement soutenu dans le mode `optimized` des classes ; étalonnage contre le boss lui-même.
+- Classement soutenu dans le mode `optimized` des classes ; contrôle par le moteur contre le boss lui-même
+  (recommandé, non implémenté : mesures de l'audit au §6.2, « Contrôle moteur »).
 - PA/PM retirés aux personnages par le boss (mécanique `ap-mp-removal`) : seulement signalés (fiche, atouts et
   limites) ; ni déduits du DPT (PA du stuff supposés intacts), ni esquive PA/PM du personnage valorisée par l'objectif.
 - Dégâts du boss : pic optimiste sur une cible, mais zones, sorts en réaction, invocations et alliés non comptés ;

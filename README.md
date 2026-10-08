@@ -47,16 +47,18 @@ npm run sim -- boss "pere ver" classes                      # quelles classes co
 npm run sim -- boss merkator stuff --class cra_terre_mono   # quel stuff pour ce Crâ contre Merkator ?
 ```
 
-Le grade du boss se déduit du nombre de joueurs (`joueurs − 3`, borné à 1..5 ; 4 joueurs par défaut ⇒ grade 1).
-`--class cra` prend le premier preset de base de la classe et liste les autres (avec `--roxx` / `--build` : le preset
-de l'élément du build ; donner le preset pour imposer le rôle) ; `--iterations` et `--profile` de `classes` exigent
-`--optimize` ; `--out` écrit le meilleur stuff au format `build` des fichiers d'équipe (relu par `--build`,
-utilisable dans `data/teams/`). `degats` calcule un sort ligne par ligne (min-max normal et critique, chance de
-critique, espérance ; `--trace` : calcul étape par étape) pour vérifier en jeu, par exemple sur un Poutch : au contact
-et à distance pour un sort de portée 1 à N (`--melee` ou `--distance` pour n'en garder qu'un). Une option inconnue de
-la commande est une erreur. Une fiche manuelle `data/bosses/<id>.json` (mécaniques, résistances réellement subies,
-phases ; règles de sources dans [`data/bosses/README.md`](data/bosses/README.md)) complète les données quand elle
-existe.
+Le grade du boss se déduit du nombre de joueurs (`joueurs − 3`, borné à 1..5 ; 4 joueurs par défaut ⇒ grade 1) ; avec
+`--grade G`, la composition suggérée par `classes` compte G + 3 personnages (8 au plus), comme la page web. Un coup est
+de mêlée dès que la cible est adjacente, quelle que soit la portée du sort (règle du jeu) : contre un boss invulnérable
+à distance (Père Ver), un sort de portée 1 à N compte au contact. `--class cra` prend le premier preset de base de la
+classe et liste les autres (avec `--roxx` / `--build` : le preset de l'élément du build ; donner le preset pour imposer
+le rôle) ; `--iterations` et `--profile` de `classes` exigent `--optimize` ; `--out` écrit le meilleur stuff au format
+`build` des fichiers d'équipe (relu par `--build`, utilisable dans `data/teams/`). `degats` calcule un sort ligne par
+ligne (min-max normal et critique, chance de critique, espérance ; `--trace` : calcul étape par étape) pour vérifier en
+jeu, par exemple sur un Poutch : au contact et à distance pour un sort de portée 1 à N (`--melee` ou `--distance` pour
+n'en garder qu'un). Une option inconnue de la commande est une erreur. Une fiche manuelle `data/bosses/<id>.json`
+(mécaniques, résistances réellement subies, phases ; règles de sources dans
+[`data/bosses/README.md`](data/bosses/README.md)) complète les données quand elle existe.
 
 **Page web** : `npm run dev`, onglet **Boss** (`http://localhost:5173/#boss`, état dans l'adresse :
 `#boss/<monsterId>[/classes|/stuff]`) — recherche, fiche du boss, onglet Classes (tableaux triables, composition,

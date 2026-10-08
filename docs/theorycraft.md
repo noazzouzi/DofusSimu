@@ -24,11 +24,12 @@ L'outil répond, pour un boss de donjon choisi, à deux questions :
 **Démarche : calcul, pas combat.** Aucun combat d'IA n'est joué. Le boss est décrit par une *fiche* calculée à partir
 des données du jeu (statistiques du grade, sort de départ, dégâts de chaque sort, phases, mécaniques), puis chaque
 personnage est mesuré contre cette fiche par des formules : dégâts par tour sur plusieurs tours (sac à dos sur les PA,
-relances tenues), PV effectifs face aux dégâts du boss, PA/PM retirés contre son esquive, soins utiles. Pourquoi :
+relances et poisons tenus d'un tour à l'autre, chaque coup au contact ou à distance selon la règle du jeu), PV
+effectifs face aux dégâts du boss, PA/PM retirés contre son esquive, soins utiles. Pourquoi :
 
 - **Coût.** Un combat simulé au Vortex prend 20 à 40 s de CPU et un taux de victoire se juge sur 128 à 256 combats ;
   répéter cela pour 137 boss et 49 presets n'est pas raisonnable. Ici : une fiche en quelques millisecondes (les 162
-  boss en ≈ 0,13 s), le classement des classes en 0,5 à 0,8 s, un meilleur stuff en 2,5 à 5 s.
+  boss en ≈ 0,14 s), le classement des classes en 0,2 à 0,7 s, un meilleur stuff en 2,5 à 5 s.
 - **Fidélité.** Seul l'Œil de Vortex a un scénario de combat (`data/dungeons/vortex.json`) et une IA de boss dédiée.
   Contre un autre boss, un combat simulé mesurerait surtout les défauts d'une IA générique et d'un placement improvisé.
 - **Explication.** Chaque chiffre se décompose (par sort, par élément, par caractéristique, par règle) et chaque sortie
@@ -36,7 +37,7 @@ relances tenues), PV effectifs face aux dégâts du boss, PA/PM retirés contre 
 
 Contrepartie : ce n'est pas une simulation de combat. Positions, ligne de vue, déplacements, invocations, glyphes,
 pièges et IA réelle du boss ne sont pas modélisés (liste complète au §4). **Les classements valent plus que les valeurs
-absolues** : « le Forgelance tape plus que le Iop contre ce boss » est plus fiable que « il fait 2 440 par tour ».
+absolues** : « le Crâ tape plus que le Zobal contre ce boss » est plus fiable que « il fait 2 837 par tour ».
 
 Valeurs par défaut : 4 joueurs (donc boss de grade 1), personnages niveau 200, les 49 presets de base, Expéditions
 exclues de l'index. Tout se règle.
@@ -55,7 +56,7 @@ pas est une erreur, qui liste les options de la commande et, si c'est le cas, la
 | Commande | Rôle |
 |---|---|
 | `bosses [recherche] [--all] [--json]` | Liste ou recherche des boss : nom, id, donjon(s), niveau du donjon, niveau du boss, nombre de grades, Expédition. `--all` inclut les Expéditions (exclues par défaut). |
-| `boss <nom\|id> [--players N \| --grade G] [--details] [--no-overrides] [--all] [--bosses-dir D] [--json]` | Fiche du boss. `--details` : en plus, tableau de tous ses sorts (PA, lancers, relance, dégâts par élément, drapeaux) et arbre de son sort de départ (aide à rédiger une fiche manuelle, §5). La fiche manuelle `data/bosses/<id>.json` est appliquée si elle existe ; `--no-overrides` l'ignore. |
+| `boss <nom\|id> [--players N \| --grade G] [--details] [--no-overrides] [--all] [--bosses-dir D] [--json]` | Fiche du boss. `--details` : en plus, tableau de tous ses sorts (PA, PO, coup au contact ou à distance, lancers, relance, dégâts par élément, drapeaux) et arbre de son sort de départ (aide à rédiger une fiche manuelle, §5). La fiche manuelle `data/bosses/<id>.json` est appliquée si elle existe ; `--no-overrides` l'ignore. |
 | `boss <nom\|id> classes [--players N \| --grade G] [--optimize [--iterations N] [--profile P]] [--level L] [--json] [--out fichier]` | Classement des classes (§3.2). `--optimize` : stuff optimisé contre le boss pour chaque preset, progression sur la sortie d'erreur ; `--iterations` et `--profile` n'existent qu'avec `--optimize` (sinon erreur). `--out` : classement écrit dans un fichier (JSON si `.json`, texte sinon). |
 | `boss <nom\|id> stuff --class <classe\|preset> [--roxx <lien> \| --build fichier.json] [--elements preset\|all] [--profile balanced\|defensive\|offensive] [--top N] [--iterations N] [--restarts N] [--seed S] [--level L] [--range N] [--fixed ids] [--exclude ids] [--out fichier.json] [--json]` | Meilleur stuff pour un personnage (§3.3). |
 | `degats --preset <preset> [--build fichier.json \| --roxx <lien>] --sort <nom\|id> [--boss <nom\|id> [--players N \| --grade G] [--no-overrides] [--all]] [--res n,t,f,e,a] [--melee \| --distance] [--crit] [--trace] [--json]` | Dégâts d'UN sort, ligne par ligne, pour vérifier en jeu (§6) : au contact et à distance pour un sort de portée 1 à N (`--melee` ou `--distance` pour n'en garder qu'un). |
@@ -82,14 +83,16 @@ Options partagées par plusieurs commandes (une commande refuse celles qu'elle n
 - `--players N` (1 à 8) ou `--grade G` (exclusifs ; `boss`, `classes`, `stuff`, et `degats` avec `--boss`) : grade du
   boss = `joueurs − 3`, borné à 1..5 et aux grades du monstre (règle des donjons modulaires) ; 1 à 4 joueurs ⇒ grade 1,
   5 ⇒ 2… 8 ⇒ 5 ; le 6e grade de certains boss (Père Ver) n'est accessible que par `--grade`. Le grade change surtout
-  les PV, rarement les caractéristiques, presque jamais les résistances.
+  les PV, rarement les caractéristiques, presque jamais les résistances. Pour `classes`, la composition suggérée
+  compte `--players` personnages, ou **G + 3 avec `--grade G`** (8 au plus : grade 1 ⇒ 4, grade 5 ou 6 ⇒ 8), comme la
+  page web.
 - `--no-overrides`, `--bosses-dir D` (fiche manuelle ignorée, ou lue dans un autre dossier, §5) et `--all`
   (boss cherché directement parmi les Expéditions aussi) : toutes les commandes `boss`, et `degats` avec `--boss`.
 - `--level L` (`classes`, `stuff`) : niveau des personnages (défaut 200 ; `degats` n'en a pas : niveau du preset, du
   fichier `--build` ou du lien `--roxx`). Sous 200, les stuffs génériques (objets niveau 200) ne sont pas
   portables : le classement des classes par défaut prend alors des personnages **sans équipement** (signalé) ;
   `classes --optimize` leur donne au contraire un stuff optimisé avec des objets de leur niveau (mesuré contre le Père
-  Ver au niveau 150 : 2,9 s pour les 49 presets).
+  Ver au niveau 150 : 3,8 s pour les 49 presets).
 - `--profile` : `balanced` (défaut), `defensive` (survie d'abord), `offensive` (dégâts d'abord) — décale les exposants
   de l'objectif de l'optimiseur (§3.3). Pour `classes`, seulement avec `--optimize`.
 - `--iterations N` : itérations du recuit de l'optimiseur (stuff : 30 000 par défaut ; `--optimize` des classes : 0,
@@ -107,7 +110,7 @@ npm run sim -- bosses ver                              # recherche (nom du boss 
 npm run sim -- boss "pere ver"                         # fiche du boss, 4 joueurs (grade 1)
 npm run sim -- boss 4726 --players 8 --details         # grade 5, avec tous les sorts du boss
 npm run sim -- boss "pere ver" classes                 # classement des classes, stuffs génériques
-npm run sim -- boss "pere ver" classes --optimize      # stuffs optimisés contre le boss (≈ 15 s)
+npm run sim -- boss "pere ver" classes --optimize      # stuffs optimisés contre le boss (≈ 18 s)
 npm run sim -- boss "pere ver" stuff --class zobal_psychopathe --out runs/zobal-pere-ver.json
 npm run sim -- boss solar stuff --class cra:terre --elements all
 npm run sim -- boss merkator stuff --class cra --roxx 'https://roxxsolver.com/solver?build=…'
@@ -157,40 +160,46 @@ Mécaniques
   - [invulnérable à distance] Invulnérable à distance : état « Invulnérable à Distance » (375) dès le début du combat. — contre : mêlée — punit : distance
   - [érosion] Érosion infligée jusqu'à 10 %. — contre : boucliers, réductions — punit : soin
   - [soin du boss] Se soigne ou soigne ses alliés (Digestion Lente, Paternalisme). — contre : rafale, érosion
-  - [glyphes / pièges] Pose des glyphes ou des pièges (Digestion Lente). — contre : placement
+  - [glyphes / pièges] Pose des glyphes ou des pièges (Digestion Lente).
 ```
 
 **Classes.** `boss "pere ver" classes` (extrait : axe Dégâts et composition) :
 
 ```
 Dégâts (DPT soutenu)
-  Valeur : DPT analytique (classement) ; « Étalonné » = × étalonnage moteur du preset (contrôle, data/ai/calibration.json).
-    #  Classe      Preset                 Valeur  Étalonné (moteur)  Rafale  Élément (rés.)  Posture                Confiance
-  ---  ----------  ---------------------  ------  -----------------  ------  --------------  ---------------------  ---------
-    1  Forgelance  forgelance_zone_terre   2 440      2 440 (×1,00)   2 440  Terre (20 %)    Armé                   moyenne
-    2  Iop         iop_soutien             2 156      2 156 (×1,00)   2 156  Terre (20 %)    —                      moyenne
-    3  Sram        sram_terre_pieges       1 896      1 572 (×0,83)   1 896  Terre (20 %)    —                      basse
-    4  Zobal       zobal_psychopathe       1 852      1 850 (×1,00)   1 852  Terre (20 %)    Masque de l’Intrépide  moyenne
-    5  Ouginak     ouginak_eau_air         1 719      1 798 (×1,05)   1 719  Eau (10 %)      Sans Rage              moyenne
+  Valeur : DPT soutenu analytique (classement) ; « Étal. preset » = facteur d'étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s'applique pas au DPT soutenu.
+   #  Classe      Preset                      Valeur  Étal. preset  Rafale  Élément (rés.)  Posture                Confiance
+  --  ----------  --------------------------  ------  ------------  ------  --------------  ---------------------  ---------
+   1  Crâ         cra_feu_zone                 2 837         ×0,73   2 837  Feu (10 %)      —                      moyenne
+   2  Iop         iop_soutien                  2 744         ×1,00   2 744  Terre (20 %)    —                      moyenne
+   3  Ouginak     ouginak_eau_air              2 593         ×1,05   2 593  Eau (10 %)      Sans Rage              moyenne
+   4  Ecaflip     ecaflip_terre_entrave        2 569         ×1,00   2 569  Terre (20 %)    —                      moyenne
+   5  Sadida      sadida_soin                  2 497         ×1,00   2 497  Eau (10 %)      —                      basse
   […]
-  =12  Crâ         cra_air_entrave             0          0 (×1,20)       0  Air (50 %)      —                      basse
-  =12  Eliotrope   eliotrope_passeur           0          0 (×1,00)       0  Air (50 %)      Portail                basse
+  11  Sram        sram_terre_pieges            2 320         ×0,83   2 320  Terre (20 %)    —                      basse
+  […]
+  15  Zobal       zobal_psychopathe            2 250         ×1,00   2 394  Terre (20 %)    Masque du Psychopathe  moyenne
+  […]
+  19  Sacrieur    sacrieur_sacrifice           1 489         ×1,00   1 509  Air (50 %)      —                      moyenne
   […]
 Composition suggérée (4 personnage(s))
-  Rôle             Classe      Preset                 Raison
-  ---------------  ----------  ---------------------  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-  Dégâts           Forgelance  forgelance_zone_terre  Meilleur DPT soutenu contre ce boss : 2 440 par tour (Terre, résistance effective 20 %).
-  Dégâts           Iop         iop_soutien            Deuxième DPT : 2 156 par tour (Terre, résistance effective 20 %) — pas un élément faible du boss, retenu pour son DPT.
-  Apport d'équipe  Huppermage  huppermage_entrave     +34,0 % de dégâts pour un allié (« dommages subis » sur le boss 15,0 %, Puissance 10,7 %, PA 8,3 %) ; ne touche pas le boss (DPT propre nul) : apport seul ; confiance basse.
-  Dégâts           Sram        sram_terre_pieges      DPT suivant : 1 896 par tour (Terre, résistance effective 20 %) ; étalonnage moteur ×0,83 ⇒ ≈ 1 572 par tour — pas un élément faible du boss, retenu pour son DPT.
+  Rôle             Classe   Preset                 Raison
+  ---------------  -------  ---------------------  -----------------------------------------------------------------------------------------------------------------------------------------------------------
+  Dégâts           Crâ      cra_feu_zone           Meilleur DPT soutenu contre ce boss : 2 837 par tour (Feu, résistance effective 10 %).
+  Dégâts           Ouginak  ouginak_eau_air        Deuxième DPT, autre élément (le boss a plusieurs éléments faibles) : 2 593 par tour (Eau, résistance effective 10 %).
+  Apport d'équipe  Iop      iop_multi_zone         +46,5 % de dégâts pour un allié (« dommages subis » sur le boss 15,0 %, Puissance 16,1 %, Dommages 7,1 %, PA 8,3 %) ; DPT propre 2 310 ; confiance moyenne.
+  Dégâts           Ecaflip  ecaflip_terre_entrave  DPT suivant : 2 569 par tour (Terre, résistance effective 20 %) — pas un élément faible du boss, retenu pour son DPT.
   Notes :
-    - Pas de soigneur dédié : un tour du boss retire 13 % des PV d'un personnage (seuil 20 %).
+    - Pas de soigneur dédié : un tour du boss retire 13,4 % des PV d'un personnage (seuil 20 %).
     - Pas de retrait PM : le boss n'a pas de PM.
-    - Deuxième DPT d'un autre élément faible écarté : le meilleur, Ouginak ouginak_eau_air (Eau), n'atteint que 80 % du meilleur DPT restant (seuil 85 %).
 ```
 
-Le Père Ver est invulnérable à distance : les presets qui ne frappent qu'à distance (Crâ, Eliotrope, Enutrof…) ont un
-DPT nul et la composition ne prend que des classes de mêlée pour les dégâts.
+Le Père Ver est invulnérable à distance : seuls les coups **au contact** comptent. En jeu, un coup est de mêlée dès que
+la cible est sur une case adjacente, quelle que soit la portée du sort (§3.2, « Au contact ou à distance ») : un sort de
+portée 1 à N se lance au contact. Aucun preset de base n'a donc un DPT nul contre lui — le Crâ Feu frappe au contact
+avec Flèche Dévorante, Flèches Enflammées et Flèche Détonante, l'Enutrof avec Pelle Aurifère et Lancer de Pièces ;
+seuls les sorts qui ne peuvent pas toucher une case adjacente (portée minimale 2 ou plus, comme Flèche Tyrannique)
+valent 0. Tous les personnages sont alors supposés jouer au contact (aucune PO exigée).
 
 **Stuff.** `boss merkator stuff --class cra_terre_mono` (extrait) :
 
@@ -203,31 +212,36 @@ Stuff contre Merkator (3534) — grade 1 (4 joueurs), niveau 220, 13 000 PV
 
 Comparaison
   Stuff                                                         logJ (écart au départ)  DPT soutenu  DPT proxy     PV    PVe  Reçus/tour  PA/PM/PO  Pénalité
-  Stuff du preset (Terre — Cœur Saignant / Brouce / Torkéloni…                   7,479        1 064      1 099  4 153  5 393       1 546    12/6/6         —
-  Générique Feu — Séculaire / Cycloïde / Atcham / Padgref               7,374 (−0,105)        1 034      1 068  3 603  4 812       1 504    12/6/5    ×0,950
-  Générique Air — Allister / Cycloïde / Submergée                       7,276 (−0,203)          828        855  4 153  5 835       1 429    12/6/5    ×0,950
-  Générique Eau — Danathor / Sinistrofu                                 7,249 (−0,231)          733        800  4 103  5 245       1 571    12/6/6         —
-  Générique Sagesse/retrait — Léthaline / Ventouse / Anerice …          6,916 (−0,563)          429        443  4 253  6 867       1 244    12/6/6         —
-  Générique Tank — Anerice / Pol Ouatnos / Gloursonne / Balei…          6,819 (−0,660)          508        525  5 053  9 597       1 057    11/6/3    ×0,729
-  Optimisé n° 1                                                         7,568 (+0,089)        1 167      1 205  4 153  5 847       1 426    12/6/6         —
-  Optimisé n° 2                                                         7,561 (+0,082)        1 075      1 111  4 253  6 903       1 237    12/6/6         —
-  Optimisé n° 3                                                         7,560 (+0,081)        1 048      1 083  4 753  7 308       1 306    12/6/6         —
-  Optimisé n° 4                                                         7,556 (+0,077)        1 047      1 082  4 753  7 229       1 320    12/6/6         —
-  Optimisé n° 5                                                         7,556 (+0,076)        1 035      1 069  4 253  7 413       1 152    12/6/6         —
+  Stuff du preset (Terre — Cœur Saignant / Brouce / Torkéloni…                   7,965        2 128      2 198  4 153  5 393       1 546    12/6/6         —
+  Générique Feu — Séculaire / Cycloïde / Atcham / Padgref               7,844 (−0,120)        2 024      2 091  3 603  4 812       1 504    12/6/5    ×0,950
+  Générique Air — Allister / Cycloïde / Submergée                       7,674 (−0,291)        1 461      1 509  4 153  5 835       1 429    12/6/5    ×0,950
+  Générique Eau — Danathor / Sinistrofu                                 7,648 (−0,317)        1 370      1 415  4 103  5 245       1 571    12/6/6         —
+  Générique Sagesse/retrait — Léthaline / Ventouse / Anerice …          7,404 (−0,561)          861        890  4 253  6 867       1 244    12/6/6         —
+  Générique Tank — Anerice / Pol Ouatnos / Gloursonne / Balei…          7,307 (−0,658)        1 021      1 054  5 053  9 597       1 057    11/6/3    ×0,729
+  Optimisé n° 1                                                         8,054 (+0,090)        2 205      2 277  4 753  6 692       1 426    12/6/6         —
+  Optimisé n° 2                                                         8,047 (+0,082)        2 133      2 204  4 303  7 053       1 225    12/6/6         —
+  Optimisé n° 3                                                         8,046 (+0,082)        2 128      2 199  4 153  7 078       1 178    12/6/6         —
+  Optimisé n° 4                                                         8,046 (+0,081)        2 098      2 167  4 753  7 308       1 306    12/6/6         —
+  Optimisé n° 5                                                         8,042 (+0,078)        2 097      2 166  4 753  7 229       1 320    12/6/6         —
   Classement par le logJ du proxy (objectif de l’optimiseur) ; stuffs de référence et candidats de la recherche classés ensemble.
   […]
-Meilleur stuff : Optimisé n° 1 — logJ 7,568 (+0,089 par rapport au départ)
-  DPT soutenu 1 167 (rafale 1 167, période 1 tour, posture « Sans posture ») ; DPT proxy 1 205
-  PV 4 153, PVe 5 847, dégâts reçus 1 426/tour (Terre 621, Eau 808)
+Meilleur stuff : Optimisé n° 1 — logJ 8,054 (+0,090 par rapport au départ)
+  DPT soutenu 2 205 (rafale 2 205, période 1 tour, posture « Sans posture ») ; DPT proxy 2 277
+  PV 4 753, PVe 6 692, dégâts reçus 1 426/tour (Terre 621, Eau 808)
   12 PA, 6 PM, 6 PO
   Objets :
   […]
   DPT soutenu par sort (lancers/tour × dégâts par lancer) :
     Sort                PA  Lancers/tour  Dégâts/lancer  Dégâts/tour  Part
-    Flèche Vagabonde     3          2,00            297          594  51 %
-    Œil pour Œil         3          1,00            302          302  26 %
-    Flèche Assaillante   3          1,00            271          271  23 %
+    Flèche Vagabonde     3          2,00            561        1 121  51 %
+    Œil pour Œil         3          1,00            571          571  26 %
+    Flèche Assaillante   3          1,00            513          513  23 %
 ```
+
+Merkator subit 50 % de dommages en moins à distance : les trois sorts de la rotation, lançables au contact comme à
+distance (portée minimale 0 ou 1), sont comptés **au contact**, le coup que la cible subit le mieux (§3.2, « Au contact
+ou à distance ») ; les % dommages mêlée du Crâ comptent donc, et non ses % distance (équivalences, §3.3). Le Crâ reste
+joué à distance pour l'objectif de l'optimiseur (6 PO visées, règle « au contact » du §3.2).
 
 **Comparer les éléments.** `boss solar stuff --class cra:terre --elements all` lance une recherche par élément et les
 compare dans un même contexte (même personnage, mêmes variantes de sorts, points reportés sur la caractéristique de
@@ -236,10 +250,10 @@ l'élément) :
 ```
 Comparaison des éléments (une recherche par élément)
   Élément  Rés. du boss   logJ  DPT soutenu    PVe
-  Terre            20 %  8,118        2 570  5 795
-  Feu               5 %  8,306        3 334  5 912  ← retenu
-  Eau              20 %  8,025        2 076  6 046
-  Air               5 %  8,186        2 758  6 158
+  Terre            20 %  8,117        2 570  5 773
+  Feu               5 %  8,281        3 118  6 355  ← retenu
+  Eau              20 %  8,027        2 076  6 084
+  Air               5 %  8,186        2 758  6 154
 ```
 
 **Réutiliser le meilleur stuff.** `--out fichier.json` écrit le meilleur build au format des fichiers d'équipe (champ
@@ -259,14 +273,17 @@ chargées une fois pour les stuffs et le theorycraft) ; la version construite (`
 onglet Boss est retiré (une adresse `#boss` y mène aux combats).
 
 - **Recherche** du boss avec suggestions (nom du boss ou du donjon, sans accents) ; réglage du nombre de joueurs
-  (1 à 8) ou du grade (grade imposé : « — » dans Joueurs, choisir un nombre de joueurs revient au grade déduit).
+  (1 à 8) ou du grade. Grade imposé G : Joueurs affiche « — (composition de N) », N = G + 3 personnages (8 au plus),
+  la taille de la composition de l'onglet Classes, comme en ligne de commande ; choisir un nombre de joueurs revient
+  au grade déduit.
 - Onglet **Fiche** : PV, PA, PM ; résistances brutes et effectives en barres aux couleurs des éléments ; éléments
   faibles ; profil offensif par phase avec ses parts élémentaires ; mécaniques avec ce qui les contre et ce qu'elles
   punissent ; avertissements et hypothèses repliables. La fiche manuelle `data/bosses/<id>.json` est appliquée si elle
   existe.
-- Onglet **Classes** : un tableau triable par axe (rangs partagés « =1 »), la composition suggérée avec ses raisons,
-  atouts, limites et confiance dépliables ; le bouton « optimiser les stuffs » relance le classement avec des stuffs
-  optimisés contre le boss (plus long, indicateur de chargement).
+- Onglet **Classes** : un tableau triable par axe (rangs partagés « =1 », mêmes colonnes que la ligne de commande,
+  dont le facteur « Étal. preset »), la composition suggérée avec ses raisons, atouts, limites et confiance
+  dépliables ; le bouton « optimiser les stuffs » relance le classement avec des stuffs optimisés contre le boss (plus
+  long, indicateur de chargement).
 - Onglet **Stuff** : choix du preset, champ « lien RoxxSolver », éléments (ceux du preset ou les quatre), profil,
   taille du top ; résultat : tableau comparatif, meilleur stuff objet par objet (icônes DofusDB, repli hors ligne),
   objets changés, équivalences des caractéristiques, DPT par sort, hypothèses et avertissements. Un réglage changé
@@ -279,7 +296,8 @@ Les mêmes calculs sont accessibles en JSON (serveur de dev) : `GET /api/theory/
 `GET /api/theory/presets`, `GET /api/theory/boss?id=&players=&grade=`, `POST /api/theory/classes`
 (`{ id, players?, grade?, stuff?: 'preset' | 'optimized', iterations?, profile? }`) et `POST /api/theory/stuff`
 (`{ id, players?, grade?, preset?, roxx?, elements?, profile?, top?, iterations?, rangeNeed? }`) ; une erreur rend
-`{ error }` avec un code HTTP. `iterations` est borné à 200 000 pour le stuff et à 10 000 pour le classement (une
+`{ error }` avec un code HTTP. Avec `grade`, `POST classes` compose un groupe de G + 3 personnages, comme la ligne de
+commande. `iterations` est borné à 200 000 pour le stuff et à 10 000 pour le classement (une
 recherche par preset ; le serveur calcule en synchrone, au-delà : la ligne de commande). Un POST doit être un JSON
 (`Content-Type: application/json`) envoyé par la page elle-même : sinon 415 ou 403 (une page tierce ouverte dans le
 navigateur ne peut pas lancer de calcul).
@@ -316,14 +334,15 @@ navigateur) ; `analysis.ts` y ajoute les analyses (classes, stuff, rendus texte)
   sont ensuite classés du plus faible au plus fort.
 - **Profil offensif par phase** : une phase = un ensemble d'états du boss qui rend certains de ses sorts lançables
   (Solar : Aurore, Zénith, Crépuscule, Nadir). Colonnes : poids (part du combat supposée, égale par défaut),
-  *attaquable* (`oui`, `non`, `mêlée seule`, `distance seule`), *pic/tour* = meilleure combinaison de sorts sur UNE
-  cible en un tour (optimiste pour une cible, mais zones, sorts en réaction et invocations ne sont pas comptés : le
-  total peut être sous-estimé, §4), *soutenu/tour* = moyenne sur 6 tours avec les relances, parts élémentaires des
-  dégâts. La ligne « Répartition des dégâts reçus » pondère les phases qui frappent : c'est ce que vos résistances
-  doivent couvrir. Ces dégâts sont calculés contre un joueur à 0 % de résistance.
+  *attaquable* (`oui`, `non`, `mêlée seule`, `distance seule`), *pic/tour* = **estimation** du meilleur tour sur UNE
+  cible (meilleure combinaison de sorts : optimiste pour une cible, mais zones, sorts en réaction et invocations ne
+  sont pas comptés, le total peut être sous-estimé, §4), *soutenu/tour* = estimation sur 6 tours avec les relances,
+  parts élémentaires des dégâts. La ligne « Répartition des dégâts reçus » pondère les phases qui frappent : c'est ce
+  que vos résistances doivent couvrir. Ces dégâts sont calculés contre un joueur à 0 % de résistance.
 - **Mécaniques** : détectées dans les données (états posés et leurs propriétés, invocations, soins, renvoi, érosion,
   retraits, glyphes…) ou ajoutées par la fiche manuelle (« fiche manuelle »). `contre` = ce qui y répond (mêlée,
-  zone, esquive…), `punit` = ce qu'elle neutralise ; ces étiquettes alimentent les atouts et limites des classes.
+  zone, esquive…), `punit` = ce qu'elle neutralise ; ces étiquettes alimentent les atouts et limites des classes. Une
+  mécanique sans réponse modélisée n'a pas de `contre` (glyphes et pièges : le placement n'est pas calculé).
 - **Avertissements** : ce qui fausse le calcul pour ce boss (résistances ≥ 100 %, sorts qui ne frappent que dans une
   phase, invocations non comptées, effets de dégâts non gérés comptés à 0, données 3.6…).
 - **Hypothèses** : les choix faits à sa place (grade, PV de référence de 4 000 pour les dégâts en % de PV, phases à
@@ -334,11 +353,11 @@ fiche manuelle le calcul la prend au pied de la lettre (aucun dégât). Le class
 « Rés. levées » (DPT si la mécanique ramène ces résistances à 0) et s'en sert pour la composition :
 
 ```
-   #  Classe      Preset                   Valeur  Étalonné (moteur)  Rafale  Élément (rés.)  Posture                Rés. levées  Confiance
-  --  ----------  -----------------------  ------  -----------------  ------  --------------  ---------------------  -----------  ---------
-   1  Crâ         cra_feu_zone                  0          0 (×0,73)       0  Feu (400 %)     —                            3 967  basse
-   2  Iop         iop_soutien                   0          0 (×1,00)       0  Terre (400 %)   —                            3 433  basse
-   3  Ecaflip     ecaflip_terre_entrave         0          0 (×1,00)       0  Terre (400 %)   —                            3 213  basse
+   #  Classe      Preset                   Valeur  Étal. preset  Rafale  Élément (rés.)  Posture                Rés. levées  Confiance
+  --  ----------  -----------------------  ------  ------------  ------  --------------  ---------------------  -----------  ---------
+   1  Crâ         cra_feu_zone                  0         ×0,73       0  Feu (400 %)     —                            3 485  basse
+   2  Iop         iop_soutien                   0         ×1,00       0  Terre (400 %)   —                            3 433  basse
+   3  Ecaflip     ecaflip_terre_entrave         0         ×1,00       0  Terre (400 %)   —                            3 213  basse
   […]
   Notes :
     - DPT nul pour tous les presets (résistances ≥ 100 % sans fiche manuelle) : les places « Dégâts » sont classées sur le DPT si la mécanique lève ces résistances.
@@ -356,11 +375,30 @@ pas de sens. Le rang `=4` signale des ex æquo.
 
 | Axe | Valeur | Comment la lire |
 |---|---|---|
-| **Dégâts** | DPT soutenu : dégâts par tour en régime établi (relances amorties), contre chaque phase attaquable du boss pondérée, meilleure posture de classe. | *Rafale* = meilleur tour isolé (relances ignorées). *Étalonné* = soutenu × étalonnage moteur du preset (`data/ai/calibration.json`, mesuré en mini-combat contre un Buboxor) : un **contrôle**, pas une correction ; un écart de plus de 10 % est signalé (Sram ×0,83 : le moteur inflige 17 % de moins). *Élément (rés.)* : élément du preset et résistance effective du boss. *Posture* : celle retenue (Zobal, Forgelance, Pandawa, Eliotrope, Steamer, Ouginak). |
+| **Dégâts** | DPT soutenu : dégâts par tour en régime établi (relances amorties, poisons suivis d'un tour à l'autre), contre chaque phase attaquable du boss pondérée, chaque sort au contact ou à distance (ci-dessous), meilleure posture de classe. | *Rafale* = premier tour d'un combat (tous les sorts prêts, aucun poison actif ; un poison posé compte pour toutes ses échéances). *Étal. preset* = facteur d'étalonnage du preset (`data/ai/calibration.json` : dégâts du moteur / sac à dos joué dans le moteur, mini-combat contre un Buboxor) : **indicatif**, il ne s'applique pas au DPT soutenu, ni correction ni contrôle (Sram ×0,83). *Élément (rés.)* : élément du preset et résistance effective du boss. *Posture* : celle retenue (Zobal, Forgelance, Pandawa, Eliotrope, Steamer, Ouginak). |
 | **Survie** | PV effectifs (PVe) du **stuff seul** face aux dégâts du boss. | Identiques pour les presets d'un même stuff générique (d'où les ex æquo) ; le kit défensif de classe compte dans l'axe Soin. *Reçus/tour* : un tour du boss sur ce personnage ; *Tours* = PV / reçus. |
 | **Contrôle** | PM + PA retirés en UN tour (un seul budget de PA), espérance contre l'esquive du boss. | *PM seul* / *PA seul* : tour entier consacré à une réserve (non additionnables). Vaut 0 si le boss punit ce retrait (Merkator et les PM) ou n'a pas la réserve (Père Ver : 0 PM). |
 | **Soin** | PV soignés ou préservés **utiles** par tour, total d'équipe : soin + bouclier (un budget de PA) + réductions et armures converties en PV. | Plafonné aux dégâts d'un tour du boss sur un personnage (*Brut* = avant plafond) : contre un boss qui tape peu, beaucoup de classes atteignent le plafond (ex æquo). Boucliers supposés consommés. |
 | **Apport d'équipe** | % de dégâts gagnés par un allié de référence (Crâ Terre, 1 300 de caractéristique + Puissance, jets de 30, 12 PA). | Décomposé : « dommages subis » posés sur le boss, Puissance, Dommages, % dommages finaux, PA donnés (les PM ne comptent pas). Heuristique, jamais ajoutée au DPT. |
+
+**Au contact ou à distance.** Règle du jeu : un coup est de **mêlée dès que la cible est sur une case adjacente** au
+lanceur, quelle que soit la portée du sort ; à 2 cases ou plus, il est à distance (`possibleHits`,
+`src/theorycraft/hits.ts`, la même règle que le calculateur `degats`, §6). Un sort de portée 1 à N (ou dont la zone
+autour du lanceur touche des cases adjacentes et plus loin) peut donc toucher des deux façons : le DPT retient le coup
+que le **boss subit le mieux** — au contact contre le Père Ver (invulnérable à distance) ou contre Merkator (−50 % à
+distance) ; à égalité, le style du personnage (au contact ⇒ mêlée). Les % dommages mêlée ou distance du personnage
+suivent ce coup (une classe de contact valorise ses % mêlée). Un sort de portée minimale 2 ou plus ne frappe qu'à
+distance, un sort de portée 1 qu'au contact. L'IA du Vortex garde sa propre règle (mêlée ⇔ portée max ≤ 1).
+
+**Joué au contact.** Un personnage est supposé jouer **au contact** (aucune PO exigée par l'objectif de l'optimiseur)
+si le boss n'est attaquable qu'au contact (Père Ver) ou si son preset est un preset de mêlée (Iop Terre, Ouginak,
+Sacrieur, Zobal, Féca protecteur, Pandawa Saoul) ; sinon à distance (6 PO visées). Règle unique (`playsMelee`) pour
+le classement et le meilleur stuff.
+
+**Poisons.** Le DPT soutenu suit chaque poison tour par tour : une application pose ses échéances (une par tour, sans
+critique, 6 au plus), au-delà du **cumul maximal** du sort la plus ancienne instance est retirée, et un lancer ne vaut
+que les échéances qu'il ajoute — relancé à chaque tour, un poison de cumul 1 n'ajoute qu'une échéance par tour. La
+rafale compte les échéances complètes des poisons posés au premier tour.
 
 Le tableau **Par classe** reprend la meilleure valeur de chaque classe sur chaque axe. **Atouts et limites** croisent
 les mécaniques du boss avec les utilités du preset (« Mêlée — invulnérable à distance : seuls les coups de mêlée
@@ -374,26 +412,34 @@ notes :
 
 1. **Dégâts** : le meilleur DPT soutenu.
 2. **Soin** : si un tour du boss retire au moins **20 %** des PV d'un personnage (médiane des presets) et que le boss ne
-   rend pas insoignable, le meilleur en PV soignés ou préservés utiles.
-3. **Protection** : si le boss rend insoignable ou érode d'au moins **20 %**, le meilleur en boucliers et réductions.
-4. **Retrait PM** : si le boss a des PM, que le retrait n'est pas puni et que le meilleur preset retire au moins
-   **1 PM** par tour malgré l'esquive.
-5. **Deuxième dégât** : le meilleur DPT d'une autre classe ; un preset d'un autre élément faible (moins de **10 points**
-   de résistance d'écart avec le plus faible) est préféré s'il atteint **85 %** de ce DPT.
-6. **Apport d'équipe** : le meilleur apport offensif d'une autre classe (la raison donne son DPT propre).
+   rend pas insoignable, le meilleur en PV soignés ou préservés utiles (plafonnés aux dégâts d'un tour du boss ; à
+   égalité, celui qui soigne le plus).
+3. **Protection** : si le boss rend insoignable ou érode d'au moins **20 %**, le meilleur en boucliers et réductions
+   (PV préservés utiles, sans soin) — **à la place** du soigneur si le boss rend insoignable, **en complément** du
+   soigneur de la règle 2 s'il y en a un (l'érosion réduit les soins).
+4. **Retrait PM** : si le boss a des PM, que le retrait PM n'est pas puni et que le meilleur preset retire au moins
+   **1 PM** par tour malgré l'esquive (tour consacré au retrait).
+5. **Deuxième dégât** : le meilleur DPT d'une autre classe ; un preset d'un autre élément faible du boss parmi Terre,
+   Feu, Eau et Air (moins de **10 points** de résistance d'écart avec le plus faible des quatre ; tout autre élément si
+   ses résistances sont extrêmes ou changeantes) est préféré s'il atteint **85 %** de ce DPT ; sinon une note dit
+   pourquoi, et la raison signale un élément qui n'est pas faible.
+6. **Apport d'équipe** : le meilleur apport offensif (« dommages subis », Puissance, PA…) d'une autre classe ; la
+   raison donne son DPT propre et sa confiance.
 7. **Places restantes** : DPT suivants.
 
-Une classe au plus par composition (doublon seulement faute d'alternative, signalé) ; si tous les DPT sont nuls
-(résistances ≥ 100 % sans fiche), les places « Dégâts » utilisent les DPT « résistances levées ». C'est un point de
-départ lisible, pas une optimisation de groupe : les synergies entre personnages ne sont pas calculées.
+**Groupe complet** : la première règle qui ne trouve plus de place le dit dans les notes, et les suivantes ne sont pas
+appliquées (`boss "pere ver" classes --players 2` : « Règle « Apport d'équipe » remplie par Iop iop_multi_zone, mais
+le groupe est complet (2 personnage(s)) : règles suivantes non appliquées. »). Une classe au plus par composition
+(doublon seulement si les presets évalués n'en offrent pas assez, signalé) ; si tous les DPT sont nuls (résistances
+≥ 100 % sans fiche), les places « Dégâts » utilisent les DPT « résistances levées ». C'est un point de départ lisible,
+pas une optimisation de groupe : les synergies entre personnages ne sont pas calculées.
 
 **Mode `--optimize`.** Chaque preset reçoit d'abord un stuff optimisé contre le boss selon **l'objectif de son rôle**
-(§3.3) : un preset de soutien reçoit un stuff plus défensif, son DPT peut baisser. Surtout, l'optimiseur ne voit pas les
-dégâts des classes à posture (§4) : contre le Père Ver (mesure du 2026-10-08, ≈ 15 s pour les 49 presets), le DPT
-soutenu de `zobal_psychopathe` passe de 1 852 (stuff générique) à 538 et celui de `forgelance_zone_terre` de 2 440 à
-1 237.
-Pour ces classes, comparer avec le mode par défaut, ou chercher leur stuff avec `boss … stuff --class <preset>`, qui
-classe leurs stuffs en DPT soutenu.
+(§3.3) : un preset de soutien reçoit un stuff plus défensif, son DPT peut baisser — contre le Père Ver (mesure du
+2026-10-08, ≈ 18 s pour les 49 presets), `iop_soutien` passe de 2 744 de DPT soutenu (stuff générique) à 1 431. Surtout,
+l'optimiseur ne voit pas les dégâts des classes à posture (§4) : `forgelance_zone_terre` passe de 2 469 à 2 078, alors
+que `zobal_psychopathe` tient ici (2 250 → 2 330) sans que rien ne le garantisse. Pour ces classes, comparer avec le
+mode par défaut, ou chercher leur stuff avec `boss … stuff --class <preset>`, qui classe leurs stuffs en DPT soutenu.
 
 ### 3.3 Le meilleur stuff
 
@@ -411,10 +457,10 @@ contre ce boss :
   l'objectif, pas un effet du boss : la colonne *Pénalité* l'affiche (×0,950 = une PO manquante ; ×0,729 = 1 PA et
   3 PO manquants).
 
-**Lire logJ.** Il n'a de sens qu'à personnage, rôle, profil et boss égaux. Un écart de +0,089 signifie J × e^0,089
+**Lire logJ.** Il n'a de sens qu'à personnage, rôle, profil et boss égaux. Un écart de +0,090 signifie J × e^0,090
 ≈ ×1,09 : environ 9 % de mieux sur l'objectif, à répartir entre dégâts (poids a) et survie (poids b). Dans l'exemple de
-Merkator, l'« Optimisé n° 1 » gagne 10 % de DPT soutenu (1 064 → 1 167) et 8 % de PVe (5 393 → 5 847) sur le stuff du
-preset ; l'« Optimisé n° 2 » échange un peu de DPT contre des PVe : le top montre ces compromis.
+Merkator, l'« Optimisé n° 1 » gagne 4 % de DPT soutenu (2 128 → 2 205) et 24 % de PVe (5 393 → 6 692) sur le stuff du
+preset ; l'« Optimisé n° 2 » échange un peu de DPT contre des PVe (2 133 et 7 053) : le top montre ces compromis.
 
 **Colonnes du tableau** :
 
@@ -422,8 +468,9 @@ preset ; l'« Optimisé n° 2 » échange un peu de DPT contre des PVe : le top 
   établie se répète tous les *période* tours ; le détail « DPT soutenu par sort » donne lancers par tour × dégâts par
   lancer (critique pondéré, résistances effectives du boss).
 - **DPT proxy** : ce que l'optimiseur maximise (un tour isolé, relances ignorées, × calibration du preset, sans
-  posture). Les deux vont dans le même sens pour la plupart des classes ; un DPT proxy nul avec un DPT soutenu positif
-  signale une classe à posture.
+  posture ; même règle de coup au contact ou à distance que le DPT soutenu). Les deux vont dans le même sens pour la
+  plupart des classes ; un DPT proxy très inférieur au DPT soutenu (Zobal Psychopathe contre le Père Ver : 573 contre
+  2 250) signale une classe à posture.
 - **PV / PVe** : PV effectifs = PV × (dégâts reçus sans défense / avec défenses) face au profil offensif du boss,
   plafonnés à 20 × PV (plafond signalé : la comparaison des PVe perd alors son sens). Ni soins, boucliers, érosion ni
   kit défensif de classe.
@@ -431,34 +478,37 @@ preset ; l'« Optimisé n° 2 » échange un peu de DPT contre des PVe : le top 
 - **PA/PM/PO** et **Pénalité** (ci-dessus).
 
 **Classes à posture.** L'optimiseur ne pose aucune posture (masques du Zobal, Armé du Forgelance, Saoul du Pandawa…) :
-il voit parfois un DPT nul. Quand le DPT soutenu sans posture est sous 1/1,2 de celui en meilleure posture, les stuffs
+il voit parfois un DPT presque nul (Zobal Psychopathe contre le Père Ver : 115 de DPT soutenu sans posture, 2 250 en
+« Masque du Psychopathe »). Quand le DPT soutenu sans posture est sous 1/1,2 de celui en meilleure posture, les stuffs
 sont classés par le **logJ soutenu** (DPT du proxy remplacé par le DPT soutenu en posture), puis affinés par une montée
 par coordonnées sur ce score. Contre le Père Ver, Zobal Psychopathe :
 
 ```
   Stuff                                                         logJ soutenu (écart au départ)  DPT soutenu  DPT proxy     PV     PVe  Reçus/tour  PA/PM/PO  Pénalité
-  Stuff du preset (Terre — Cœur Saignant / Brouce / Torkéloni…                           7,831        1 852          0  4 153   5 173         556    12/6/6         —
-  Générique Air — Allister / Cycloïde / Submergée                               7,361 (−0,470)          958          0  4 153   5 016         573    12/6/5         —
+  Stuff du preset (Terre — Cœur Saignant / Brouce / Torkéloni…                           7,968        2 250        573  4 153   5 173         556    12/6/6         —
   […]
-  Optimisé n° 1 (affiné en DPT soutenu)                                         7,893 (+0,061)        1 577          0  4 853   9 234         364    12/6/4         —
-  Optimisé n° 2 (affiné en DPT soutenu)                                         7,891 (+0,059)        1 734          0  4 753   7 345         448    12/6/6         —
-  Optimisé n° 3 (affiné en DPT soutenu)                                         7,874 (+0,042)        1 573          0  4 953   8 707         394    12/6/6         —
-  Optimisé n° 4                                                                 7,687 (−0,145)          937          0  5 903  15 664         261    12/6/5         —
-  Classement par le logJ SOUTENU : le proxy de l'optimiseur ne pose aucune posture de classe et ne voit au départ que 0 de DPT soutenu sans posture, contre 1852 en « Masque de l’Intrépide ». Le DPT du proxy est remplacé par le DPT soutenu en posture (× calibration du preset) pour classer ensemble stuffs de référence et candidats ; la recherche, elle, reste aveugle à ces dégâts (ses stuffs privilégient la survie).
+  Optimisé n° 1 (affiné en DPT soutenu)                                         8,091 (+0,123)        2 078        505  4 403   9 395         325    12/6/4         —
+  Optimisé n° 2 (affiné en DPT soutenu)                                         8,088 (+0,120)        1 980        486  5 053  10 410         336    12/6/4         —
+  Optimisé n° 3                                                                 8,082 (+0,114)        1 998        497  5 003   9 997         347    12/6/6         —
+  Optimisé n° 4                                                                 8,078 (+0,110)        2 161        534  4 353   8 206         367    12/6/4         —
+  Optimisé n° 5                                                                 8,062 (+0,095)        2 020        502  5 053   9 128         383    12/6/5         —
+  Classement par le logJ SOUTENU : le proxy de l'optimiseur ne pose aucune posture de classe et ne voit au départ que 115 de DPT soutenu sans posture, contre 2250 en « Masque du Psychopathe ». Le DPT du proxy est remplacé par le DPT soutenu en posture (× calibration du preset) pour classer ensemble stuffs de référence et candidats ; la recherche, elle, reste aveugle à ces dégâts (ses stuffs privilégient la survie).
   […]
-Meilleur stuff : Optimisé n° 1 (affiné en DPT soutenu) — logJ soutenu 7,893 (+0,061 par rapport au départ)
-  DPT soutenu 1 577 (rafale 1 577, période 1 tour, posture « Masque de l’Intrépide ») ; DPT proxy 0
-  PV 4 853, PVe 9 234, dégâts reçus 364/tour (Neutre 175, Air 192)
+Meilleur stuff : Optimisé n° 1 (affiné en DPT soutenu) — logJ soutenu 8,091 (+0,123 par rapport au départ)
+  DPT soutenu 2 078 (rafale 2 160, période 5 tours, posture « Masque du Psychopathe ») ; DPT proxy 505
+  PV 4 403, PVe 9 395, dégâts reçus 325/tour (Neutre 145, Air 183)
 ```
 
-Ici le meilleur stuff perd près de 15 % de DPT soutenu (1 852 → 1 577) mais gagne 78 % de PVe (5 173 → 9 234) : c'est le
+Ici le meilleur stuff perd 8 % de DPT soutenu (2 250 → 2 078) mais gagne 82 % de PVe (5 173 → 9 395) : c'est le
 compromis du rôle Tueur (a = 0,7, b = 0,3). Au-delà de 15 % de perte de DPT, la sortie l'avertit ; pour privilégier les
 dégâts, `--profile offensive`.
 
 **Le meilleur stuff** est détaillé objet par objet (emplacement, niveau, forgemagie supposée), avec les points, les
 parchemins (100 partout ; un lien RoxxSolver sans parchemins reçoit 100 partout, signalé), les **objets changés** par
-rapport au départ et le DPT par sort. Les Dofus et objets à **sort passif** (Ocre, Vulbis, Abyssal…) valent 0 pour le
-calcul : ceux du départ sont gardés imposés (« sort passif non valorisé »). Le **top** (5 par défaut, `--top N`) ne
+rapport au départ et le DPT par sort. Les objets à **sort passif** (Dofus Ocre, Vulbis, Abyssal… ; certains objets
+comme la Droiture de Fallanster) valent 0 pour le calcul et sont marqués « sort passif non valorisé ». Seuls les
+**Dofus** à sort passif du départ sont gardés imposés ; les autres objets à sort passif ne le sont pas (`--fixed <ids>`
+pour les garder) et la sortie avertit quand le meilleur stuff en retire. Le **top** (5 par défaut, `--top N`) ne
 garde que des stuffs qui diffèrent d'au moins 2 objets ; un stuff de référence (départ, générique) que rien ne bat
 reste en tête. Un départ invalide (objets trop hauts pour `--level`, conditions non remplies) n'est jamais présenté
 comme meilleur.
@@ -468,18 +518,19 @@ caractéristique principale du stuff (dérivées de l'objectif au meilleur stuff
 
 ```
 Équivalences des caractéristiques contre ce boss (référence : Force)
-  1 PA (sous le plafond) ≈ 712 Force, dont 519 de pénalité d’objectif (194 pour les effets modélisés) — par poids de rune : ×7,12
+  1 PA (sous le plafond) ≈ 725 Force, dont 519 de pénalité d’objectif (207 pour les effets modélisés) — par poids de rune : ×7,25
   1 PM (sous le plafond) ≈ 336 Force, dont 336 de pénalité d’objectif (0 pour les effets modélisés) — par poids de rune : ×3,74
   1 Portée (sous le plafond) ≈ 164 Force, dont 164 de pénalité d’objectif (0 pour les effets modélisés) — par poids de rune : ×3,21
-  1 % Dommages distance ≈ 21 Force — par poids de rune : ×1,40
-  1 % Dommages aux sorts ≈ 21 Force — par poids de rune : ×1,40
+  1 % Dommages aux sorts ≈ 22,2 Force — par poids de rune : ×1,48
+  1 % Dommages mêlée ≈ 21 Force — par poids de rune : ×1,40
   1 % Résistance aux sorts ≈ 9,62 Force — par poids de rune : ×0,64
 ```
 
-- « 1 % Dommages distance ≈ 21 Force » : pour ce Crâ contre Merkator, 1 % de dommages distance vaut 21 Force.
+- « 1 % Dommages mêlée ≈ 21 Force » : pour ce Crâ contre Merkator, 1 % de dommages mêlée vaut 21 Force — ses sorts
+  frappent au contact, le coup que Merkator subit le mieux (§3.2) ; ses % distance n'apparaissent pas.
 - **PA, PM, PO** : valeur d'un point *sous le plafond* (au-delà, un point ne vaut rien), dont la part due aux seules
   **pénalités de l'objectif** (« dont 519 de pénalité d'objectif ») : la part *modélisée* (dégâts, survie) est le reste
-  (194 Force pour un PA). Un PM vaut 0 pour les effets modélisés : aucune position n'est simulée.
+  (207 Force pour un PA). Un PM vaut 0 pour les effets modélisés : aucune position n'est simulée.
 - **Par poids de rune** : la même comparaison à coût de forgemagie égal (poids des runes) ; ×1,40 = plus rentable que
   la Force à la forgemagie.
 - Valeurs locales (petits changements autour du meilleur stuff), pour ce boss, ce rôle et ce profil.
@@ -490,10 +541,13 @@ Chaque sortie liste les siennes ; voici l'ensemble, sans fard.
 
 **Pas un combat.**
 - Aucune position, ligne de vue, déplacement, tacle ni placement ; aucun PM dépensé ; un sort de zone frappe la seule
-  cible visée.
+  cible visée. Un coup compté au contact suppose que le personnage atteigne une case adjacente au boss et y reste.
 - Ni invocations (les vôtres comme celles du boss), ni glyphes, pièges, bombes, tourelles ; l'arme n'est pas lancée.
 - Ni rampes ni cumuls entre tours (Fureur, Colère de Iop au retour de relance, paliers de Flèche Dévorante), ni buffs
-  entre sorts d'un même personnage, ni PA rendus en cours de tour ; poisons et effets différés par heuristique.
+  entre sorts d'un même personnage, ni PA rendus en cours de tour. Poisons suivis tour par tour dans le DPT soutenu
+  (cumul maximal du sort, échéances sans critique, 6 au plus) ; effets différés comptés × 0,8 (heuristique du sac à
+  dos) ; poisons posés par un sous-sort déclenché non suivis ; le DPT du proxy de l'optimiseur garde l'heuristique
+  « poison × min(durée, 2) × 0,8 ».
 - Buffs d'équipe entre personnages affichés à part (axe Apport d'équipe), jamais ajoutés aux dégâts.
 - Postures de classe : la meilleure, supposée tenue tout le combat, sans coût de changement.
 - **PA et PM retirés par le boss non déduits** : chaque personnage dispose de tous ses PA à chaque tour, même contre
@@ -527,8 +581,10 @@ la répartition élémentaire et le poids des résistances fixes, et peuvent êt
 - Optimiseur : jets max des objets, forgemagie supposée réalisable, sorts passifs valorisés à 0, recherche aléatoire à
   graine fixe (déterministe, pas une preuve d'optimalité : écart moyen au meilleur logJ observé 0,003 avec les réglages
   par défaut, mesure du 2026-10-08 sur 8 presets × 5 boss).
-- Le DPT du proxy porte une calibration mesurée au Vortex ; le DPT soutenu n'est pas calibré ; l'étalonnage affiché à
-  côté a été mesuré contre un Buboxor, pas contre le boss.
+- Le DPT du proxy porte une calibration mesurée au Vortex ; le DPT soutenu n'est pas calibré ; le facteur
+  d'étalonnage affiché à côté (« Étal. preset ») est indicatif : mesuré contre un Buboxor (dégâts du moteur / sac à dos
+  joué dans le moteur), il ne s'applique pas au DPT soutenu et ne dit rien du boss. Aucun contrôle par le moteur
+  contre le boss lui-même n'est fait.
 - `--optimize` (classes) : le stuff suit l'objectif du rôle de chaque preset et ne voit pas les postures (§3.2).
 - Sous le niveau 200, le classement des classes par défaut compare des personnages sans équipement (les kits de classe,
   pas les stuffs) ; `--optimize` leur donne un stuff optimisé avec des objets de ce niveau (§2.1).
@@ -551,8 +607,9 @@ l'accompagnent. Une fiche manuelle le dit ; elle est facultative et appliquée a
 
 1. Trouver l'id du boss : `npm run sim -- bosses <nom>`.
 2. Lire ce que les données en disent : `npm run sim -- boss <id> --details` affiche, en plus de la fiche, le tableau de
-   tous ses sorts (id, PA, lancers, relance, dégâts par élément, drapeaux) et l'arbre de son sort de départ (effets,
-   états posés, sous-sorts). Les ids d'états et de sorts à citer dans la fiche viennent de là.
+   tous ses sorts (id, PA, PO, coup — mêlée si PO ≤ 1, ce que vos résistances mêlée ou distance réduisent —, lancers,
+   relance, dégâts par élément, drapeaux, états du boss sous lesquels les dégâts sont pris) et l'arbre de son sort de
+   départ (effets, états posés, sous-sorts). Les ids d'états et de sorts à citer dans la fiche viennent de là.
 3. Copier `data/bosses/_template.json` vers `data/bosses/<id>.json` (le nom doit être l'id), remplacer les valeurs,
    supprimer les clés inutiles.
 4. Relancer `boss <id>` : la ligne « Fiche manuelle appliquée (date) » apparaît ; une clé inconnue, un type inattendu ou
@@ -623,12 +680,12 @@ Profil offensif par phase
   Glyphe pair     50 %  oui              505           505       —      —    —    —  100 %
   […]
 Dégâts (DPT soutenu)
-  Valeur : DPT analytique (classement) ; « Étalonné » = × étalonnage moteur du preset (contrôle, data/ai/calibration.json).
-   #  Classe      Preset                 Valeur  Étalonné (moteur)  Rafale  Élément (rés.)  Posture                Rés. levées  Confiance
-  --  ----------  ---------------------  ------  -----------------  ------  --------------  ---------------------  -----------  ---------
-   1  Iop         iop_terre_burst         2 360      2 360 (×1,00)   2 360  Terre (200 %)   —                            3 388  moyenne
-   2  Féca        feca_glyphes            2 229      2 229 (×1,00)   2 229  Terre (200 %)   —                            3 111  basse
-   3  Ecaflip     ecaflip_terre_entrave   2 180      2 171 (×1,00)   2 180  Terre (200 %)   —                            3 213  moyenne
+  Valeur : DPT soutenu analytique (classement) ; « Étal. preset » = facteur d'étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s'applique pas au DPT soutenu.
+   #  Classe      Preset                 Valeur  Étal. preset  Rafale  Élément (rés.)  Posture                Rés. levées  Confiance
+  --  ----------  ---------------------  ------  ------------  ------  --------------  ---------------------  -----------  ---------
+   1  Iop         iop_terre_burst         2 360         ×1,00   2 360  Terre (200 %)   —                            3 388  moyenne
+   2  Féca        feca_glyphes            2 229         ×1,00   2 229  Terre (200 %)   —                            3 111  basse
+   3  Ecaflip     ecaflip_terre_entrave   2 180         ×1,00   2 180  Terre (200 %)   —                            3 213  moyenne
 ```
 
 La colonne « Élément (rés.) » affiche la résistance **moyenne** pondérée par les phases (200 % = moyenne de 400 % et
@@ -673,10 +730,11 @@ sort, ni sorts passifs ; la cible est touchée sur la case d'impact (pas de réd
   raison (« 1 sur les invocations » pour la deuxième ligne de Concentration du Iop, sous-sorts lancés sur un allié
   comme les arbres du Sadida…).
 - **Mêlée ou distance** : en jeu, un coup est en mêlée quand la cible est sur une case adjacente au lanceur, à
-  distance sinon, et les % de dommages et de résistances mêlée ou distance en dépendent. Un sort qui peut toucher des
-  deux façons (portée 1 à N, zone autour du lanceur) est calculé **deux fois, un tableau « Au contact » et un tableau
-  « À distance »** (un seul, avec la mention « mêmes valeurs », si le stuff et la cible n'ont aucun % mêlée ou
-  distance) ; `--melee` ou `--distance` n'en garde qu'un. Un coup que le boss bloque dans toutes ses phases
+  distance sinon, et les % de dommages et de résistances mêlée ou distance en dépendent (même règle et même fonction,
+  `possibleHits`, que le DPT du theorycraft, §3.2). Un sort qui peut toucher des deux façons (portée 1 à N, zone
+  autour du lanceur) est calculé **deux fois, un tableau « Au contact » et un tableau « À distance »** (un seul, avec
+  la mention « mêmes valeurs », si le stuff et la cible n'ont aucun % mêlée ou distance) ; `--melee` ou `--distance`
+  n'en garde qu'un. Un coup que le boss bloque dans toutes ses phases
   (invulnérabilité : Père Ver à distance) vaut 0, signalé en avertissement.
 - **Résistances par phase** : si une fiche manuelle donne des résistances différentes selon la phase, un tableau par
   phase (ou groupe de phases de mêmes résistances), avec sa part du combat.
