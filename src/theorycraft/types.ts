@@ -266,3 +266,175 @@ export interface SustainedDamage {
   /** Période du régime établi en tours (0 : non trouvée dans le plafond de simulation, `steady` approché). */
   period: number
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Utilités de classe (utilities.ts) — ajout v1 (question 2)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Une utilité chiffrée et les sorts qui la portent (noms français, plus forte contribution d'abord). */
+export interface UtilityValue {
+  value: number
+  spells: string[]
+}
+
+/**
+ * Utilités chiffrées d'un personnage (unités) :
+ *  - `mpRemoved`, `apRemoved` : PM / PA retirés au boss par tour (espérance contre son esquive, rotation CONSACRÉE au
+ *    retrait, relances amorties) ; `rangeRemoval` : PO retirée par lancer (meilleur sort) ;
+ *  - `heal`, `shield` : PV soignés / PV de bouclier par tour sur un allié (rotation consacrée, relances amorties) ;
+ *  - `allyReduction` : % de dommages en moins sur un allié (× 1163 < 100) × temps d'effet ; `allyArmor` : dommages
+ *    retirés par coup (armure 265/105, réduite au niveau) × temps d'effet ; `selfReduction` : idem sur soi seulement ;
+ *  - `damageTaken` : % de dommages subis en plus posé sur le boss (× 1163 > 100) × temps d'effet ;
+ *  - `allyPower`, `allyDamage`, `allyFinalDamage`, `allyAp`, `allyMp` : bonus moyen d'un allié (valeur × temps d'effet) ;
+ *  - `erosion` : % d'érosion posé sur le boss (meilleur sort) ;
+ *  - `placement`, `summons`, `dispel`, `debuff` : nombre de sorts (déplacent le boss ; invoquent ; désenvoûtent le boss ou
+ *    réduisent la durée de ses effets ; baissent ses caractéristiques).
+ */
+export type UtilityKey =
+  | 'mpRemoved'
+  | 'apRemoved'
+  | 'rangeRemoval'
+  | 'heal'
+  | 'shield'
+  | 'allyReduction'
+  | 'allyArmor'
+  | 'selfReduction'
+  | 'damageTaken'
+  | 'allyPower'
+  | 'allyDamage'
+  | 'allyFinalDamage'
+  | 'allyAp'
+  | 'allyMp'
+  | 'erosion'
+  | 'placement'
+  | 'summons'
+  | 'dispel'
+  | 'debuff'
+
+/** Forme du DPT mesurée (classes.ts) : parts du soutenu conservées au contact seul / à distance seule, rafale / soutenu. */
+export interface DamageShape {
+  meleeShare: number
+  rangeShare: number
+  burstRatio: number
+}
+
+export interface ClassUtilities {
+  breedId: number
+  /** États du lanceur supposés (posture). */
+  states: number[]
+  values: Record<UtilityKey, UtilityValue>
+  /** Points tentés par tour (esquivables) et sûrs (non esquivables), par réserve, avant l'esquive du boss. */
+  removal: { mp: { attempted: number; sure: number }; ap: { attempted: number; sure: number } }
+  /** Apport offensif à un allié de référence, en % de ses dégâts (heuristique décomposée, utilities.ts). */
+  offensiveGain: { total: number; parts: { label: string; pct: number }[] }
+  /** Forme du DPT, si elle a été mesurée (sinon les étiquettes mêlée/distance viennent des portées des sorts). */
+  damage?: DamageShape
+  tags: UtilityTag[]
+  /** Ce qui a été écarté ou n'est pas chiffré (lignes conditionnelles, sous-sorts partagés, glyphes…). */
+  notes: string[]
+}
+
+/** Atouts et limites d'un personnage contre un boss (phrases françaises, sans doublon). */
+export interface Relevance {
+  atouts: string[]
+  limites: string[]
+}
+
+export type Confidence = 'haute' | 'moyenne' | 'basse'
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Classement des classes (classes.ts) — ajout v1 (question 2)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/** Axes du classement (aucune note globale : chaque axe est montré). */
+export type RankingAxis = 'damage' | 'survival' | 'control' | 'heal' | 'team'
+
+/** Mesures d'un preset contre le boss (sérialisable JSON). */
+export interface PresetEvaluation {
+  presetId: string
+  breedId: number
+  className: string
+  label: string
+  role: string
+  /** Élément du preset (`earth`, `fire`, `water`, `air`). */
+  element: string
+  /** Stuff utilisé : identifiant du stuff générique, `unstuffed` (sans objet), ou `optimized`. */
+  stuff: string
+  stance: { id: string; name: string; states: number[] }
+  dpt: {
+    /** DPT soutenu en régime établi (rotation.ts `steady`), NON calibré, pondéré par les phases attaquables. */
+    steady: number
+    /** Rafale (meilleur tour isolé), même pondération. */
+    burst: number
+    byPhase: { phaseId: string; weight: number; steady: number }[]
+    /** Soutenu de chaque posture évaluée. */
+    stances: { id: string; steady: number }[]
+    /**
+     * Boss à résistances ≥ 100 % (mécanique, sans fiche manuelle) : soutenu contre la phase principale si la mécanique
+     * les lève (ramenées à 0) — repli de la composition quand tous les DPT sont nuls.
+     */
+    resLifted?: number
+  }
+  survival: {
+    hp: number
+    /** PV effectifs du proxy (PV × dégâts sans défense / avec défenses, plafond 20 × PV). */
+    ehp: number
+    /** Dégâts reçus par tour (un tour du boss sur ce personnage, phases pondérées). */
+    incoming: number
+    incomingByElement: PerElement
+    /** Dégâts reçus hors élément (fixes, % de PV). */
+    incomingOther: number
+    /** PV / dégâts reçus par tour (0 si le boss ne frappe pas). */
+    turnsToDie: number
+  }
+  control: { mpRemoved: number; apRemoved: number; value: number }
+  heal: { heal: number; shield: number; reduction: number; armor: number; value: number }
+  team: { gainPct: number; parts: { label: string; pct: number }[] }
+  /** Valeur de chaque axe (unités : DPT, PV effectifs, points retirés, PV par tour, % de dégâts d'un allié). */
+  axes: Record<RankingAxis, number>
+  utilities: ClassUtilities
+  relevance: Relevance
+  confidence: { level: Confidence; reasons: string[] }
+  /** Élément du preset face au boss : résistance effective (phases attaquables pondérées) et rang (0 = le plus faible). */
+  elementMatch: { element: number; resPct: number; rank: number }
+  warnings: string[]
+}
+
+export interface ClassSummary {
+  breedId: number
+  className: string
+  /** Meilleur preset de la classe sur chaque axe. */
+  best: Record<RankingAxis, { presetId: string; value: number }>
+  confidence: Confidence
+}
+
+export interface AxisRanking {
+  axis: RankingAxis
+  label: string
+  unit: string
+  /** Une ligne par classe (son meilleur preset sur l'axe), meilleure d'abord. */
+  entries: { breedId: number; className: string; presetId: string; value: number }[]
+}
+
+export interface CompositionMember {
+  presetId: string
+  breedId: number
+  className: string
+  /** Rôle tenu dans la composition (« Dégâts », « Soin »…). */
+  slot: string
+  reason: string
+}
+
+export interface ClassRanking {
+  boss: { monsterId: number; name: string; grade: number; players?: number; level: number }
+  level: number
+  players: number
+  stuff: 'preset' | 'optimized'
+  presets: PresetEvaluation[]
+  classes: ClassSummary[]
+  axes: AxisRanking[]
+  /** Composition suggérée : membres, règles appliquées, et notes (règles écartées et pourquoi). */
+  composition: { members: CompositionMember[]; rules: string[]; notes: string[] }
+  assumptions: string[]
+  warnings: string[]
+}
