@@ -57,8 +57,8 @@ export interface TheoryCharacter {
   presetId?: string
   name?: string
   /**
-   * Joué au contact (`playsMelee`, target.ts) : à égalité de la cible, un sort lançable au contact et à distance compte
-   * en mêlée (étiquette `CONTACT_TAG`, hits.ts). Défaut : à distance.
+   * Joué au contact (style de jeu, `resolveStyle` de target.ts) : à égalité de la cible, un sort lançable au contact et
+   * à distance compte en mêlée (étiquette `CONTACT_TAG`, hits.ts). Défaut : à distance.
    */
   contact?: boolean
 }

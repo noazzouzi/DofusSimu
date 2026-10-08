@@ -38,6 +38,9 @@
  * NON calibré : aucune `calibrationOf` (facteur figé par preset, mesuré au Vortex) — les classes se comparent sur
  * l'analytique brut.
  *
+ * `contactShare` : part du régime établi portée par des coups au contact (`TheoryDptTable.hitOf`), mesure du style de
+ * jeu d'un preset contre un boss (`resolveStyle`, target.ts ; même mesure pour `classes` et `stuff`).
+ *
  * Limites (affichées par le theorycraft) :
  *  - glouton par tour : chaque tour maximise ses propres dégâts, sans garder un sort à relance pour un tour où il
  *    vaudrait plus (aucun intérêt tant que les dégâts d'un sort ne dépendent pas du tour) ;
@@ -305,4 +308,25 @@ export function sustainedDamage(table: DptTableImpl, a: Fighter, d: Fighter, opt
   perTurn.length = turns
   casts.length = turns
   return { perTurn, mean: avg(perTurn), burst, casts, steady, period, steadyBySpell }
+}
+
+/**
+ * Part du DPT soutenu portée par des coups AU CONTACT (style de jeu, `resolveStyle` de target.ts) : `runs[i]` = régime
+ * établi de `a` contre `targets[i]` (`sustainedDamage`, table du theorycraft), pondéré par `weights[i]` ; un sort
+ * compte au contact si le coup retenu contre cette cible est de mêlée (`TheoryDptTable.hitOf` : le coup que la cible
+ * subit le mieux, à égalité le style de `a`), ses poisons avec lui (crédités au sort qui les pose). Undefined sans
+ * dégâts (résistances ≥ 100 % sans fiche, Kimbo) : rien à mesurer, `resolveStyle` garde le style du preset.
+ */
+export function contactShare(table: TheoryDptTable, a: Fighter, targets: readonly Fighter[], weights: readonly number[], runs: readonly SustainedDamage[]): number | undefined {
+  let contact = 0
+  let total = 0
+  targets.forEach((d, i) => {
+    const w = weights[i] ?? 0
+    for (const x of runs[i]?.steadyBySpell ?? []) {
+      const k = a.spells.findIndex(s => s.spellId === x.spellId)
+      total += w * x.damage
+      if (k >= 0 && table.hitOf(a, k, d)) contact += w * x.damage
+    }
+  })
+  return total > 0 ? contact / total : undefined
 }

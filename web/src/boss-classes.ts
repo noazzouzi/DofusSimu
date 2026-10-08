@@ -1,8 +1,9 @@
 /**
  * Section « Boss » — rendu de l'onglet « Classes » (`ClassRanking`, src/theorycraft/classes.ts) : un tableau triable par
  * axe (Dégâts, Survie, Contrôle, Soin, Apport d'équipe ; une ligne par classe, son meilleur preset, rang partagé « =1 »
- * des ex æquo), vue « Par classe » (meilleure valeur de chaque axe), composition suggérée avec ses raisons, atouts,
- * limites et confiance dépliables, règles, hypothèses et avertissements. Aucune note globale : chaque axe est montré.
+ * des ex æquo ; Dégâts : style de jeu, « Jeu », comme la CLI), vue « Par classe » (meilleure valeur de chaque axe),
+ * composition suggérée avec ses raisons, atouts, limites, confiance et style de jeu dépliables, règles, hypothèses et
+ * avertissements. Aucune note globale : chaque axe est montré.
  */
 import type { ClassRanking } from './boss-api'
 import type { PresetEvaluation, RankingAxis } from '@/theorycraft/types'
@@ -38,7 +39,7 @@ export function axisValue(axis: RankingAxis, v: number): string {
 function axisNote(axis: RankingAxis, r: ClassRanking): string {
   switch (axis) {
     case 'damage':
-      return 'Valeur : DPT soutenu analytique (classement). « Étal. preset » = facteur d’étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s’applique pas au DPT soutenu.'
+      return 'Valeur : DPT soutenu analytique (classement). « Étal. preset » = facteur d’étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s’applique pas au DPT soutenu. « Jeu » : style retenu contre ce boss (au contact : PO non exigée) et part du DPT soutenu au contact (— : aucun dégât, style du preset) ; * = différent du style du preset ; ! = contredit par cette part (la majorité du DPT passe par des coups de l’autre style, voir les hypothèses).'
     case 'survival':
       return r.stuff === 'optimized'
         ? 'PV effectifs du stuff seul (stuff optimisé de chaque preset) ; le kit défensif de la classe compte dans l’axe Soin.'
@@ -82,6 +83,13 @@ function detailColumns(axis: RankingAxis, ranking: ClassRanking): Column<Row>[] 
         { key: 'burst', label: 'Rafale', num: true, title: 'Premier tour d’un combat (relances et poisons actifs ignorés ; poisons comptés pour toute leur durée)', sort: r => r.e.dpt.burst, cell: r => fmtNum(r.e.dpt.burst) },
         { key: 'el', label: 'Élément (rés.)', sort: r => r.e.elementMatch.resPct, cell: r => elementChip(r.e.elementMatch.element, fmtPct(r.e.elementMatch.resPct)) },
         { key: 'stance', label: 'Posture', sort: r => r.e.stance.name, cell: r => (r.e.stance.id === 'base' ? '<span class="bv-muted">—</span>' : esc(r.e.stance.name)) },
+        {
+          key: 'style',
+          label: 'Jeu (au contact)',
+          title: 'Style retenu contre ce boss (au contact : PO non exigée par l’optimiseur) et part du DPT soutenu portée par des coups au contact ; * = différent du style du preset ; ! = contredit par cette part',
+          sort: r => r.e.style.contactShare ?? (r.e.style.contact ? 1 : 0),
+          cell: r => `<span${r.e.style.reason ? ` title="${attr(`Joué ${r.e.style.label} : ${r.e.style.reason}`)}"` : ''}>${styleText(r.e)}</span>`,
+        },
         ...(ranking.presets.some(e => e.dpt.resLifted !== undefined)
           ? [
               {
@@ -121,6 +129,15 @@ function detailColumns(axis: RankingAxis, ranking: ClassRanking): Column<Row>[] 
   }
 }
 
+/**
+ * Style de jeu (« contact* 100 % ») : « * » si différent de celui du preset, « ! » si la part mesurée le contredit, part
+ * du DPT soutenu au contact (« — » sans dégâts), comme la CLI.
+ */
+function styleText(e: PresetEvaluation): string {
+  const st = e.style
+  return `${st.contact ? 'contact' : 'distance'}${st.contact !== st.presetContact ? '*' : ''}${st.mismatch ? '!' : ''} <small class="bv-sub">${st.contactShare !== undefined ? fmtPct(st.contactShare * 100) : '—'}</small>`
+}
+
 /** Détail déplié d'un preset : atouts, limites, confiance, avertissements. */
 function presetDetail(e: PresetEvaluation): string {
   const list = (items: readonly string[], empty: string) => (items.length ? `<ul>${items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : `<p class="bv-muted">${esc(empty)}</p>`)
@@ -129,7 +146,8 @@ function presetDetail(e: PresetEvaluation): string {
     <div><h4>Limites</h4>${list(e.relevance.limites, 'Aucune limite particulière détectée.')}</div>
     <div><h4>Confiance ${confidenceChip(e.confidence.level)}</h4>${list(e.confidence.reasons, 'Mécaniques de la classe modélisées.')}</div>
     ${e.warnings.length ? `<div><h4>Avertissements</h4>${list(e.warnings, '')}</div>` : ''}
-    <p class="bv-note">Stuff : ${esc(e.stuff)} · posture : ${esc(e.stance.name)} · DPT soutenu ${fmtNum(e.dpt.steady)}, rafale ${fmtNum(e.dpt.burst)} · PV ${fmtNum(e.survival.hp)}, PV effectifs ${fmtNum(e.survival.ehp)}${
+    ${e.style.reason ? `<p class="bv-note">Joué ${esc(e.style.label)} : ${esc(e.style.reason)}.</p>` : ''}
+    <p class="bv-note">Stuff : ${esc(e.stuff)} · posture : ${esc(e.stance.name)} · joué ${esc(e.style.label)} · DPT soutenu ${fmtNum(e.dpt.steady)}, rafale ${fmtNum(e.dpt.burst)} · PV ${fmtNum(e.survival.hp)}, PV effectifs ${fmtNum(e.survival.ehp)}${
       e.optimization ? ` · objectif J ${fmtNum(e.optimization.startJ, 3)} → ${fmtNum(e.optimization.bestJ, 3)}` : ''
     }</p>
   </div>`

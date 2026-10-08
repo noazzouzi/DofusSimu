@@ -17,6 +17,7 @@ import { playersForGrade } from '../src/theorycraft/bosses'
 import { fmtNum } from '../src/theorycraft/formatBoss'
 import { formatClasses } from '../src/theorycraft/formatClasses'
 import { renderClasses } from '../web/src/boss-classes'
+import { renderStuffResult } from '../web/src/boss-stuff'
 import { HttpError, readJson } from '../web/plugins/store'
 import {
   theoryBoss,
@@ -163,6 +164,15 @@ describe('POST classes et stuff', () => {
     // Résistances < 100 % : ni la page ni la CLI n'ont de colonne « Rés. levées ».
     expect(html).not.toContain('Rés. levées')
     expect(cli).not.toContain('Rés. levées')
+    // Style de jeu (colonne « Jeu ») : le premier du tableau Dégâts, preset à distance, joué au contact contre Merkator
+    // (« * » : différent du style du preset), explication en infobulle sur la page.
+    expect(html).toContain('>Jeu (au contact)<')
+    expect(cli).toContain('Jeu (au contact)')
+    const first = byId.get(r.axes.find(a => a.axis === 'damage')!.entries[0].presetId)!
+    expect(first.style).toMatchObject({ contact: true, presetContact: false, source: 'dpt' })
+    expect(html).toContain(`title="Joué au contact : ${first.style.reason}"`)
+    expect(html).toContain('contact* <small class="bv-sub">100 %</small>')
+    expect(cli).toMatch(new RegExp(`${first.presetId} .* contact\\* \\(100 %\\)`))
   })
 
   it('classes : Kimbo sans fiche (résistances ≥ 100 %) — colonne « Rés. levées » sur la page comme dans la CLI', () => {
@@ -179,6 +189,10 @@ describe('POST classes et stuff', () => {
     const lifted = fmtNum(first.dpt.resLifted!)
     expect(html).toContain(`>${lifted}<`)
     expect(cli).toContain(lifted)
+    // Aucun dégât : aucune part au contact mesurée, style du preset (« — » sur la page comme dans la CLI).
+    expect(r.presets.every(e => e.style.contactShare === undefined && e.style.source === 'preset' && e.style.contact === e.style.presetContact)).toBe(true)
+    expect(html).toContain(`${first.style.contact ? 'contact' : 'distance'} <small class="bv-sub">—</small>`)
+    expect(cli).toMatch(new RegExp(`${first.presetId} .* ${first.style.contact ? 'contact' : 'distance'} \\(—\\)`))
   })
 
   it('classes : paramètres invalides ⇒ 400, boss inconnu ⇒ 404', () => {
@@ -203,6 +217,13 @@ describe('POST classes et stuff', () => {
     expect(r.top.length).toBeGreaterThan(0)
     expect(r.top.length).toBeLessThanOrEqual(2)
     expect(r.best.sheet.items.length).toBeGreaterThan(0)
+    // Joué au contact (100 % de son DPT soutenu au contact contre Merkator) : la page le dit et l'explique.
+    expect(r.character).toMatchObject({ melee: true, style: { contact: true, source: 'dpt' } })
+    expect(r.options.rangeNeed).toBe(0)
+    const html = renderStuffResult(r, undefined)
+    expect(html).toContain(' · Terre · au contact</p>')
+    expect(html).toContain(`Joué au contact : ${r.character.style.reason} — PO non exigée, % dommages mêlée valorisés.`)
+    expect(html).toContain('PO non exigée ici, joué au contact')
   })
 
   it('stuff : lien RoxxSolver, preset de la classe du lien facultatif', () => {

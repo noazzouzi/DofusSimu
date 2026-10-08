@@ -29,9 +29,17 @@
  * Stuff : 'preset' (défaut) = stuff générique du preset (6 stuffs méta de 12/2024, jets max) ; sous le niveau 200, ces
  * stuffs sont inutilisables (objets niveau 200) : personnages SANS équipement (points et parchemins du preset),
  * signalé. 'optimized' = `optimizeStuff` contre le boss (options de `bossProxyOptions`, graines `theorySeedFilter`
- * du niveau ; `iterations` 0 par défaut : montée par coordonnées seule, ≈ 1-5 s par preset) avant les mesures ; « au
- * contact » (PO non exigée) par la règle commune à `stuff` (`playsMelee`, target.ts : boss attaquable seulement au
- * contact, ou preset de mêlée).
+ * du niveau ; `iterations` 0 par défaut : montée par coordonnées seule, ≈ 1-5 s par preset) avant les mesures.
+ *
+ * Style de jeu (`PresetEvaluation.style`) : règle commune à `stuff` (`resolveStyle`, target.ts) — au contact (PO non
+ * exigée par l'objectif, % mêlée valorisés à égalité de la cible) si le boss n'est attaquable qu'au contact, si le
+ * preset est un preset de mêlée ou si au moins `CONTACT_SHARE` (50 %) de son DPT soutenu contre ce boss passe par des
+ * coups au contact (`contactShare`, rotation.ts : mesurée avec le stuff du preset — sans équipement sous le niveau 200,
+ * comme `stuff` —, avant toute optimisation, et le style de la règle sans mesure `playsMelee` ; sans dégâts, style du
+ * preset) ; sinon à distance (6 PO visées). Le style décidé pilote la cible du proxy (optimisation, survie) et
+ * l'étiquette du personnage (DPT : à égalité de la cible, coup au contact). Un preset de mêlée reste au contact même
+ * si la majorité de son DPT passe par des coups à distance (Hanshi, « −50 % au contact ») : signalé
+ * (`PlayStyle.mismatch`, hypothèse).
  *
  * Déterministe (aucun aléa ; l'optimiseur a une graine fixe). Ce module tire le proxy de stuff, donc le Vortex
  * (src/optimizer/stuff/proxy.ts importe son mix par défaut) : il n'est PAS exporté par l'API pure (index.ts). Toutes les
@@ -49,9 +57,9 @@ import { BASE_PRESETS, PRESET_LEVEL, presetMember, type Preset } from '../optimi
 import { computeBuildStats } from '../stats/build'
 import { playersForGrade } from './bosses'
 import { bossFighter, playerFighterFromStats, theoryDptTable, withStates } from './fighters'
-import { sustainedDamage } from './rotation'
+import { contactShare, sustainedDamage } from './rotation'
 import { bestStance, STANCE_NOTES, stancesOf } from './stances'
-import { bossProxyOptions, incomingCoherence, playsMelee, refHpOf, removalPunished } from './target'
+import { bossProxyOptions, CONTACT_SHARE, contactEdge, DEFAULT_RANGE_NEED, incomingCoherence, playsMelee, rangedEdge, refHpOf, removalPunished, resolveStyle } from './target'
 import type {
   AxisRanking,
   BossProfile,
@@ -62,6 +70,7 @@ import type {
   PerElement,
   PresetEvaluation,
   RankingAxis,
+  SustainedDamage,
 } from './types'
 import { classConfidence, classUtilities, CLASS_CONFIDENCE, mergeUtilities, REF_HITS_PER_TURN, relevance } from './utilities'
 
@@ -175,8 +184,53 @@ function evaluatePreset(ctx: Context, preset: Preset): { ev: PresetEvaluation; a
   const lowLevel = level < PRESET_LEVEL
   let member = presetMember(preset, data, { level, ...(lowLevel ? { stuff: 'unstuffed' } : {}) })
   const role = preset.role as RoleId
-  const melee = playsMelee(profile, preset.extends ?? preset.id)
-  const target = bossProxyOptions(profile, { role, profile: ctx.expProfile, melee })
+  const presetId = preset.extends ?? preset.id
+  // Style de la règle sans mesure (boss attaquable seulement au contact, preset de mêlée) : celui de la mesure.
+  const ruleContact = playsMelee(profile, presetId)
+  const ruleTarget = bossProxyOptions(profile, { role, profile: ctx.expProfile, melee: ruleContact })
+
+  // ── Cibles du DPT : mêmes phases, dans le même ordre, que bossProxyOptions (attaquables, sinon toutes : hypothèse
+  // signalée par target.ts) ; elles ne dépendent pas du style de jeu ──
+  let attackable = profile.phases.filter(p => p.vulnerable !== false && p.weight > 0)
+  if (!attackable.length) attackable = profile.phases.filter(p => p.weight > 0)
+  const targets: PhaseTarget[] = (ruleTarget.options.targets ?? []).map((t, i) => ({
+    phaseId: attackable[i]?.id ?? `phase${i}`,
+    weight: t.weight,
+    fighter: bossFighter(data, t.monsterId, { grade: t.grade ?? profile.grade, stats: t.stats, states: t.states }),
+  }))
+  const variants = member.variants.length ? member.variants : (member.build.spellVariants ?? [])
+  const who = { breedId: preset.breedId, level, variants, presetId: member.presetId, name: preset.className }
+
+  /** DPT soutenu par phase de chaque posture tenable (cache par états) et meilleure posture, pour un stuff et un style. */
+  const dptOf = (stats: Stats, maxHp: number, contact: boolean) => {
+    const fighter = playerFighterFromStats(data, { ...who, contact }, stats, maxHp)
+    const cache = new Map<string, SustainedDamage[]>()
+    const perTarget = (states: readonly number[]) => {
+      const key = states.join(',')
+      let r = cache.get(key)
+      if (!r) cache.set(key, (r = targets.map(tg => sustainedDamage(ctx.table, withStates(fighter, states), tg.fighter))))
+      return r
+    }
+    const choice = bestStance(preset.breedId, states => avgBy(perTarget(states), x => x.steady, (_, i) => targets[i].weight), { knownSpells: fighter.spells.map(s => s.spellId) })
+    return { fighter, choice, chosen: perTarget(choice.stance.states) }
+  }
+
+  // ── Style de jeu (`resolveStyle`, règle commune à `stuff`) : part du DPT soutenu portée par des coups au contact,
+  // mesurée avec le stuff du preset (sans équipement sous le niveau 200 : celui de `member`, comme `stuff`), avant toute
+  // optimisation, et le style de la règle sans mesure ──
+  const built0 = computeBuildStats(member.build, data)
+  const measured = dptOf(built0.stats, built0.maxHp, ruleContact)
+  const share = contactShare(
+    ctx.table,
+    withStates(measured.fighter, measured.choice.stance.states),
+    targets.map(t => t.fighter),
+    targets.map(t => t.weight),
+    measured.chosen,
+  )
+  const style = resolveStyle(profile, presetId, { contactShare: share })
+  const melee = style.contact
+  const target = melee === ruleContact ? ruleTarget : bossProxyOptions(profile, { role, profile: ctx.expProfile, melee })
+
   let stuffLabel = lowLevel ? 'unstuffed' : preset.stuff
   let optimization: PresetEvaluation['optimization']
   if (ctx.mode === 'optimized') {
@@ -190,38 +244,11 @@ function evaluatePreset(ctx: Context, preset: Preset): { ev: PresetEvaluation; a
     stuffLabel = 'optimized'
     optimization = { startJ: res.start.score.j, bestJ: res.best.score.j }
   }
-  const built = computeBuildStats(member.build, data)
+  const built = ctx.mode === 'optimized' ? computeBuildStats(member.build, data) : built0
   if (!built.valid) warnings.push(`Build invalide (${built.issues.map(i => i.message).slice(0, 2).join(' ; ') || 'conditions'}) : mesures indicatives.`)
-  const variants = member.variants.length ? member.variants : (member.build.spellVariants ?? [])
-  const who = { breedId: preset.breedId, level, variants, presetId: member.presetId, name: preset.className, contact: melee }
-  const fighter = playerFighterFromStats(data, who, built.stats, built.maxHp)
-
-  // ── Cibles du DPT : mêmes phases, dans le même ordre, que bossProxyOptions (attaquables, sinon toutes : hypothèse
-  // signalée par target.ts) ──
-  let attackable = profile.phases.filter(p => p.vulnerable !== false && p.weight > 0)
-  if (!attackable.length) attackable = profile.phases.filter(p => p.weight > 0)
-  const targets: PhaseTarget[] = (target.options.targets ?? []).map((t, i) => ({
-    phaseId: attackable[i]?.id ?? `phase${i}`,
-    weight: t.weight,
-    fighter: bossFighter(data, t.monsterId, { grade: t.grade ?? profile.grade, stats: t.stats, states: t.states }),
-  }))
-  const steadyOf = (states: readonly number[], tg: PhaseTarget) => sustainedDamage(ctx.table, withStates(fighter, states), tg.fighter)
+  // Même stuff et même style que la mesure : rotations reprises telles quelles.
+  const { fighter, choice, chosen } = ctx.mode === 'preset' && melee === ruleContact ? measured : dptOf(built.stats, built.maxHp, melee)
   const known = fighter.spells.map(s => s.spellId)
-  const cache = new Map<string, { steady: number; burst: number }[]>()
-  const perTarget = (states: readonly number[]) => {
-    const key = states.join(',')
-    let r = cache.get(key)
-    if (!r) {
-      r = targets.map(tg => {
-        const sd = steadyOf(states, tg)
-        return { steady: sd.steady, burst: sd.burst }
-      })
-      cache.set(key, r)
-    }
-    return r
-  }
-  const choice = bestStance(preset.breedId, states => avgBy(perTarget(states), x => x.steady, (_, i) => targets[i].weight), { knownSpells: known })
-  const chosen = perTarget(choice.stance.states)
   const steady = avgBy(chosen, x => x.steady, (_, i) => targets[i].weight)
   const burst = avgBy(chosen, x => x.burst, (_, i) => targets[i].weight)
   // Facteur d'étalonnage du preset (tags.presetId : preset de base, sinon classe) : indicatif — mesuré contre le sac à dos
@@ -241,6 +268,7 @@ function evaluatePreset(ctx: Context, preset: Preset): { ev: PresetEvaluation; a
       meleeShare: neutral > 0 ? run({ rangedResPct: 100 }) / neutral : 0,
       rangeShare: neutral > 0 ? run({ meleeResPct: 100 }) / neutral : 0,
       burstRatio: steady > 0 ? burst / steady : 0,
+      ...(share !== undefined ? { contactShare: share } : {}),
     }
   }
 
@@ -314,6 +342,7 @@ function evaluatePreset(ctx: Context, preset: Preset): { ev: PresetEvaluation; a
     element: preset.element,
     stuff: stuffLabel,
     stance: { id: choice.stance.id, name: choice.stance.name, states: choice.stance.states.slice() },
+    style,
     dpt: {
       steady,
       burst,
@@ -519,6 +548,40 @@ function suggestComposition(profile: BossProfile, evs: readonly PresetEvaluation
 // Classement
 // ---------------------------------------------------------------------------------------------------------------------
 
+/** Presets et parts au contact (« a, b (100 % chacun) » si la part est commune, sinon « a (52 %), b (87 %) »). */
+function sharesText(list: readonly PresetEvaluation[]): { ids: string; same?: number } {
+  const shares = list.map(e => Math.round((e.style.contactShare ?? 0) * 100))
+  const same = shares.every(x => x === shares[0])
+  return { ids: list.map((e, i) => (same ? e.presetId : `${e.presetId} (${shares[i]} %)`)).join(', '), ...(same ? { same: shares[0] } : {}) }
+}
+
+/**
+ * Hypothèse « joués au contact par leur DPT » : presets à distance (`ranged` au total) dont au moins `CONTACT_SHARE` du
+ * DPT soutenu passe par des coups au contact, part au contact (une seule si elle est commune), ce qui fait mieux subir
+ * au boss les coups au contact (`edge`, `contactEdge`).
+ */
+function byDptText(list: readonly PresetEvaluation[], ranged: number, edge: string | undefined): string {
+  const { ids, same } = sharesText(list)
+  return (
+    `Joués au contact par leur DPT (au moins ${fmt(CONTACT_SHARE * 100)} % de leur DPT soutenu contre ce boss passe par des coups au contact) : ` +
+    `${list.length} preset(s) à distance sur ${ranged}${same !== undefined ? ` (${same} % chacun)` : ''}${edge ? ` — le boss subit mieux les coups au contact (${edge})` : ' — sorts qui ne frappent qu\'au contact'} : ${ids}.`
+  )
+}
+
+/**
+ * Hypothèse « au contact malgré leur DPT » : presets joués au contact (`contact` au total) dont moins de `CONTACT_SHARE`
+ * du DPT soutenu passe par des coups au contact (`PlayStyle.mismatch`) — le boss subit mieux les coups à distance
+ * (`edge`, `rangedEdge`) ; ils restent au contact (règle), DPT et équivalences comptent ces coups à distance.
+ */
+function mismatchText(list: readonly PresetEvaluation[], contact: number, edge: string | undefined): string {
+  const { ids, same } = sharesText(list)
+  return (
+    `Au contact malgré leur DPT (moins de ${fmt(CONTACT_SHARE * 100)} % de leur DPT soutenu contre ce boss passe par des coups au contact, « ! » dans la colonne « Jeu ») : ` +
+    `${list.length} preset(s) joué(s) au contact sur ${contact}${same !== undefined ? ` (${same} % chacun)` : ''}${edge ? ` — le boss subit mieux les coups à distance (${edge})` : ' — sorts qui frappent surtout à distance'} : ${ids}. ` +
+    'Ils restent au contact (règle du style : PO non exigée par l\'objectif, coup au contact à égalité de la cible) ; leur DPT compte ces coups à distance (% dommages distance).'
+  )
+}
+
 /** Classe les presets et les classes contre le boss (voir l'en-tête). */
 export function rankClasses(data: GameDataStore, profile: BossProfile, opts: RankClassesOptions = {}): ClassRanking {
   const presets = opts.presets ?? BASE_PRESETS
@@ -593,6 +656,10 @@ export function rankClasses(data: GameDataStore, profile: BossProfile, opts: Ran
   const comp = suggestComposition(profile, evs, players)
   const composition = { members: comp.members, rules: COMPOSITION_RULES.slice(), notes: comp.notes }
 
+  // Presets à distance joués au contact parce que la majorité de leur DPT passe par des coups au contact.
+  const byDpt = evs.filter(e => e.style.source === 'dpt')
+  // Presets joués au contact dont la majorité du DPT passe par des coups à distance (preset de mêlée contre Hanshi).
+  const mismatched = evs.filter(e => e.style.mismatch)
   const assumptions = [
     ...profile.assumptions,
     ...targetAssumptions,
@@ -603,6 +670,9 @@ export function rankClasses(data: GameDataStore, profile: BossProfile, opts: Ran
         : 'Stuffs génériques des presets (6 stuffs méta de 12/2024, data/ai/presets.json, jets max), partagés entre classes d\'un même élément.',
     `Presets écrits à la main : ${presets.length} preset(s), 2 à 3 voies par classe, variantes de sorts fixées (d'autres variantes peuvent mieux convenir à ce boss).`,
     'DPT soutenu NON calibré : sac à dos analytique en régime établi (relances amorties), contre chaque phase attaquable pondérée ; meilleure posture de classe, tenue tout le combat (coût de changement non compté).',
+    `Jeu (colonne « Jeu » : style et part du DPT soutenu au contact) : au contact si le boss n'est attaquable qu'au contact, si le preset est un preset de mêlée ou si au moins ${fmt(CONTACT_SHARE * 100)} % de son DPT soutenu contre ce boss passe par des coups au contact (${level < PRESET_LEVEL ? 'personnage sans équipement, comme les mesures sous le niveau 200' : 'stuff du preset'}${mode === 'optimized' ? ', avant optimisation' : ''} ; sans dégâts, style du preset) — PO non exigée par l'objectif de l'optimiseur, et à égalité de la cible coups au contact (% mêlée) ; sinon à distance (${DEFAULT_RANGE_NEED} PO visées). Même règle que le meilleur stuff.`,
+    ...(byDpt.length ? [byDptText(byDpt, evs.filter(e => !e.style.presetContact).length, contactEdge(profile))] : []),
+    ...(mismatched.length ? [mismatchText(mismatched, evs.filter(e => e.style.contact).length, rangedEdge(profile))] : []),
     'Facteur d\'étalonnage du preset affiché à côté du DPT (data/ai/calibration.json, mini-combat contre un Buboxor au niveau 200 avec le stuff du preset) : INDICATIF — il rapporte les dégâts du moteur au sac à dos joué DANS le moteur (buffs et rampes vus), pas au DPT soutenu hors combat ; il ne corrige ni ne contrôle ce DPT, et ne dépend ni du boss, ni du niveau, ni d\'un stuff optimisé.',
     'Axes indépendants, sans note globale : un tour consacré au retrait ou au soin n\'est pas consacré aux dégâts.',
     'Axe Contrôle : PM + PA retirés en UN tour (tour mixte, un seul budget de PA, réserves non punies que le boss possède) ; les colonnes « PM seul » / « PA seul » supposent chacune tout le tour et ne s\'additionnent pas.',

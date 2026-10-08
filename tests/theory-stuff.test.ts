@@ -55,7 +55,10 @@ const rankOf = (r: StuffVsBossResult, e: StuffEvaluation) => (r.ranking.by === '
 
 describe('stuffVsBoss : Crâ Terre contre Merkator (−50 % à distance)', () => {
   it('le stuff optimisé améliore logJ et PV effectifs par rapport au stuff du preset', () => {
-    expect(cra.character).toMatchObject({ presetId: 'cra_terre_mono', breedId: 9, input: 'preset', melee: false, element: 'earth' })
+    // Joué au contact : tout son DPT soutenu passe par des coups au contact, que Merkator subit mieux (style, target.ts).
+    expect(cra.character).toMatchObject({ presetId: 'cra_terre_mono', breedId: 9, input: 'preset', melee: true, element: 'earth' })
+    expect(cra.character.style).toMatchObject({ contact: true, source: 'dpt' })
+    expect(cra.options.rangeNeed).toBe(0)
     expect(cra.boss).toMatchObject({ monsterId: MERKATOR, grade: 1, rangedResPct: 50 })
     expect(cra.startValid).toBe(true)
     expect(cra.start.origin).toBe('start')

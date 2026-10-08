@@ -331,6 +331,48 @@ export interface DamageShape {
   meleeShare: number
   rangeShare: number
   burstRatio: number
+  /**
+   * Part du DPT soutenu CONTRE LE BOSS (phases attaquables pondérées) portée par des coups au contact (`contactShare`,
+   * rotation.ts) — mesure du style de jeu (`resolveStyle`, target.ts). Absente hors du classement des classes, et sans
+   * dégâts contre le boss.
+   */
+  contactShare?: number
+}
+
+/**
+ * Style de jeu d'un preset contre un boss (`resolveStyle`, target.ts) : au contact ou à distance. Il pilote la PO visée
+ * par l'objectif (`rangeNeed` : 0 au contact, 6 à distance), l'étiquette « joué au contact » du proxy et de la table du
+ * theorycraft (`CONTACT_TAG` : à égalité de la cible, % mêlée valorisés) et les libellés des rendus.
+ */
+export interface PlayStyle {
+  /** Joué au contact. */
+  contact: boolean
+  /** « au contact » ou « à distance ». */
+  label: string
+  /** Style propre du preset : preset de mêlée (`MELEE_PRESET`) ⇒ au contact, sinon à distance. */
+  presetContact: boolean
+  /**
+   * Ce qui décide : `explicit` = choix explicite (option `melee`) ; `boss` = boss attaquable seulement au contact ;
+   * `preset` = style du preset ; `dpt` = au moins `CONTACT_SHARE` du DPT soutenu passe par des coups au contact.
+   */
+  source: 'explicit' | 'boss' | 'preset' | 'dpt'
+  /**
+   * Part du DPT soutenu contre le boss (phases attaquables pondérées, meilleure posture) portée par des coups au contact,
+   * mesurée avec le stuff du preset (sans équipement sous le niveau 200, comme `rankClasses`) ou le stuff fourni, et le
+   * style de la règle sans mesure (`playsMelee`) ou le choix explicite ; absente si non mesurée ou sans dégâts.
+   */
+  contactShare?: number
+  /**
+   * Explication, sans le « joué au contact : » initial, quand le style diffère de celui du preset (`presetContact`) ou
+   * quand la part mesurée le contredit (`mismatch`).
+   */
+  reason?: string
+  /**
+   * Style contredit par la part mesurée : la majorité du DPT soutenu passe par des coups de l'autre style (preset de
+   * mêlée contre un boss qui subit mieux les coups à distance, choix explicite). DPT et équivalences comptent ces
+   * coups-là (le coup que le boss subit le mieux) ; le style ne fixe que la PO visée et le coup retenu à égalité.
+   */
+  mismatch?: boolean
 }
 
 export interface ClassUtilities {
@@ -390,6 +432,8 @@ export interface PresetEvaluation {
   /** Stuff utilisé : identifiant du stuff générique, `unstuffed` (sans objet), ou `optimized`. */
   stuff: string
   stance: { id: string; name: string; states: number[] }
+  /** Style de jeu contre ce boss (`resolveStyle`, target.ts : même règle que `stuffVsBoss`), décidé avec le stuff du preset. */
+  style: PlayStyle
   dpt: {
     /** DPT soutenu en régime établi (rotation.ts `steady`), NON calibré, pondéré par les phases attaquables. */
     steady: number
@@ -711,8 +755,10 @@ export interface StuffVsBossResult {
     element: StuffElement
     elementLabel: string
     level: number
-    /** Joué au contact (PO non exigée). */
+    /** Joué au contact (= `style.contact`). */
     melee: boolean
+    /** Style de jeu contre ce boss (`resolveStyle`, target.ts : même règle que `rankClasses`), décidé au stuff de départ. */
+    style: PlayStyle
     /** Origine du stuff de départ. */
     input: 'preset' | 'build' | 'roxx'
     variants: (0 | 1)[]

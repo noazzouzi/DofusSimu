@@ -3,7 +3,8 @@
  * et rendu du résultat (`StuffVsBossResult`, src/theorycraft/stuff.ts) — tableau comparatif (départ, stuffs génériques,
  * stuffs optimisés), meilleur stuff objet par objet (icônes DofusDB, repli hors ligne sur l'initiale de l'emplacement),
  * objets changés, autres stuffs du top, comparaison des éléments, équivalences des caractéristiques, DPT par sort,
- * hypothèses et avertissements. HTML seulement : rien n'est recalculé ici.
+ * hypothèses et avertissements ; style de jeu du personnage (au contact ou à distance) et son explication quand il
+ * diffère de celui du preset ou que la part mesurée le contredit. HTML seulement : rien n'est recalculé ici.
  */
 import type { ExpProfile, StuffVsBossResult, TheoryPreset } from './boss-api'
 import type { StuffEvaluation, StuffItemLine } from '@/theorycraft/types'
@@ -151,7 +152,9 @@ function comparison(r: StuffVsBossResult, sort: SortState | undefined): string {
   return `<section class="panel bv-card" aria-labelledby="bv-cmp-title">
     <header class="panel-head"><h2 id="bv-cmp-title">Comparaison</h2><span class="hint">${rows.length} stuffs évalués contre ce boss</span></header>
     ${sortableTable('stuff-cmp', cols, rows, sort, { rowAttrs: e => (e.id === r.best.id ? 'class="best"' : '') })}
-    <p class="bv-note bv-pad">${esc(r.ranking.reason)} DPT soutenu : rotation établie, meilleure posture, non calibré. Pénalité : facteur de l’objectif pour PA/PM/PO sous les valeurs visées (${r.options.rangeNeed} PO ici ; détail dans les hypothèses), un réglage et non un effet du boss.</p>
+    <p class="bv-note bv-pad">${esc(r.ranking.reason)} DPT soutenu : rotation établie, meilleure posture, non calibré. Pénalité : facteur de l’objectif pour PA/PM/PO sous les valeurs visées (${
+      r.options.rangeNeed > 0 ? `${r.options.rangeNeed} PO ici` : `PO non exigée ici, joué ${esc(r.character.style.label)}`
+    } ; détail dans les hypothèses), un réglage et non un effet du boss.</p>
   </section>`
 }
 
@@ -292,9 +295,10 @@ export function renderStuffResult(r: StuffVsBossResult, sort: SortState | undefi
   const icons = iconMap(r)
   const c = r.character
   const s = r.search
-  return `<p class="bv-lead">${esc(c.className)} niveau ${c.level} · preset <code>${esc(c.presetId)}</code> (${esc(c.presetLabel)}) · rôle ${esc(c.roleLabel)} · ${esc(c.elementLabel)} · ${
-    c.melee ? 'au contact' : 'à distance'
-  }${c.input !== 'preset' ? ` · départ : ${c.input === 'roxx' ? 'votre lien RoxxSolver' : 'votre build'}` : ''}</p>
+  return `<p class="bv-lead">${esc(c.className)} niveau ${c.level} · preset <code>${esc(c.presetId)}</code> (${esc(c.presetLabel)}) · rôle ${esc(c.roleLabel)} · ${esc(c.elementLabel)} · ${esc(
+    c.style.label,
+  )}${c.input !== 'preset' ? ` · départ : ${c.input === 'roxx' ? 'votre lien RoxxSolver' : 'votre build'}` : ''}</p>
+    ${c.style.reason ? `<p class="bv-note">Joué ${esc(c.style.label)} : ${esc(c.style.reason)} — ${r.options.rangeNeed > 0 ? `${r.options.rangeNeed} PO visées` : 'PO non exigée'}${c.style.contact && !c.style.mismatch ? ', % dommages mêlée valorisés' : ''}.</p>` : ''}
     ${best(r, icons)}
     ${comparison(r, sort)}
     ${others(r, icons)}
