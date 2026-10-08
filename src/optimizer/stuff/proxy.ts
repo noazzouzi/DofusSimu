@@ -58,31 +58,15 @@ import { copyStats } from '../../stats/fastStats'
 import { RUNE_WEIGHT_PER_POINT } from '../../stats/forgemagie'
 import { detLog } from './detmath'
 import { applyTargetOverrides, proxyEngine } from './targetFighter'
+import { ROLE_EXPONENTS, type ProxyExponents } from './profiles'
 
 // Moteur partagé et surcharges des cibles : targetFighter.ts (sans dépendance au Vortex), ré-exportés ici.
 export { applyTargetOverrides, proxyEngine, type TargetOverrides } from './targetFighter'
 
 // ───────────────────────────── paramètres ─────────────────────────────
 
-export interface ProxyExponents {
-  a: number
-  b: number
-  c: number
-}
-
-/** Exposants (a, b, c) de J par rôle (§15.4). */
-export const ROLE_EXPONENTS: Readonly<Record<RoleId, ProxyExponents>> = {
-  killer: { a: 0.7, b: 0.3, c: 0 },
-  zoneDps: { a: 0.7, b: 0.3, c: 0 },
-  tank: { a: 0.2, b: 0.8, c: 0.2 },
-  mpLock: { a: 0.3, b: 0.4, c: 1 },
-  apLock: { a: 0.3, b: 0.4, c: 1 },
-  healer: { a: 0.2, b: 0.5, c: 1 },
-  // Non chiffrés par le design : compromis documentés.
-  placer: { a: 0.4, b: 0.5, c: 0.5 },
-  support: { a: 0.3, b: 0.5, c: 1 },
-  summoner: { a: 0.6, b: 0.4, c: 0.3 },
-}
+// Exposants de J : profiles.ts (sans dépendance au Vortex), ré-exportés ici.
+export { ROLE_EXPONENTS, type ProxyExponents } from './profiles'
 
 export type ProxyElement = 'earth' | 'fire' | 'water' | 'air'
 

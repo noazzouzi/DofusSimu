@@ -8,7 +8,27 @@
  * a et b restent ≥ 0,05 ; c n'est jamais modifié. Les décalages viennent des réglages du Vortex
  * (docs/reports/vortex-stuffs.md) : la sortie de `vortexProxyOptions` est inchangée par l'extraction.
  */
-import type { ProxyExponents } from './proxy'
+import type { RoleId } from '../../ai/types'
+
+export interface ProxyExponents {
+  a: number
+  b: number
+  c: number
+}
+
+/** Exposants (a, b, c) de J par rôle (§15.4). */
+export const ROLE_EXPONENTS: Readonly<Record<RoleId, ProxyExponents>> = {
+  killer: { a: 0.7, b: 0.3, c: 0 },
+  zoneDps: { a: 0.7, b: 0.3, c: 0 },
+  tank: { a: 0.2, b: 0.8, c: 0.2 },
+  mpLock: { a: 0.3, b: 0.4, c: 1 },
+  apLock: { a: 0.3, b: 0.4, c: 1 },
+  healer: { a: 0.2, b: 0.5, c: 1 },
+  // Non chiffrés par le design : compromis documentés.
+  placer: { a: 0.4, b: 0.5, c: 0.5 },
+  support: { a: 0.3, b: 0.5, c: 1 },
+  summoner: { a: 0.6, b: 0.4, c: 0.3 },
+}
 
 export type ExponentProfile = 'balanced' | 'defensive' | 'offensive'
 export const EXPONENT_PROFILES: readonly ExponentProfile[] = ['balanced', 'defensive', 'offensive']
