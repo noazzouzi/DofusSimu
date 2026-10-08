@@ -17,43 +17,17 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import type { Plugin, ViteDevServer } from 'vite'
-import { loadDataStore, type NodeDataStore } from '../../src/data/node'
 import { allocate, editorMeta, itemCatalog, previewTeam, teamFileName, type CatalogItem } from '../../src/optimizer/team/editor'
 import { roxxImport } from '../../src/optimizer/team/roxx'
 import { saveTeamDraft, stuffCatalog, TEAMS_DIR } from '../../src/optimizer/team/teamfile'
 import type { PrimaryStat } from '../../src/stats/characteristicPoints'
 import { STUFF_SHEET_VERSION, type DraftMember, type StuffCatalog } from '../../src/stats/sheet'
+import { HttpError, readJson, sendJson, sharedStore } from './store'
 
 const VIRTUAL_ID = 'virtual:dofussimu-stuffs'
 const RESOLVED_ID = `\0${VIRTUAL_ID}`
 const API = '/api/stuffs/'
 const PRIMARY: readonly PrimaryStat[] = ['vitality', 'wisdom', 'strength', 'intelligence', 'chance', 'agility']
-
-class HttpError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message)
-  }
-}
-
-async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
-  const chunks: Buffer[] = []
-  let size = 0
-  for await (const c of req) {
-    size += (c as Buffer).length
-    if (size > 2_000_000) throw new HttpError(413, 'Requête trop grosse')
-    chunks.push(c as Buffer)
-  }
-  try {
-    const body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as unknown
-    if (!body || typeof body !== 'object' || Array.isArray(body)) throw new Error('objet attendu')
-    return body as Record<string, unknown>
-  } catch (e) {
-    throw new HttpError(400, `JSON invalide : ${(e as Error).message}`)
-  }
-}
 
 const str = (v: unknown, what: string): string => {
   if (typeof v !== 'string' || !v.trim()) throw new HttpError(400, `« ${what} » manquant`)
@@ -69,13 +43,13 @@ const primary = (v: unknown, what: string): PrimaryStat => {
 }
 
 export function stuffsPlugin(): Plugin {
-  let data: NodeDataStore | undefined
   let code: string | undefined
   let items: CatalogItem[] | undefined
   let editable = false
   /** Fichiers écrits par l'API : leur changement ne recharge pas la page (le client a déjà la réponse). */
   const selfWrites = new Set<string>()
-  const store = () => (data ??= loadDataStore())
+  // Données du jeu partagées avec la section « Boss » (web/plugins/theory.ts) : chargées une seule fois.
+  const store = sharedStore
 
   const build = (): string => {
     let catalog: StuffCatalog
@@ -105,11 +79,7 @@ export function stuffsPlugin(): Plugin {
   async function handle(req: IncomingMessage, res: ServerResponse, server: ViteDevServer): Promise<void> {
     const url = new URL(req.url ?? '/', 'http://localhost')
     const route = url.pathname.replace(/^\/+/, '')
-    const send = (status: number, body: unknown) => {
-      res.statusCode = status
-      res.setHeader('Content-Type', 'application/json; charset=utf-8')
-      res.end(JSON.stringify(body))
-    }
+    const send = (status: number, body: unknown) => sendJson(res, status, body)
     try {
       if (req.method === 'GET' && route === 'editor') {
         const scenario = url.searchParams.get('scenario') || 'vortex'
