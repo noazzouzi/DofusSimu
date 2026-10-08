@@ -5,10 +5,13 @@
  * preset de la classe, --out réutilisable par --build et par un fichier d'équipe), `degats` (comparé à damageRange /
  * expectedDamage calculés ici : Flèche Punitive du Crâ Terre contre 20 % de résistance Terre ; coup au contact ou à
  * distance selon la case — Pression contre Merkator ; invulnérabilité à distance du Père Ver ; build nu complété par le
- * preset de son élément), erreurs en français (boss inconnu, ambigu avec candidats, preset inconnu, options exclusives)
- * et drapeaux booléens qui n'avalent pas le positionnel suivant (`--json 147`).
+ * preset de son élément ; lignes réservées aux invocations écartées — Concentration ; un tableau par jeu de résistances
+ * d'une fiche à résistances par phase — Kimbo ; aucun avertissement d'invulnérabilité sans ligne de dégâts — Bond),
+ * erreurs en français (boss inconnu, ambigu avec candidats, preset inconnu, options exclusives, option inconnue ou d'une
+ * autre commande, `--res` à entrée vide), fiche manuelle mal nommée signalée, ligne de progression fermée avant une
+ * erreur, et drapeaux booléens qui n'avalent pas le positionnel suivant (`--json 147`).
  */
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -17,11 +20,11 @@ import { critChance } from '../src/damage/crit'
 import { damageRange, expectedDamage, type DamageInput } from '../src/damage/damage'
 import { loadDataStore } from '../src/data/node'
 import { main, usage } from '../src/cli/simulate'
-import { playersForGrade } from '../src/cli/theory'
+import { playersForGrade, progressLine } from '../src/cli/theory'
 import { getPreset, presetBuild } from '../src/optimizer/team/presets'
 import { loadTeamFile } from '../src/optimizer/team/teamfile'
 import { computeBuildStats } from '../src/stats/build'
-import { bossProfile, listBosses } from '../src/theorycraft/index'
+import { bossProfile, listBosses, parseBossOverrides } from '../src/theorycraft/index'
 import { nodeDungeonSource } from '../src/theorycraft/node'
 import type { BossEntry, ClassRanking, StuffVsBossResult } from '../src/theorycraft/types'
 
@@ -46,6 +49,19 @@ const json = <T>(): T => JSON.parse(text()) as T
 const data = loadDataStore()
 const MERKATOR = 3534
 const PERE_VER = 4726
+const KIMBO = 1045
+/** Fiche d'exemple du guide (docs/theorycraft.md §5) : deux phases, un élément à 0 % dans chacune. */
+const KIMBO_FICHE = {
+  version: 1,
+  monsterId: KIMBO,
+  name: 'Kimbo',
+  updatedAt: '2026-10-08',
+  phases: [
+    { id: 'impair', name: 'Glyphe impair', states: [29], weight: 1, resPct: [400, 400, 400, 400, 0], vulnerable: true },
+    { id: 'pair', name: 'Glyphe pair', states: [30], weight: 1, resPct: [400, 0, 400, 400, 400], vulnerable: true },
+  ],
+  notes: 'EXEMPLE FICTIF (tests).',
+}
 const tmp = mkdtempSync(join(tmpdir(), 'dofussimu-cli-theory-'))
 
 describe('CLI theorycraft : aide et index des boss', () => {
@@ -153,6 +169,42 @@ describe('CLI theorycraft : fiche du boss', () => {
     expect(json<{ monsterId: number }>().monsterId).toBe(MERKATOR)
     expect(await main(['boss', String(PERE_VER), '--bosses-dir', dir])).toBe(1)
     expect(errors()).toMatch(new RegExp(`^Erreur : .*${PERE_VER}\\.json : « resPct » : un tableau attendu`))
+  })
+
+  it('fiche mal nommée (kimbo.json) : ignorée par la CLI, mais signalée dans les avertissements de la fiche', async () => {
+    const dir = mkdtempSync(join(tmp, 'bosses-'))
+    writeFileSync(join(dir, 'kimbo.json'), JSON.stringify(KIMBO_FICHE))
+    expect(await main(['boss', String(KIMBO), '--bosses-dir', dir, '--json'])).toBe(0)
+    const p = json<{ overrides?: unknown; warnings: string[] }>()
+    expect(p.overrides).toBeUndefined()
+    expect(p.warnings[0]).toBe(`Fiche manuelle ${join(dir, 'kimbo.json')} ignorée : c'est une fiche de ce boss (monsterId ${KIMBO}), le fichier doit s'appeler ${KIMBO}.json.`)
+    // Fichier mal nommé d'un autre boss : signalé aussi (la page web refuserait tout le dossier) ; --no-overrides : rien.
+    out = []
+    expect(await main(['boss', 'merkator', '--bosses-dir', dir, '--json'])).toBe(0)
+    expect(json<{ warnings: string[] }>().warnings[0]).toMatch(/kimbo\.json ignoré : une fiche manuelle doit s'appeler <monsterId>\.json/)
+    out = []
+    expect(await main(['boss', 'merkator', '--bosses-dir', dir, '--no-overrides', '--json'])).toBe(0)
+    expect(json<{ warnings: string[] }>().warnings.some(w => w.includes('kimbo.json'))).toBe(false)
+  })
+
+  it('option inconnue, ou d’une autre commande : refusée (jamais ignorée), avec les options de la commande', async () => {
+    const file = join(tmp, 'fiche-out.json')
+    expect(await main(['boss', 'merkator', '--out', file])).toBe(1)
+    expect(errors()).toMatch(/^Erreur : boss : option inconnue --out — option de « boss … classes », « boss … stuff » \(options : --players, .*, --details, --json\)$/)
+    expect(existsSync(file)).toBe(false)
+    err = []
+    expect(await main(['bosses', '--toto'])).toBe(1)
+    expect(errors()).toBe('Erreur : bosses : option inconnue --toto (options : --all, --json)')
+    err = []
+    expect(await main(['boss', 'merkator', 'classes', '--class', 'cra'])).toBe(1)
+    expect(errors()).toContain('boss … classes : option inconnue --class — option de « boss … stuff »')
+    err = []
+    // --level n'est pas une option de degats (niveau : celui du preset, du fichier --build ou du lien --roxx).
+    expect(await main(['degats', '--preset', 'cra_terre_mono', '--sort', '32456', '--level', '150'])).toBe(1)
+    expect(errors()).toContain('degats : option inconnue --level — option de « boss … classes », « boss … stuff »')
+    err = []
+    expect(await main(['degats', '--preset', 'cra_terre_mono', '--sort', '32456', '--bosses-dir', tmp])).toBe(1)
+    expect(errors()).toBe('Erreur : --bosses-dir : seulement avec --boss')
   })
 
   it('--details : zone « ; » (liste de cases) lisible dans l’arbre du sort de départ', async () => {
@@ -427,6 +479,70 @@ describe('CLI theorycraft : calculateur de dégâts', () => {
     expect(r.warnings[0]).toMatch(/^--build nu-terre-degats\.json : points de caractéristiques, parchemins, variantes de sorts absent\(s\) du fichier — repris du preset « cra_terre_mono »/)
   })
 
+  it('Concentration (Iop) : la ligne réservée aux invocations (masque J,j) est écartée, comme dans le DPT du theorycraft', async () => {
+    // Données : deux lignes Terre (97), l'une sur les joueurs et monstres non invoqués, l'autre sur les invocations.
+    const cl = data.spellLevel(13123, { playerLevel: 200 })!
+    expect(cl.effects.filter(x => x.effectId === 97).map(x => x.targetMask)).toEqual(['L,M,l,m,c', 'J,j'])
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Concentration', '--boss', 'merkator', '--no-overrides', '--json'])).toBe(0)
+    const r = json<{ lines: (Line & { index: number; rolls: { min: number } })[]; expectedTotal: number; skippedLines: number; skipped: unknown; phaseTables?: unknown }>()
+    expect(r.lines.map(l => [l.index, l.rolls.min])).toEqual([[1, 20]])
+    expect(r.expectedTotal).toBeCloseTo(r.lines[0].expected, 9)
+    expect(r.skippedLines).toBe(1)
+    expect(r.skipped).toEqual([{ reason: 'sur les invocations', count: 1 }])
+    // Phases du Merkator aux mêmes résistances : un seul tableau.
+    expect(r.phaseTables).toBeUndefined()
+    // Poutch (--res par défaut) : cible non invoquée, même tri ; raison dans le texte.
+    out = []
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Concentration'])).toBe(0)
+    expect(text()).toContain('Lignes de dégâts écartées (ne touchent pas la cible) : 1 sur les invocations.')
+    expect(text()).not.toMatch(/^\s+2\s+Terre/m)
+  })
+
+  it('fiche à résistances par phase (Kimbo du guide) : un tableau par phase, aux résistances de la phase ; résistances ≥ 100 % signalées', async () => {
+    const dir = mkdtempSync(join(tmp, 'bosses-'))
+    writeFileSync(join(dir, `${KIMBO}.json`), JSON.stringify(KIMBO_FICHE))
+    expect(await main(['degats', '--preset', 'cra_terre_mono', '--sort', '32456', '--boss', 'kimbo', '--bosses-dir', dir, '--json'])).toBe(0)
+    type Table = { phases: string[]; weight: number; resPct: number[]; hit: { lines: Line[]; expectedTotal: number } }
+    const r = json<{ phaseTables: Table[]; lines: Line[]; expectedTotal: number; target: { resPct: number[] }; warnings: string[] }>()
+    expect(r.phaseTables.map(t => [t.phases, t.weight, t.resPct])).toEqual([
+      [['Glyphe impair'], 0.5, [400, 400, 400, 400, 0]],
+      [['Glyphe pair'], 0.5, [400, 0, 400, 400, 400]],
+    ])
+    // Phase impaire : Terre à 400 % ⇒ 0 ; phase paire : Terre à 0 %, caractéristiques du boss pour le reste.
+    expect(r.phaseTables[0].hit.expectedTotal).toBe(0)
+    const even = { ...bossProfile(data, KIMBO, { overrides: parseBossOverrides(KIMBO_FICHE, 'kimbo') }).stats, earthResPct: 0 }
+    const pct = critChance(lvl.critChance, stats.critical)
+    expect(r.phaseTables[1].hit.lines[0].normal).toMatchObject(damageRange(input(even), rolls.min, rolls.max))
+    expect(r.phaseTables[1].hit.expectedTotal).toBeGreaterThan(0)
+    expect(r.phaseTables[1].hit.expectedTotal).toBeCloseTo(expectedDamage(input(even), null, rolls, pct), 9)
+    // Champs du premier tableau en tête ; mécanique « résistances extrêmes » relayée, valeur de la fiche signalée.
+    expect([r.lines, r.expectedTotal, r.target.resPct]).toEqual([r.phaseTables[0].hit.lines, 0, [400, 400, 400, 400, 0]])
+    expect(r.warnings.some(w => w.startsWith('Mécanique du boss : Résistances ≥ 100 %'))).toBe(true)
+    expect(r.warnings).toContain('Résistance Terre 400 % pendant la phase Glyphe impair (≥ 100 %) : 0 dans le calcul. Valeur de la fiche manuelle.')
+    out = []
+    expect(await main(['degats', '--preset', 'cra_terre_mono', '--sort', '32456', '--boss', 'kimbo', '--bosses-dir', dir])).toBe(0)
+    expect(text()).toContain('Résistances : selon la phase (tableaux ci-dessous)')
+    expect(text()).toContain('Phase « Glyphe pair » (50 % du combat) — résistances : Neutre 400 %, Terre 0 %, Feu 400 %, Eau 400 %, Air 400 %')
+    // Sans fiche : 400 % partout, un tableau, conseil d'écrire une fiche.
+    out = []
+    expect(await main(['degats', '--preset', 'cra_terre_mono', '--sort', '32456', '--boss', 'kimbo', '--no-overrides', '--json'])).toBe(0)
+    const raw = json<{ phaseTables?: unknown; expectedTotal: number; warnings: string[] }>()
+    expect([raw.phaseTables, raw.expectedTotal]).toEqual([undefined, 0])
+    expect(raw.warnings.some(w => w.startsWith('Résistance Terre 400 % (≥ 100 %) : 0 dans le calcul. C\'est une mécanique à lever en combat'))).toBe(true)
+  })
+
+  it('sort sans ligne de dégâts (Bond) contre le Père Ver : aucun tableau, donc aucun avertissement « valeurs mises à 0 »', async () => {
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Bond', '--boss', String(PERE_VER), '--no-overrides', '--json'])).toBe(0)
+    const r = json<{ lines: Line[]; warnings: string[] }>()
+    expect(r.lines).toEqual([])
+    expect(r.warnings.filter(w => w.startsWith('Coup '))).toEqual([])
+    expect(r.warnings).toContain('Mécanique du boss : Invulnérable à distance : état « Invulnérable à Distance » (375) dès le début du combat.')
+    out = []
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Bond', '--boss', String(PERE_VER), '--no-overrides'])).toBe(0)
+    expect(text()).toContain('Aucune ligne de dégâts sur la cible.')
+    expect(text()).not.toContain("l'autre tableau")
+  })
+
   it('lignes conditionnelles en clair, hors espérance d’un lancer (Flèche Dévorante)', async () => {
     expect(await main(['degats', '--preset', 'cra_feu_zone', '--sort', 'Flèche Dévorante', '--json'])).toBe(0)
     const r = json<{ lines: { condition?: string }[]; expectedTotal: number | null; skippedLines: number }>()
@@ -450,7 +566,39 @@ describe('CLI theorycraft : calculateur de dégâts', () => {
     expect(await main(['degats', '--preset', 'cra_terre_mono', '--sort', '32456', '--res', '1,2'])).toBe(1)
     expect(errors()).toContain('--res : 5 pourcentages n,t,f,e,a attendus')
     err = []
+    // Entrée vide : Number('') vaudrait 0 — une résistance oubliée n'est pas prise pour 0 %.
+    expect(await main(['degats', '--preset', 'cra_terre_mono', '--sort', '32456', '--res', '0,,0,0,0'])).toBe(1)
+    expect(errors()).toContain('--res : 5 pourcentages n,t,f,e,a attendus (Neutre, Terre, Feu, Eau, Air ; « 0,,0,0,0 »)')
+    err = []
     expect(await main(['degats', '--preset', 'cra_terre_mono'])).toBe(1)
     expect(errors()).toContain('degats : --sort <nom|id> attendu')
+  })
+})
+
+describe('CLI theorycraft : ligne de progression', () => {
+  it('fermée (retour à la ligne) avant de laisser passer une erreur du calcul ; bilan en fin de calcul sinon', () => {
+    const p = progressLine()
+    const fail = () =>
+      p.around(() => {
+        p.write('Recherche : 1/3…')
+        throw new Error('panne')
+      })
+    expect(fail).toThrow('panne')
+    expect(progress.join('')).toBe(`${'\rRecherche : 1/3…'.padEnd(70)}\n`)
+    progress = []
+    const q = progressLine()
+    expect(q.around(() => (q.write('2/3'), 42))).toBe(42)
+    q.end('Recherche terminée.')
+    expect(progress.join('')).toBe(`${'\r2/3'.padEnd(70)}${'\rRecherche terminée.'.padEnd(70)}\n`)
+    // Rien d'affiché (sortie --json hors terminal) : rien n'est écrit, ni avant l'erreur ni en fin de calcul.
+    progress = []
+    const r = progressLine()
+    expect(() =>
+      r.around(() => {
+        throw new Error('panne')
+      }),
+    ).toThrow('panne')
+    r.end('fini')
+    expect(progress).toEqual([])
   })
 })
