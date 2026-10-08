@@ -3,9 +3,10 @@
  * recherche, Expéditions), `boss <nom|id>` (fiche, --players/--grade, --details, fiche manuelle et --no-overrides,
  * repli sur les Expéditions), `boss … classes` (texte + --out JSON), `boss … stuff` (une recherche courte : premier
  * preset de la classe, --out réutilisable par --build et par un fichier d'équipe), `degats` (comparé à damageRange /
- * expectedDamage calculés ici : Flèche Punitive du Crâ Terre contre 20 % de résistance Terre), erreurs en français
- * (boss inconnu, ambigu avec candidats, preset inconnu, options exclusives) et drapeaux booléens qui n'avalent pas le
- * positionnel suivant (`--json 147`).
+ * expectedDamage calculés ici : Flèche Punitive du Crâ Terre contre 20 % de résistance Terre ; coup au contact ou à
+ * distance selon la case — Pression contre Merkator ; invulnérabilité à distance du Père Ver ; build nu complété par le
+ * preset de son élément), erreurs en français (boss inconnu, ambigu avec candidats, preset inconnu, options exclusives)
+ * et drapeaux booléens qui n'avalent pas le positionnel suivant (`--json 147`).
  */
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -16,6 +17,7 @@ import { critChance } from '../src/damage/crit'
 import { damageRange, expectedDamage, type DamageInput } from '../src/damage/damage'
 import { loadDataStore } from '../src/data/node'
 import { main, usage } from '../src/cli/simulate'
+import { playersForGrade } from '../src/cli/theory'
 import { getPreset, presetBuild } from '../src/optimizer/team/presets'
 import { loadTeamFile } from '../src/optimizer/team/teamfile'
 import { computeBuildStats } from '../src/stats/build'
@@ -25,12 +27,15 @@ import type { BossEntry, ClassRanking, StuffVsBossResult } from '../src/theorycr
 
 let out: string[] = []
 let err: string[] = []
+/** Écritures directes sur stderr (progression). */
+let progress: string[] = []
 beforeEach(() => {
   out = []
   err = []
+  progress = []
   vi.spyOn(console, 'log').mockImplementation((...x: unknown[]) => void out.push(x.join(' ')))
   vi.spyOn(console, 'error').mockImplementation((...x: unknown[]) => void err.push(x.join(' ')))
-  vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
+  vi.spyOn(process.stderr, 'write').mockImplementation((x: string | Uint8Array) => (progress.push(String(x)), true))
 })
 afterEach(() => vi.restoreAllMocks())
 
@@ -40,6 +45,7 @@ const json = <T>(): T => JSON.parse(text()) as T
 
 const data = loadDataStore()
 const MERKATOR = 3534
+const PERE_VER = 4726
 const tmp = mkdtempSync(join(tmpdir(), 'dofussimu-cli-theory-'))
 
 describe('CLI theorycraft : aide et index des boss', () => {
@@ -140,6 +146,21 @@ describe('CLI theorycraft : fiche du boss', () => {
     expect(p.overrides).toBeUndefined()
   })
 
+  it('fiche invalide d’un AUTRE boss : sans effet ; celle du boss demandé : erreur qui cite le fichier', async () => {
+    const dir = mkdtempSync(join(tmp, 'bosses-'))
+    writeFileSync(join(dir, `${PERE_VER}.json`), JSON.stringify({ version: 1, monsterId: PERE_VER, updatedAt: '2026-10-08', resPct: 'bad' }))
+    expect(await main(['boss', 'merkator', '--bosses-dir', dir, '--json'])).toBe(0)
+    expect(json<{ monsterId: number }>().monsterId).toBe(MERKATOR)
+    expect(await main(['boss', String(PERE_VER), '--bosses-dir', dir])).toBe(1)
+    expect(errors()).toMatch(new RegExp(`^Erreur : .*${PERE_VER}\\.json : « resPct » : un tableau attendu`))
+  })
+
+  it('--details : zone « ; » (liste de cases) lisible dans l’arbre du sort de départ', async () => {
+    expect(await main(['boss', String(PERE_VER), '--details'])).toBe(0)
+    expect(text()).toContain('[4] Téléporte sur la case ciblée (cible a,A ; zone 1 case(s) listée(s))')
+    expect(text()).not.toContain('zone ;')
+  })
+
   it('boss d’Expédition : trouvé sans --all quand il n’existe pas ailleurs', async () => {
     const classic = new Set(listBosses(data, nodeDungeonSource(data)).map(e => e.monsterId))
     const exp = listBosses(data, nodeDungeonSource(data), { includeExpeditions: true }).find(e => !classic.has(e.monsterId))!
@@ -149,8 +170,12 @@ describe('CLI theorycraft : fiche du boss', () => {
   })
 
   it('erreurs : boss inconnu, ambigu (candidats), nom manquant ou mal placé', async () => {
+    // Les Expéditions ont été cherchées : le message le dit (--all n'y changerait rien).
     expect(await main(['boss', 'zzzzzz'])).toBe(1)
-    expect(errors()).toContain('Erreur : Aucun boss ne correspond à « zzzzzz ».')
+    expect(errors()).toContain('Erreur : Aucun boss ne correspond à « zzzzzz » (Expéditions comprises).')
+    err = []
+    expect(await main(['boss', '999999'])).toBe(1)
+    expect(errors()).toBe("Erreur : Aucun boss d'id 999999 (Expéditions comprises).")
     err = []
     expect(await main(['boss', 'comte'])).toBe(1)
     expect(errors()).toMatch(/^Erreur : « comte » est ambigu : .*Comte Harebourg \(3416, .*Précisez le nom ou donnez l'id du monstre\.$/)
@@ -178,6 +203,13 @@ describe('CLI theorycraft : classes et stuff', () => {
     expect(r.axes.map(x => x.axis)).toEqual(['damage', 'survival', 'control', 'heal', 'team'])
     expect(await main(['boss', 'merkator', 'classes', '--iterations', '5'])).toBe(1)
     expect(errors()).toContain('--iterations et --profile : seulement avec --optimize')
+  })
+
+  it('classes --grade G : composition pour le nombre de joueurs du grade (inverse de bossGradeFor)', async () => {
+    expect([1, 2, 5, 6, 10].map(playersForGrade)).toEqual([4, 5, 8, 8, 8])
+    expect(await main(['boss', 'merkator', 'classes', '--grade', '5'])).toBe(0)
+    expect(text()).toContain('Classes contre Merkator (3534) — grade 5, 8 joueur(s)')
+    expect(text()).toContain('Composition suggérée (8 personnage(s))')
   })
 
   it('stuff --class cra : premier preset de base (autres en note), --out réutilisable (--build, fichier d’équipe)', async () => {
@@ -225,6 +257,21 @@ describe('CLI theorycraft : classes et stuff', () => {
     err = []
     expect(await main(['boss', 'merkator', 'stuff', '--class', 'cra', '--elements', 'tout'])).toBe(1)
     expect(errors()).toContain('--elements : preset|all attendu (« tout »)')
+    err = []
+    // Conflit de classe : nom de la classe, pas son id.
+    expect(await main(['degats', '--preset', 'cra', '--build', file, '--sort', '1'])).toBe(1)
+    expect(errors()).toContain("build d'une autre classe que Crâ (Iop)")
+  })
+
+  it('stuff --build d’un build nu : preset de l’élément des objets, avertissement ; progression en français', async () => {
+    const terre = presetBuild(getPreset('cra_terre_mono'), data)
+    const file = join(tmp, 'nu-terre.json')
+    writeFileSync(file, JSON.stringify({ breedId: 9, items: terre.items }))
+    expect(await main(['boss', 'merkator', 'stuff', '--build', file, '--iterations', '0', '--restarts', '1', '--top', '1'])).toBe(0)
+    expect(text()).toContain(
+      "! --build nu-terre.json : points de caractéristiques, parchemins, variantes de sorts absent(s) du fichier — repris du preset « cra_terre_mono » (Crâ Terre mono-cible, choisi par l'élément dominant des objets : Terre)",
+    )
+    expect(progress.join('')).toMatch(/Recherche terminée en \d+,\d s\./)
   })
 })
 
@@ -281,6 +328,103 @@ describe('CLI theorycraft : calculateur de dégâts', () => {
     expect(r.lines[0].trace.roll).toBe(rolls.critMax)
     expect(r.lines[0].trace.params.crit).toBe(true)
     expect(r.lines[0].trace.damage).toBe(r.lines[0].crit.max)
+  })
+
+  it('Pression (portée 1 à 4) contre Merkator : au contact (mêlée) ET à distance (50 % de rés. distance) ; --melee / --distance', async () => {
+    const iop = computeBuildStats(presetBuild(getPreset('iop_terre_burst'), data), data).stats
+    const pl = data.spellLevel(13106, { playerLevel: 200 })!
+    const pe = pl.effects.find(x => x.effectId === 97)!
+    const pc = pl.criticalEffects.find(x => x.effectId === 97)!
+    const boss = bossProfile(data, MERKATOR).stats
+    const at = (melee: boolean, crit = false): DamageInput => ({ attacker: iop, defender: boss, element: Element.Earth, crit, isWeapon: false, isMelee: melee, defenderIsPlayer: false })
+    const pct = critChance(pl.critChance, iop.critical)
+    const expect2 = (melee: boolean) => ({
+      normal: damageRange(at(melee), pe.diceNum, pe.diceSide),
+      crit: damageRange(at(melee, true), pc.diceNum, pc.diceSide),
+      expected: expectedDamage(at(melee), null, { min: pe.diceNum, max: pe.diceSide, critMin: pc.diceNum, critMax: pc.diceSide }, pct),
+    })
+    const ranged = expect2(false)
+    const melee = expect2(true)
+    // Au contact, Merkator n'a aucune réduction : coup critique max 575 ; à distance, 50 % de moins (287).
+    expect([ranged.crit.max, melee.crit.max]).toEqual([287, 575])
+    type Hit = { melee: boolean; lines: Line[]; expectedTotal: number; identical?: boolean }
+    const check = (h: Hit, e: typeof ranged) => {
+      expect({ min: h.lines[0].normal.min, max: h.lines[0].normal.max }).toEqual(e.normal)
+      expect({ min: h.lines[0].crit.min, max: h.lines[0].crit.max }).toEqual(e.crit)
+      expect(h.expectedTotal).toBeCloseTo(e.expected, 9)
+    }
+
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Pression', '--boss', 'merkator', '--no-overrides', '--json'])).toBe(0)
+    const both = json<{ spell: { melee: boolean; hits: { melee: boolean; range: boolean } }; lines: Line[]; expectedTotal: number; otherHit: Hit }>()
+    expect(both.spell).toMatchObject({ melee: false, hits: { melee: true, range: true } })
+    check({ melee: false, lines: both.lines, expectedTotal: both.expectedTotal }, ranged)
+    expect(both.otherHit).toMatchObject({ melee: true, identical: false })
+    check(both.otherHit, melee)
+    out = []
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Pression', '--boss', 'merkator', '--no-overrides'])).toBe(0)
+    expect(text()).toContain('3 PA · portée 1 à 4 · mêlée ou distance selon la case')
+    expect(text()).toContain('À distance (cible à 2 cases ou plus)')
+    expect(text()).toContain('Au contact (mêlée : cible sur une case adjacente)')
+
+    out = []
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Pression', '--boss', 'merkator', '--no-overrides', '--melee', '--crit', '--json'])).toBe(0)
+    const m = json<{ spell: { melee: boolean }; lines: (Line & { trace: { damage: number } })[]; expectedTotal: number; otherHit?: Hit }>()
+    expect(m.spell.melee).toBe(true)
+    expect(m.otherHit).toBeUndefined()
+    check({ melee: true, lines: m.lines, expectedTotal: m.expectedTotal }, melee)
+    expect(m.lines[0].trace.damage).toBe(575)
+    out = []
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Pression', '--boss', 'merkator', '--no-overrides', '--distance', '--json'])).toBe(0)
+    const d = json<{ spell: { melee: boolean }; lines: Line[]; expectedTotal: number; otherHit?: Hit }>()
+    expect([d.spell.melee, d.otherHit]).toEqual([false, undefined])
+    check({ melee: false, lines: d.lines, expectedTotal: d.expectedTotal }, ranged)
+
+    // Poutch sans % mêlée / distance : un seul tableau, l'autre coup signalé identique.
+    out = []
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Pression', '--res', '0,20,0,0,0'])).toBe(0)
+    expect(text()).toContain('Au contact (mêlée : cible sur une case adjacente) : mêmes valeurs')
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Pression', '--melee', '--distance'])).toBe(1)
+    expect(errors()).toContain('Erreur : --melee et --distance sont exclusifs')
+  })
+
+  it('Père Ver (invulnérable à distance) : coup à distance = 0 en jeu, signalé ; au contact calculé', async () => {
+    expect(await main(['degats', '--preset', 'cra_terre_mono', '--sort', '32456', '--boss', String(PERE_VER), '--no-overrides', '--json'])).toBe(0)
+    const r = json<{ lines: Line[]; expectedTotal: number; blocked?: string; warnings: string[]; target: { phases: { vulnerable: unknown }[] } }>()
+    expect(r.target.phases.map(p => p.vulnerable)).toEqual(['melee'])
+    expect(r.blocked).toBe('Père Ver est invulnérable à distance dans toutes ses phases (Base (aucun état))')
+    expect([r.lines[0].normal.max, r.lines[0].crit.max, r.lines[0].expected, r.expectedTotal]).toEqual([0, 0, 0, 0])
+    expect(r.warnings).toContain('Mécanique du boss : Invulnérable à distance : état « Invulnérable à Distance » (375) dès le début du combat.')
+    expect(r.warnings.some(w => w.startsWith('Coup à distance : Père Ver est invulnérable à distance') && w.includes('0 en jeu'))).toBe(true)
+    // Sort de portée 1 à 4 : le coup au contact passe en tête (non nul), celui à distance est bloqué.
+    out = []
+    expect(await main(['degats', '--preset', 'iop_terre_burst', '--sort', 'Pression', '--boss', String(PERE_VER), '--no-overrides', '--json'])).toBe(0)
+    const p = json<{ spell: { melee: boolean }; lines: Line[]; blocked?: string; otherHit: { melee: boolean; blocked?: string; lines: Line[] } }>()
+    expect(p.spell.melee).toBe(true)
+    expect(p.blocked).toBeUndefined()
+    expect(p.lines[0].normal.max).toBeGreaterThan(0)
+    expect(p.otherHit.melee).toBe(false)
+    expect(p.otherHit.blocked).toContain('invulnérable à distance')
+    expect(p.otherHit.lines[0].normal.max).toBe(0)
+  })
+
+  it('--crit sur un sort qui ne peut pas critiquer : trace du coup normal, signalé', async () => {
+    expect(await main(['degats', '--preset', 'sadida_infection', '--sort', '13529', '--crit', '--json'])).toBe(0)
+    const r = json<{ spell: { critPct: number }; lines: { trace: { params: { crit: boolean } } }[]; warnings: string[] }>()
+    expect(r.spell.critPct).toBe(0)
+    expect(r.lines[0].trace.params.crit).toBe(false)
+    expect(r.warnings).toContain('--crit : « Vent Empoisonné » ne peut pas critiquer — trace du coup normal.')
+  })
+
+  it('--build d’un build nu { items } : points, parchemins et variantes du preset de l’élément des objets (signalé)', async () => {
+    const full = presetBuild(getPreset('cra_terre_mono'), data)
+    const file = join(tmp, 'nu-terre-degats.json')
+    writeFileSync(file, JSON.stringify({ breedId: 9, items: full.items }))
+    expect(await main(['degats', '--build', file, '--sort', '32456', '--json'])).toBe(0)
+    const r = json<{ character: { presetId?: string }; attacker: Record<string, number>; warnings: string[] }>()
+    expect(r.character.presetId).toBe('cra_terre_mono')
+    // Mêmes caractéristiques que le preset complet (Force), pas les points Intelligence du premier preset (cra_feu_zone).
+    expect(r.attacker.strength).toBe(stats.strength)
+    expect(r.warnings[0]).toMatch(/^--build nu-terre-degats\.json : points de caractéristiques, parchemins, variantes de sorts absent\(s\) du fichier — repris du preset « cra_terre_mono »/)
   })
 
   it('lignes conditionnelles en clair, hors espérance d’un lancer (Flèche Dévorante)', async () => {

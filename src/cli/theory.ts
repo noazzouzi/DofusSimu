@@ -16,8 +16,8 @@
  *  - Boss : nom ou id résolu parmi les donjons classiques (`resolveBoss`, erreur « ambigu » avec candidats) ; un boss
  *    introuvable parmi eux est cherché parmi les Expéditions (`--all` : directement parmi tous). Les positionnels
  *    sont joints par des espaces (`boss pere ver classes` ≡ `boss "Père Ver" classes`).
- *  - Fiche manuelle `data/bosses/<id>.json` appliquée par défaut (`loadBossOverrides`, dossier `--bosses-dir`, défaut
- *    `<--data>/bosses`) ; `--no-overrides` l'ignore (et ne lit pas le dossier).
+ *  - Fiche manuelle `data/bosses/<id>.json` appliquée par défaut (`loadBossOverride` : ce seul fichier, validé comme
+ *    par `loadBossOverrides` ; dossier `--bosses-dir`, défaut `<--data>/bosses`) ; `--no-overrides` l'ignore.
  *  - `stuff --class <classe>` : PREMIER preset de base de la classe (ordre de data/ai/presets.json), les autres
  *    presets cités en note — chaque classe a au moins deux presets de base : exiger un preset rendrait `--class cra`
  *    toujours ambigu ; `--elements all` compare de toute façon les quatre éléments. Avec `--build` / `--roxx`, la
@@ -25,13 +25,17 @@
  *    `stuffVsBoss` selon l'élément du build.
  *  - `stuff --out` : fichier « dofussimu-build » (même forme que `stuff <scénario> --out`, src/cli/optimize.ts) dont
  *    le champ `build` est le format des fichiers d'équipe (data/teams, champ `build`) ; relu par `--build`.
+ *  - `degats` : mêlée ⇔ cible sur une case ADJACENTE au lanceur (règle du jeu, `isMeleeHit`) ; un sort de portée
+ *    1 à N (ou à zone autour du lanceur) est calculé dans les deux cas, sauf `--melee` / `--distance`. Contre un boss,
+ *    la vulnérabilité de ses phases est appliquée (invulnérable à distance ⇒ 0 à distance, avertissement).
  *  - Drapeaux booléens déclarés (`THEORY_BOOLEAN_FLAGS`) : ils n'avalent jamais le positionnel qui suit.
- *  - Aucune écriture de fichier sans `--out` ; `--json` = JSON sur la sortie standard, progression sur stderr.
+ *  - Aucune écriture de fichier sans `--out` ; `--json` = JSON sur la sortie standard ; progression sur stderr (avec
+ *    `--json`, seulement si stderr est un terminal).
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { isMeleeSpell } from '../ai/core/dpt'
-import { createSpellProfileIndex, type DamageLineX } from '../ai/core/spellProfile'
+import { createSpellProfileIndex, type DamageLineX, type SpellProfileX } from '../ai/core/spellProfile'
 import { ELEMENT_FIXED_DAMAGE, ELEMENT_MAIN_STAT, ELEMENT_NAMES_FR, ELEMENT_RES_PCT, emptyStats, type Element, type StatKey, type Stats } from '../core/types'
 import { critChance } from '../damage/crit'
 import { damageRange, expectedDamage, explainDamage, meanPrepared, prepareDamage, type DamageExplanation, type DamageInput } from '../damage/damage'
@@ -41,6 +45,8 @@ import type { NodeDataStore } from '../data/node'
 import { effectSpellRef, effectStateRef, effectSummonRef } from '../data/refs'
 import { DAMAGE_SPECS, resolveElement } from '../engine/effects/damage/pipeline'
 import { breedSpellIds } from '../engine/factory'
+import { distance, pointToCell } from '../map/geometry'
+import { zoneCells } from '../map/zones'
 import { EXPONENT_PROFILES, type ExponentProfile } from '../optimizer/stuff/profiles'
 import { BASE_PRESETS, breedIdOf, findPreset, normalizeName, presetBuild, resolvePreset, type Preset } from '../optimizer/team/presets'
 import { roxxImport } from '../optimizer/team/roxx'
@@ -48,30 +54,34 @@ import { computeBuildStats, fullScrolls, type CharacterBuild, type EquippedItem 
 import { statLabelFr } from '../stats/sheet'
 import {
   bossProfile,
+  dominantElement,
   formatBoss,
   formatClasses,
   formatStuffVsBoss,
   listBosses,
   normalize,
+  parseBossOverrides,
   rankClasses,
   resolveBoss,
   searchBosses,
   stuffVsBoss,
   type BossEntry,
+  type BossOverrides,
   type BossProfileDetail,
   type BossProfileOptions,
   type BossSpellDetail,
+  type StuffElement,
   type StuffInput,
   type StuffVsBossOptions,
   type StuffVsBossResult,
 } from '../theorycraft/analysis'
 import { theoryEngine } from '../theorycraft/fighters'
 import { bullets, fmtNum, fmtPct, section, textTable } from '../theorycraft/formatBoss'
-import { loadBossOverrides, nodeDungeonSource } from '../theorycraft/node'
-import { bool, dataDirOf, type Args } from './common'
+import { nodeDungeonSource } from '../theorycraft/node'
+import { bool, dataDirOf, REPO_ROOT, type Args } from './common'
 
 /** Drapeaux sans valeur des commandes du theorycraft (`parseArgs(argv, THEORY_BOOLEAN_FLAGS)`). */
-export const THEORY_BOOLEAN_FLAGS: ReadonlySet<string> = new Set(['all', 'json', 'details', 'no-overrides', 'optimize', 'crit', 'trace'])
+export const THEORY_BOOLEAN_FLAGS: ReadonlySet<string> = new Set(['all', 'json', 'details', 'no-overrides', 'optimize', 'crit', 'trace', 'melee', 'distance'])
 
 /** Sous-commandes de `boss <nom|id>`. */
 const BOSS_SUBCOMMANDS = ['classes', 'stuff'] as const
@@ -88,6 +98,14 @@ const rel = (p: string): string => {
   return r && !r.startsWith('..') && !isAbsolute(r) ? r : p
 }
 const elementName = (el: number): string => (el >= 0 && el <= 4 ? ELEMENT_NAMES_FR[el as Element] : 'aucun')
+/** Élément d'un stuff (`dominantElement`) en français. */
+const STUFF_ELEMENT_FR: Readonly<Record<StuffElement, string>> = { earth: 'Terre', fire: 'Feu', water: 'Eau', air: 'Air' }
+/** Nom d'une classe (« Crâ »), l'id à défaut. */
+const breedName = (data: NodeDataStore, breedId: number): string => data.breed(breedId)?.name ?? `classe ${breedId}`
+/** Durée en secondes à la française (« 0,5 s »). */
+const seconds = (ms: number): string => `${fmtNum(ms / 1000, 1)} s`
+/** Progression sur stderr : toujours en texte ; avec `--json`, seulement dans un terminal (stderr d'un script propre). */
+const showProgress = (json: boolean): boolean => !json || !!process.stderr.isTTY
 
 // ───────────────────────────── options ─────────────────────────────
 
@@ -139,19 +157,53 @@ function bossEntries(data: NodeDataStore, all: boolean): BossEntry[] {
 
 /**
  * Boss désigné par un nom ou un id : donjons classiques (`resolveBoss`), sinon Expéditions (seulement si le boss est
- * introuvable parmi les classiques : une requête ambiguë reste une erreur) ; `all` : directement parmi tous.
+ * introuvable parmi les classiques : une requête ambiguë reste une erreur) ; `all` : directement parmi tous. Boss
+ * introuvable : message « (Expéditions comprises) », puisqu'elles ont été cherchées (`--all` n'y changerait rien).
  */
 export function findBoss(data: NodeDataStore, text: string, all = false): BossEntry {
-  try {
-    return resolveBoss(bossEntries(data, all), text)
-  } catch (e) {
-    if (all || !/^Aucun boss/.test((e as Error).message)) throw e
+  const notFound = (e: unknown) => /^Aucun boss/.test((e as Error).message)
+  const amongAll = (): BossEntry => {
     try {
       return resolveBoss(bossEntries(data, true), text)
-    } catch (e2) {
-      throw /^Aucun boss/.test((e2 as Error).message) ? e : e2
+    } catch (e) {
+      if (!notFound(e)) throw e
+      throw new Error((e as Error).message.replace(/\s*\(les Expéditions sont exclues par défaut\)/, '').replace(/\.$/, ' (Expéditions comprises).'))
     }
   }
+  if (all) return amongAll()
+  try {
+    return resolveBoss(bossEntries(data, false), text)
+  } catch (e) {
+    if (!notFound(e)) throw e
+    return amongAll()
+  }
+}
+
+/** Dossier existant : chemin absolu tel quel, sinon relatif au dossier courant puis à la racine du dépôt (comme `loadBossOverrides`). */
+function findDir(dir: string): string | undefined {
+  const candidates = isAbsolute(dir) ? [dir] : [resolve(dir), resolve(REPO_ROOT, dir)]
+  return candidates.find(c => existsSync(c) && statSync(c).isDirectory())
+}
+
+/**
+ * Fiche manuelle d'UN boss : `<dossier>/<monsterId>.json` seul, validé par `parseBossOverrides` (mêmes règles que
+ * `loadBossOverrides`, src/theorycraft/node.ts, qui lit TOUT le dossier) — une fiche invalide d'un autre boss, par
+ * exemple en cours de rédaction, ne bloque pas les commandes. Absente : undefined.
+ */
+export function loadBossOverride(dir: string, monsterId: number): BossOverrides | undefined {
+  const found = findDir(dir)
+  const file = found && join(found, `${monsterId}.json`)
+  if (!file || !existsSync(file)) return undefined
+  const label = join(dir, `${monsterId}.json`)
+  let json: unknown
+  try {
+    json = JSON.parse(readFileSync(file, 'utf8'))
+  } catch (err) {
+    throw new Error(`${label} : JSON invalide (${(err as Error).message})`)
+  }
+  const o = parseBossOverrides(json, label)
+  if (o.monsterId !== monsterId) throw new Error(`${label} : le fichier doit s'appeler ${o.monsterId}.json (monsterId ${o.monsterId})`)
+  return o
 }
 
 interface BossChoice {
@@ -168,7 +220,7 @@ function bossOf(a: Args, data: NodeDataStore, text: string): BossChoice {
   const players = optInt(a, 'players', 1, MAX_PLAYERS)
   if (grade !== undefined) opts.grade = grade
   else if (players !== undefined) opts.players = players
-  if (!bool(a, 'no-overrides')) opts.overrides = loadBossOverrides(overridesDirOf(a)).get(entry.monsterId)
+  if (!bool(a, 'no-overrides')) opts.overrides = loadBossOverride(overridesDirOf(a), entry.monsterId)
   return { entry, profile: bossProfile(data, entry.monsterId, opts) }
 }
 
@@ -296,10 +348,12 @@ function effectText(data: NodeDataStore, e: EffectData): string {
   return text || `Effet ${e.effectId}`
 }
 
-/** Zone lisible (« P1 », « C3 », « ligne 5 ») — forme DofusDB et tailles. */
+/** Zone lisible (« C3 », « L5/1 », « cases listées ») — forme DofusDB et tailles ; rien pour une case seule. */
 function zoneText(e: EffectData): string {
   const z = e.zone
   if (!z || (z.shape === 'P' && z.size <= 1)) return ''
+  // Forme « ; » : liste explicite de cases (`ZoneSpec.cells`), la taille n'a pas de sens.
+  if (z.shape === ';') return z.cells?.length ? `${z.cells.length} case(s) listée(s)` : 'cases listées'
   return `${z.shape}${z.size}${z.minSize ? `/${z.minSize}` : ''}`
 }
 
@@ -444,6 +498,14 @@ function showBoss(a: Args, data: NodeDataStore, { entry, profile }: BossChoice):
 
 // ───────────────────────────── classes ─────────────────────────────
 
+/**
+ * Taille de la composition pour un grade imposé (`--grade`) : inverse de `bossGradeFor` (grade = joueurs − 3, de 1 à
+ * 5) — grade 1 : 4 joueurs (défaut), grade G de 2 à 5 : G + 3, au-delà : 8 (groupe maximal).
+ */
+export function playersForGrade(grade: number): number {
+  return grade <= 1 ? 4 : Math.min(MAX_PLAYERS, grade + 3)
+}
+
 function cmdBossClasses(a: Args, data: NodeDataStore, { profile }: BossChoice): number {
   const optimize = bool(a, 'optimize')
   if (!optimize && (a.flags.has('iterations') || a.flags.has('profile'))) throw new Error('--iterations et --profile : seulement avec --optimize (stuffs optimisés contre le boss)')
@@ -459,15 +521,17 @@ function cmdBossClasses(a: Args, data: NodeDataStore, { profile }: BossChoice): 
     iterations,
     profile: expProfile,
     level,
+    // Grade imposé : la fiche n'a pas de nombre de joueurs, la composition prend celui qui correspond au grade.
+    players: profile.players ?? playersForGrade(profile.grade),
     onProgress:
-      optimize && !json
+      optimize && showProgress(json)
         ? (done, total, label) => {
             shown = true
             process.stderr.write(`\r${done}/${total} presets optimisés (${label})…`.padEnd(70))
           }
         : undefined,
   })
-  if (shown) process.stderr.write(`\r${ranking.presets.length} presets évalués en ${((performance.now() - t0) / 1000).toFixed(1)} s.`.padEnd(70) + '\n')
+  if (shown) process.stderr.write(`\r${ranking.presets.length} presets évalués en ${seconds(performance.now() - t0)}.`.padEnd(70) + '\n')
   const text = formatClasses(ranking)
   if (out) {
     const path = resolve(out)
@@ -522,12 +586,16 @@ function firstPresetOf(who: Who, hint = '--class <preset> pour en choisir un'): 
 interface BuildFile {
   build: CharacterBuild
   presetId?: string
+  /** Champs absents du fichier repris d'un preset (à afficher : les caractéristiques en dépendent). */
+  warnings: string[]
 }
 
 /**
  * Build d'un fichier (`--build`) : forme des fichiers d'équipe (champ `build` ; points, parchemins et variantes absents
- * ⇒ ceux du preset, comme `withOverrides` de userteam.ts). Classe : celle du build ou du fichier (`breedId`, `preset`,
- * `class`), sinon `--class` ; preset : `--class <preset>`, sinon celui du fichier.
+ * ⇒ ceux du preset, comme `withOverrides` de userteam.ts, avec un avertissement). Classe : celle du build ou du fichier
+ * (`breedId`, `preset`, `class`), sinon `--class` ; preset : `--class <preset>`, sinon celui du fichier, sinon — s'il
+ * faut compléter le build — le preset de base de la classe dont l'élément est l'élément dominant des OBJETS (comme
+ * `stuffVsBoss` choisit le sien), pour ne pas prêter à un build Terre les points Intelligence du premier preset.
  */
 function readBuildFile(path: string, data: NodeDataStore, who: Who | undefined, classFlag = '--class'): BuildFile {
   let raw: Record<string, unknown>
@@ -544,25 +612,45 @@ function readBuildFile(path: string, data: NodeDataStore, who: Who | undefined, 
     (typeof raw.breedId === 'number' ? raw.breedId : undefined) ??
     filePreset?.breedId ??
     (typeof raw.class === 'string' ? breedIdOf(raw.class) : undefined)
-  if (who && fileBreed !== undefined && fileBreed !== who.breedId) throw new Error(`--build ${path} : build d'une autre classe que ${who.className} (classe ${fileBreed})`)
+  if (who && fileBreed !== undefined && fileBreed !== who.breedId) throw new Error(`--build ${path} : build d'une autre classe que ${who.className} (${breedName(data, fileBreed)})`)
   const breedId = who?.breedId ?? fileBreed
   if (breedId === undefined) throw new Error(`--build ${path} : classe du build inconnue — préciser ${classFlag} <classe|preset>`)
-  const preset = who?.preset ?? (filePreset?.breedId === breedId ? filePreset : undefined)
-  const base = presetBuild(preset ?? firstPresetOf({ breedId, className: '' }).preset, data)
+  const items = (b.items as EquippedItem[]).map(it => ({ ...it, exos: it.exos?.map(e => ({ ...e })), rolls: it.rolls ? { ...it.rolls } : undefined }))
+  const level = typeof b.level === 'number' ? b.level : undefined
+  const missing = [
+    b.characteristicPoints ? '' : 'points de caractéristiques',
+    b.scrolls ? '' : 'parchemins',
+    b.spellVariants?.length ? '' : 'variantes de sorts',
+  ].filter(Boolean)
+  let preset = who?.preset ?? (filePreset?.breedId === breedId ? filePreset : undefined)
+  const warnings: string[] = []
+  if (missing.length) {
+    let how = who?.preset ? `désigné par ${classFlag}` : 'nommé dans le fichier'
+    if (!preset) {
+      // Élément dominant des objets seuls (points à 0 ; parchemins du fichier, sinon 100 partout : neutres pour l'élément).
+      const probe: CharacterBuild = { name: '', breedId, level: level ?? 200, characteristicPoints: {}, scrolls: b.scrolls ? { ...b.scrolls } : fullScrolls(), items }
+      const el = dominantElement(computeBuildStats(probe, data).stats)
+      const list = BASE_PRESETS.filter(p => p.breedId === breedId)
+      preset = list.find(p => p.element === el) ?? list[0]
+      how = `choisi par l'élément dominant des objets : ${STUFF_ELEMENT_FR[el]}${preset.element === el ? '' : ', sans preset de base de cet élément'}`
+    }
+    warnings.push(`--build ${basename(path)} : ${missing.join(', ')} absent(s) du fichier — repris du preset « ${preset.id} » (${preset.label}, ${how}) ; ${classFlag} <preset> pour en imposer un autre.`)
+  }
+  const base = preset && missing.length ? presetBuild(preset, data, level !== undefined ? { level } : {}) : undefined
   const build: CharacterBuild = {
     name: typeof raw.member === 'string' ? raw.member : typeof b.name === 'string' ? b.name : basename(path),
     breedId,
-    level: typeof b.level === 'number' ? b.level : base.level,
-    characteristicPoints: b.characteristicPoints ? { ...b.characteristicPoints } : base.characteristicPoints,
-    scrolls: b.scrolls ? { ...b.scrolls } : base.scrolls,
-    items: (b.items as EquippedItem[]).map(it => ({ ...it, exos: it.exos?.map(e => ({ ...e })), rolls: it.rolls ? { ...it.rolls } : undefined })),
-    spellVariants: b.spellVariants?.slice() ?? preset?.variants.slice(),
+    level: level ?? base?.level ?? 200,
+    characteristicPoints: b.characteristicPoints ? { ...b.characteristicPoints } : base!.characteristicPoints,
+    scrolls: b.scrolls ? { ...b.scrolls } : base!.scrolls,
+    items,
+    spellVariants: b.spellVariants?.length ? b.spellVariants.slice() : base?.spellVariants ?? preset?.variants.slice(),
   }
-  return { build, presetId: preset?.id }
+  return { build, presetId: preset?.id, warnings }
 }
 
 /** Entrée de `stuffVsBoss` : `--class`, `--roxx`, `--build` (exclusifs entre eux pour le stuff de départ). */
-function stuffInputOf(a: Args, data: NodeDataStore): { input: StuffInput; note?: string } {
+function stuffInputOf(a: Args, data: NodeDataStore): { input: StuffInput; note?: string; warnings: string[] } {
   const cls = strFlag(a, 'class', 'classe ou preset')
   const roxx = strFlag(a, 'roxx', 'lien RoxxSolver')
   const file = strFlag(a, 'build', 'fichier de build')
@@ -571,18 +659,18 @@ function stuffInputOf(a: Args, data: NodeDataStore): { input: StuffInput; note?:
   if (roxx !== undefined) {
     if (who) {
       const imp = roxxImport(roxx, data)
-      if (imp.breedId !== who.breedId) throw new Error(`--roxx : le lien décrit un personnage d'une autre classe que ${who.className} (classe ${imp.breedId})`)
+      if (imp.breedId !== who.breedId) throw new Error(`--roxx : le lien décrit un personnage d'une autre classe que ${who.className} (${breedName(data, imp.breedId)})`)
     }
-    return { input: { roxx, presetId: who?.preset?.id } }
+    return { input: { roxx, presetId: who?.preset?.id }, warnings: [] }
   }
   if (file !== undefined) {
     const b = readBuildFile(file, data, who)
-    return { input: { build: b.build, presetId: b.presetId } }
+    return { input: { build: b.build, presetId: b.presetId }, warnings: b.warnings }
   }
   if (!who) throw new Error('stuff : --class <classe|preset> attendu (ex. --class cra, --class cra_terre_mono, --class cra:terre), ou --roxx <lien> / --build <fichier>')
-  if (who.preset) return { input: { preset: who.preset.id } }
+  if (who.preset) return { input: { preset: who.preset.id }, warnings: [] }
   const { preset, note } = firstPresetOf(who, '--class <preset> pour en choisir un ; --elements all compare les quatre éléments')
-  return { input: { preset: preset.id }, note }
+  return { input: { preset: preset.id }, note, warnings: [] }
 }
 
 /** Fichier `--out` du meilleur stuff (format « dofussimu-build », champ `build` des fichiers d'équipe). */
@@ -611,7 +699,7 @@ function buildPayload(r: StuffVsBossResult): Record<string, unknown> {
 
 async function cmdBossStuff(a: Args, data: NodeDataStore, { profile }: BossChoice): Promise<number> {
   const json = bool(a, 'json')
-  const { input, note } = stuffInputOf(a, data)
+  const { input, note, warnings } = stuffInputOf(a, data)
   const elements = strFlag(a, 'elements', 'preset|all') ?? 'preset'
   if (elements !== 'preset' && elements !== 'all') throw new Error(`--elements : preset|all attendu (« ${elements} »)`)
   const out = strFlag(a, 'out', 'fichier')
@@ -628,13 +716,15 @@ async function cmdBossStuff(a: Args, data: NodeDataStore, { profile }: BossChoic
     rangeNeed: optInt(a, 'range', 0, 6),
   }
   let shown = false
-  if (!json)
+  if (showProgress(json))
     opts.onProgress = p => {
       shown = true
       process.stderr.write(`\r${p.step === 'optimize' ? 'Recherche' : 'Évaluation'} : ${p.label} (${p.done}/${p.total})…`.padEnd(70))
     }
   const r = stuffVsBoss(data, input, profile, opts)
-  if (shown) process.stderr.write(`\rRecherche terminée en ${(r.search.ms / 1000).toFixed(1)} s.`.padEnd(70) + '\n')
+  if (shown) process.stderr.write(`\rRecherche terminée en ${seconds(r.search.ms)}.`.padEnd(70) + '\n')
+  // Avertissements de la lecture du build (champs repris d'un preset) : avec ceux de l'analyse, rendus dans le texte.
+  r.warnings.unshift(...warnings)
   // Rendu texte AVANT d'ajouter la note aux hypothèses (affichée en tête, pas répétée en fin de rendu).
   const text = formatStuffVsBoss(r)
   if (note) r.assumptions.unshift(note)
@@ -682,11 +772,12 @@ function degatsCharacter(a: Args, data: NodeDataStore): DegatsCharacter {
   }
   if (file !== undefined) {
     const b = readBuildFile(file, data, who, '--preset')
+    warnings.push(...b.warnings)
     return { build: b.build, preset: b.presetId ? findPreset(b.presetId) : undefined, label: `build ${rel(resolve(file))}`, warnings }
   }
   if (roxx !== undefined) {
     const imp = roxxImport(roxx, data)
-    if (who && imp.breedId !== who.breedId) throw new Error(`--roxx : le lien décrit un personnage d'une autre classe que ${who.className} (classe ${imp.breedId})`)
+    if (who && imp.breedId !== who.breedId) throw new Error(`--roxx : le lien décrit un personnage d'une autre classe que ${who.className} (${breedName(data, imp.breedId)})`)
     for (const w of imp.warnings) if (!/parchemins/.test(w)) warnings.push(`RoxxSolver : ${w}`)
     const noScrolls = Object.values(imp.build.scrolls ?? {}).every(v => !v)
     if (noScrolls) warnings.push('RoxxSolver : le lien ne contient pas de parchemins — 100 partout supposés (comme le stuff contre un boss).')
@@ -730,14 +821,28 @@ function findSpell(data: NodeDataStore, build: CharacterBuild, text: string): { 
   return pick(hits[0].id)
 }
 
-/** Cible du calculateur : boss (résistances EFFECTIVES de sa fiche) ou résistances données (`--res`, Poutch). */
+/** Vulnérabilité d'une phase du boss (`BossPhaseProfile.vulnerable`) : 'melee' = au contact seulement, 'range' = à distance seulement. */
+type Vulnerability = boolean | 'melee' | 'range'
+
+/**
+ * Cible du calculateur : boss (résistances EFFECTIVES de sa fiche, vulnérabilité de ses phases, mécaniques
+ * d'invulnérabilité) ou résistances données (`--res`, Poutch).
+ */
 interface DegatsTarget {
   kind: 'boss' | 'res'
   label: string
+  /** Nom court (avertissements). */
+  name: string
   stats: Stats
   monsterId?: number
   grade?: number
+  /** Phases du boss (poids > 0) et leur vulnérabilité ; absent : cible toujours vulnérable (`--res`). */
+  phases?: { id: string; name: string; vulnerable: Vulnerability }[]
+  /** Résumés des mécaniques d'invulnérabilité de la fiche (repris dans les avertissements). */
+  invulnerability?: string[]
 }
+
+const INVULNERABLE_KINDS: ReadonlySet<string> = new Set(['invulnerable', 'invulnerable-melee', 'invulnerable-range'])
 
 function degatsTarget(a: Args, data: NodeDataStore): DegatsTarget {
   const bossText = strFlag(a, 'boss', 'nom ou id du boss')
@@ -747,13 +852,22 @@ function degatsTarget(a: Args, data: NodeDataStore): DegatsTarget {
   if (bossText !== undefined) {
     const { profile } = bossOf(a, data, bossText)
     const who = profile.players !== undefined ? `${profile.players} joueur(s)` : 'grade imposé'
-    return { kind: 'boss', label: `${profile.name} (${profile.monsterId}) — grade ${profile.grade}, ${who}, résistances effectives de la fiche`, stats: { ...profile.stats }, monsterId: profile.monsterId, grade: profile.grade }
+    return {
+      kind: 'boss',
+      label: `${profile.name} (${profile.monsterId}) — grade ${profile.grade}, ${who}, résistances effectives de la fiche`,
+      name: profile.name,
+      stats: { ...profile.stats },
+      monsterId: profile.monsterId,
+      grade: profile.grade,
+      phases: profile.phases.filter(p => p.weight > 0).map(p => ({ id: p.id, name: p.name, vulnerable: p.vulnerable })),
+      invulnerability: profile.mechanics.filter(m => INVULNERABLE_KINDS.has(m.kind)).map(m => m.summary),
+    }
   }
   const res = (resText ?? '0,0,0,0,0').split(',').map(x => Number(x.trim()))
   if (res.length !== 5 || !res.every(Number.isFinite)) throw new Error(`--res : 5 pourcentages n,t,f,e,a attendus (Neutre, Terre, Feu, Eau, Air ; « ${resText} »)`)
   const stats = emptyStats()
   res.forEach((v, i) => (stats[ELEMENT_RES_PCT[i as Element]] = v))
-  return { kind: 'res', label: resText === undefined ? 'Poutch : 0 % de résistance partout (--res pour en donner)' : 'résistances données (--res)', stats }
+  return { kind: 'res', label: resText === undefined ? 'Poutch : 0 % de résistance partout (--res pour en donner)' : 'résistances données (--res)', name: 'la cible', stats }
 }
 
 /** Une ligne de dégâts du sort, calculée. Valeurs `null` : ligne non calculée (`note`). */
@@ -783,21 +897,68 @@ export interface DegatsLine {
   critPct: number
   /** Espérance d'un coup (critique pondéré, moyenne exacte sur les jets entiers). */
   expected: number | null
-  /** `--trace` : détail étape par étape du jet max (normal, ou critique avec `--crit`). */
+  /** `--trace` : détail étape par étape du jet max (normal, ou critique avec `--crit` si le sort peut critiquer). */
   trace?: DamageExplanation
   note?: string
 }
 
-export interface DegatsResult {
-  character: { label: string; className: string; breedId: number; level: number; presetId?: string; valid: boolean; issues: string[] }
-  /** `baseCrit` : taux critique du sort (0 s'il n'a pas d'effets critiques) ; `critPct` : chance de critique du lanceur. */
-  spell: { spellId: number; name: string; grade: number; apCost: number; minRange: number; range: number; melee: boolean; baseCrit: number; critPct: number; inBuild: boolean }
-  target: { kind: 'boss' | 'res'; label: string; monsterId?: number; grade?: number; resPct: number[]; rangedResPct: number; meleeResPct: number; spellResPct: number }
-  /** Caractéristiques offensives du lanceur utiles au calcul (clé `Stats` → valeur). */
-  attacker: Record<string, number>
+/** Lignes d'UN type de coup : au contact (mêlée) ou à distance. */
+export interface DegatsHit {
+  /** Coup au contact (cible sur une case adjacente au lanceur : % dommages et % résistances mêlée), sinon à distance. */
+  melee: boolean
   lines: DegatsLine[]
   /** Espérance d'un lancer : lignes immédiates sans condition, × probabilité (null : aucune). */
   expectedTotal: number | null
+  /** Phases du boss où ce coup ne fait rien (invulnérabilité) ; absent : aucune. */
+  blockedPhases?: string[]
+  /** Le boss est invulnérable à ce coup dans TOUTES ses phases : 0 en jeu, valeurs des lignes mises à 0 (raison). */
+  blocked?: string
+}
+
+export interface DegatsResult {
+  character: { label: string; className: string; breedId: number; level: number; presetId?: string; valid: boolean; issues: string[] }
+  /**
+   * `baseCrit` : taux critique du sort (0 s'il n'a pas d'effets critiques) ; `critPct` : chance de critique du lanceur ;
+   * `melee` : coup des lignes `lines` ; `hits` : coups possibles (cible sur la case d'impact, ou dans une zone centrée
+   * sur le lanceur) ; `hitRule` : choix fait, en clair.
+   */
+  spell: {
+    spellId: number
+    name: string
+    grade: number
+    apCost: number
+    minRange: number
+    range: number
+    melee: boolean
+    hits: { melee: boolean; range: boolean }
+    hitRule: string
+    baseCrit: number
+    critPct: number
+    inBuild: boolean
+  }
+  target: {
+    kind: 'boss' | 'res'
+    label: string
+    monsterId?: number
+    grade?: number
+    resPct: number[]
+    rangedResPct: number
+    meleeResPct: number
+    spellResPct: number
+    phases?: { id: string; name: string; vulnerable: Vulnerability }[]
+  }
+  /** Caractéristiques offensives du lanceur utiles au calcul (clé `Stats` → valeur). */
+  attacker: Record<string, number>
+  /** Coup principal : lignes, espérance d'un lancer, invulnérabilité du boss (voir `DegatsHit`). */
+  lines: DegatsLine[]
+  expectedTotal: number | null
+  blockedPhases?: string[]
+  blocked?: string
+  /**
+   * L'autre coup, quand les deux sont possibles (portée 1 à N, zone autour du lanceur) et ni `--melee` ni `--distance`
+   * n'est donné ; `identical` : mêmes valeurs que le coup principal (aucun % mêlée / distance en jeu).
+   */
+  otherHit?: DegatsHit & { identical: boolean }
   /** Lignes du profil qui ne touchent pas d'ennemi (alliés, lanceur) : écartées. */
   skippedLines: number
   warnings: string[]
@@ -844,19 +1005,50 @@ function maskConditions(data: NodeDataStore, masks: readonly string[]): string |
   return text.length ? text.join(' et ') : undefined
 }
 
-/** Caractéristiques du lanceur lues par le pipeline pour un élément (affichage). */
-function attackerStats(stats: Stats, elements: readonly number[], melee: boolean): Record<string, number> {
+/** Caractéristiques du lanceur lues par le pipeline pour des éléments et des types de coup (affichage). */
+function attackerStats(stats: Stats, elements: readonly number[], melees: readonly boolean[]): Record<string, number> {
   const keys = new Set<StatKey>()
   for (const el of elements) {
     if (el < 0 || el > 4) continue
     keys.add(ELEMENT_MAIN_STAT[el as Element])
     keys.add(ELEMENT_FIXED_DAMAGE[el as Element])
   }
-  for (const k of ['power', 'damage', 'criticalDamage', 'critical', 'spellDamagePct', melee ? 'meleeDamagePct' : 'rangedDamagePct', 'finalDamagePct'] as const) keys.add(k)
+  for (const k of ['power', 'damage', 'criticalDamage', 'critical', 'spellDamagePct'] as const) keys.add(k)
+  if (melees.includes(true)) keys.add('meleeDamagePct')
+  if (melees.includes(false)) keys.add('rangedDamagePct')
+  keys.add('finalDamagePct')
   const out: Record<string, number> = {}
   for (const k of keys) out[k] = stats[k] ?? 0
   return out
 }
+
+/** Case centrale de la carte (x 17, y −3) : lanceur fictif pour mesurer les zones centrées sur lui. */
+const PROBE_CELL = pointToCell(17, -3)
+
+/**
+ * Coups possibles d'un sort sur un ennemi. Règle du jeu (docs/research/formulas.md §3.5, `isMeleeHit`) : mêlée ⇔
+ * cible sur une case ADJACENTE au lanceur (distance 1), quelle que soit la portée du sort. Cible sur la case d'impact :
+ * distance = portée min..max ; lignes centrées sur le lanceur (portée 0, sous-sorts « autour du lanceur ») : distances
+ * des cases de leur zone (`zoneCells`). Aucun ennemi atteignable : heuristique de l'IA (`isMeleeSpell`, portée ≤ 1).
+ */
+export function possibleHits(prof: SpellProfileX): { melee: boolean; range: boolean } {
+  let melee = prof.minRange <= 1 && prof.maxRange >= 1
+  let range = prof.maxRange >= 2
+  for (const l of prof.damage) {
+    if (!l.sides.enemy || !(l.aroundCaster || prof.maxRange === 0)) continue
+    for (const cell of zoneCells(l.zone, PROBE_CELL, PROBE_CELL)) {
+      const d = distance(PROBE_CELL, cell)
+      if (d === 1) melee = true
+      else if (d >= 2) range = true
+    }
+  }
+  if (!melee && !range) return isMeleeSpell(prof) ? { melee: true, range: false } : { melee: false, range: true }
+  return { melee, range }
+}
+
+/** Le boss reçoit-il ce coup dans une phase ? */
+const takesHit = (v: Vulnerability, melee: boolean): boolean => v === true || v === (melee ? 'melee' : 'range')
+const hitName = (melee: boolean): string => (melee ? 'au contact' : 'à distance')
 
 /**
  * Dégâts d'UN sort (calculateur `degats`) : pour chaque ligne de dégâts du profil de sort qui touche un ennemi —
@@ -865,8 +1057,18 @@ function attackerStats(stats: Stats, elements: readonly number[], melee: boolean
  * trace du jet max (`explainDamage`). Cible : monstre (plafond de résistance 100 %), sur la case d'impact (efficacité
  * de zone 1), hors combat (ni buffs, ni états, ni modificateurs de sort). Lignes « fixes » : `hpBasedDamage` (jet = PV
  * de référence) ; lignes en % de PV : non calculées (dépendent des PV du moment).
+ *
+ * Coup au contact ou à distance (`possibleHits`) : `opts.hit` l'impose ; sinon, si les deux sont possibles, les deux
+ * sont calculés (`otherHit`). Contre un boss, un coup auquel il est invulnérable dans toutes ses phases (`vulnerable`
+ * des phases de la fiche : sort de départ, états, fiche manuelle) vaut 0 (avertissement qui cite la mécanique).
  */
-export function spellDamageReport(data: NodeDataStore, who: DegatsCharacter, spellText: string, target: DegatsTarget, opts: { trace?: boolean; crit?: boolean } = {}): DegatsResult {
+export function spellDamageReport(
+  data: NodeDataStore,
+  who: DegatsCharacter,
+  spellText: string,
+  target: DegatsTarget,
+  opts: { trace?: boolean; crit?: boolean; hit?: 'melee' | 'range' } = {},
+): DegatsResult {
   const built = computeBuildStats(who.build, data)
   const stats = built.stats
   const warnings = [...who.warnings]
@@ -874,15 +1076,12 @@ export function spellDamageReport(data: NodeDataStore, who: DegatsCharacter, spe
   const spell = findSpell(data, who.build, spellText)
   if (!spell.inBuild) warnings.push(`« ${spell.name} » est la variante NON retenue par les variantes de sorts du build (calcul fait quand même).`)
   const prof = createSpellProfileIndex(theoryEngine(data)).of(spell.level)
-  const melee = isMeleeSpell(prof)
   const critPct = spell.level.criticalEffects.length ? critChance(spell.level.critChance, stats.critical) : 0
-  const lines: DegatsLine[] = []
-  let skipped = 0
-  prof.damage.forEach((line: DamageLineX, i) => {
-    if (!line.sides.enemy) {
-      skipped++
-      return
-    }
+  // --crit : trace du jet max critique… si le sort peut critiquer (sinon celle du coup normal, signalé).
+  const traceCrit = !!opts.crit && critPct > 0
+  if (opts.crit && critPct === 0) warnings.push(`--crit : « ${spell.name} » ne peut pas critiquer — trace du coup normal.`)
+
+  const lineOf = (line: DamageLineX, i: number, melee: boolean): DegatsLine => {
     const el = resolveElement(line.element, stats)
     const base: DegatsLine = {
       index: i + 1,
@@ -917,7 +1116,7 @@ export function spellDamageReport(data: NodeDataStore, who: DegatsCharacter, spe
       base.normal = { ...damageRange(normal, line.min, line.max), mean: meanPrepared(prepareDamage(normal), line.min, line.max) }
       if (critPct > 0) base.crit = { ...damageRange(crit, line.critMin, line.critMax), mean: meanPrepared(prepareDamage(crit), line.critMin, line.critMax) }
       base.expected = expectedDamage(normal, null, base.rolls, critPct)
-      if (opts.trace || opts.crit) base.trace = opts.crit ? explainDamage(crit, line.critMax) : explainDamage(normal, line.max)
+      if (opts.trace || opts.crit) base.trace = traceCrit ? explainDamage(crit, line.critMax) : explainDamage(normal, line.max)
       if (line.family === 'mp') base.note = 'dommages × PM restants : calculés comme une ligne boostée (comme le DPT de l’IA)'
     } else if (line.family === 'fixed') {
       const spec = DAMAGE_SPECS.get(line.effectId)
@@ -934,17 +1133,80 @@ export function spellDamageReport(data: NodeDataStore, who: DegatsCharacter, spe
       base.expected = (1 - c) * base.normal.mean + c * (base.crit?.mean ?? base.normal.mean)
       base.note = 'dommages fixes : non boostés par les caractéristiques (hpBasedDamage, jet = dégâts de base)'
     } else base.note = line.family === 'hp' ? 'dégâts en % de PV : dépendent des PV du moment, non calculés' : 'élément non résolu : non calculée'
-    lines.push(base)
-  })
-  const direct = lines.filter(l => l.expected !== null && !l.condition && !l.dotTurns && !l.delayed)
-  const expectedTotal = direct.length ? direct.reduce((s, l) => s + l.probability * l.expected!, 0) : null
+    return base
+  }
+
+  const phases = target.phases ?? []
+  const hitOf = (melee: boolean): DegatsHit => {
+    const lines: DegatsLine[] = []
+    prof.damage.forEach((line, i) => void (line.sides.enemy && lines.push(lineOf(line, i, melee))))
+    const blocking = phases.filter(p => !takesHit(p.vulnerable, melee))
+    const hit: DegatsHit = { melee, lines, expectedTotal: null }
+    if (blocking.length) hit.blockedPhases = blocking.map(p => p.name)
+    if (blocking.length && blocking.length === phases.length) {
+      const what = blocking.every(p => p.vulnerable === false) ? 'invulnérable' : `invulnérable ${hitName(melee)}`
+      hit.blocked = `${target.name} est ${what} dans toutes ses phases (${blocking.map(p => p.name).join(', ')})`
+      // En jeu : aucun dégât, quelle que soit la ligne ; la trace (calcul sans invulnérabilité) induirait en erreur.
+      for (const l of lines) {
+        const zero = { min: 0, max: 0, mean: 0 }
+        l.normal = zero
+        l.crit = critPct > 0 ? { ...zero } : null
+        l.expected = 0
+        l.note = `boss ${what} : 0 en jeu`
+        delete l.trace
+      }
+    }
+    const direct = lines.filter(l => l.expected !== null && !l.condition && !l.dotTurns && !l.delayed)
+    hit.expectedTotal = direct.length ? direct.reduce((s, l) => s + l.probability * l.expected!, 0) : null
+    return hit
+  }
+
+  // Coup(s) calculé(s) : imposé, ou les deux s'ils sont possibles (principal : heuristique de portée de l'IA).
+  const hits = possibleHits(prof)
+  const span = `portée ${prof.minRange} à ${prof.maxRange}`
+  let melees: boolean[]
+  let hitRule: string
+  if (opts.hit) {
+    const m = opts.hit === 'melee'
+    melees = [m]
+    hitRule = `coup ${hitName(m)} imposé (--${m ? 'melee' : 'distance'})`
+    if (!(m ? hits.melee : hits.range)) warnings.push(`--${m ? 'melee' : 'distance'} : avec sa ${span}, « ${spell.name} » ne touche pas ${m ? 'au contact' : 'à distance'} une cible placée sur la case d'impact (calcul fait quand même).`)
+  } else if (hits.melee && hits.range) {
+    const m = isMeleeSpell(prof)
+    melees = [m, !m]
+    hitRule = `${span} : au contact ou à distance selon la case de la cible — les deux sont calculés (--melee / --distance pour n'en garder qu'un)`
+  } else {
+    melees = [hits.melee]
+    hitRule = `${span} : cible ${hitName(hits.melee)}`
+  }
+  let [primary, other] = melees.map(hitOf)
+  // Coup principal impossible contre le boss mais l'autre possible : le tableau utile en tête.
+  if (other && primary.blocked && !other.blocked) [primary, other] = [other, primary]
+
+  // Avertissements d'invulnérabilité : mécaniques de la fiche, puis effet sur chaque coup calculé.
+  for (const m of target.invulnerability ?? []) warnings.push(`Mécanique du boss : ${m}`)
+  for (const h of [primary, other]) {
+    if (!h) continue
+    const alt = h === primary ? other : primary
+    if (h.blocked) {
+      const otherOk = phases.some(p => takesHit(p.vulnerable, !h.melee))
+      const hint = !otherOk ? '' : alt ? ` ; ${hitName(!h.melee)} : voir l'autre tableau` : (h.melee ? hits.range : hits.melee) ? ` ; ${hitName(!h.melee)} : --${h.melee ? 'distance' : 'melee'}` : ''
+      warnings.push(`Coup ${hitName(h.melee)} : ${h.blocked} — 0 en jeu, valeurs mises à 0${hint}.`)
+    } else if (h.blockedPhases)
+      warnings.push(`Coup ${hitName(h.melee)} : ${target.name} y est invulnérable pendant ${h.blockedPhases.length > 1 ? 'les phases' : 'la phase'} ${h.blockedPhases.join(', ')} — 0 pendant ${h.blockedPhases.length > 1 ? 'ces phases' : 'cette phase'} ; valeurs : autres phases.`)
+  }
+
   const assumptions = [
     'Pipeline DoMath de src/damage (troncatures à chaque étape) ; cible = monstre (plafond de résistance 100 %), touchée sur la case d’impact (efficacité de zone 1).',
-    `Hors combat : ni buffs, ni états, ni modificateurs de sort, ni Puissance de sort ; ${melee ? 'sort de MÊLÉE (portée ≤ 1 : % dommages / résistances mêlée)' : 'sort à DISTANCE (% dommages / résistances distance)'}.`,
+    'Hors combat : ni buffs, ni états, ni modificateurs de sort, ni Puissance de sort.',
+    `Mêlée ⇔ cible sur une case ADJACENTE au lanceur (règle du jeu, quelle que soit la portée du sort) : % dommages et % résistances mêlée ; sinon à distance. Ici : ${hitRule}.`,
     'Caractéristiques du build par computeBuildStats (jets max des objets).',
     'Moyennes exactes sur les jets entiers (meanPrepared) ; espérance = (1 − %CC) × moyenne normale + %CC × moyenne critique ; chance de critique DoMath (sans plancher de 1 %).',
   ]
-  if (prof.damage.length && lines.some(l => l.condition)) assumptions.push('Lignes conditionnelles (états, bouclier…) : calculées une à une, hors espérance d’un lancer.')
+  if (target.kind === 'boss') assumptions.push('Vulnérabilité par phase de la fiche du boss : un coup bloqué par une invulnérabilité dans toutes ses phases vaut 0 (comme le stuff contre un boss).')
+  if (primary.lines.some(l => l.condition)) assumptions.push('Lignes conditionnelles (états, bouclier…) : calculées une à une, hors espérance d’un lancer.')
+  // Mêmes valeurs au contact et à distance (aucun % mêlée / distance en jeu) : l'autre tableau n'est pas répété.
+  const strip = (h: DegatsHit) => JSON.stringify([h.blocked ?? null, h.lines.map(({ trace: _t, ...l }) => l)])
   return {
     character: {
       label: who.label,
@@ -962,7 +1224,9 @@ export function spellDamageReport(data: NodeDataStore, who: DegatsCharacter, spe
       apCost: spell.level.apCost,
       minRange: spell.level.minRange,
       range: spell.level.range,
-      melee,
+      melee: primary.melee,
+      hits,
+      hitRule,
       baseCrit: spell.level.criticalEffects.length ? spell.level.critChance : 0,
       critPct,
       inBuild: spell.inBuild,
@@ -976,14 +1240,54 @@ export function spellDamageReport(data: NodeDataStore, who: DegatsCharacter, spe
       rangedResPct: target.stats.rangedResPct ?? 0,
       meleeResPct: target.stats.meleeResPct ?? 0,
       spellResPct: target.stats.spellResPct ?? 0,
+      ...(target.phases ? { phases: target.phases } : {}),
     },
-    attacker: attackerStats(stats, lines.map(l => l.element), melee),
-    lines,
-    expectedTotal,
-    skippedLines: skipped,
+    attacker: attackerStats(stats, primary.lines.map(l => l.element), melees),
+    lines: primary.lines,
+    expectedTotal: primary.expectedTotal,
+    ...(primary.blockedPhases ? { blockedPhases: primary.blockedPhases } : {}),
+    ...(primary.blocked ? { blocked: primary.blocked } : {}),
+    ...(other ? { otherHit: { ...other, identical: strip(other) === strip(primary) } } : {}),
+    skippedLines: prof.damage.filter(l => !l.sides.enemy).length,
     warnings,
     assumptions,
   }
+}
+
+/** Intitulé d'un type de coup (tableaux du calculateur). */
+const hitTitle = (melee: boolean): string => (melee ? 'Au contact (mêlée : cible sur une case adjacente)' : 'À distance (cible à 2 cases ou plus)')
+
+/** Tableau des lignes d'un coup et espérance d'un lancer. */
+function hitTable(h: DegatsHit): string[] {
+  const range = (x: { min: number; max: number } | null) => (x ? `${fmtNum(x.min)}-${fmtNum(x.max)}` : '—')
+  return [
+    textTable(
+      ['#', 'Élément', 'Effet', 'Normal', 'Moy.', 'Critique', 'Moy. CC', '%CC', 'Espérance', 'Ligne'],
+      h.lines.map(l => [
+        String(l.index),
+        l.elementLabel,
+        String(l.effectId),
+        range(l.normal),
+        l.normal ? fmtNum(l.normal.mean, 2) : '—',
+        range(l.crit),
+        l.crit ? fmtNum(l.crit.mean, 2) : '—',
+        fmtPct(l.critPct),
+        l.expected !== null ? fmtNum(l.expected, 2) : '—',
+        [
+          l.condition ?? '',
+          l.probability < 1 ? `probabilité ${fmtPct(l.probability * 100)}` : '',
+          l.sub ? 'sous-sort' : '',
+          l.dotTurns ? `poison ${l.dotTurns} tour(s)` : '',
+          l.delayed ? `différée ${l.delayed} tour(s)` : '',
+          l.note ?? '',
+        ]
+          .filter(Boolean)
+          .join(' ; ') || '—',
+      ]),
+      'rllrrrrrrl',
+    ),
+    `  Espérance d'un lancer (lignes immédiates sans condition, probabilités comprises) : ${h.expectedTotal !== null ? fmtNum(h.expectedTotal, 2) : '—'}`,
+  ]
 }
 
 /** Rendu texte du calculateur. */
@@ -992,64 +1296,51 @@ export function formatDegats(r: DegatsResult): string {
   const s = r.spell
   out.push(section(`${s.name} (sort ${s.spellId}, grade ${s.grade}) — ${r.character.className} niveau ${r.character.level} (${r.character.label})`))
   const critText = s.baseCrit > 0 ? `critique ${fmtPct(s.baseCrit)} de base + ${fmtNum(r.attacker.critical ?? 0)} % (caractéristique) ⇒ ${fmtPct(s.critPct)}` : 'ne peut pas critiquer'
-  out.push(`  ${s.apCost} PA · portée ${s.minRange} à ${s.range} · ${s.melee ? 'mêlée' : 'distance'} · ${critText}`)
+  const hitText = r.otherHit ? 'mêlée ou distance selon la case' : s.melee ? 'mêlée (au contact)' : 'distance'
+  out.push(`  ${s.apCost} PA · portée ${s.minRange} à ${s.range} · ${hitText} · ${critText}`)
   const t = r.target
   const others = [t.rangedResPct ? `distance ${fmtPct(t.rangedResPct)}` : '', t.meleeResPct ? `mêlée ${fmtPct(t.meleeResPct)}` : '', t.spellResPct ? `sorts ${fmtPct(t.spellResPct)}` : ''].filter(Boolean)
   out.push(`  Cible : ${t.label}`)
   out.push(`    Résistances : ${['Neutre', 'Terre', 'Feu', 'Eau', 'Air'].map((n, i) => `${n} ${fmtPct(t.resPct[i])}`).join(', ')}${others.length ? ` ; ${others.join(', ')}` : ''}`)
   out.push(`  Lanceur : ${Object.entries(r.attacker).map(([k, v]) => `${statLabelFr(k as StatKey)} ${fmtNum(v)}`).join(', ')}`)
   out.push('')
+  const primary: DegatsHit = { melee: s.melee, lines: r.lines, expectedTotal: r.expectedTotal, blocked: r.blocked }
+  const other = r.otherHit
+  const shown = other && !other.identical ? [primary, other] : [primary]
   if (!r.lines.length) out.push('  Aucune ligne de dégâts sur un ennemi.')
-  else {
-    const range = (x: { min: number; max: number } | null) => (x ? `${fmtNum(x.min)}-${fmtNum(x.max)}` : '—')
-    out.push(
-      textTable(
-        ['#', 'Élément', 'Effet', 'Normal', 'Moy.', 'Critique', 'Moy. CC', '%CC', 'Espérance', 'Ligne'],
-        r.lines.map(l => [
-          String(l.index),
-          l.elementLabel,
-          String(l.effectId),
-          range(l.normal),
-          l.normal ? fmtNum(l.normal.mean, 2) : '—',
-          range(l.crit),
-          l.crit ? fmtNum(l.crit.mean, 2) : '—',
-          fmtPct(l.critPct),
-          l.expected !== null ? fmtNum(l.expected, 2) : '—',
-          [
-            l.condition ?? '',
-            l.probability < 1 ? `probabilité ${fmtPct(l.probability * 100)}` : '',
-            l.sub ? 'sous-sort' : '',
-            l.dotTurns ? `poison ${l.dotTurns} tour(s)` : '',
-            l.delayed ? `différée ${l.delayed} tour(s)` : '',
-            l.note ?? '',
-          ]
-            .filter(Boolean)
-            .join(' ; ') || '—',
-        ]),
-        'rllrrrrrrl',
-      ),
-    )
-    out.push(`  Espérance d'un lancer (lignes immédiates sans condition, probabilités comprises) : ${r.expectedTotal !== null ? fmtNum(r.expectedTotal, 2) : '—'}`)
-  }
+  else
+    for (const h of shown) {
+      if (other) out.push(`  ${hitTitle(h.melee)}${h.blocked ? ' — 0 en jeu (invulnérabilité)' : ''}`)
+      out.push(...hitTable(h))
+      if (other?.identical) out.push(`  ${hitTitle(other.melee)} : mêmes valeurs (ni % de dommages ni % de résistances mêlée / distance en jeu).`)
+      if (h !== shown[shown.length - 1]) out.push('')
+    }
   if (r.skippedLines) out.push(`  ${r.skippedLines} ligne(s) de dégâts sur les alliés ou le lanceur écartée(s).`)
-  for (const l of r.lines) {
-    if (!l.trace) continue
-    out.push('', `Détail du jet max (${l.trace.roll}, coup ${l.trace.params.crit ? 'critique' : 'normal'}) — ligne ${l.index}, ${l.elementLabel}`)
-    out.push(textTable(['Étape', 'Valeur', 'Calcul'], l.trace.steps.map(st => [st.label, fmtNum(st.value), st.detail]), 'lrl'))
-  }
+  for (const h of shown)
+    for (const l of h.lines) {
+      if (!l.trace) continue
+      const where = shown.length > 1 ? `, ${hitName(h.melee)}` : ''
+      out.push('', `Détail du jet max (${l.trace.roll}, coup ${l.trace.params.crit ? 'critique' : 'normal'}${where}) — ligne ${l.index}, ${l.elementLabel}`)
+      out.push(textTable(['Étape', 'Valeur', 'Calcul'], l.trace.steps.map(st => [st.label, fmtNum(st.value), st.detail]), 'lrl'))
+    }
   if (r.warnings.length) out.push('', 'Avertissements', bullets(r.warnings))
   out.push('', 'Hypothèses', bullets(r.assumptions))
   return out.join('\n')
 }
 
-/** `npm run sim -- degats --preset <preset> [--build f | --roxx l] --sort <nom|id> [--boss B [--players N]] [--res …]` */
+/**
+ * `npm run sim -- degats --preset <preset> [--build f | --roxx l] --sort <nom|id> [--boss B [--players N]] [--res …]
+ * [--melee | --distance]`
+ */
 export function cmdDegats(a: Args, data: NodeDataStore): number {
   if (a.positional.length) throw new Error(`degats : argument inattendu « ${a.positional.join(' ')} » (tout passe par des options : --preset, --sort, --boss, --res…)`)
   const spellText = strFlag(a, 'sort', 'nom ou id du sort')
   if (spellText === undefined) throw new Error('degats : --sort <nom|id> attendu (ex. --sort "Flèche Punitive" ou --sort 32456)')
+  if (bool(a, 'melee') && bool(a, 'distance')) throw new Error('--melee et --distance sont exclusifs (coup au contact, ou à distance)')
+  const hit = bool(a, 'melee') ? 'melee' : bool(a, 'distance') ? 'range' : undefined
   const who = degatsCharacter(a, data)
   const target = degatsTarget(a, data)
-  const r = spellDamageReport(data, who, spellText, target, { trace: bool(a, 'trace'), crit: bool(a, 'crit') })
+  const r = spellDamageReport(data, who, spellText, target, { trace: bool(a, 'trace'), crit: bool(a, 'crit'), hit })
   console.log(bool(a, 'json') ? JSON.stringify(r, null, 2) : formatDegats(r))
   return 0
 }
