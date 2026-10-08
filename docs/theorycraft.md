@@ -56,7 +56,7 @@ pas est une erreur, qui liste les options de la commande et, si c'est le cas, la
 | Commande | Rôle |
 |---|---|
 | `bosses [recherche] [--all] [--json]` | Liste ou recherche des boss : nom, id, donjon(s), niveau du donjon, niveau du boss, nombre de grades, Expédition. `--all` inclut les Expéditions (exclues par défaut). |
-| `boss <nom\|id> [--players N \| --grade G] [--details] [--no-overrides] [--all] [--bosses-dir D] [--json]` | Fiche du boss. `--details` : en plus, tableau de tous ses sorts (PA, PO, coup au contact ou à distance, lancers, relance, dégâts par élément, drapeaux) et arbre de son sort de départ (aide à rédiger une fiche manuelle, §5). La fiche manuelle `data/bosses/<id>.json` est appliquée si elle existe ; `--no-overrides` l'ignore. |
+| `boss <nom\|id> [--players N \| --grade G] [--details] [--no-overrides] [--all] [--bosses-dir D] [--json]` | Fiche du boss. `--details` : en plus, tableau de tous ses sorts (PA, PO, coup au contact ou à distance — mêlée si PO ≤ 1, convention du calcul, §4 —, lancers, relance, dégâts par élément, drapeaux) et arbre de son sort de départ (aide à rédiger une fiche manuelle, §5). La fiche manuelle `data/bosses/<id>.json` est appliquée si elle existe ; `--no-overrides` l'ignore. |
 | `boss <nom\|id> classes [--players N \| --grade G] [--optimize [--iterations N] [--profile P]] [--level L] [--json] [--out fichier]` | Classement des classes (§3.2). `--optimize` : stuff optimisé contre le boss pour chaque preset, progression sur la sortie d'erreur ; `--iterations` et `--profile` n'existent qu'avec `--optimize` (sinon erreur). `--out` : classement écrit dans un fichier (JSON si `.json`, texte sinon). |
 | `boss <nom\|id> stuff --class <classe\|preset> [--roxx <lien> \| --build fichier.json] [--elements preset\|all] [--profile balanced\|defensive\|offensive] [--top N] [--iterations N] [--restarts N] [--seed S] [--level L] [--range N] [--fixed ids] [--exclude ids] [--out fichier.json] [--json]` | Meilleur stuff pour un personnage (§3.3). |
 | `degats --preset <preset> [--build fichier.json \| --roxx <lien>] --sort <nom\|id> [--boss <nom\|id> [--players N \| --grade G] [--no-overrides] [--all]] [--res n,t,f,e,a] [--melee \| --distance] [--crit] [--trace] [--json]` | Dégâts d'UN sort, ligne par ligne, pour vérifier en jeu (§6) : au contact et à distance pour un sort de portée 1 à N (`--melee` ou `--distance` pour n'en garder qu'un). |
@@ -281,9 +281,9 @@ onglet Boss est retiré (une adresse `#boss` y mène aux combats).
   punissent ; avertissements et hypothèses repliables. La fiche manuelle `data/bosses/<id>.json` est appliquée si elle
   existe.
 - Onglet **Classes** : un tableau triable par axe (rangs partagés « =1 », mêmes colonnes que la ligne de commande,
-  dont le facteur « Étal. preset »), la composition suggérée avec ses raisons, atouts, limites et confiance
-  dépliables ; le bouton « optimiser les stuffs » relance le classement avec des stuffs optimisés contre le boss (plus
-  long, indicateur de chargement).
+  dont le facteur « Étal. preset » et, contre un boss aux résistances ≥ 100 % sans fiche, « Rés. levées », §3.1), la
+  composition suggérée avec ses raisons, atouts, limites et confiance dépliables ; le bouton « optimiser les stuffs »
+  relance le classement avec des stuffs optimisés contre le boss (plus long, indicateur de chargement).
 - Onglet **Stuff** : choix du preset, champ « lien RoxxSolver », éléments (ceux du preset ou les quatre), profil,
   taille du top ; résultat : tableau comparatif, meilleur stuff objet par objet (icônes DofusDB, repli hors ligne),
   objets changés, équivalences des caractéristiques, DPT par sort, hypothèses et avertissements. Un réglage changé
@@ -564,6 +564,13 @@ la répartition élémentaire et le poids des résistances fixes, et peuvent êt
   soutenu suppose qu'il frappe une cible par tour ; zones (une seule cible touchée), sorts déclenchés en réaction et
   dégâts de ses invocations ne sont pas comptés ; les sorts lancés par ses alliés non plus.
 - Lignes aléatoires pondérées par leur probabilité (espérance, pas le pire tirage) ; critique pondéré.
+- **Ses coups sont classés mêlée seulement si la PO du sort est ≤ 1**, à distance sinon (colonne *Coup* de
+  `boss --details`, §5). C'est une convention du calcul, pas la règle du jeu, que le DPT des personnages suit (§3.2 :
+  un coup est de mêlée dès que la cible est adjacente). Les % de résistance mêlée ou distance des personnages en
+  dépendent (PVe, objectif de l'optimiseur, équivalences) : contre un boss qu'on frappe au contact, ses sorts à longue
+  portée sont de mêlée en jeu sur un personnage adjacent, mais le calcul les compte à distance. Ex. : les trois sorts
+  du Père Ver ont 63 de PO ; pour le Zobal, le meilleur stuff valorise « 1 % Résistance distance ≈ 10,3 Force » et
+  jamais la résistance mêlée, alors que tous les personnages sont supposés au contact.
 - Dégâts en % de PV : 4 000 PV de référence par joueur, boss à mi-vie, 10 % de PV érodés. Effets de dégâts rares non
   gérés (dommages par PA/PM utilisé, % des dommages subis…) comptés à 0 et listés dans les avertissements.
 - Phases à poids égaux, déduites des conditions d'états de ses sorts (6 au plus) ; une invulnérabilité de départ est
@@ -607,9 +614,10 @@ l'accompagnent. Une fiche manuelle le dit ; elle est facultative et appliquée a
 
 1. Trouver l'id du boss : `npm run sim -- bosses <nom>`.
 2. Lire ce que les données en disent : `npm run sim -- boss <id> --details` affiche, en plus de la fiche, le tableau de
-   tous ses sorts (id, PA, PO, coup — mêlée si PO ≤ 1, ce que vos résistances mêlée ou distance réduisent —, lancers,
-   relance, dégâts par élément, drapeaux, états du boss sous lesquels les dégâts sont pris) et l'arbre de son sort de
-   départ (effets, états posés, sous-sorts). Les ids d'états et de sorts à citer dans la fiche viennent de là.
+   tous ses sorts (id, PA, PO, coup — mêlée si PO ≤ 1, convention du calcul (§4), ce que vos résistances mêlée ou
+   distance réduisent —, lancers, relance, dégâts par élément, drapeaux, états du boss sous lesquels les dégâts sont
+   pris) et l'arbre de son sort de départ (effets, états posés, sous-sorts). Les ids d'états et de sorts à citer dans la
+   fiche viennent de là.
 3. Copier `data/bosses/_template.json` vers `data/bosses/<id>.json` (le nom doit être l'id), remplacer les valeurs,
    supprimer les clés inutiles.
 4. Relancer `boss <id>` : la ligne « Fiche manuelle appliquée (date) » apparaît ; une clé inconnue, un type inattendu ou

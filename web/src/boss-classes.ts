@@ -62,8 +62,12 @@ interface Row {
 const confidenceChip = (level: string) => `<span class="bv-conf ${attr(level)}">${esc(level)}</span>`
 const CONF_ORDER: Readonly<Record<string, number>> = { haute: 3, moyenne: 2, basse: 1 }
 
-/** Colonnes de détail propres à chaque axe (comme le rendu texte de la CLI). */
-function detailColumns(axis: RankingAxis): Column<Row>[] {
+/**
+ * Colonnes de détail propres à chaque axe, dans l'ordre du rendu texte de la CLI (`formatClasses`). Dégâts :
+ * « Rés. levées » (DPT soutenu si les résistances ≥ 100 % du boss étaient levées) quand un preset en porte une — boss
+ * sans fiche manuelle dont les résistances sont ≥ 100 % ; elle départage alors les DPT nuls du classement.
+ */
+function detailColumns(axis: RankingAxis, ranking: ClassRanking): Column<Row>[] {
   switch (axis) {
     case 'damage':
       return [
@@ -78,6 +82,18 @@ function detailColumns(axis: RankingAxis): Column<Row>[] {
         { key: 'burst', label: 'Rafale', num: true, title: 'Premier tour d’un combat (relances et poisons actifs ignorés ; poisons comptés pour toute leur durée)', sort: r => r.e.dpt.burst, cell: r => fmtNum(r.e.dpt.burst) },
         { key: 'el', label: 'Élément (rés.)', sort: r => r.e.elementMatch.resPct, cell: r => elementChip(r.e.elementMatch.element, fmtPct(r.e.elementMatch.resPct)) },
         { key: 'stance', label: 'Posture', sort: r => r.e.stance.name, cell: r => (r.e.stance.id === 'base' ? '<span class="bv-muted">—</span>' : esc(r.e.stance.name)) },
+        ...(ranking.presets.some(e => e.dpt.resLifted !== undefined)
+          ? [
+              {
+                key: 'lifted',
+                label: 'Rés. levées',
+                num: true,
+                title: 'DPT soutenu si les résistances ≥ 100 % du boss étaient levées (aucune fiche manuelle ne les donne) : départage les DPT nuls',
+                sort: (r: Row) => r.e.dpt.resLifted ?? 0,
+                cell: (r: Row) => fmtNum(r.e.dpt.resLifted ?? 0),
+              },
+            ]
+          : []),
       ]
     case 'survival':
       return [
@@ -142,7 +158,7 @@ function axisTable(r: ClassRanking, axis: RankingAxis, ui: ClassesUi): string {
       },
     },
     { key: 'value', label: a.unit, num: true, sort: row => row.value, cell: row => `<b>${axisValue(axis, row.value)}</b>` },
-    ...detailColumns(axis),
+    ...detailColumns(axis, r),
     { key: 'conf', label: 'Confiance', sort: row => CONF_ORDER[row.e.confidence.level] ?? 0, cell: row => confidenceChip(row.e.confidence.level) },
     { key: 'go', label: '', cell: row => `<button type="button" class="link-btn" data-act="to-stuff" data-preset="${attr(row.e.presetId)}" title="Chercher le meilleur stuff de ce preset contre ce boss">Stuff</button>` },
   ]

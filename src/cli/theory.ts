@@ -605,7 +605,7 @@ function showBoss(a: Args, data: NodeDataStore, { entry, profile }: BossChoice):
   }
   console.log('')
   console.log(section(`Sorts du boss (grade ${profile.grade}, ${profile.spells.length} sorts)`))
-  console.log('  Dégâts moyens par lancer contre un joueur à 0 % de résistance (critique pondéré) ; « Autre » : fixes et % de PV ; ∞ : sans limite ; « Coup » : mêlée si PO ≤ 1 (résistances mêlée/distance du personnage).')
+  console.log('  Dégâts moyens par lancer contre un joueur à 0 % de résistance (critique pondéré) ; « Autre » : fixes et % de PV ; ∞ : sans limite ; « Coup » : mêlée si PO ≤ 1, convention du calcul — en jeu, mêlée dès que la cible est adjacente (résistances mêlée/distance du personnage).')
   console.log(spellsTable(data, profile))
   console.log('')
   console.log(section('Sort de départ'))

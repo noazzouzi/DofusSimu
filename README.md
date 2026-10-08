@@ -32,7 +32,8 @@ millisecondes, le classement des classes en moins d'une seconde, un meilleur stu
 
 ```bash
 npm run sim -- bosses [recherche] [--all] [--json]                  # liste / recherche (nom du boss ou du donjon)
-npm run sim -- boss <nom|id> [--players N | --grade G] [--details] [--no-overrides] [--all] [--json]   # fiche
+npm run sim -- boss <nom|id> [--players N | --grade G] [--details] [--no-overrides] [--all]
+                             [--bosses-dir D] [--json]                                               # fiche
 npm run sim -- boss <nom|id> classes [--players N | --grade G] [--optimize [--iterations N] [--profile P]]
                                      [--level L] [--json] [--out fichier]                            # classes
 npm run sim -- boss <nom|id> stuff --class <classe|preset> [--roxx <lien> | --build fichier.json]
@@ -58,7 +59,8 @@ ligne (min-max normal et critique, chance de critique, espérance ; `--trace` : 
 jeu, par exemple sur un Poutch : au contact et à distance pour un sort de portée 1 à N (`--melee` ou `--distance` pour
 n'en garder qu'un). Une option inconnue de la commande est une erreur. Une fiche manuelle `data/bosses/<id>.json`
 (mécaniques, résistances réellement subies, phases ; règles de sources dans
-[`data/bosses/README.md`](data/bosses/README.md)) complète les données quand elle existe.
+[`data/bosses/README.md`](data/bosses/README.md)) complète les données quand elle existe ; toutes les commandes `boss`
+et `degats --boss` acceptent `--no-overrides` (fiche ignorée) et `--bosses-dir D` (fiches lues dans un autre dossier).
 
 **Page web** : `npm run dev`, onglet **Boss** (`http://localhost:5173/#boss`, état dans l'adresse :
 `#boss/<monsterId>[/classes|/stuff]`) — recherche, fiche du boss, onglet Classes (tableaux triables, composition,

@@ -258,8 +258,8 @@ Hors de `src/theorycraft/` :
   manuelle les donne par phase ; `boss --details` donne le coup de chaque sort du boss (mêlée ⇔ PO ≤ 1, convention
   des dégâts reçus) et ses `damageStates`. Page : onglet Boss absent de la version construite, POST acceptés
   seulement en JSON de la page elle-même, effort du classement optimisé plafonné (10 000 itérations) ; mêmes colonnes
-  et titres que les rendus texte (facteur « Étal. preset », pic présenté comme une estimation) et, grade imposé, même
-  composition que la CLI (`playersForGrade`).
+  et titres que les rendus texte (facteur « Étal. preset », « Rés. levées » contre des résistances ≥ 100 % sans fiche,
+  pic présenté comme une estimation) et, grade imposé, même composition que la CLI (`playersForGrade`).
 
 Tests : `tests/theory-{bosses,overrides,profile,target,hits,rotation,stances,utilities,classes,stuff}.test.ts` (12, 9,
 27, 9, 7, 12, 5, 17, 26 et 30 cas), `tests/opt-stuff-target.test.ts` (14), `tests/data-fetch-schema.test.ts`,
@@ -371,4 +371,13 @@ Tests : `tests/theory-{bosses,overrides,profile,target,hits,rotation,stances,uti
 - Dégâts du boss : pic optimiste sur une cible, mais zones, sorts en réaction, invocations et alliés non comptés ;
   dégâts reçus et règle Soin peuvent être sous-estimés contre un boss à zones ou à invocations (les PVe, un rapport,
   faussés dans un sens ou dans l'autre).
+- Coups du boss : mêlée ⇔ PO ≤ 1 (convention de `bossProfile.ts` et de la partie MONSTRE de `hits.ts`), pas la règle
+  de l'adjacence que suivent le DPT des personnages et le moteur (`isMeleeHit`). Contre un boss qu'on frappe au
+  contact (Père Ver : trois sorts de PO 63), ses coups sont comptés à distance : la résistance distance des
+  personnages est valorisée (« 1 % Résistance distance ≈ 10,3 Force » pour le Zobal), jamais la résistance mêlée.
+  Piste : appliquer l'adjacence aux dégâts reçus quand `playsMelee` est vrai. Signalé dans le guide (§4 et §5).
+- Choix du coup d'un preset joué à distance : le coup retenu est celui que la cible subit le mieux, même quand
+  `playsMelee` est faux (Crâ Terre mono contre Merkator : sorts comptés au contact, « 1 % Dommages mêlée ≈ 21 Force »,
+  alors que l'objectif vise 6 PO). À trancher : faire suivre ce choix par `playsMelee`, ou dire dans la sortie que les
+  coups sont supposés au contact (le guide l'explique, §2.1).
 - Hors périmètre v1 inchangé (§5).
