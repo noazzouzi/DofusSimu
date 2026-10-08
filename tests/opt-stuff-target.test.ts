@@ -1,6 +1,7 @@
 /**
  * Cible explicite du proxy de stuff (docs/design/theorycraft.md §1.4, §4 bis) : caractéristiques imposées et états des
- * cibles (`ProxyTarget.stats`/`states`), `strictTargets`, cohérence exact / forme fermée avec surcharges, profils
+ * cibles (`ProxyTarget.stats`/`states`), sorts retirés et PV restants (`excludeSpells`/`hpShare`), `strictTargets`,
+ * cohérence exact / forme fermée avec surcharges (table de l'IA et table du theorycraft, `theoryTable`), profils
  * d'exposants partagés (`applyProfile`), graines de la recherche (`seedFilter`, `theorySeedFilter`) et départ invalide
  * sous le niveau 200 (jamais rendu comme meilleur build, ni joué ni retenu par la validation par combats).
  */
@@ -105,6 +106,22 @@ describe('cible explicite du proxy : caractéristiques imposées', () => {
   })
 })
 
+describe('cible explicite du proxy : sorts retirés et PV restants', () => {
+  it('excludeSpells retire les sorts du monstre ; hpShare pose ses PV courants ; sans surcharge, combattant intact', () => {
+    const base = createMonsterFighter(data, { monsterId: 3534, grade: 1, team: 1 })
+    const ids = base.spells.map(s => s.spellId)
+    expect(ids).toContain(4010)
+    const f = applyTargetOverrides(createMonsterFighter(data, { monsterId: 3534, grade: 1, team: 1 }), { excludeSpells: [4010], hpShare: 0.5 })
+    expect(f.spells.map(s => s.spellId)).toEqual(ids.filter(id => id !== 4010))
+    expect(f.hp).toBe(Math.round(f.maxHp / 2))
+    expect(f.rev).toBeDefined()
+    // Dégâts reçus : un sort retiré ne frappe plus (Merkator, sort 4010).
+    const plain = contextOf('iop_soutien', { targets: [{ monsterId: HAREBOURG, weight: 1, grade: 1 }], incoming: [{ monsterId: 3534, weight: 1, grade: 1 }] })
+    const excl = contextOf('iop_soutien', { targets: [{ monsterId: HAREBOURG, weight: 1, grade: 1 }], incoming: [{ monsterId: 3534, weight: 1, grade: 1, excludeSpells: [4010] }] })
+    expect(excl.ctx.exact(excl.r.stats, excl.r.maxHp).incoming).toBeLessThan(plain.ctx.exact(plain.r.stats, plain.r.maxHp).incoming)
+  })
+})
+
 describe('cible explicite du proxy : états et phases', () => {
   it('Solar (tous ses sorts exigent un état de phase) : dégâts reçus nuls sans état, > 0 avec un état de phase', () => {
     const none = contextOf('iop_terre_burst', { targets: [{ monsterId: SOLAR, weight: 1, grade: 1 }] })
@@ -174,6 +191,40 @@ describe('forme fermée ≈ exact avec surcharges', () => {
       }
       expect(sur.length).toBeGreaterThanOrEqual(40)
       expect(corr(sur, ex)).toBeGreaterThanOrEqual(0.95)
+    }
+  })
+
+  it('table du theorycraft (`theoryTable`, coups au contact ou à distance ; `contact`) : corrélation ≥ 0,95 ; % mêlée lus par la forme fermée', () => {
+    const merk = { monsterId: 3534, weight: 1, grade: 1, stats: { rangedResPct: 50 } }
+    const cases: [string, ProxyOptions][] = [
+      ['iop_terre_burst', { targets: [merk], incoming: [{ monsterId: 3384, weight: 1, grade: 1, hpShare: 0.5 }], strictTargets: true, theoryTable: true, contact: true }],
+      ['cra_feu_zone', { targets: [merk], strictTargets: true, theoryTable: true }],
+    ]
+    for (const [presetId, opts] of cases) {
+      const { m, ctx } = contextOf(presetId, opts)
+      const pools = buildPools(data, ctx, { reference: m.build, perSlot: 20 })
+      const rng = new Rng(11)
+      const sur: number[] = []
+      const ex: number[] = []
+      for (let k = 0; k < 2000 && sur.length < 60; k++) {
+        const items: number[] = []
+        let prysm = false
+        for (const slot of STUFF_POSITIONS) {
+          const list = pools.bySlot[slot]
+          const it = list[rng.int(0, list.length - 1)]?.item
+          if (!it || items.includes(it.id) || (it.typeId === 217 && prysm)) continue
+          if (it.typeId === 217) prysm = true
+          items.push(it.id)
+        }
+        const r = computeBuildStats({ ...m.build, items: items.map(itemId => ({ itemId })) }, data)
+        if (!r.valid) continue
+        sur.push(ctx.surrogate(r.stats, r.maxHp).logJ)
+        ex.push(ctx.exact(r.stats, r.maxHp).logJ)
+      }
+      expect(sur.length, presetId).toBeGreaterThanOrEqual(40)
+      expect(corr(sur, ex), presetId).toBeGreaterThanOrEqual(0.95)
+      // Contre Merkator (−50 % à distance), les sorts lançables au contact y sont joués : % mêlée valorisés.
+      expect(ctx.statWeights().meleeDamagePct!, presetId).toBeGreaterThan(0)
     }
   })
 })

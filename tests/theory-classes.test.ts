@@ -1,20 +1,25 @@
 /**
  * Theorycraft — classement des classes contre un boss (src/theorycraft/classes.ts, docs/design/theorycraft.md §1.8) et
- * rendus texte (formatBoss.ts, formatClasses.ts) : invulnérabilité à distance du Père Ver (la mêlée passe devant le
- * Crâ, premier contre le Comte Harebourg), élément faible de vrais boss (Koumiho faible en Terre : le Crâ Terre passe
- * devant le Crâ Feu, nettement plus fort à résistances égales), postures (Zobal, Forgelance, Pandawa > 0), axes Contrôle
- * et Soin en UN budget de PA (soin plafonné aux dégâts reçus), ex æquo de la Survie, étalonnage moteur affiché et
- * signalé, composition à règles explicites (Soin, Protection, Retrait PM, deuxième élément, apport d'équipe), repli des
- * résistances extrêmes (Kimbo), bas niveau sans équipement, mode « optimized » (2 presets), déterminisme et performance.
+ * rendus texte (formatBoss.ts, formatClasses.ts) : invulnérabilité à distance du Père Ver (un sort de PO 1 à N frappe
+ * au contact : aucune classe à 0 ; les sorts de PO min ≥ 2 ne comptent pas), « −50 % à distance » de Merkator évité au
+ * contact, élément faible de vrais boss (Koumiho faible en Terre : le Crâ Terre passe devant le Crâ Feu, nettement plus
+ * fort à résistances égales), postures (Zobal, Forgelance, Pandawa > 0), axes Contrôle et Soin en UN budget de PA (soin
+ * plafonné aux dégâts reçus), ex æquo de la Survie, facteur d'étalonnage indicatif (sans fausse lecture « le moteur
+ * inflige… »), composition à règles explicites (Soin, Protection en complément du soin, Retrait PM, deuxième élément
+ * parmi Terre/Feu/Eau/Air, apport d'équipe, groupe complet signalé, joueurs du grade imposé), pression de soin lue au
+ * dixième, repli des résistances extrêmes (Kimbo), bas niveau sans équipement, mode « optimized » (2 presets, règle
+ * « au contact » commune avec `stuff`), cohérence des dégâts reçus avec la fiche, déterminisme et performance.
  */
 import { beforeAll, describe, expect, it } from 'vitest'
 import { loadDataStore } from '../src/data/node'
 import { BASE_PRESETS, getPreset, presetMember } from '../src/optimizer/team/presets'
 import { bossProfile } from '../src/theorycraft/bossProfile'
+import { playersForGrade } from '../src/theorycraft/bosses'
 import { COMPOSITION_RULES, rankClasses } from '../src/theorycraft/classes'
 import { bossFighter, playerFighterFromMember, theoryDptTable } from '../src/theorycraft/fighters'
 import { formatBoss } from '../src/theorycraft/formatBoss'
 import { formatClasses } from '../src/theorycraft/formatClasses'
+import { parseBossOverrides } from '../src/theorycraft/overrides'
 import { sustainedDamage } from '../src/theorycraft/rotation'
 import type { ClassRanking, PresetEvaluation } from '../src/theorycraft/types'
 
@@ -27,6 +32,9 @@ const BOUFTOU_ROYAL = 147
 const SOLAR = 5100
 const VORTEX = 3835
 const KOUMIHO = 6394
+const SAPIK = 1179
+const ILYZAELLE = 4967
+const HAUTE_TRUCHE = 3618
 
 const byId = (r: ClassRanking, id: string): PresetEvaluation => r.presets.find(e => e.presetId === id)!
 const rankOf = (r: ClassRanking, className: string) => r.axes.find(a => a.axis === 'damage')!.entries.findIndex(e => e.className === className)
@@ -61,17 +69,29 @@ describe('classement des classes', () => {
     }
   })
 
-  it('Père Ver (invulnérable à distance) : un preset de mêlée passe devant tous les Crâ sur l\'axe Dégâts', () => {
-    // Contre le Comte Harebourg (attaquable à distance), le Crâ est dans le peloton de tête…
-    expect(rankOf(harebourg, 'Crâ')).toBeLessThan(3)
-    // … contre le Père Ver, tous ses presets tombent derrière l'Iop et la Forgelance (mêlée).
-    const craBest = Math.max(...pereVer.presets.filter(e => e.className === 'Crâ').map(e => e.dpt.steady))
-    expect(craBest).toBeLessThan(0.25 * byId(pereVer, 'iop_terre_burst').dpt.steady)
-    expect(rankOf(pereVer, 'Iop')).toBeLessThan(rankOf(pereVer, 'Crâ'))
-    expect(pereVer.axes[0].entries[0].className).not.toBe('Crâ')
-    // Atout « mêlée » mesuré (forme du DPT) pour l'Iop.
+  it('Père Ver (invulnérable à distance) : un sort de PO 1 à N frappe au contact — aucune classe à 0 ; les sorts de PO min ≥ 2 ne comptent pas', () => {
+    // Règle du jeu (hits.ts) : un coup est de mêlée dès que la cible est adjacente. Avec l'ancienne règle « portée max
+    // ≤ 1 », ces huit classes valaient 0 contre le Père Ver (rang partagé 12).
+    for (const cls of ['Crâ', 'Eliotrope', 'Enutrof', 'Huppermage', 'Roublard', 'Sadida', 'Steamer', 'Xélor']) {
+      const best = Math.max(...pereVer.presets.filter(e => e.className === cls).map(e => e.dpt.steady))
+      expect(best, cls).toBeGreaterThan(500)
+    }
+    expect(pereVer.presets.every(e => e.dpt.steady > 0)).toBe(true)
+    // Crâ Feu : Flèche Tyrannique (PO 2 à 8, jamais au contact) dans sa rotation contre le Comte Harebourg, jamais contre
+    // le Père Ver (phase vulnérable en mêlée seule : rangedResPct 100).
+    const p = bossProfile(data, PERE_VER)
+    const cra = playerFighterFromMember(data, presetMember(getPreset('cra_feu_zone'), data))
+    const table = theoryDptTable(data)
+    const ver = bossFighter(data, PERE_VER, { grade: p.grade, stats: { ...p.stats, rangedResPct: 100 } })
+    const hare = bossFighter(data, HAREBOURG, { grade: 1, stats: bossProfile(data, HAREBOURG).stats })
+    expect(sustainedDamage(table, cra, hare).casts.flat()).toContain(32448)
+    const atVer = sustainedDamage(table, cra, ver)
+    expect(atVer.steady).toBeGreaterThan(1000)
+    expect(atVer.casts.flat()).not.toContain(32448)
+    // Atout « mêlée » mesuré (forme du DPT) pour l'Iop comme pour le Crâ, qui s'adapte : pas de limite « distance ».
     expect(byId(pereVer, 'iop_terre_burst').relevance.atouts.some(a => /^Mêlée/.test(a))).toBe(true)
-    expect(byId(pereVer, 'cra_terre_mono').relevance.limites.some(l => /^Distance/.test(l))).toBe(true)
+    expect(byId(pereVer, 'cra_terre_mono').relevance.atouts.some(a => /^Mêlée/.test(a))).toBe(true)
+    expect(byId(pereVer, 'cra_terre_mono').relevance.limites.some(l => /^Distance/.test(l))).toBe(false)
   })
 
   it('élément faible de vrais boss : contre le Koumiho (Terre −11 %, Feu +23 %) le Crâ Terre passe devant le Crâ Feu', () => {
@@ -80,7 +100,7 @@ describe('classement des classes', () => {
     // cibles du proxy), pas d'un facteur posé à la main.
     const presets = ['cra_feu_zone', 'cra_terre_mono', 'ecaflip_feu_hybride', 'ecaflip_terre_entrave'].map(getPreset)
     const koumiho = rankClasses(data, bossProfile(data, KOUMIHO), { presets })
-    expect(byId(harebourg, 'cra_feu_zone').dpt.steady).toBeGreaterThan(1.25 * byId(harebourg, 'cra_terre_mono').dpt.steady)
+    expect(byId(harebourg, 'cra_feu_zone').dpt.steady).toBeGreaterThan(1.15 * byId(harebourg, 'cra_terre_mono').dpt.steady)
     expect(byId(koumiho, 'cra_terre_mono').dpt.steady).toBeGreaterThan(byId(koumiho, 'cra_feu_zone').dpt.steady)
     expect(byId(koumiho, 'ecaflip_terre_entrave').dpt.steady).toBeGreaterThan(byId(koumiho, 'ecaflip_feu_hybride').dpt.steady)
     expect(byId(koumiho, 'cra_terre_mono').elementMatch).toMatchObject({ element: 1, rank: 0 })
@@ -113,8 +133,16 @@ describe('classement des classes', () => {
     }
     expect(byId(merkator, 'xelor_retrait_pa').control.apRemoved).toBeGreaterThan(1)
     expect(merkator.warnings.join(' ')).toMatch(/Retrait PM puni/)
-    // Merkator −50 % à distance : la mêlée passe devant le Crâ.
-    expect(rankOf(merkator, 'Sacrieur')).toBeLessThan(rankOf(merkator, 'Crâ'))
+    // Merkator −50 % à distance : un sort lançable au contact y est joué en mêlée (règle du jeu). Le Crâ Feu ne perd que
+    // ses sorts de PO min ≥ 2 : plus de 85 % de son DPT contre le même boss sans la réduction (vers 50 % si tous ses
+    // sorts restaient « à distance », règle de l'IA).
+    const p = bossProfile(data, MERKATOR)
+    expect(p.stats.rangedResPct).toBe(50)
+    const table = theoryDptTable(data)
+    const cra = playerFighterFromMember(data, presetMember(getPreset('cra_feu_zone'), data))
+    const merk = (rangedResPct: number) => bossFighter(data, MERKATOR, { grade: p.grade, stats: { ...p.stats, rangedResPct } })
+    expect(sustainedDamage(table, cra, merk(50)).steady).toBeGreaterThan(0.85 * sustainedDamage(table, cra, merk(0)).steady)
+    expect(byId(merkator, 'cra_feu_zone').dpt.steady).toBeCloseTo(sustainedDamage(table, cra, merk(50)).steady, 6)
   })
 
   it('Contrôle = UN tour de PA (tour mixte) : jamais la somme des tours consacrés au retrait PM et au retrait PA', () => {
@@ -166,18 +194,16 @@ describe('classement des classes', () => {
     for (let i = 1; i < surv.entries.length; i++) expect(surv.entries[i].rank).toBeGreaterThanOrEqual(surv.entries[i - 1].rank)
   })
 
-  it('étalonnage moteur affiché et signalé : cra_feu_zone ×0,73, premier contre le Comte Harebourg', () => {
+  it('facteur d\'étalonnage du preset affiché à titre indicatif : jamais lu comme « le moteur inflige X % » ni appliqué au DPT soutenu', () => {
+    // Le facteur rapporte le moteur au sac à dos JOUÉ DANS le moteur (Buboxor), pas au DPT soutenu hors combat : contre le
+    // Comte Harebourg, le moteur rejoue exactement la rotation établie du Sram pièges alors que son facteur vaut ×0,83.
     const cra = byId(harebourg, 'cra_feu_zone')
     expect(cra.dpt.calibration).toBeCloseTo(0.73, 3)
-    expect(cra.dpt.calibrated).toBeCloseTo(cra.dpt.steady * 0.73, 6)
-    expect(harebourg.axes[0].entries[0].presetId).toBe('cra_feu_zone')
-    const w = harebourg.warnings.join('\n')
-    expect(w).toMatch(/cra_feu_zone : étalonnage moteur ×0,73 \(le moteur inflige 27 % de moins/)
-    expect(w).toMatch(/Avec l'étalonnage moteur, le meilleur DPT serait Crâ cra_air_entrave/)
-    expect(harebourg.composition.members[0].reason).toMatch(/étalonnage moteur ×0,73/)
-    // Un preset proche de 1 n'est pas signalé (Iop 2e du podium).
-    expect(byId(harebourg, 'iop_soutien').dpt.calibration).toBeCloseTo(1, 2)
-    expect(w).not.toMatch(/iop_soutien : étalonnage/)
+    expect(byId(harebourg, 'sram_terre_pieges').dpt.calibration).toBeCloseTo(0.829, 3)
+    const all = [...harebourg.warnings, ...harebourg.composition.members.map(m => m.reason), ...harebourg.composition.notes].join('\n')
+    expect(all).not.toMatch(/le moteur inflige|Avec l'étalonnage moteur|⇒ ≈|DPT étalonné/)
+    expect(harebourg.assumptions.join(' ')).toMatch(/Facteur d'étalonnage du preset .*INDICATIF .*pas au DPT soutenu hors combat/)
+    expect(COMPOSITION_RULES.join(' ')).not.toMatch(/étalonnage/)
   })
 
   it('composition : règles explicites, classes distinctes, chaque membre a sa raison', () => {
@@ -200,10 +226,12 @@ describe('classement des classes', () => {
     const rm = harebourg.composition.members.find(x => x.slot === 'Retrait PM')
     expect(rm).toBeDefined()
     expect(byId(harebourg, rm!.presetId).control.mpRemoved).toBeGreaterThanOrEqual(1)
-    // Merkator : aucun autre élément faible n'atteint 85 % ⇒ note chiffrée, et le 2e DPT (Terre, l'élément le plus
-    // résistant du boss) le dit.
-    expect(merkator.composition.notes.join(' ')).toMatch(/Deuxième DPT d'un autre élément faible écarté : le meilleur, .* n'atteint que \d+ %/)
-    const second = merkator.composition.members.filter(x => x.slot === 'Dégâts')[1]
+    // Merkator (Air 12 %, Feu 16 %, Eau 22 %, Terre 27 %) avec quelques presets : le seul autre élément faible (Air,
+    // Sram utilitaire) n'atteint pas 85 % ⇒ note chiffrée, et le 2e DPT (Terre, l'élément le plus résistant) le dit.
+    const few = rankClasses(data, bossProfile(data, MERKATOR), { presets: ['cra_feu_zone', 'iop_soutien', 'sram_utilitaire', 'eniripsa_soin_feu'].map(getPreset) })
+    expect(few.composition.notes.join(' ')).toMatch(/Deuxième DPT d'un autre élément faible écarté : le meilleur, .* n'atteint que \d+ %/)
+    const second = few.composition.members.filter(x => x.slot === 'Dégâts')[1]
+    expect(second.presetId).toBe('iop_soutien')
     expect(second.reason).toMatch(/élément le plus résistant du boss, retenu pour son DPT/)
   })
 
@@ -229,15 +257,19 @@ describe('classement des classes', () => {
     expect(b.dpt.steady).toBeGreaterThanOrEqual(0.85 * Math.max(...solar.presets.filter(e => e.breedId !== a.breedId).map(e => e.dpt.steady)) - 1e-6)
   })
 
-  it('composition : apport d\'équipe sans dégâts dit dans la raison (Père Ver : Huppermage invulnérable à distance)', () => {
-    const team = pereVer.composition.members.find(x => x.slot === 'Apport d\'équipe')!
-    const e = byId(pereVer, team.presetId)
-    expect(e.className).toBe('Huppermage')
+  it('composition : apport d\'équipe sans dégâts dit dans la raison (phase de fiche manuelle immunisée partout)', () => {
+    // Fiche manuelle : une seule phase à 100 % de résistance partout (sans mécanique « résistances extrêmes » : aucun
+    // DPT « résistances levées ») ; personne ne touche le boss, l'apport d'équipe reste proposé.
+    const ov = parseBossOverrides({ version: 1, monsterId: 1179, phases: [{ id: 'immunise', name: 'Immunisé', states: [], weight: 1, resPct: [100, 100, 100, 100, 100], vulnerable: true }] })
+    const immune = rankClasses(data, bossProfile(data, 1179, { overrides: ov }), { presets: ['cra_feu_zone', 'iop_multi_zone'].map(getPreset), players: 2 })
+    const team = immune.composition.members.find(x => x.slot === 'Apport d\'équipe')!
+    const e = byId(immune, team.presetId)
+    expect(e.presetId).toBe('iop_multi_zone')
     expect(e.dpt.steady).toBe(0)
     expect(team.reason).toMatch(/ne touche pas le boss \(DPT propre nul\) : apport seul ; confiance basse/)
     expect(e.relevance.limites[0]).toMatch(/^Ne touche pas le boss/)
     expect(e.relevance.atouts.some(a => /^Rafale|^Mêlée|^Distance|^Dégâts/.test(a))).toBe(false)
-    // Un membre qui frappe : son DPT propre est donné (Merkator : Huppermage à distance réduite, DPT > 0).
+    // Un membre qui frappe : son DPT propre est donné (Merkator : DPT > 0).
     const merkTeam = merkator.composition.members.find(x => x.slot === 'Apport d\'équipe')!
     expect(merkTeam.reason).toMatch(/DPT propre \d/)
   })
@@ -302,6 +334,70 @@ describe('classement des classes', () => {
     for (const e of harebourg.presets) expect(e.confidence.reasons.length).toBeGreaterThan(0)
     expect(byId(harebourg, 'osamodas_invocations').confidence.level).toBe('basse')
   })
+
+  it('composition : groupe complet signalé — la règle qui ne trouve plus de place le dit, les suivantes ne s\'appliquent pas', () => {
+    // Haute Truche à 2 joueurs (6 PM, retrait non puni) : Dégâts et Protection remplissent le groupe ; le retraitiste PM
+    // est cité, la note du deuxième DPT ne l'est plus.
+    const r = rankClasses(data, bossProfile(data, HAUTE_TRUCHE, { players: 2 }), { players: 2 })
+    expect(r.composition.members.map(m => m.slot)).toEqual(['Dégâts', 'Protection'])
+    const notes = r.composition.notes.join(' ')
+    expect(notes).toMatch(/Règle « Retrait PM » remplie par Enutrof .*, mais le groupe est complet \(2 personnage\(s\)\) : règles suivantes non appliquées/)
+    expect(notes).not.toMatch(/Deuxième DPT/)
+    // Comte Harebourg à 4 : l'apport d'équipe ne trouve plus de place, dit aussi.
+    expect(harebourg.composition.notes.join(' ')).toMatch(/Règle « Apport d'équipe » remplie par .*groupe est complet/)
+    expect(COMPOSITION_RULES.join(' ')).toMatch(/Groupe complet/)
+  })
+
+  it('composition : protection EN COMPLÉMENT du soigneur contre une érosion (Ilyzaelle), pression lue au dixième', () => {
+    const r = rankClasses(data, bossProfile(data, ILYZAELLE))
+    const slots = r.composition.members.map(m => m.slot)
+    expect(slots).toContain('Soin')
+    const prot = r.composition.members.find(m => m.slot === 'Protection')!
+    expect(prot.reason).toMatch(/^Érosion jusqu'à \d+ % : boucliers et réductions en complément du soin \(l'érosion réduit les soins\)/)
+    expect(prot.reason).not.toMatch(/plutôt que soin/)
+    // Le Vortex rend insoignable : pas de soigneur, la protection le remplace (« plutôt que soin »).
+    expect(vortex.composition.members.find(m => m.slot === 'Protection')!.reason).toMatch(/insoignable : boucliers et réductions plutôt que soin/)
+    // Pression : une décimale (jamais « 20 % (seuil 20 %) » suivi de « pas de soigneur »).
+    const low = rankClasses(data, bossProfile(data, BOUFTOU_ROYAL), { level: 60, presets: ['iop_terre_burst', 'eniripsa_soin_feu', 'cra_air_entrave'].map(getPreset) })
+    const note = low.composition.notes.find(n => /^Pas de soigneur dédié/.test(n))!
+    expect(note).toMatch(/retire (\d+,\d|moins de 20) % des PV d'un personnage \(seuil 20 %\)/)
+    expect(note).not.toMatch(/retire 20 % /)
+  })
+
+  it('deuxième élément : Terre, Feu, Eau et Air seulement — Sapik (Neutre −20 %, les quatre autres à 20 %) n\'a pas d\'« élément le plus résistant »', () => {
+    const p = bossProfile(data, SAPIK)
+    expect(p.weakestElements[0]).toBe(0)
+    const r = rankClasses(data, p)
+    const reasons = r.composition.members.map(m => m.reason).join(' ')
+    expect(reasons).not.toMatch(/élément le plus résistant/)
+    expect(reasons).toMatch(/Deuxième DPT, autre élément \(le boss a plusieurs éléments faibles\)/)
+    expect(r.composition.notes.join(' ')).not.toMatch(/aucun preset évalué d'un autre élément faible/)
+  })
+
+  it('grade imposé : la composition prend les joueurs du grade (grade + 3), comme la CLI', () => {
+    expect([1, 2, 3, 5, 6].map(playersForGrade)).toEqual([4, 5, 6, 8, 8])
+    const p = bossProfile(data, HAREBOURG, { grade: 3 })
+    expect(p.players).toBeUndefined()
+    const r = rankClasses(data, p, { presets: ['cra_feu_zone', 'iop_soutien', 'eniripsa_soin_feu', 'enutrof_retrait_pm_eau', 'sram_terre_pieges', 'ouginak_eau_air', 'xelor_zone_feu_air'].map(getPreset) })
+    expect(r.players).toBe(6)
+    expect(r.composition.members).toHaveLength(6)
+    // Joueurs explicites : prioritaires.
+    expect(rankClasses(data, p, { presets: [getPreset('cra_feu_zone')], players: 2 }).players).toBe(2)
+  })
+
+  it('dégâts reçus : écart entre le proxy et le pic de la fiche signalé, chiffré (Tal Kasha : sous-sorts non suivis par le proxy)', () => {
+    const r = rankClasses(data, bossProfile(data, 4744), { presets: [getPreset('iop_soutien')] })
+    expect(r.warnings.join(' ')).toMatch(/Dégâts reçus : le proxy de stuff .* compte [\d\s ]+ par tour sans défense, contre [\d\s ]+ au pic de la fiche du boss \(×0,\d\d/)
+    // Klime : mêmes dégâts (lignes en % des PV manquants du boss « à mi-vie », poisons comptés comme la fiche) — rien à signaler.
+    expect(rankClasses(data, bossProfile(data, 3384), { presets: [getPreset('iop_soutien')] }).warnings.join(' ')).not.toMatch(/Dégâts reçus : le proxy/)
+  })
+
+  it('mode « optimized » : retrait sans valeur contre ce boss signalé (utilité du rôle ignorée dans l\'objectif)', () => {
+    const merk = rankClasses(data, bossProfile(data, MERKATOR), { presets: [getPreset('enutrof_retrait_pm_eau')], stuff: 'optimized' })
+    expect(merk.warnings.join(' ')).toMatch(/enutrof_retrait_pm_eau : Retrait PM sans valeur contre ce boss \(le boss punit le retrait de PM\) : utilité du rôle ignorée/)
+    // Mode « preset » : l'objectif ne sert pas, pas d'avertissement.
+    expect(merkator.warnings.join(' ')).not.toMatch(/utilité du rôle ignorée/)
+  }, 60_000)
 })
 
 describe('rendus texte', () => {
@@ -322,7 +418,7 @@ describe('rendus texte', () => {
 
   it('classement : un tableau par axe, par classe, composition, règles, atouts et limites, hypothèses', () => {
     const txt = formatClasses(harebourg, { presets: true })
-    for (const s of ['Classes contre Comte Harebourg', 'Dégâts (DPT soutenu)', 'Étalonné (moteur)', 'Survie (PV effectifs du stuff seul)', 'Contrôle (PM + PA retirés en un tour)', 'PM seul', 'Soin (PV soignés ou préservés utiles / tour)', 'Brut', 'Apport d\'équipe', 'Par classe', 'Confiance (classe)', 'Tous les presets évalués', 'Composition suggérée (4 personnage(s))', 'Règles :', 'Atouts et limites', 'Hypothèses', 'Avertissements'])
+    for (const s of ['Classes contre Comte Harebourg', 'Dégâts (DPT soutenu)', 'Étal. preset', 'Survie (PV effectifs du stuff seul)', 'Contrôle (PM + PA retirés en un tour)', 'PM seul', 'Soin (PV soignés ou préservés utiles / tour)', 'Brut', 'Apport d\'équipe', 'Par classe', 'Confiance (classe)', 'Tous les presets évalués', 'Composition suggérée (4 personnage(s))', 'Règles :', 'Atouts et limites', 'Hypothèses', 'Avertissements'])
       expect(txt).toContain(s)
     // Ex æquo de la Survie : rang partagé « =1 ».
     expect(txt).toMatch(/^\s+=1\s+Féca\s+feca_/m)

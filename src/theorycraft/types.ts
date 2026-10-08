@@ -268,6 +268,11 @@ export interface SustainedDamage {
   steady: number
   /** Période du régime établi en tours (0 : non trouvée dans le plafond de simulation, `steady` approché). */
   period: number
+  /**
+   * Régime établi par sort (une période, ou la fenêtre de repli) : lancers par tour et dégâts crédités par tour (part
+   * immédiate + échéances de ses poisons actifs). La somme des `damage` redonne `steady`.
+   */
+  steadyBySpell: { spellId: number; casts: number; damage: number }[]
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -389,9 +394,11 @@ export interface PresetEvaluation {
     /** Soutenu de chaque posture évaluée. */
     stances: { id: string; steady: number }[]
     /**
-     * Étalonnage moteur du preset (`calibrationOf`, data/ai/calibration.json : rapport « dégâts simulés / analytique »
-     * mesuré en mini-combat contre un Buboxor, borné à [0,5 ; 2]) et soutenu × étalonnage. Contrôle affiché à côté, le
-     * classement reste sur `steady` (ajout v1.1).
+     * Facteur d'étalonnage du preset (`calibrationOf`, data/ai/calibration.json : dégâts du moteur / sac à dos JOUÉ DANS
+     * le moteur — buffs et rampes vus —, mini-combat contre un Buboxor, borné à [0,5 ; 2]) et soutenu × facteur. Les deux
+     * grandeurs ne se correspondent pas : le facteur ne s'applique pas au DPT soutenu hors combat (`steady`) ; affiché à
+     * titre INDICATIF, ni correction ni contrôle (`calibrated` gardé pour compatibilité, à ne pas lire comme un DPT du
+     * moteur). Le classement reste sur `steady` (ajout v1.1).
      */
     calibration: number
     calibrated: number

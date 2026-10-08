@@ -1,12 +1,20 @@
 /**
  * Theorycraft — combattants hors combat (src/theorycraft/fighters.ts) et DPT soutenu (src/theorycraft/rotation.ts,
  * docs/design/theorycraft.md §1.5) : soutenu ≤ rafale, relances tenues d'un tour à l'autre (un sort à relance n'est pas
- * lancé à chaque tour), régime établi (relances amorties, indépendant de l'horizon), déterminisme, combattants passés
- * intacts, cohérence avec le proxy de stuff, modules purs (graphe transitif des imports d'exécution).
+ * lancé à chaque tour), régime établi (relances amorties, indépendant de l'horizon), poisons suivis d'un tour à l'autre
+ * (cumul, recouvrement des relances : rejeu dans le moteur), déterminisme, combattants passés intacts, cohérence avec le
+ * proxy de stuff, modules purs (graphe transitif des imports d'exécution).
  */
 import { describe, expect, it } from 'vitest'
+import { placeForCast } from '../src/ai/core/calibrate'
 import { loadDataStore } from '../src/data/node'
+import { createEngine } from '../src/engine'
+import { castSpell } from '../src/engine/cast'
+import { createMonsterFighter } from '../src/engine/factory'
 import type { Fighter } from '../src/engine/types'
+import { CELL_COUNT, distance } from '../src/map/geometry'
+import { applyTargetOverrides } from '../src/optimizer/stuff/targetFighter'
+import { bossProfile } from '../src/theorycraft/bossProfile'
 import { createProxyContext } from '../src/optimizer/stuff/proxy'
 import { BASE_PRESETS, getPreset, presetMember } from '../src/optimizer/team/presets'
 import { computeBuildStats } from '../src/stats/build'
@@ -194,6 +202,76 @@ describe('DPT soutenu (rotation tour par tour)', () => {
   it('PA imposés : moins de PA, moins de dégâts', () => {
     const a = playerOf('iop_terre_burst')
     expect(sustainedDamage(table, a, boss, { ap: 6 }).mean).toBeLessThan(sustainedDamage(table, a, boss).mean)
+  })
+})
+
+/**
+ * Rejeu dans le MOTEUR d'une rotation (une liste de lancers par tour, répétée) contre le boss aux caractéristiques
+ * imposées `stats` (protocole de l'audit : boss immortel et passif, lanceur à la case libre la plus proche, placement de
+ * `placeForCast`, jets moyens) : dégâts par tour sur une fenêtre après `warm` tours de chauffe.
+ */
+function engineReplay(a: Fighter, monsterId: number, stats: Record<string, number>, cycle: readonly number[][], warm = 10, window = 20): number {
+  const engine = createEngine(data)
+  const map = data.map(143393281)!
+  const me0 = { ...a, states: [], cell: -1, cooldowns: {}, castsThisTurn: {}, castsOnTarget: {} }
+  const boss0 = createMonsterFighter(data, { monsterId, grade: 1, cell: 300, team: 1 })
+  applyTargetOverrides(boss0, { stats })
+  const fight = engine.createFight({ map, fighters: [me0, boss0], options: { seed: 1, rollMode: 'average', record: false, maxRounds: 999 } })
+  const [me, boss] = fight.fighters
+  boss.maxHp = boss.baseMaxHp = boss.hp = 100_000_000
+  boss.tags.cannotPlay = true
+  let best = -1
+  for (let c = 0; c < CELL_COUNT; c++) {
+    if (!fight.map.cells[c]?.walkable || c === boss.cell) continue
+    if (best < 0 || distance(c, boss.cell) < distance(best, boss.cell)) best = c
+  }
+  me.cell = best
+  const hp: number[] = []
+  for (let t = 0; t <= warm + window; t++) {
+    let f = engine.nextTurn(fight)
+    for (let g = 0; f && f.id !== me.id && g < 8; g++) {
+      engine.endTurn(fight, f)
+      f = engine.nextTurn(fight)
+    }
+    hp.push(boss.hp)
+    for (const id of cycle[t % cycle.length]) castSpell(engine, fight, me, id, placeForCast(engine, fight, me, id, boss.cell))
+    engine.endTurn(fight, me)
+  }
+  return (hp[warm] - hp[warm + window]) / window
+}
+
+describe('poisons suivis d\'un tour à l\'autre (cumul, recouvrement), rejeu dans le moteur', () => {
+  const hare = bossProfile(data, HAREBOURG)
+  const target = bossFighter(data, HAREBOURG, { grade: 1, stats: hare.stats })
+
+  it('Flèche Tyrannique seule (cumul 1), deux lancers par tour : une échéance par tour, exactement les dégâts du moteur', () => {
+    // Heuristique du sac à dos : 1,6 échéance critique pondérée PAR LANCER (3,2 par tour) ; moteur : l'instance est
+    // rafraîchie, une échéance par tour, sans critique.
+    const cra = playerOf('cra_feu_zone')
+    const solo = withStates({ ...cra, spells: cra.spells.filter(s => s.spellId === 32448) }, cra.states)
+    const s = sustainedDamage(table, solo, target)
+    expect(s.casts.at(-1)).toEqual([32448, 32448])
+    const sp = table.split(solo, 0, target)
+    expect(s.steady).toBeCloseTo(2 * sp.immediate + sp.dots[0].tick, 6)
+    expect(s.steady).toBeLessThan(0.7 * 2 * table.perCast(solo, 0, target).mean)
+    expect(s.steadyBySpell).toEqual([{ spellId: 32448, casts: 2, damage: s.steady }])
+    const engine = engineReplay(solo, HAREBOURG, hare.stats as unknown as Record<string, number>, [[32448, 32448]])
+    expect(Math.abs(engine / s.steady - 1)).toBeLessThan(0.01)
+  })
+
+  it('Crâ Feu contre le Comte Harebourg : rotation établie choisie sur les échéances AJOUTÉES (Tyrannique une fois par tour), proche du moteur', () => {
+    const cra = playerOf('cra_feu_zone')
+    const s = sustainedDamage(table, cra, target)
+    const cycle = s.casts.slice(-s.period)
+    expect(cycle.flat().filter(id => id === 32448)).toHaveLength(s.period)
+    // Rejeu : régime établi à 15 % du moteur (avant : +58 %, Tyrannique lancée deux fois par tour et ses poisons
+    // cumulés). Écart résiduel connu : Flèche Dévorante (paliers et effet différé retiré par la relance, non modélisés).
+    const engine = engineReplay(cra, HAREBOURG, hare.stats as unknown as Record<string, number>, cycle)
+    expect(Math.abs(s.steady / engine - 1)).toBeLessThan(0.15)
+    // Le moteur confirme le choix : l'ancienne rotation (Dévorante + 2 × Tyrannique) inflige moins.
+    expect(engineReplay(cra, HAREBOURG, hare.stats as unknown as Record<string, number>, [[32446, 32448, 32448]])).toBeLessThan(0.9 * engine)
+    // Détail par sort : la somme redonne le régime établi.
+    expect(s.steadyBySpell.reduce((x, y) => x + y.damage, 0)).toBeCloseTo(s.steady, 6)
   })
 })
 

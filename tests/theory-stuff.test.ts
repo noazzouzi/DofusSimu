@@ -3,13 +3,16 @@
  * formatStuff.ts ; docs/design/theorycraft.md §1.7) : amélioration contre Merkator, builds valides et déterministes,
  * aucune graine `vortex_*`, top distinct et trié, comparaison des éléments sur un boss à élément faible (équivalences
  * dans l'élément retenu), import RoxxSolver (pénalité de PO décisive signalée, PO visée réglable), départ invalide
- * jamais retenu, classes à posture classées par le logJ soutenu (Zobal contre le Père Ver), équivalences des
- * caractéristiques (part des pénalités séparée), rendu texte, pureté (dépendances transitives figées) et performance.
+ * jamais retenu, classes à posture classées par le logJ soutenu (Zobal contre le Père Ver), Crâ au contact contre le
+ * Père Ver, objets exclus jamais proposés (références comprises), objets imposés ET exclus refusés, retrait sans valeur
+ * signalé, preset de repli d'un build signalé, élément de recherche sans sort dans la rotation signalé, équivalences
+ * des caractéristiques (part des pénalités séparée ; PA sur le DPT soutenu), rendu texte, pureté (dépendances
+ * transitives figées) et performance.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ELEMENT_RES_PCT, type Element } from '../src/core/types'
-import { STUFFS } from '../src/optimizer/team/presets'
+import { allocatePoints, getPreset, presetBuild, STUFFS } from '../src/optimizer/team/presets'
 import { loadDataStore } from '../src/data/node'
 import { computeBuildStats } from '../src/stats/build'
 import { bossProfile } from '../src/theorycraft/bossProfile'
@@ -25,6 +28,7 @@ const HAREBOURG = 3416
 const SOLAR = 5100
 const VORTEX = 3835
 const BOUFTOU_ROYAL = 147
+const KOULOSSE = 670
 /** Lien partagé par l'utilisateur (Crâ, 2026-10-06), le même que tests/stuff-editor.test.ts. */
 const ROXX =
   'https://roxxsolver.com/solver?build=AQGbyAL__04SSQw1SU4QNUpOETdSN1F9eTSZVfR29RuDAuN29wK2Ax5LHvGQZAUB_wEpAAgBLgABAS4AAQEuAAEBCQABAQgAAQEuAAEBKQAIASkACA&config=AQEDtg0AAwIEVgQVBgwA9AEMAAcGAPQBBgALyAAPAP9_BQmH7MP-Ifr0_WoHJv8BARsIAAEgAQABIAEAASABAAEHAQABBgEAASABAAEbCAABGwgA'
@@ -224,7 +228,8 @@ describe('stuffVsBoss : déterminisme et options', () => {
   })
 
   it('RoxxSolver 12/6/0 : la pénalité de PO, seule, place le stuff de l’utilisateur derrière — signalé ; PO visée réglable', () => {
-    const r = stuffVsBoss(data, { roxx: ROXX }, merkator, { ...QUICK, top: 2 })
+    const harebourg = bossProfile(data, HAREBOURG)
+    const r = stuffVsBoss(data, { roxx: ROXX }, harebourg, { ...QUICK, top: 2 })
     expect(r.start.range).toBe(0)
     expect(r.start.penalty).toBeCloseTo(0.95 ** 6, 9)
     expect(r.options.rangeNeed).toBe(6)
@@ -235,13 +240,13 @@ describe('stuffVsBoss : déterminisme et options', () => {
     const w = r.warnings.find(x => /Pénalités d'objectif décisives/.test(x))
     expect(w).toMatch(/12\/6\/0/)
     expect(w).toMatch(/Tirs Éloignés/)
-    expect(w).toMatch(/rangeNeed/)
+    expect(w).toMatch(/--range N en ligne de commande \(option rangeNeed de l’API\)/)
     // Le tableau texte montre la pénalité de chaque ligne.
     const text = formatStuffVsBoss(r)
     expect(text).toMatch(/Pénalité/)
     expect(text).toContain('×0,735')
     // PO visée abaissée (bonus de PO de la classe) : plus de pénalité de PO.
-    const low = stuffVsBoss(data, { roxx: ROXX }, merkator, { ...QUICK, top: 1, rangeNeed: 0 })
+    const low = stuffVsBoss(data, { roxx: ROXX }, harebourg, { ...QUICK, top: 1, rangeNeed: 0 })
     expect(low.options.rangeNeed).toBe(0)
     expect(low.start.penalty).toBe(1)
     expect(low.start.logJ!).toBeCloseTo(noPen(r.start), 9)
@@ -274,11 +279,19 @@ describe('stuffVsBoss : déterminisme et options', () => {
     expect(r.warnings.some(w => /plafonnés.*PV bruts/.test(w))).toBe(true)
   })
 
-  it('Père Ver (invulnérable à distance) : Crâ sans dégâts, signalé ; référence des équivalences = Vitalité', () => {
+  it('Père Ver (invulnérable à distance) : le Crâ frappe au contact (sorts de PO 1 à N), joué au contact — PO non exigée', () => {
     const r = stuffVsBoss(data, { preset: 'cra_terre_mono' }, bossProfile(data, PERE_VER), { ...QUICK, top: 1 })
-    expect(r.best.damage.steady).toBe(0)
-    expect(r.warnings.some(w => /DPT soutenu nul/.test(w))).toBe(true)
-    expect(r.statWeights.reference).toBe('vitality')
+    expect(r.best.damage.steady).toBeGreaterThan(1000)
+    expect(r.best.damage.spells.map(s => s.name)).toContain('Flèche Vagabonde')
+    expect(r.warnings.some(w => /DPT soutenu nul/.test(w))).toBe(false)
+    expect(r.statWeights.reference).toBe('strength')
+    // Boss attaquable seulement au contact : même règle que la comparaison des classes (`playsMelee`).
+    expect(r.character.melee).toBe(true)
+    expect(r.options.rangeNeed).toBe(0)
+    expect(r.assumptions.join(' ')).toMatch(/joué au contact \(PO non exigée\)/)
+    const forge = stuffVsBoss(data, { preset: 'forgelance_zone_terre' }, bossProfile(data, PERE_VER), { ...QUICK, top: 1 })
+    expect([forge.character.melee, forge.options.rangeNeed]).toEqual([true, 0])
+    expect(forge.statWeights.items.find(i => i.stat === 'range')).toBeUndefined()
   })
 
   it('Zobal : meilleure posture dans le DPT soutenu, écart avec le proxy sans posture signalé', () => {
@@ -288,9 +301,9 @@ describe('stuffVsBoss : déterminisme et options', () => {
     expect(r.warnings.some(w => /Posture de classe/.test(w))).toBe(true)
   })
 
-  it('Zobal contre le Père Ver (proxy aveugle : DPT 0 sans posture) : classement soutenu, le meilleur garde son DPT soutenu', () => {
+  it('Zobal contre le Père Ver (proxy presque aveugle sans posture) : classement soutenu, le meilleur garde son DPT soutenu', () => {
     const r = stuffVsBoss(data, { preset: 'zobal_psychopathe' }, bossProfile(data, PERE_VER), { ...QUICK, top: 3 })
-    expect(r.start.damage.proxy).toBe(0)
+    expect(r.start.damage.proxy).toBeLessThan(0.3 * r.start.damage.steady)
     expect(r.start.damage.steady).toBeGreaterThan(1000)
     expect(r.ranking.by).toBe('sustained')
     expect(r.ranking.reason).toMatch(/logJ SOUTENU/)
@@ -298,8 +311,9 @@ describe('stuffVsBoss : déterminisme et options', () => {
     expect(r.best.damage.steady).toBeGreaterThanOrEqual(0.85 * r.start.damage.steady)
     expect(r.best.logJSustained!).toBeGreaterThanOrEqual(r.start.logJSustained!)
     for (let i = 1; i < r.top.length; i++) expect(r.top[i].logJSustained!).toBeLessThanOrEqual(r.top[i - 1].logJSustained!)
-    // logJ soutenu = logJ du proxy avec le terme de DPT remplacé (même PVe, UTIL et pénalités).
-    expect(r.start.logJSustained! - r.start.logJ!).toBeGreaterThan(1)
+    // logJ soutenu = logJ du proxy avec le terme de DPT remplacé (même PVe, UTIL et pénalités) : le proxy, sans posture,
+    // ne voit qu'une petite part des dégâts (coups au contact sans masque).
+    expect(r.start.logJSustained! - r.start.logJ!).toBeGreaterThan(0.5)
     // La caractéristique principale vaut quelque chose (DPT soutenu en posture), pas « aucun dégât ».
     expect(r.statWeights.reference).toBe('strength')
     expect(r.statWeights.notes.some(n => /principale .*ne vaut rien/.test(n))).toBe(false)
@@ -321,6 +335,60 @@ describe('stuffVsBoss : déterminisme et options', () => {
       for (let i = 1; i < ranks.length; i++) expect(ranks[i]).toBeLessThanOrEqual(ranks[i - 1])
       expect(r.best).toEqual(r.top[0])
     }
+  })
+
+  it('objets exclus : jamais dans le meilleur ni le top, stuffs de référence compris (affinage soutenu aussi) ; imposés ET exclus refusés', () => {
+    // Zobal Psychopathe contre le Père Ver : classement soutenu (affinage depuis les meilleurs stuffs) ; 19244 fait
+    // partie du stuff du preset.
+    const verZ = bossProfile(data, PERE_VER)
+    const plain = stuffVsBoss(data, { preset: 'zobal_psychopathe' }, verZ, { ...QUICK, top: 3 })
+    expect(plain.start.build.items.some(i => i.itemId === 19244)).toBe(true)
+    const r = stuffVsBoss(data, { preset: 'zobal_psychopathe' }, verZ, { ...QUICK, top: 5, exclude: [19244] })
+    expect(r.options.exclude).toEqual([19244])
+    expect(r.ranking.by).toBe('sustained')
+    for (const e of [r.best, ...r.top]) expect(e.build.items.some(i => i.itemId === 19244), e.label).toBe(false)
+    // Le stuff du preset (départ) reste affiché dans la comparaison, écarté du classement (dit).
+    expect(r.comparison[0].build.items.some(i => i.itemId === 19244)).toBe(true)
+    expect(r.assumptions.join(' ')).toMatch(/Stuffs de référence écartés du classement \(objet exclu\) : Stuff du preset/)
+    expect(() => stuffVsBoss(data, { preset: 'cra_terre_mono' }, merkator, { ...QUICK, fixed: [15746], exclude: [15746] })).toThrow(/Objets à la fois imposés et exclus : .*\(15746\)/)
+  })
+
+  it('retrait sans valeur contre ce boss : utilité du rôle ignorée dans l’objectif, signalé (Enutrof retrait PM contre Merkator)', () => {
+    const r = stuffVsBoss(data, { preset: 'enutrof_retrait_pm_eau' }, merkator, { ...QUICK, top: 1 })
+    expect(r.best.util).toBe(0)
+    expect(r.start.util).toBe(0)
+    expect(r.warnings.join(' ')).toMatch(/Retrait PM sans valeur contre ce boss \(le boss punit le retrait de PM\) : utilité du rôle ignorée/)
+  })
+
+  it('build sans preset de son élément : preset de repli signalé en avertissement (Féca Air)', () => {
+    const feca = getPreset('feca_glyphes')
+    const build = presetBuild(feca, data, { stuff: 'air' })
+    build.characteristicPoints = allocatePoints({ ...feca.points, primary: 'agility' }, feca.breedId, data, 200)
+    const r = stuffVsBoss(data, { build }, merkator, { ...QUICK, top: 1 })
+    expect(r.character.element).toBe('air')
+    expect(r.warnings.join(' ')).toMatch(/Aucun preset Air pour la classe Féca \(élément du build\) : preset « feca_\w+ » \(.*, rôle .*\) pris par défaut .*--class <preset>/)
+    expect(r.assumptions.join(' ')).not.toMatch(/élément Air du build/)
+  })
+
+  it('recherche limitée à l’élément du preset sans sort de cet élément dans la rotation : signalé, chiffré (Sram Air niveau 40)', () => {
+    const r = stuffVsBoss(data, { preset: 'sram_air_poisons' }, bossProfile(data, BOUFTOU_ROYAL), { ...QUICK, top: 1, level: 40 })
+    expect(r.statWeights.reference).not.toBe('agility')
+    expect(r.warnings.join(' ')).toMatch(/Aucun sort Air dans la rotation du meilleur stuff contre ce boss \(.* \d+ %.*\) : .*--elements all/)
+    // Recherche dans tous les éléments : pas d'avertissement.
+    expect(stuffVsBoss(data, { preset: 'sram_air_poisons' }, bossProfile(data, BOUFTOU_ROYAL), { ...QUICK, top: 1, level: 40, elements: 'all' }).warnings.join(' ')).not.toMatch(/Aucun sort Air/)
+  })
+
+  it('équivalences : la part des dégâts d’un PA vient du DPT soutenu (Iop Terre contre Merkator : la rafale évolue par paliers)', () => {
+    const r = stuffVsBoss(data, { preset: 'iop_terre_burst' }, merkator, { ...QUICK, top: 1 })
+    expect(r.ranking.by).toBe('proxy')
+    const ap = r.statWeights.items.find(i => i.stat === 'ap')!
+    expect(ap.modeledInReference!).toBeGreaterThan(10)
+    expect(r.statWeights.notes.some(n => /^PA : la part des dégâts vient du DPT soutenu/.test(n))).toBe(true)
+    // Hypothèses : Dofus à sort passif seulement imposés ; dégâts du boss = estimation (pas une borne).
+    const a = r.assumptions.join(' ')
+    expect(a).toMatch(/les Dofus à sort passif du départ sont gardés imposés/)
+    expect(a).not.toMatch(/borne haute/)
+    expect(a).toMatch(/le total peut être sous-estimé/)
   })
 
   it('le meilleur stuff qui perd du DPT soutenu par rapport au départ est signalé, chiffré', () => {

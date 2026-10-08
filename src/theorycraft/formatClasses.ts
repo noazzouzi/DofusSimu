@@ -3,9 +3,9 @@
  * §1.8-1.9) : un tableau par axe (Dégâts, Survie, Contrôle, Soin, Apport d'équipe ; une ligne par classe, son meilleur
  * preset), le meilleur preset de chaque classe par axe, la composition suggérée avec ses règles, atouts et limites des
  * membres, hypothèses et avertissements. Aucune note globale : chaque axe est montré avec son unité. Rang partagé des ex
- * æquo marqué « = » (Survie : PV effectifs du stuff seul, identiques par stuff générique). Colonnes de contrôle : DPT
- * étalonné (moteur), retraits du tour mixte et des tours consacrés, débit de soin brut et plafond. Tableaux alignés en
- * largeur fixe, sans émoji.
+ * æquo marqué « = » (Survie : PV effectifs du stuff seul, identiques par stuff générique). Colonnes de contrôle : facteur
+ * d'étalonnage du preset (indicatif : il ne s'applique pas au DPT soutenu), retraits du tour mixte et des tours
+ * consacrés, débit de soin brut et plafond. Tableaux alignés en largeur fixe, sans émoji.
  *
  * Module PUR (types et mise en forme seulement) : utilisable côté navigateur.
  */
@@ -26,7 +26,7 @@ function axisDetail(axis: RankingAxis, e: PresetEvaluation): string[] {
   switch (axis) {
     case 'damage':
       return [
-        calibratedText(e),
+        calibrationText(e),
         fmtNum(e.dpt.burst),
         `${ELEMENT_LABELS[e.elementMatch.element] ?? '?'} (${fmtPct(e.elementMatch.resPct)})`,
         e.stance.id === 'base' ? '—' : e.stance.name,
@@ -43,7 +43,7 @@ function axisDetail(axis: RankingAxis, e: PresetEvaluation): string[] {
 }
 
 const DETAIL_HEADERS: Readonly<Record<RankingAxis, string[]>> = {
-  damage: ['Étalonné (moteur)', 'Rafale', 'Élément (rés.)', 'Posture'],
+  damage: ['Étal. preset', 'Rafale', 'Élément (rés.)', 'Posture'],
   survival: ['PV', 'Reçus/tour', 'Tours'],
   control: ['PM', 'PA', 'PM seul', 'PA seul'],
   heal: ['Brut', 'Soin', 'Bouclier', 'Réduction', 'Armure'],
@@ -62,7 +62,7 @@ const DETAIL_ALIGN: Readonly<Record<RankingAxis, string>> = {
 function axisNote(axis: RankingAxis, r: ClassRanking): string | undefined {
   switch (axis) {
     case 'damage':
-      return '  Valeur : DPT analytique (classement) ; « Étalonné » = × étalonnage moteur du preset (contrôle, data/ai/calibration.json).'
+      return '  Valeur : DPT soutenu analytique (classement) ; « Étal. preset » = facteur d\'étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s\'applique pas au DPT soutenu.'
     case 'survival':
       return '  Stuff seul : même valeur pour les presets d\'un même stuff générique (rang partagé « = »).'
     case 'control':
@@ -76,9 +76,9 @@ function axisNote(axis: RankingAxis, r: ClassRanking): string | undefined {
   }
 }
 
-/** DPT étalonné et facteur (« 2 431 (×0,73) »). */
-function calibratedText(e: PresetEvaluation): string {
-  return `${fmtNum(e.dpt.calibrated)} (×${fmtNum(e.dpt.calibration, 2)})`
+/** Facteur d'étalonnage du preset (« ×0,73 ») : indicatif, jamais multiplié au DPT soutenu. */
+function calibrationText(e: PresetEvaluation): string {
+  return `×${fmtNum(e.dpt.calibration, 2)}`
 }
 
 const valueText = (axis: RankingAxis, v: number) => (axis === 'control' ? fmtNum(v, 2) : axis === 'team' ? fmtNum(v, 1) : fmtNum(v))
@@ -126,7 +126,7 @@ export function formatClasses(r: ClassRanking, opts: FormatClassesOptions = {}):
     out.push('', 'Tous les presets évalués')
     out.push(
       textTable(
-        ['Preset', 'Stuff', 'Posture', 'DPT', 'Étalonné', 'Rafale', 'PV eff.', 'Contrôle', 'Soin', 'Apport %', 'Confiance'],
+        ['Preset', 'Stuff', 'Posture', 'DPT', 'Étal. preset', 'Rafale', 'PV eff.', 'Contrôle', 'Soin', 'Apport %', 'Confiance'],
         [...r.presets]
           .sort((a, b) => b.axes.damage - a.axes.damage || a.presetId.localeCompare(b.presetId))
           .map(e => [
@@ -134,7 +134,7 @@ export function formatClasses(r: ClassRanking, opts: FormatClassesOptions = {}):
             e.stuff,
             e.stance.id === 'base' ? '—' : e.stance.name,
             fmtNum(e.dpt.steady),
-            calibratedText(e),
+            calibrationText(e),
             fmtNum(e.dpt.burst),
             fmtNum(e.survival.ehp),
             fmtNum(e.control.value, 2),

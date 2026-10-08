@@ -2,7 +2,8 @@
  * Theorycraft contre un boss — combattants HORS COMBAT (docs/design/theorycraft.md §1.4-1.5) : le personnage (depuis un
  * `CharacterBuild`, un `MemberSpec` ou des caractéristiques déjà calculées) et le boss (`createMonsterFighter` puis
  * caractéristiques et états imposés, comme `ProxyTarget.stats`/`states` du proxy de stuff), prêts pour le sac à dos de
- * DPT (`DptTableImpl.turn`, src/ai/core/dpt.ts) et la rotation soutenue (rotation.ts).
+ * DPT du theorycraft (`TheoryDptTable.turn`, hits.ts : coups au contact ou à distance selon la règle du jeu) et la
+ * rotation soutenue (rotation.ts).
  *
  * Mêmes conventions que le proxy (src/optimizer/stuff/proxy.ts) : moteur partagé par donnée (`proxyEngine` : profils de
  * sorts et tables DPT en cache, communs avec le proxy), mêmes surcharges de cible (`applyTargetOverrides`) — tous deux
@@ -16,7 +17,6 @@
  *
  * Module PUR : aucun import `node:`, ni de src/dungeons, ni de proxy.ts (tests/theory-rotation.test.ts).
  */
-import { createDptTable, type DptTableImpl } from '../ai/core/dpt'
 import type { Stats, TeamId } from '../core/types'
 import type { DataStore } from '../data/store'
 import type { Engine } from '../engine'
@@ -26,6 +26,7 @@ import type { Fighter } from '../engine/types'
 import { applyTargetOverrides, proxyEngine } from '../optimizer/stuff/targetFighter'
 import type { MemberSpec } from '../optimizer/types'
 import { computeBuildStats, type BuildDataSource, type CharacterBuild } from '../stats/build'
+import { CONTACT_TAG, theoryDptTableOf, type TheoryDptTable } from './hits'
 
 /** Id et équipe du personnage et de la cible (conventions du proxy). */
 export const PLAYER_ID = 0
@@ -38,9 +39,13 @@ export function theoryEngine(data: DataStore): Engine {
   return proxyEngine(data)
 }
 
-/** Table DPT partagée (sac à dos par tour, non calibré via `turn`). */
-export function theoryDptTable(data: DataStore): DptTableImpl {
-  return createDptTable(proxyEngine(data))
+/**
+ * Table DPT partagée du theorycraft (sac à dos par tour, non calibré via `turn`) : celle de hits.ts — un sort lançable
+ * au contact et à distance y est compté dans le meilleur des deux coups (règle du jeu), pas d'après sa portée max comme
+ * la table de l'IA (`createDptTable`).
+ */
+export function theoryDptTable(data: DataStore): TheoryDptTable {
+  return theoryDptTableOf(proxyEngine(data))
 }
 
 /** Personnage décrit sans build : classe, niveau, variantes (comme `ProxyMember`). */
@@ -51,6 +56,11 @@ export interface TheoryCharacter {
   /** Preset d'origine (étiquette `presetId` : calibration éventuelle, rapports). */
   presetId?: string
   name?: string
+  /**
+   * Joué au contact (`playsMelee`, target.ts) : à égalité de la cible, un sort lançable au contact et à distance compte
+   * en mêlée (étiquette `CONTACT_TAG`, hits.ts). Défaut : à distance.
+   */
+  contact?: boolean
 }
 
 export interface PlayerFighterOptions {
@@ -78,6 +88,7 @@ export function playerFighterFromStats(data: DataStore, who: TheoryCharacter, st
   })
   f.id = opts.id ?? PLAYER_ID
   if (who.presetId) f.tags.presetId = who.presetId
+  if (who.contact) f.tags[CONTACT_TAG] = true
   if (opts.states?.length) f.states = [...new Set(opts.states)]
   bumpRev(f)
   return f

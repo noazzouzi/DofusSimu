@@ -192,7 +192,8 @@ export function formatBoss(profile: BossProfile, opts: FormatBossOptions = {}): 
           String(s.cooldown),
           ...s.damageByElement.map(v => (v > 0 ? fmtNum(v) : '—')),
           s.otherDamage > 0 ? fmtNum(s.otherDamage) : '—',
-          s.flags.join(', '),
+          // Détail pris sous un état du boss (lignes `*E#`, fiche détaillée : `damageStates`).
+          [...s.flags, ...((s as { damageStates?: number[] }).damageStates?.length ? [`selon l'état du boss ${(s as { damageStates?: number[] }).damageStates!.join(', ')}`] : [])].join(', '),
         ]),
         'lrrrrrrrrrl',
       ),

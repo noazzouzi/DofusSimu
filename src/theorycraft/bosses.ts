@@ -192,3 +192,15 @@ export function bossGradeFor(players: number, gradeCount: number): number {
   const max = Math.max(1, Math.min(5, Math.floor(gradeCount)))
   return Math.max(1, Math.min(max, Math.floor(players) - 3))
 }
+
+/** Taille maximale d'un groupe (composition). */
+export const MAX_PLAYERS = 8
+
+/**
+ * Taille de la composition pour un grade imposé : inverse de `bossGradeFor` (grade = joueurs − 3, de 1 à 5) — grade 1 :
+ * 4 joueurs (défaut), grade G de 2 à 5 : G + 3, au-delà : `MAX_PLAYERS` (groupe maximal). Défaut de `rankClasses` quand
+ * la fiche n'a pas de nombre de joueurs (grade imposé), pour la CLI comme pour la page web.
+ */
+export function playersForGrade(grade: number): number {
+  return grade <= 1 ? 4 : Math.min(MAX_PLAYERS, grade + 3)
+}
