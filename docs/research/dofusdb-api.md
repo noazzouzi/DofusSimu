@@ -4,6 +4,8 @@
 > Exploration réalisée le 2026-10-04. Les enregistrements portent `createdAt` 2026-03-03 et `updatedAt` jusqu'à
 > 2026-07-21 (ex. monstre 3835), donc données ≈ version du jeu de l'été 2026.
 > Script : [`scripts/fetch-dofusdb.mjs`](../../scripts/fetch-dofusdb.mjs) — sorties : [`data/dofusdb/`](../../data/dofusdb/).
+> **Mise à jour 3.7 (2026-10-06)** : l'API a renommé les champs des grades de monstres ; les données du dépôt restent
+> celles du 2026-10-04 (3.6). Correspondances, garde-fous et procédure de ré-extraction : §10.
 >
 > Convention : **INCERTAIN** = interprétation non confirmée par une source primaire (meilleure estimation donnée).
 
@@ -294,6 +296,8 @@ aggressive*, incompatibleIdols, incompatibleChallenges, soulCaptureForbidden, al
   startingSpellId, bonusRange, bonusCharacteristics{lifePoints, strength, …, earthResistance…, tackleEvade,
   tackleBlock, bonusEarthDamage…, aPRemoval}}`. **Aucune résistance fixe** n'est présente dans les grades
   (les monstres ont des % ; d'éventuels bonus passent par `bonusCharacteristics` ou par des sorts/états).
+  Schéma 3.6 : depuis la 3.7, les noms ont changé et l'API expose résistances fixes, critiques, poussée, tacle, fuite
+  et initiative (§10).
 - **`startingSpellId` est un id de `spell-levels`** (pas de `spells`) : sort lancé automatiquement au début du combat
   (états initiaux, invocations…). Ex. Vortex : 22886 → sort 5006 « Vortexiphan » (invulnérable, indéplaçable, -100 PM,
   état Marginal, invoque Auroraire 3833) ; vagues : 22882 → sort 5002 « Glyphe téléporteur ».
@@ -373,6 +377,7 @@ Auroraire grade 6, état Marginal 1 tour au lieu de 25) correspond probablement 
 NODE_USE_ENV_PROXY=1 node scripts/fetch-dofusdb.mjs            # ou : npm run fetch:data
 NODE_USE_ENV_PROXY=1 node scripts/fetch-dofusdb.mjs --refresh  # ignore le cache
 #   --concurrency=4  --delay=60 (ms entre deux requêtes)  --monster-spells=all|vortex  --max-depth=20
+#   --game-version=3.7  (version inscrite dans manifest.json, sinon déduite du schéma des grades, §10.4)
 ```
 
 - Sans dépendance, Node ≥ 22 ; ~880 requêtes en ~75 s à froid (4 requêtes simultanées), < 10 s avec le cache.
@@ -385,6 +390,8 @@ NODE_USE_ENV_PROXY=1 node scripts/fetch-dofusdb.mjs --refresh  # ignore le cache
   stabilisé en 5 (classes), 8 (monstres) et 9 (objets) itérations — l'ancien défaut 8 était donc juste à la limite).
 - Étapes : tables de référence → classes → monstres → sorts de classe → équipements/panoplies → sorts d'objets →
   donjons/cartes → sorts de monstres → états → challenges/succès Vortex → `manifest.json` (+ contrôles).
+- **Écriture tout ou rien** (depuis le 2026-10-08) : les sorties sont préparées dans `.cache/dofusdb-out/` et
+  déplacées dans `data/dofusdb/` à la fin seulement ; un échec laisse `data/dofusdb/` intact (§10.4).
 
 ### 7.1 Fichiers produits (`data/dofusdb/`, 40,6 Mo au total)
 
@@ -531,3 +538,153 @@ Contrôles refaits contre l'API **en direct** (pas seulement le cache) et en rel
 **Non vérifié / reste INCERTAIN** : sémantique des lettres `targetMask`/`triggers`, valeurs de `dispellable`, formes de
 zone rares, effets 3792/3793/2876/2877, mécanisme exact des « heures » de Vortex, coûts des points de caractéristiques
 en 2026 (cf. §8).
+
+## 10. Schéma 3.7 (2026-10-07)
+
+**Constat.** Avec la mise à jour 3.7 du jeu (2026-10-06), DofusDB a changé le schéma des grades de monstres :
+constaté le 2026-10-07 (`GET /monsters/3835` et `/monsters/1045`), revérifié le 2026-10-08 par 3 requêtes GET
+(`/monsters/3835`, `/1045`, `/3534`, `updatedAt` 2026-10-07T22:25Z), puis par une 4e lors de la relecture
+(`/monsters?id[$in][]=53&id[$in][]=3112` : Bwork Mage, esquive PA 3.6 non nulle, et Explobombe, parts de l'invocateur). Les champs `neutralResistance…`, `paDodge`,
+`pmDodge`, `bonusRange` et `gradeXp` n'existent plus. L'ancienne normalisation lisait `g.neutralResistance`
+(`undefined`) et `compact()` supprimait la clé : une nouvelle extraction aurait donné **0 % de résistance à tous les
+monstres, sans erreur**. Les données de `data/dofusdb/` (2026-10-04) sont en 3.6 et **ne sont pas ré-extraites**
+(décision de l'utilisateur : cela changerait des valeurs de référence du Vortex) ; `manifest.json` porte
+`game.version: "3.6"`, renseigné à la main.
+
+Extraits réduits des réponses (un à trois grades complets, tels que renvoyés) :
+[`tests/fixtures/dofusdb-3.7/`](../../tests/fixtures/dofusdb-3.7/) (`monster-3835.json`, `monster-1045.json`,
+`monster-3534.json`, `monster-53.json`, `monster-3112.json`) ; référence 3.6 figée aux mêmes grades (tirée de
+`monsters.json`, pour survivre à une ré-extraction) :
+[`tests/fixtures/dofusdb-3.6/monsters-extract.json`](../../tests/fixtures/dofusdb-3.6/monsters-extract.json). Données
+DofusDB sous LPNC-IA 1.0 (usage non commercial) ; leur utilisation est autorisée pour ce projet selon le README
+(« Sources et licences »).
+
+### 10.1 Correspondance des champs de grade
+
+Normalisation : [`scripts/lib/dofusdb-normalize.mjs`](../../scripts/lib/dofusdb-normalize.mjs) (`normGrade`, table
+`RENAMED_37`), importée par `fetch-dofusdb.mjs`. Elle lit les deux schémas et écrit le format historique de
+`monsters.json` : champs existants **toujours écrits, mêmes clés, même ordre** (renormaliser les 26 970 grades actuels
+les rend octet pour octet) ; champs nouveaux **écrits seulement s'ils sont non nuls** (sinon ≈ 25 clés nulles de plus
+par grade). Si l'ancien et le nouveau nom coexistent, l'ancien l'emporte. Conversion : `src/data/convert.ts`
+(`GRADE_STAT_FIELDS_37`), appliquée seulement aux champs présents (aucune valeur actuelle ne change : empreinte des
+5 135 monstres convertis identique avant/après).
+
+| API 3.7 | `monsters.json` (normalisé) | `Stats` (convert.ts) | Remarque (Vortex / Kimbo / Merkator, grade 5) |
+|---|---|---|---|
+| `reductionNeutral/Earth/Fire/Water/Air` | `neutralResistance…` | `neutralResPct…` | mêmes valeurs qu'en 3.6 (6/33/12/21/28 ; 400 ; 14/27/16/22/12) |
+| `paLostDodge` | `paDodge` | `apParry` | même grandeur, valeur baissée (−24 / −24 / −21 contre 0 ; Bwork Mage 4 / 3 contre 10) : §10.2 |
+| `mpLostDodge` | `pmDodge` | `mpParry` | mêmes valeurs (20 / 0 / 30) |
+| `rangeBonus`, `xp` | `bonusRange`, `gradeXp` | `range`, — | |
+| `grade, level, lifePoints, actionPoints, movementPoints, vitality, wisdom, strength, intelligence, chance, agility, damageReflect, startingSpellId` | inchangés | inchangés | PV, PA, PM, caractéristiques identiques |
+| `reduction<Élément>Flat` | `<élément>ResistanceFlat` | `neutralRes…` (fixes) | nouveau ; 0 sur les 3 boss |
+| `criticalDamageReduction` | idem | `criticalRes` | nouveau ; 0 |
+| `pushDamageReduction` | idem | `pushRes` | nouveau ; Kimbo 9999 |
+| `tackleBonus` | `tackleBlock` | `tackleBlock` | 20 / 0 / 30 ; ajouté à Agi/10 par le moteur (**INCERTAIN** : bonus ou total) |
+| `tackleEvade` | idem | `tackleEvade` | 20 / 0 / 30 ; idem |
+| `initiativeBonus` | idem | `initiative` | 15000 / 0 / 5000 ; ajouté à Fo + Int + Cha + Agi par le moteur |
+| `damageBonus`, `<élément>DamageBonus` | `damageBonus`, `bonus<Élément>Damage` | `damage`, `<élément>Damage` | 0 ; noms de `bonusCharacteristics` 3.6 ; Explobombe : 100 (parts) |
+| `criticalHitBonus`, `criticalDamageBonus`, `pushDamageBonus` | idem | `critical`, `criticalDamage`, `pushDamage` | 0 |
+| `healBonus`, `trapDamageBonus`, `trapDamageBonusPercent` | idem | `heals`, `trapDamage`, `trapPower` | 0 |
+| `apAttack`, `mpAttack` | idem | `apReduction`, `mpReduction` | 0 |
+| `percentDamageBonus` | idem | `power` (Puissance) | 0 ; Explobombe : 100 (parts). **Déduit**, non vérifié en jeu : ci-dessous |
+| `maxSummon` | idem | **non converti** | 1 / 1 / 7 ; le moteur lit `stats.summons` dans les masques de cible (targetMask.ts) |
+| `monsterId`, `honoursPoints` | ignorés | — | redondant ; points d'honneur (JcJ) |
+
+Noms : les clés gardées telles quelles sont les noms d'API ; `criticalDamageReduction` et `pushDamageReduction` sont
+aussi des mots-clés de `characteristics.json` (ids 87 et 85), pas `initiativeBonus` (mot-clé `initiative`, id 44).
+
+`percentDamageBonus` = Puissance, par déduction : `characteristics.json` associe `trapDamageBonus` à « Dommages Pièges »
+et `trapDamageBonusPercent` à « Puissance Pièges » (ids 70 et 69), et la Puissance y a le mot-clé `damagePercent`
+(id 25) ; le couple `damageBonus` / `percentDamageBonus` suit le même schéma, et l'Explobombe 3.7 reçoit les deux à
+100 %, comme un Roublard dont la bombe hérite des dommages ET de la puissance. Non vérifié en jeu.
+
+`bonusCharacteristics` (part en % des caractéristiques de l'invocateur) porte en 3.7 les mêmes clés que le grade, plus
+`aPRemoval` : mêmes renommages (`reductionEarth` → `earthResistance`, `earthDamageBonus` → `bonusEarthDamage`,
+`tackleBonus` → `tackleBlock`…), valeurs nulles retirées ; `MONSTER_BONUS_STATS` connaît les nouveaux noms sauf
+`apAttack`/`mpAttack` (ils coexistent avec `aPRemoval`/`mPRemoval` : doublon possible, non tranché). Parts nulles sur les
+3 boss ; sur l'Explobombe (3112, grade 1), mêmes parts qu'en 3.6 (PV 90 %, caractéristiques et dommages élémentaires
+100 %) **plus** `damageBonus`, `percentDamageBonus` et `neutralDamageBonus` à 100 : la sémantique « part en % » tient,
+et la bombe 3.7 hérite en plus des dommages fixes, de la Puissance et des dommages neutres de l'invocateur
+(`summonerShare` : `damage`, `power`, `neutralDamage` à 100). Le test « toute part de l'invocateur non nulle est prise
+en charge » (data-fetch-schema, sur les fixtures) et celui de data-node (sur les données) signalent une clé que
+`convertSummonerShare` écarterait.
+
+### 10.2 Sens de `paLostDodge`
+
+| Monstre, grade | Sagesse | ⌊Sagesse/10⌋ | `paDodge` 3.6 | `paLostDodge` 3.7 | Esquive PA du moteur 3.6 → 3.7 |
+|---|---|---|---|---|---|
+| Vortex 3835, g1 et g5 | 800 | 80 | 0 | −24 | 80 → 56 |
+| Kimbo 1045, g5 | 800 | 80 | 0 | −24 | 80 → 56 |
+| Merkator 3534, g5 | 700 | 70 | 0 | −21 | 70 → 49 |
+| Bwork Mage 53, g1 | 112 | 11 | 10 | 4 | 21 → 15 |
+| Bwork Mage 53, g3 | 126 | 12 | 10 | 4 | 22 → 16 |
+| Bwork Mage 53, g5 | 140 | 14 | 10 | 3 | 24 → 17 |
+
+Le moteur calcule l'esquive PA d'un monstre = ⌊Sagesse/10⌋ + `paDodge` (`engine/factory.ts`). Dans tous les cas :
+
+> esquive PA finale 3.7 = ⌈0,7 × esquive finale 3.6⌉, soit `paLostDodge` = `paDodge` − ⌊0,3 × (`paDodge` + ⌊Sagesse/10⌋)⌋
+
+C'est la baisse de 30 % de l'esquive PA des monstres annoncée pour la 3.7 (notes de mise à jour relevées le 2026-10-07
+sur DofusPourLesNoobs, page « mise-a-jour-307 »), arrondie en faveur du monstre (plafond : le Bwork Mage g3 passe de
+22 à 16, un arrondi au plus proche donnerait 15). **Conclusion : même grandeur et même sens (bonus fixe ajouté à
+Sagesse/10), pas d'inversion de signe** ; la 3.7 inscrit sa baisse dans ce bonus, qui peut devenir négatif. `normGrade`
+le recopie tel quel dans `paDodge`. Ces chiffres corroborent aussi l'hypothèse du moteur « la Sagesse donne l'esquive
+aux monstres ». `mpLostDodge` = `pmDodge`, inchangé (la baisse ne touche que les PA). Une première version de cette
+section donnait `paDodge` − 0,3 × Sagesse/10 : juste seulement quand `paDodge` 3.6 vaut 0 (7 039 grades actuels ont
+un `paDodge` non nul, dont 350 négatif ; relecture du 2026-10-08). Limites : 8 grades observés, esquive finale 3.6
+toujours positive (le sens de l'arrondi d'une esquive finale négative, 1 grade actuel, n'est pas observé). Vérifié par
+`tests/data-fetch-schema.test.ts`.
+
+### 10.3 Autres écarts constatés (3 boss, Bwork Mage, Explobombe)
+
+- `tags` vides (`[]`) en 3.7, contre 6 / 6 / 3 étiquettes en 3.6 (vides aussi pour le Bwork Mage, 6 en 3.6, et
+  l'Explobombe). L'IA ne s'en sert que pour `summon` (`src/ai/monster/archetype.ts`) ; le script avertit si aucun
+  monstre n'a de tags.
+- Explobombe (3112) : 3 grades en 3.7 (niveaux 1, 66, 132) contre 7 grades de niveau 1 en 3.6 ; ses parts de
+  l'invocateur gagnent dommages fixes, Puissance et dommages neutres (§10.1).
+- Kimbo : mêmes sorts, dans un autre ordre (`spellGrades` reste aligné : sans effet).
+- Champs du monstre (`MONSTER_SELECT`) : tous présents, mêmes formats (`spellGrades` en chaîne, `characRatios`…).
+- Aucun numéro de version du jeu dans les réponses `/monsters` (les autres services n'ont pas été examinés).
+
+### 10.4 Garde-fous de l'extraction
+
+- Bilan des grades bruts par schéma (`3.6` / `3.7` / `inconnu`) et clés que la normalisation ne connaît pas : journal
+  et `manifest.json` (`game.gradeSchemas`, `game.unknownGradeKeys`). Un futur renommage devient visible.
+- **Échec explicite** (message en français, `assertBossResistances`) si un monstre `isBoss` a un grade sans ses 5
+  résistances en %, ou aucun grade ; si aucun monstre n'est `isBoss` ; si le boss témoin, le Vortex (3835,
+  `SENTINEL_BOSS_IDS`), manque ou n'est plus `isBoss`. Sans ces deux derniers contrôles, un renommage de `isBoss`
+  viderait la liste des boss à vérifier et le garde-fou passerait sans rien contrôler.
+- **Écriture tout ou rien** : les fichiers sont préparés dans `.cache/dofusdb-out/` puis déplacés dans `data/dofusdb/`
+  seulement à la fin d'une extraction réussie (`publishOutputs`, `manifest.json` en dernier). Un échec (garde-fou,
+  erreur HTTP…) laisse `data/dofusdb/` intact, y compris les tables de référence (`effects.json`, `characteristics.json`,
+  `item-types.json`) préparées avant les monstres ; le message d'échec le rappelle.
+- `manifest.json` → `game.version` : `--game-version=X.Y`, sinon déduite du schéma (« 3.7 » = 3.7 ou postérieure ;
+  l'API ne publie pas de version). `checks.vortexBossResPctAndDodge` = résistances et esquives du Vortex au grade 5.
+- Testé hors réseau par `tests/data-fetch-script.test.ts` : le script (copié dans un dossier temporaire) interroge un
+  faux serveur local qui sert les fixtures 3.7. Schéma 3.7 → grades complets publiés, `game.version: "3.7"` ; clés de
+  résistance renommées ou `isBoss` renommé → code de sortie 1, message français, `data/dofusdb` inchangé.
+- Seuls les monstres ont été examinés : un renommage dans les autres services (objets, sorts, états) n'est pas détecté.
+
+### 10.5 Procédure de ré-extraction (à décider par l'utilisateur)
+
+1. `NODE_USE_ENV_PROXY=1 node scripts/fetch-dofusdb.mjs --refresh --game-version=3.7` (≈ 880 requêtes, ≈ 75 s ;
+   `--refresh` est indispensable : le cache contiendrait sinon des réponses 3.6).
+2. Lire le journal : `schémas des grades : {"3.7": …}` seul, pas de « clés de grade inconnues », pas d'« Extraction
+   DofusDB refusée », et `== Publication` en fin de run. En cas d'échec, `data/dofusdb` n'a pas bougé : compléter
+   `RENAMED_37` et relancer (le cache évite de tout retélécharger).
+3. Contrôler `manifest.json` : `game`, `checks.vortexBossResPctAndDodge` = `[6, 33, 12, 21, 28, -24, 20]` attendu ;
+   `git diff --stat data/dofusdb`.
+4. Relancer les tests `data-*`, puis la suite complète. Changements attendus : esquive PA des monstres ramenée à
+   ⌈70 %⌉ (Vortex 80 → 56 : retraits de PA plus efficaces), tacle, fuite et initiative des boss en hausse, résistance
+   poussée de certains boss, tags absents, bombes du Roublard qui héritent aussi des dommages fixes, de la Puissance et
+   des dommages neutres (et Explobombe à 3 grades). Tests à mettre à jour, relevés par une simulation (grades des 5
+   monstres des fixtures remplacés par leur version 3.7 normalisée dans une copie de `monsters.json`, `game.version`
+   3.7 ; tests `data-*` et `stats-*` seulement) :
+   - `data-node` « Vortex (3835) : grades, caractéristiques, résistances… » : `apParry` vaut −24 (attendu absent) ;
+   - `data-node` « bonusCharacteristics = part (%)… » : part de l'Explobombe + `damage`, `power`, `neutralDamage` à
+     100 ; `stats.tackleBlock` n'est plus toujours absent des grades (Vortex 20, Merkator 30) ;
+   - `data-fetch-schema` : les deux tests propres aux données 3.6 sont ignorés (`it.runIf`, `game.version` ≠ 3.6) ; les
+     comparaisons 3.6 / 3.7 utilisent l'extrait 3.6 figé et restent valables.
+   Non vérifié : les ≈ 60 autres fichiers de tests qui citent le Vortex (`ai-*`, `effects-*`, `opt-*`, `vortex-*`) et
+   les tests des invocations du Roublard ; recalibrer `data/ai/calibration.json` si besoin.
+5. Mettre à jour ce document (§7.3) et les rapports qui citent des valeurs du Vortex.
