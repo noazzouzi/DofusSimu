@@ -1,10 +1,10 @@
 # DofusSimu
 
 Simulateur de combats et d'équipements pour **Dofus** : données du jeu (équipements, panoplies, exos,
-classes et sorts, monstres, donjons et cartes), calcul de dégâts exact (formules DoMath), moteur de combat
-tour par tour avec **replays animés**, IA des monstres et IA de groupe (4 personnages), optimiseurs des **builds**
-(stuff, exos, points, variantes de sorts) et de la stratégie par simulation massive, pour une composition d'équipe
-**choisie par l'utilisateur**.
+classes et sorts, monstres, donjons et cartes), calcul de dégâts selon DoMath (vérifié contre DoMath, pas encore
+contre le jeu), moteur de combat tour par tour avec **replays animés**, IA des monstres et IA de groupe
+(4 personnages), optimiseurs des **builds** (stuff, exos, points, variantes de sorts) et de la stratégie par
+simulation massive, pour une composition d'équipe **choisie par l'utilisateur**.
 
 Démo cible : **Œil de Vortex** (donjon de dimension Xélorium, niveau 200, combat de vagues + boss Vortex).
 
@@ -33,26 +33,27 @@ millisecondes, le classement des classes en moins d'une seconde, un meilleur stu
 ```bash
 npm run sim -- bosses [recherche] [--all] [--json]                  # liste / recherche (nom du boss ou du donjon)
 npm run sim -- boss <nom|id> [--players N | --grade G] [--details] [--no-overrides] [--json]           # fiche
-npm run sim -- boss <nom|id> classes [--players N | --grade G] [--optimize] [--iterations N] [--profile P]
+npm run sim -- boss <nom|id> classes [--players N | --grade G] [--optimize [--iterations N] [--profile P]]
                                      [--level L] [--json] [--out fichier]                            # classes
 npm run sim -- boss <nom|id> stuff --class <classe|preset> [--roxx <lien> | --build fichier.json]
-                                   [--elements all] [--profile balanced|defensive|offensive] [--top N]
-                                   [--iterations N] [--level L] [--range N] [--fixed ids] [--exclude ids]
-                                   [--out fichier.json] [--json]                                     # stuff
-npm run sim -- degats --preset <preset> [--build fichier.json | --roxx <lien>] --sort <nom|id>
-                      [--boss <nom|id> [--players N]] [--res n,t,f,e,a] [--crit] [--trace] [--json]   # UN sort
+                                   [--elements preset|all] [--profile balanced|defensive|offensive] [--top N]
+                                   [--iterations N] [--restarts N] [--seed S] [--level L] [--range N]
+                                   [--fixed ids] [--exclude ids] [--out fichier.json] [--json]       # stuff
+npm run sim -- degats --preset <preset> [--build fichier.json | --roxx <lien>] --sort <nom|id>     # UN sort
+                      [--boss <nom|id> [--players N | --grade G]] [--res n,t,f,e,a] [--crit] [--trace] [--json]
 
 npm run sim -- boss "pere ver" classes                      # quelles classes contre le Père Ver ?
 npm run sim -- boss merkator stuff --class cra_terre_mono   # quel stuff pour ce Crâ contre Merkator ?
 ```
 
 Le grade du boss se déduit du nombre de joueurs (`joueurs − 3`, borné à 1..5 ; 4 joueurs par défaut ⇒ grade 1).
-`--class cra` prend le premier preset de base de la classe et liste les autres ; `--out` écrit le meilleur stuff au
-format `build` des fichiers d'équipe (relu par `--build`, utilisable dans `data/teams/`). `degats` calcule un sort
-ligne par ligne (min-max normal et critique, chance de critique, espérance ; `--trace` : calcul étape par étape) pour
-vérifier en jeu, par exemple sur un Poutch. Une fiche manuelle `data/bosses/<id>.json` (mécaniques, résistances
-réellement subies, phases ; règles de sources dans [`data/bosses/README.md`](data/bosses/README.md)) complète les
-données quand elle existe.
+`--class cra` prend le premier preset de base de la classe et liste les autres (avec `--roxx` / `--build` : le preset
+de l'élément du build ; donner le preset pour imposer le rôle) ; `--iterations` et `--profile` de `classes` exigent
+`--optimize` ; `--out` écrit le meilleur stuff au format `build` des fichiers d'équipe (relu par `--build`,
+utilisable dans `data/teams/`). `degats` calcule un sort ligne par ligne (min-max normal et critique, chance de
+critique, espérance ; `--trace` : calcul étape par étape) pour vérifier en jeu, par exemple sur un Poutch. Une fiche
+manuelle `data/bosses/<id>.json` (mécaniques, résistances réellement subies, phases ; règles de sources dans
+[`data/bosses/README.md`](data/bosses/README.md)) complète les données quand elle existe.
 
 **Page web** : `npm run dev`, onglet **Boss** (`http://localhost:5173/#boss`, état dans l'adresse :
 `#boss/<monsterId>[/classes|/stuff]`) — recherche, fiche du boss, onglet Classes (tableaux triables, composition,

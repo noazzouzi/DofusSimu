@@ -54,9 +54,9 @@ résultat complet en JSON sur la sortie standard (pour un script ou un tableur) 
 |---|---|
 | `bosses [recherche] [--all] [--json]` | Liste ou recherche des boss : nom, id, donjon(s), niveau du donjon, niveau du boss, nombre de grades, Expédition. `--all` inclut les Expéditions (exclues par défaut). |
 | `boss <nom\|id> [--players N \| --grade G] [--details] [--no-overrides] [--json]` | Fiche du boss. `--details` : en plus, tableau de tous ses sorts (PA, lancers, relance, dégâts par élément, drapeaux) et arbre de son sort de départ (aide à rédiger une fiche manuelle, §5). La fiche manuelle `data/bosses/<id>.json` est appliquée si elle existe ; `--no-overrides` l'ignore. |
-| `boss <nom\|id> classes [--players N \| --grade G] [--optimize] [--iterations N] [--profile P] [--level L] [--json] [--out fichier]` | Classement des classes (§3.2). `--optimize` : stuff optimisé contre le boss pour chaque preset, progression sur la sortie d'erreur. |
-| `boss <nom\|id> stuff --class <classe\|preset> [--roxx <lien> \| --build fichier.json] [--elements all] [--profile balanced\|defensive\|offensive] [--top N] [--iterations N] [--level L] [--range N] [--fixed ids] [--exclude ids] [--out fichier.json] [--json]` | Meilleur stuff pour un personnage (§3.3). |
-| `degats --preset <preset> [--build fichier.json \| --roxx <lien>] --sort <nom\|id> [--boss <nom\|id> [--players N]] [--res n,t,f,e,a] [--crit] [--trace] [--json]` | Dégâts d'UN sort, ligne par ligne, pour vérifier en jeu (§6). |
+| `boss <nom\|id> classes [--players N \| --grade G] [--optimize [--iterations N] [--profile P]] [--level L] [--json] [--out fichier]` | Classement des classes (§3.2). `--optimize` : stuff optimisé contre le boss pour chaque preset, progression sur la sortie d'erreur ; `--iterations` et `--profile` n'existent qu'avec `--optimize` (sinon erreur). `--out` : classement écrit dans un fichier (JSON si `.json`, texte sinon). |
+| `boss <nom\|id> stuff --class <classe\|preset> [--roxx <lien> \| --build fichier.json] [--elements preset\|all] [--profile balanced\|defensive\|offensive] [--top N] [--iterations N] [--restarts N] [--seed S] [--level L] [--range N] [--fixed ids] [--exclude ids] [--out fichier.json] [--json]` | Meilleur stuff pour un personnage (§3.3). |
+| `degats --preset <preset> [--build fichier.json \| --roxx <lien>] --sort <nom\|id> [--boss <nom\|id> [--players N \| --grade G]] [--res n,t,f,e,a] [--crit] [--trace] [--json]` | Dégâts d'UN sort, ligne par ligne, pour vérifier en jeu (§6). |
 
 Désigner le boss : un id de monstre (`4726`) ou un nom — du boss ou de son donjon —, sans accents ni majuscules
 (`"pere ver"`). Une requête ambiguë est refusée avec la liste des candidats :
@@ -66,9 +66,14 @@ Erreur : « tynril » est ambigu : Tynril Ahuri (1087, Laboratoire du Tynril) ; 
 ```
 
 Désigner le personnage (`--class`, `--preset`) : un preset (`cra_terre_mono`), une désignation `classe:qualificatif`
-(`cra:terre`) ou une classe seule (`cra`, `Crâ`, `9`). **Une classe seule prend le premier preset de base de la classe**
-et la sortie liste les autres en note : pour un autre, donner le preset (`npm run sim -- presets` les liste) ;
-`--elements all` compare de toute façon les quatre éléments.
+(`cra:terre`) ou une classe seule (`cra`, `Crâ`, `9`). **Sans `--roxx` ni `--build`, une classe seule prend le premier
+preset de base de la classe** (pour le Crâ : `cra_feu_zone`, rôle Dégâts de zone) et la sortie liste les autres en
+note : pour un autre, donner le preset (`npm run sim -- presets` les liste) ; `--elements all` compare de toute façon
+les quatre éléments. **Avec `--roxx` ou `--build`**, la classe vient du build et une classe seule ne fait que la
+vérifier : le preset (variantes de sorts, rôle donc exposants de l'objectif, étalonnage) est le premier preset de base
+de la classe dont l'élément est la caractéristique élémentaire la plus haute du build, et la ligne « Personnage » de la
+sortie le nomme. Pour imposer le rôle et les variantes de VOTRE personnage, donner le preset
+(`--class cra_terre_mono --roxx …`).
 
 Options communes :
 
@@ -77,11 +82,18 @@ Options communes :
   (Père Ver) n'est accessible que par `--grade`. Le grade change surtout les PV, rarement les caractéristiques, presque
   jamais les résistances.
 - `--level L` : niveau des personnages (défaut 200). Sous 200, les stuffs génériques (objets niveau 200) ne sont pas
-  portables : le classement des classes prend alors des personnages **sans équipement** (signalé).
+  portables : le classement des classes par défaut prend alors des personnages **sans équipement** (signalé) ;
+  `classes --optimize` leur donne au contraire un stuff optimisé avec des objets de leur niveau (mesuré contre le Père
+  Ver au niveau 150 : 2,9 s pour les 49 presets).
 - `--profile` : `balanced` (défaut), `defensive` (survie d'abord), `offensive` (dégâts d'abord) — décale les exposants
-  de l'objectif de l'optimiseur (§3.3).
-- `--iterations N` : itérations du recuit de l'optimiseur (stuff : 30 000 par défaut, deux recherches ; `--optimize` des
-  classes : 0, montée par coordonnées seule).
+  de l'objectif de l'optimiseur (§3.3). Pour `classes`, seulement avec `--optimize`.
+- `--iterations N` : itérations du recuit de l'optimiseur (stuff : 30 000 par défaut ; `--optimize` des classes : 0,
+  montée par coordonnées seule ; pour `classes`, seulement avec `--optimize`). `--restarts N` (stuff) : nombre de
+  recherches, chacune avec sa graine (défaut 2, une seule par élément avec `--elements all`) ; `--seed S` : première
+  graine (défaut 1). Mêmes options, même résultat.
+- `--fixed ids` / `--exclude ids` (stuff) : ids d'objets, séparés par des virgules, **imposés** dans tous les stuffs
+  candidats / **interdits** à la recherche (ids DofusDB : champ `itemId` du fichier `--out` ou de la sortie `--json`,
+  ou adresse de l'objet sur dofusdb.fr). Un objet imposé au-dessus de `--level` est ignoré (signalé).
 
 Exemples :
 
@@ -471,11 +483,20 @@ Chaque sortie liste les siennes ; voici l'ensemble, sans fard.
   entre sorts d'un même personnage, ni PA rendus en cours de tour ; poisons et effets différés par heuristique.
 - Buffs d'équipe entre personnages affichés à part (axe Apport d'équipe), jamais ajoutés aux dégâts.
 - Postures de classe : la meilleure, supposée tenue tout le combat, sans coût de changement.
+- **PA et PM retirés par le boss non déduits** : chaque personnage dispose de tous ses PA à chaque tour, même contre
+  un boss qui en retire (mécanique « retrait PA/PM », ex. Merkator). Le DPT est alors surestimé, et l'esquive PA/PM
+  des personnages n'est valorisée ni par l'objectif de l'optimiseur ni par les équivalences : la mécanique n'apparaît
+  que dans la fiche et dans les atouts et limites des classes.
 
-**Le boss est une borne haute.**
+**Les dégâts du boss sont une estimation, pas une borne.** Le pic est optimiste (la meilleure combinaison de sorts sur
+une cible), mais plusieurs sources de dégâts ne sont pas comptées : le total peut être SOUS-estimé, et avec lui la
+colonne *Reçus/tour* et le seuil de 20 % de la règle Soin de la composition, surtout contre un boss à zones, à
+invocations ou à sorts en réaction. Les PVe (un rapport : dégâts sans défense / avec défenses) en dépendent aussi, par
+la répartition élémentaire et le poids des résistances fixes, et peuvent être faussés dans un sens ou dans l'autre.
 - Ses dégâts viennent d'un sac à dos sur ses PA (meilleure combinaison de sorts sur une cible), pas de son IA ; le
-  soutenu suppose qu'il frappe une cible par tour ; zones, sorts déclenchés en réaction et dégâts de ses invocations ne
-  sont pas comptés ; les sorts lancés par ses alliés non plus.
+  soutenu suppose qu'il frappe une cible par tour ; zones (une seule cible touchée), sorts déclenchés en réaction et
+  dégâts de ses invocations ne sont pas comptés ; les sorts lancés par ses alliés non plus.
+- Lignes aléatoires pondérées par leur probabilité (espérance, pas le pire tirage) ; critique pondéré.
 - Dégâts en % de PV : 4 000 PV de référence par joueur, boss à mi-vie, 10 % de PV érodés. Effets de dégâts rares non
   gérés (dommages par PA/PM utilisé, % des dommages subis…) comptés à 0 et listés dans les avertissements.
 - Phases à poids égaux, déduites des conditions d'états de ses sorts (6 au plus) ; une invulnérabilité de départ est
@@ -496,7 +517,8 @@ Chaque sortie liste les siennes ; voici l'ensemble, sans fard.
 - Le DPT du proxy porte une calibration mesurée au Vortex ; le DPT soutenu n'est pas calibré ; l'étalonnage affiché à
   côté a été mesuré contre un Buboxor, pas contre le boss.
 - `--optimize` (classes) : le stuff suit l'objectif du rôle de chaque preset et ne voit pas les postures (§3.2).
-- Sous le niveau 200, le classement des classes compare des personnages sans équipement.
+- Sous le niveau 200, le classement des classes par défaut compare des personnages sans équipement (les kits de classe,
+  pas les stuffs) ; `--optimize` leur donne un stuff optimisé avec des objets de ce niveau (§2.1).
 
 **Données.**
 - **Données DofusDB de la version 3.6, extraites le 2026-10-04.** La 3.7 est en ligne depuis le **2026-10-06** : elle a
@@ -522,6 +544,13 @@ l'accompagnent. Une fiche manuelle le dit ; elle est facultative et appliquée a
    supprimer les clés inutiles.
 4. Relancer `boss <id>` : la ligne « Fiche manuelle appliquée (date) » apparaît ; une clé inconnue, un type inattendu ou
    une valeur hors domaine bloque le chargement avec le fichier et le chemin de la clé en cause.
+
+**Brouillons.** Les fichiers dont le nom commence par `_` sont ignorés (`_template.json`, `_1045.json`…) : y rédiger
+une fiche tant qu'elle n'est pas valide. `loadBossOverrides` (page web, scripts) lit **tout** le dossier : une seule
+fiche invalide y empêche d'appliquer les autres (la page web le signale par un avertissement et n'en applique aucune ;
+un script reçoit l'erreur). En ligne de commande, une fiche invalide fait échouer les commandes `boss` qui la lisent ;
+`--no-overrides` les relance sans fiche. `--bosses-dir D` lit les fiches d'un autre dossier (pour essayer une fiche
+sans toucher à `data/bosses`, comme l'exemple ci-dessous).
 
 **Schéma (version 1)**, toutes les clés facultatives sauf `version` et `monsterId` ; éléments dans l'ordre
 [Neutre, Terre, Feu, Eau, Air], pourcentages en points :
@@ -562,8 +591,9 @@ Kimbo, les résistances par phase sont inventées pour l'exemple) :
 }
 ```
 
-Effet sur la fiche et le classement (sortie réelle avec cette fiche placée dans un dossier de test) : les deux phases de
-la fiche remplacent les trois phases calculées, les DPT ne sont plus nuls.
+Effet sur la fiche et le classement (sorties réelles de `boss kimbo --bosses-dir <dossier de test>` puis
+`boss kimbo classes --bosses-dir <dossier de test>`, cette fiche seule dans le dossier) : les deux phases de la fiche
+remplacent les trois phases calculées, les DPT ne sont plus nuls.
 
 ```
 Kimbo (1045) — grade 1, 4 joueur(s)
@@ -605,6 +635,11 @@ La colonne « Élément (rés.) » affiche la résistance **moyenne** pondérée
    réellement subies…) en expliquant pourquoi dans `notes`.
 6. Préférer la version courante du jeu et le dire (`patch`) : la 3.7 a modifié de nombreux boss.
 
+Le dépôt ne respecte pas encore ces règles partout : la documentation de recherche, antérieure (`docs/research`,
+surtout `mechanics.md`, `monster-ai.md` et `vortex-audit.md` sur le Vortex), cite textuellement DofusPourLesNoobs à
+plusieurs endroits et mentionne une copie locale de l'une de ses pages (`.cache/vortex/guides/`, ignorée par git). Sa
+mise en conformité (reformuler en faits avec l'URL, supprimer la copie) reste à faire et à décider (ROADMAP, CP6).
+
 ## 6. Vérifier en jeu
 
 La formule de dégâts reproduit DoMath, vérifiée contre DoMath (≈ 45 000 tirages comparés à une transcription de sa
@@ -616,23 +651,44 @@ conditionnelles signalés) : dégâts min-max d'un coup normal et d'un coup crit
 critique, espérance d'un lancer ; contre les résistances effectives d'un boss (`--boss`) ou des résistances données
 (`--res n,t,f,e,a`, défaut 0 partout). `--trace` détaille le calcul du jet max étape par étape (avec `--crit` : le jet
 critique max). Hors combat : ni buffs, ni états, ni modificateurs de sort, ni sorts passifs ; la cible est touchée sur
-la case d'impact (pas de réduction de zone) ; un sort de portée 1 compte comme mêlée, les autres comme distance.
+la case d'impact (pas de réduction de zone). **Mêlée ou distance** : en jeu, un coup est en mêlée quand la cible est
+sur une case adjacente au lanceur, à distance sinon, et les % de dommages et de résistances mêlée ou distance en
+dépendent ; la sortie dit quel cas elle calcule (en-tête du sort et hypothèses).
 
 **Protocole.**
 
-1. **Un stuff connu.** Reproduire son stuff dans RoxxSolver et copier le lien (`--roxx`), ou écrire un fichier de build
-   (`--build`, format du champ `build` des fichiers d'équipe ; `stuff --out` en produit un). RoxxSolver ne donne pas
-   les jets : ils sont supposés **max**. Si vos objets ne sont pas parfaits, comparer la ligne « Lanceur » de la sortie
-   (caractéristique de l'élément, Puissance, Dommages, Dommages de l'élément, Dommages critiques, Critique, % de
-   dommages) avec la fiche de caractéristiques du jeu, et corriger avec les jets réels (`rolls` d'un objet dans le
-   fichier de build, par effectId) avant de conclure.
+1. **Un stuff connu.** Reproduire son stuff dans RoxxSolver et copier le lien (`--roxx`). RoxxSolver ne donne pas les
+   jets : ils sont supposés **max**. Si vos objets ne sont pas parfaits, comparer d'abord la ligne « Lanceur » de la
+   sortie (caractéristique de l'élément, Puissance, Dommages, Dommages de l'élément, Dommages critiques, Critique, % de
+   dommages) avec la fiche de caractéristiques du jeu. Deux façons de traiter un écart :
+   - **l'interpréter** (le plus simple) : quelques points de caractéristique en moins donnent quelques dégâts en moins,
+     à garder en tête en comparant les relevés ;
+   - **le corriger** dans un fichier de build (`--build`) qui porte les jets réels. Aucun outil n'écrit ce fichier à
+     partir de VOTRE stuff (`stuff --out` écrit le meilleur stuff optimisé ; l'éditeur `#stuffs` importe un lien
+     RoxxSolver mais n'édite pas les jets) : partir du champ `build` d'un membre de `data/teams/<nom>.json` (lien
+     importé dans l'éditeur, puis « Enregistrer sous… » un nouveau fichier pour ne pas toucher à l'équipe du Vortex)
+     ou d'un fichier `--out`, ou l'écrire à la main, puis ajouter à chaque objet ses jets `rolls` :
+     `{ "<effectId>": valeur }`, l'effectId étant celui de la ligne de l'objet dans les données (`possibleEffects` de
+     `data/dofusdb/equipment.json` ; 118 = Force, 126 = Intelligence, 123 = Chance, 119 = Agilité, 125 = Vitalité), la
+     valeur positive comme dans les données. Exemple minimal (points, parchemins et variantes absents ⇒ ceux du preset
+     donné par `--preset`) :
+
+     ```json
+     { "build": { "level": 200, "items": [ { "itemId": 19244, "rolls": { "118": 61 } } ] } }
+     ```
+
+     Vérifié : ce jet de Force à 61 au lieu de 80 sur l'Amulette du Cœur Saignant (19244) fait perdre 19 Force à la
+     ligne « Lanceur ».
 2. **Sans buffs.** En jeu, aucun buff ni état actif ; retirer (ou noter) les Dofus et objets à sort passif dont l'effet
    se déclenche en combat.
 3. **Une cible connue.** Un Poutch : d'après les données, le Poutch Ingball (monstre 494) a 0 % de résistance dans les
    cinq éléments, soit le défaut de `--res`. Sur un monstre de résistances connues : `--res` avec ses pourcentages
    (Neutre, Terre, Feu, Eau, Air) ; sur un boss : `--boss <id> [--players N]`.
-4. **Taper et noter.** Lancer le sort 20 à 30 fois, à la portée qu'il exige, sans zone autour de la cible ; noter chaque
-   dégât affiché en séparant coups normaux et critiques.
+4. **Taper et noter.** Lancer le sort 20 à 30 fois, sans zone autour de la cible, **dans le cas que la sortie
+   calcule** : au contact (case adjacente) pour un calcul en mêlée, à au moins 2 cases de la cible pour un calcul à
+   distance. Un sort de portée 1 à 6 lancé au contact reçoit en jeu les % de mêlée : si la sortie le calcule à
+   distance, l'écart vient de là dès que le stuff a des % de dommages mêlée ou distance. Noter chaque dégât affiché en
+   séparant coups normaux et critiques.
 5. **Comparer** à `npm run sim -- degats …` : chaque coup normal dans l'intervalle « Normal », chaque critique dans
    « Critique », la proportion de critiques proche de « %CC » (sur 30 lancers, un écart de ±18 points — deux
    écarts-types — reste plausible), la moyenne proche de « Espérance ».

@@ -297,7 +297,8 @@ Tests : `tests/theory-{bosses,overrides,profile,target,rotation,stances,utilitie
   Puissance, Dommages, % finaux, PA ; allié de référence de 1 300 de caractéristique + Puissance). L'axe « Soutien »
   de la conception est scindé : soins, boucliers et réductions dans Soin, buffs alliés dans Apport d'équipe. Résistances
   ≥ 100 % sans fiche : DPT « résistances levées » (`resLifted`) affiché et utilisé par la composition si tous les DPT
-  sont nuls. Sous le niveau 200 : personnages sans équipement (signalé).
+  sont nuls. Sous le niveau 200 : personnages sans équipement en mode `preset` (signalé) ; en mode `optimized`, stuff
+  optimisé depuis ce départ nu avec des graines ≤ niveau (`theorySeedFilter({ level })`).
 - **Composition (§1.8).** Règles écrites et seuils exportés (`COMPOSITION_RULES`, `COMPOSITION_THRESHOLDS`) : Dégâts ;
   Soin si un tour du boss retire ≥ 20 % des PV d'un personnage (médiane) et pas d'insoignable ; Protection si
   insoignable ou érosion ≥ 20 % ; Retrait PM si le boss a des PM, retrait non puni et ≥ 1 PM retiré ; deuxième
@@ -329,4 +330,9 @@ Tests : `tests/theory-{bosses,overrides,profile,target,rotation,stances,utilitie
 - Fiches manuelles des boss (aucune) et vérification en jeu (protocole : `docs/theorycraft.md` §6).
 - Ré-extraction des données 3.7 (décision de l'utilisateur ; `DATA_SNAPSHOT` et tests épinglés à revoir).
 - Classement soutenu dans le mode `optimized` des classes ; étalonnage contre le boss lui-même.
+- PA/PM retirés aux personnages par le boss (mécanique `ap-mp-removal`) : seulement signalés (fiche, atouts et
+  limites) ; ni déduits du DPT (PA du stuff supposés intacts), ni esquive PA/PM du personnage valorisée par l'objectif.
+- Dégâts du boss : pic optimiste sur une cible, mais zones, sorts en réaction, invocations et alliés non comptés ;
+  dégâts reçus et règle Soin peuvent être sous-estimés contre un boss à zones ou à invocations (les PVe, un rapport,
+  faussés dans un sens ou dans l'autre).
 - Hors périmètre v1 inchangé (§5).
