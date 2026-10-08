@@ -14,13 +14,15 @@
  * réglage et mode) et une réponse arrivée après une nouvelle demande pour la même clé est ignorée. Les résultats sont
  * gardés par clé : revenir à un onglet ne relance rien, et une réponse pour un autre boss ou réglage attend en cache.
  * Le serveur calcule en synchrone : pendant un calcul, le bouton qui le relancerait est désactivé, et le mode « stuffs
- * optimisés » (long) ne se relance jamais tout seul sur un autre boss ou réglage.
+ * optimisés » (long) ne se relance jamais tout seul sur un autre boss ou réglage. Le meilleur stuff garde les réglages
+ * de sa demande : un formulaire changé depuis (preset, bouton « Stuff » de l'onglet Classes) le grise, avec la note
+ * « Résultat pour <preset> — … relancez le calcul ».
  */
 import { bossGradeFor, searchBosses } from '@/theorycraft/bosses'
 import { theoryApi, type BossEntry, type BossProfileDetail, type ClassRanking, type Scale, type StuffVsBossResult, type TheoryPreset } from './boss-api'
 import { defaultClassesSort, renderClasses, type ClassesUi } from './boss-classes'
 import { renderSheet } from './boss-sheet'
-import { renderStuffForm, renderStuffResult, SEARCH_EFFORTS, type StuffForm } from './boss-stuff'
+import { renderStuffForm, renderStuffResult, SEARCH_EFFORTS, staleStuffNote, type StuffForm } from './boss-stuff'
 import { errorBox, esc, fmtNum, nextSort, sortableTable, spinner, type Column, type SortState } from './boss-ui'
 import './boss.css'
 
@@ -38,6 +40,12 @@ const elapsedText = (started: number) => `${Math.max(0, Math.round((Date.now() -
 
 /** Adresse d'un boss et d'un onglet. */
 export const bossHash = (id: number, tab: BossTab = 'fiche') => `#boss/${id}${tab === 'fiche' ? '' : `/${tab}`}`
+
+/** Meilleur stuff calculé et réglages du formulaire de SA demande (résultat périmé si le formulaire a changé depuis). */
+interface StuffDone {
+  result: StuffVsBossResult
+  form: StuffForm
+}
 
 /** Calcul en cours ou terminé pour une clé (boss, réglage, mode), avec le numéro de séquence de sa demande. */
 interface Pending<T> {
@@ -77,7 +85,7 @@ export class BossView {
   /** Tri des tableaux (par identifiant de tableau), partagé par la liste des boss, les classes et le stuff. */
   private sorts = new Map<string, SortState>()
   private classesUi: ClassesUi = { axis: 'damage', sorts: this.sorts, open: new Set() }
-  private stuffs = new Map<string, Pending<StuffVsBossResult>>()
+  private stuffs = new Map<string, Pending<StuffDone>>()
   private stuffForm: StuffForm = { preset: '', roxx: '', elements: 'preset', profile: 'balanced', top: 5, iterations: SEARCH_EFFORTS[1].iterations }
   private timer = 0
 
@@ -301,10 +309,14 @@ export class BossView {
       return this.renderPanel()
     }
     this.sorts.delete('stuff-cmp')
+    // Réglages de la demande gardés avec son résultat : un changement du formulaire le marque ensuite comme périmé.
+    const form: StuffForm = { ...f, roxx: f.roxx.trim() }
     this.request(
       this.stuffs,
       key,
-      theoryApi.stuff(this.id, this.scale, { preset: f.preset || undefined, roxx: f.roxx.trim() || undefined, elements: f.elements, profile: f.profile, top: f.top, iterations: f.iterations }),
+      theoryApi
+        .stuff(this.id, this.scale, { preset: f.preset || undefined, roxx: form.roxx || undefined, elements: f.elements, profile: f.profile, top: f.top, iterations: f.iterations })
+        .then(result => ({ result, form })),
       previous,
     )
     // Carte de chargement, chronomètre, bouton désactivé et résultat précédent grisé.
@@ -426,6 +438,8 @@ export class BossView {
     const act = el.dataset.act
     if (act === 'players' || act === 'grade') {
       if (act === 'players') {
+        // « — » (grade imposé) : rien à changer.
+        if (!el.value) return
         this.players = Number(el.value)
         this.grade = null
       } else this.grade = el.value ? Number(el.value) : null
@@ -456,6 +470,8 @@ export class BossView {
           f.iterations = Number(el.value)
           break
       }
+      // Résultat affiché : marqué périmé (ou de nouveau à jour) sans redessiner le formulaire (focus gardé).
+      this.syncStuffOutput()
     }
   }
 
@@ -473,7 +489,8 @@ export class BossView {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       if (!this.suggestions.length) return
       e.preventDefault()
-      if (this.list.hidden) this.updateSuggestions()
+      // Liste fermée (Échap) : la rouvrir sur la PREMIÈRE suggestion (`updateSuggestions` la rend active), sans avancer.
+      if (this.list.hidden) return this.updateSuggestions()
       const n = this.suggestions.length
       this.active = (this.active + (e.key === 'ArrowDown' ? 1 : n - 1)) % n
       this.syncActive()
@@ -573,9 +590,13 @@ export class BossView {
     // Nombre de grades inconnu tant que l'index n'est pas chargé : 5 (donjons modulaires), corrigé à son arrivée.
     const gradeCount = e?.gradeCount ?? 5
     const autoGrade = bossGradeFor(this.players, gradeCount)
-    const players = Array.from({ length: 8 }, (_, i) => i + 1)
-      .map(n => `<option value="${n}"${n === this.players ? ' selected' : ''}>${n} joueur${n > 1 ? 's' : ''}</option>`)
-      .join('')
+    // Grade imposé : le nombre de joueurs ne s'applique plus (« — ») ; en choisir un revient au grade déduit.
+    const imposed = this.grade !== null
+    const players =
+      (imposed ? '<option value="" selected>—</option>' : '') +
+      Array.from({ length: 8 }, (_, i) => i + 1)
+        .map(n => `<option value="${n}"${!imposed && n === this.players ? ' selected' : ''}>${n} joueur${n > 1 ? 's' : ''}</option>`)
+        .join('')
     const grades =
       `<option value=""${this.grade === null ? ' selected' : ''}>Selon les joueurs (${autoGrade})</option>` +
       Array.from({ length: gradeCount }, (_, i) => i + 1)
@@ -599,7 +620,7 @@ export class BossView {
         }<span class="bv-chip">id ${this.id}</span></p>
       </div>
       <div class="bv-scale">
-        <label class="bv-field"><span>Joueurs</span><span class="select-wrap"><select data-act="players" aria-label="Nombre de joueurs">${players}</select></span></label>
+        <label class="bv-field"><span>Joueurs</span><span class="select-wrap"><select data-act="players" aria-label="Nombre de joueurs"${imposed ? ' title="Grade imposé : le nombre de joueurs ne s’applique pas. En choisir un revient au grade déduit des joueurs."' : ''}>${players}</select></span></label>
         <label class="bv-field"><span>Grade</span><span class="select-wrap"><select data-act="grade" aria-label="Grade du boss">${grades}</select></span></label>
       </div>
     </section>`
@@ -650,14 +671,34 @@ export class BossView {
 
   private stuffPanel(): string {
     const s = this.stuffs.get(this.stuffKey)
-    const busy = !!s?.loading
+    // `display: contents` : les blocs du résultat restent des éléments de la grille du panneau.
+    return `${renderStuffForm(this.stuffForm, this.presets, !!s?.loading)}<div id="bv-stuff-out" class="bv-stuff-out">${this.stuffOutput()}</div>`
+  }
+
+  /**
+   * Résultat de l'onglet Stuff : calcul en cours, erreur, résultat — grisé pendant un nouveau calcul, ou périmé (note
+   * « Résultat pour <preset> — relancez le calcul ») quand le formulaire ne correspond plus à sa demande.
+   */
+  private stuffOutput(): string {
+    const s = this.stuffs.get(this.stuffKey)
     let out = ''
     if (s?.loading)
       out += `<div class="bv-loading-card panel">${spinner('Optimisation du stuff contre ce boss…')}<span class="bv-elapsed" data-elapsed="${s.started}">${elapsedText(s.started)}</span></div>`
     if (s?.error) out += errorBox(s.error)
-    if (s?.value) out += `<div class="bv-result${s.loading ? ' stale' : ''}">${renderStuffResult(s.value, this.sorts.get('stuff-cmp'))}</div>`
-    else if (!s) out += '<p class="bv-hint">Choisissez un preset (ou collez le lien RoxxSolver de votre stuff), puis lancez le calcul.</p>'
-    return renderStuffForm(this.stuffForm, this.presets, busy) + out
+    if (s?.value) {
+      const c = s.value.result.character
+      const p = this.presets.find(x => x.id === c.presetId)
+      const stale = s.loading ? undefined : staleStuffNote(s.value.form, this.stuffForm, p ? `« ${p.label} » (${p.id})` : `« ${c.presetId} »`)
+      if (stale) out += `<p class="bv-stale-note" role="status">${esc(stale)}</p>`
+      out += `<div class="bv-result${s.loading || stale ? ' stale' : ''}">${renderStuffResult(s.value.result, this.sorts.get('stuff-cmp'))}</div>`
+    } else if (!s) out += '<p class="bv-hint">Choisissez un preset (ou collez le lien RoxxSolver de votre stuff), puis lancez le calcul.</p>'
+    return out
+  }
+
+  /** Redessine le seul résultat de l'onglet Stuff (changement du formulaire). */
+  private syncStuffOutput(): void {
+    const out = this.root.querySelector<HTMLElement>('#bv-stuff-out')
+    if (out && this.tab === 'stuff') out.innerHTML = this.stuffOutput()
   }
 
   /** Accueil : liste des boss (filtrée par la recherche). */

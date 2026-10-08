@@ -73,7 +73,7 @@ function offense(p: BossProfileDetail): string {
   return `<section class="panel bv-card" aria-labelledby="bv-off-title">
     <header class="panel-head"><h2 id="bv-off-title">Profil offensif</h2><span class="hint">un tour du boss sur un joueur à 0 % de résistance</span></header>
     <div class="bv-scroll"><table class="bv-table">
-      <thead><tr><th scope="col">Phase</th><th scope="col" class="num">Poids</th><th scope="col">Attaquable</th><th scope="col" class="num" title="Meilleure combinaison de sorts sur un tour (borne haute)">Pic/tour</th><th scope="col" class="num" title="Relances amorties">Soutenu/tour</th><th scope="col">Éléments</th></tr></thead>
+      <thead><tr><th scope="col">Phase</th><th scope="col" class="num">Poids</th><th scope="col">Attaquable</th><th scope="col" class="num" title="Meilleure combinaison de sorts sur une cible en un tour : optimiste pour une cible, mais zones, sorts en réaction et invocations non comptés (le total peut être sous-estimé)">Pic/tour</th><th scope="col" class="num" title="Relances amorties">Soutenu/tour</th><th scope="col">Éléments</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
     <div class="bv-pad bv-incoming"><span class="bv-label">Dégâts reçus, phases pondérées</span>${shareBar(p.incomingShares, true)}</div>

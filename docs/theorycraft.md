@@ -48,15 +48,17 @@ exclues de l'index. Tout se règle.
 Toutes les commandes passent par `npm run sim -- <commande>` (`npm run sim -- help` pour l'aide complète). Conventions :
 les **arguments positionnels d'abord** (le boss, puis `classes` ou `stuff`), les options ensuite ; `--json` écrit le
 résultat complet en JSON sur la sortie standard (pour un script ou un tableur) ; une erreur s'affiche
-« Erreur : … » avec le code de sortie 1 ; aucun fichier n'est écrit sans `--out`.
+« Erreur : … » avec le code de sortie 1 ; aucun fichier n'est écrit sans `--out`. Une option que la commande ne connaît
+pas est une erreur, qui liste les options de la commande et, si c'est le cas, la sous-commande qui l'accepte
+(`boss merkator --out f.json` : « option inconnue --out — option de « boss … classes », « boss … stuff » »).
 
 | Commande | Rôle |
 |---|---|
 | `bosses [recherche] [--all] [--json]` | Liste ou recherche des boss : nom, id, donjon(s), niveau du donjon, niveau du boss, nombre de grades, Expédition. `--all` inclut les Expéditions (exclues par défaut). |
-| `boss <nom\|id> [--players N \| --grade G] [--details] [--no-overrides] [--json]` | Fiche du boss. `--details` : en plus, tableau de tous ses sorts (PA, lancers, relance, dégâts par élément, drapeaux) et arbre de son sort de départ (aide à rédiger une fiche manuelle, §5). La fiche manuelle `data/bosses/<id>.json` est appliquée si elle existe ; `--no-overrides` l'ignore. |
+| `boss <nom\|id> [--players N \| --grade G] [--details] [--no-overrides] [--all] [--bosses-dir D] [--json]` | Fiche du boss. `--details` : en plus, tableau de tous ses sorts (PA, lancers, relance, dégâts par élément, drapeaux) et arbre de son sort de départ (aide à rédiger une fiche manuelle, §5). La fiche manuelle `data/bosses/<id>.json` est appliquée si elle existe ; `--no-overrides` l'ignore. |
 | `boss <nom\|id> classes [--players N \| --grade G] [--optimize [--iterations N] [--profile P]] [--level L] [--json] [--out fichier]` | Classement des classes (§3.2). `--optimize` : stuff optimisé contre le boss pour chaque preset, progression sur la sortie d'erreur ; `--iterations` et `--profile` n'existent qu'avec `--optimize` (sinon erreur). `--out` : classement écrit dans un fichier (JSON si `.json`, texte sinon). |
 | `boss <nom\|id> stuff --class <classe\|preset> [--roxx <lien> \| --build fichier.json] [--elements preset\|all] [--profile balanced\|defensive\|offensive] [--top N] [--iterations N] [--restarts N] [--seed S] [--level L] [--range N] [--fixed ids] [--exclude ids] [--out fichier.json] [--json]` | Meilleur stuff pour un personnage (§3.3). |
-| `degats --preset <preset> [--build fichier.json \| --roxx <lien>] --sort <nom\|id> [--boss <nom\|id> [--players N \| --grade G]] [--res n,t,f,e,a] [--crit] [--trace] [--json]` | Dégâts d'UN sort, ligne par ligne, pour vérifier en jeu (§6). |
+| `degats --preset <preset> [--build fichier.json \| --roxx <lien>] --sort <nom\|id> [--boss <nom\|id> [--players N \| --grade G] [--no-overrides] [--all]] [--res n,t,f,e,a] [--melee \| --distance] [--crit] [--trace] [--json]` | Dégâts d'UN sort, ligne par ligne, pour vérifier en jeu (§6) : au contact et à distance pour un sort de portée 1 à N (`--melee` ou `--distance` pour n'en garder qu'un). |
 
 Désigner le boss : un id de monstre (`4726`) ou un nom — du boss ou de son donjon —, sans accents ni majuscules
 (`"pere ver"`). Une requête ambiguë est refusée avec la liste des candidats :
@@ -75,13 +77,16 @@ de la classe dont l'élément est la caractéristique élémentaire la plus haut
 sortie le nomme. Pour imposer le rôle et les variantes de VOTRE personnage, donner le preset
 (`--class cra_terre_mono --roxx …`).
 
-Options communes :
+Options partagées par plusieurs commandes (une commande refuse celles qu'elle n'a pas) :
 
-- `--players N` (1 à 8) ou `--grade G` (exclusifs) : grade du boss = `joueurs − 3`, borné à 1..5 et aux grades du
-  monstre (règle des donjons modulaires) ; 1 à 4 joueurs ⇒ grade 1, 5 ⇒ 2… 8 ⇒ 5 ; le 6e grade de certains boss
-  (Père Ver) n'est accessible que par `--grade`. Le grade change surtout les PV, rarement les caractéristiques, presque
-  jamais les résistances.
-- `--level L` : niveau des personnages (défaut 200). Sous 200, les stuffs génériques (objets niveau 200) ne sont pas
+- `--players N` (1 à 8) ou `--grade G` (exclusifs ; `boss`, `classes`, `stuff`, et `degats` avec `--boss`) : grade du
+  boss = `joueurs − 3`, borné à 1..5 et aux grades du monstre (règle des donjons modulaires) ; 1 à 4 joueurs ⇒ grade 1,
+  5 ⇒ 2… 8 ⇒ 5 ; le 6e grade de certains boss (Père Ver) n'est accessible que par `--grade`. Le grade change surtout
+  les PV, rarement les caractéristiques, presque jamais les résistances.
+- `--no-overrides`, `--bosses-dir D` (fiche manuelle ignorée, ou lue dans un autre dossier, §5) et `--all`
+  (boss cherché directement parmi les Expéditions aussi) : toutes les commandes `boss`, et `degats` avec `--boss`.
+- `--level L` (`classes`, `stuff`) : niveau des personnages (défaut 200 ; `degats` n'en a pas : niveau du preset, du
+  fichier `--build` ou du lien `--roxx`). Sous 200, les stuffs génériques (objets niveau 200) ne sont pas
   portables : le classement des classes par défaut prend alors des personnages **sans équipement** (signalé) ;
   `classes --optimize` leur donne au contraire un stuff optimisé avec des objets de leur niveau (mesuré contre le Père
   Ver au niveau 150 : 2,9 s pour les 49 presets).
@@ -250,10 +255,11 @@ npm run dev          # http://localhost:5173/#boss
 
 L'onglet **Boss** de l'interface (à côté de Combats et Stuffs) donne les mêmes analyses. Il n'existe qu'avec le
 serveur de développement (`npm run dev`) : les calculs tournent dans Vite (plugin `web/plugins/theory.ts`, mêmes données
-chargées une fois pour les stuffs et le theorycraft) ; la version construite (`npm run build`) ne l'a pas.
+chargées une fois pour les stuffs et le theorycraft) ; la version construite (`npm run build`) n'a pas d'API, son
+onglet Boss est retiré (une adresse `#boss` y mène aux combats).
 
 - **Recherche** du boss avec suggestions (nom du boss ou du donjon, sans accents) ; réglage du nombre de joueurs
-  (1 à 8) ou du grade.
+  (1 à 8) ou du grade (grade imposé : « — » dans Joueurs, choisir un nombre de joueurs revient au grade déduit).
 - Onglet **Fiche** : PV, PA, PM ; résistances brutes et effectives en barres aux couleurs des éléments ; éléments
   faibles ; profil offensif par phase avec ses parts élémentaires ; mécaniques avec ce qui les contre et ce qu'elles
   punissent ; avertissements et hypothèses repliables. La fiche manuelle `data/bosses/<id>.json` est appliquée si elle
@@ -263,7 +269,9 @@ chargées une fois pour les stuffs et le theorycraft) ; la version construite (`
   optimisés contre le boss (plus long, indicateur de chargement).
 - Onglet **Stuff** : choix du preset, champ « lien RoxxSolver », éléments (ceux du preset ou les quatre), profil,
   taille du top ; résultat : tableau comparatif, meilleur stuff objet par objet (icônes DofusDB, repli hors ligne),
-  objets changés, équivalences des caractéristiques, DPT par sort, hypothèses et avertissements.
+  objets changés, équivalences des caractéristiques, DPT par sort, hypothèses et avertissements. Un réglage changé
+  après le calcul (preset, ou bouton « Stuff » de l'onglet Classes) grise le résultat : « Résultat pour <preset> — …
+  relancez le calcul ».
 - L'adresse garde l'état : `#boss/<monsterId>` (fiche) ou `#boss/<monsterId>/<onglet>` (`classes`, `stuff` ; ex.
   `#boss/4726/classes`), à mettre en favori.
 
@@ -271,7 +279,10 @@ Les mêmes calculs sont accessibles en JSON (serveur de dev) : `GET /api/theory/
 `GET /api/theory/presets`, `GET /api/theory/boss?id=&players=&grade=`, `POST /api/theory/classes`
 (`{ id, players?, grade?, stuff?: 'preset' | 'optimized', iterations?, profile? }`) et `POST /api/theory/stuff`
 (`{ id, players?, grade?, preset?, roxx?, elements?, profile?, top?, iterations?, rangeNeed? }`) ; une erreur rend
-`{ error }` avec un code HTTP.
+`{ error }` avec un code HTTP. `iterations` est borné à 200 000 pour le stuff et à 10 000 pour le classement (une
+recherche par preset ; le serveur calcule en synchrone, au-delà : la ligne de commande). Un POST doit être un JSON
+(`Content-Type: application/json`) envoyé par la page elle-même : sinon 415 ou 403 (une page tierce ouverte dans le
+navigateur ne peut pas lancer de calcul).
 
 ### 2.3 Depuis un script
 
@@ -306,7 +317,8 @@ navigateur) ; `analysis.ts` y ajoute les analyses (classes, stuff, rendus texte)
 - **Profil offensif par phase** : une phase = un ensemble d'états du boss qui rend certains de ses sorts lançables
   (Solar : Aurore, Zénith, Crépuscule, Nadir). Colonnes : poids (part du combat supposée, égale par défaut),
   *attaquable* (`oui`, `non`, `mêlée seule`, `distance seule`), *pic/tour* = meilleure combinaison de sorts sur UNE
-  cible en un tour (borne haute), *soutenu/tour* = moyenne sur 6 tours avec les relances, parts élémentaires des
+  cible en un tour (optimiste pour une cible, mais zones, sorts en réaction et invocations ne sont pas comptés : le
+  total peut être sous-estimé, §4), *soutenu/tour* = moyenne sur 6 tours avec les relances, parts élémentaires des
   dégâts. La ligne « Répartition des dégâts reçus » pondère les phases qui frappent : c'est ce que vos résistances
   doivent couvrir. Ces dégâts sont calculés contre un joueur à 0 % de résistance.
 - **Mécaniques** : détectées dans les données (états posés et leurs propriétés, invocations, soins, renvoi, érosion,
@@ -356,8 +368,9 @@ comptent ») ; **Non modélisé** liste ce que le calcul ignore pour cette class
 invocations…). La **confiance** (haute, moyenne, basse) résume cette part non modélisée (Eniripsa et Enutrof hautes,
 Sram, Féca, Osamodas basses…) et baisse pour un preset qui ne touche pas le boss ou dont la posture est incertaine.
 
-**Composition suggérée.** Pour `--players` personnages (défaut 4), des règles écrites appliquées dans l'ordre, chaque
-membre avec sa raison chiffrée, chaque règle écartée dans les notes :
+**Composition suggérée.** Pour `--players` personnages (défaut 4 ; avec `--grade G` : G + 3 personnages, 8 au plus),
+des règles écrites appliquées dans l'ordre, chaque membre avec sa raison chiffrée, chaque règle écartée dans les
+notes :
 
 1. **Dégâts** : le meilleur DPT soutenu.
 2. **Soin** : si un tour du boss retire au moins **20 %** des PV d'un personnage (médiane des presets) et que le boss ne
@@ -549,7 +562,9 @@ l'accompagnent. Une fiche manuelle le dit ; elle est facultative et appliquée a
 une fiche tant qu'elle n'est pas valide. `loadBossOverrides` (page web, scripts) lit **tout** le dossier : une seule
 fiche invalide y empêche d'appliquer les autres (la page web le signale par un avertissement et n'en applique aucune ;
 un script reçoit l'erreur). En ligne de commande, une fiche invalide fait échouer les commandes `boss` qui la lisent ;
-`--no-overrides` les relance sans fiche. `--bosses-dir D` lit les fiches d'un autre dossier (pour essayer une fiche
+`--no-overrides` les relance sans fiche. Une fiche mal nommée (`kimbo.json` au lieu de `1045.json`) n'est lue par
+aucun outil : la page web et `loadBossOverrides` la refusent (avec tout le dossier), la ligne de commande la signale
+dans les avertissements de la fiche du boss. `--bosses-dir D` lit les fiches d'un autre dossier (pour essayer une fiche
 sans toucher à `data/bosses`, comme l'exemple ci-dessous).
 
 **Schéma (version 1)**, toutes les clés facultatives sauf `version` et `monsterId` ; éléments dans l'ordre
@@ -646,14 +661,25 @@ La formule de dégâts reproduit DoMath, vérifiée contre DoMath (≈ 45 000 ti
 fonction de dégâts et 43 vecteurs produits par son code), **pas contre le jeu**. La commande `degats` sert à faire
 cette vérification soi-même, sur un sort à la fois.
 
-**Ce qu'elle calcule.** Pour chaque ligne de dégâts du sort (un élément par ligne ; sous-sorts, poisons, lignes
-conditionnelles signalés) : dégâts min-max d'un coup normal et d'un coup critique avec leur moyenne exacte, chance de
-critique, espérance d'un lancer ; contre les résistances effectives d'un boss (`--boss`) ou des résistances données
-(`--res n,t,f,e,a`, défaut 0 partout). `--trace` détaille le calcul du jet max étape par étape (avec `--crit` : le jet
-critique max). Hors combat : ni buffs, ni états, ni modificateurs de sort, ni sorts passifs ; la cible est touchée sur
-la case d'impact (pas de réduction de zone). **Mêlée ou distance** : en jeu, un coup est en mêlée quand la cible est
-sur une case adjacente au lanceur, à distance sinon, et les % de dommages et de résistances mêlée ou distance en
-dépendent ; la sortie dit quel cas elle calcule (en-tête du sort et hypothèses).
+**Ce qu'elle calcule.** Pour chaque ligne de dégâts du sort qui touche la cible (un élément par ligne ; sous-sorts,
+poisons, lignes conditionnelles signalés) : dégâts min-max d'un coup normal et d'un coup critique avec leur moyenne
+exacte, chance de critique, espérance d'un lancer ; contre les résistances effectives d'un boss (`--boss`) ou des
+résistances données (`--res n,t,f,e,a`, défaut 0 partout ; cinq nombres, aucun vide). `--trace` détaille le calcul du
+jet max étape par étape (avec `--crit` : le jet critique max). Hors combat : ni buffs, ni états, ni modificateurs de
+sort, ni sorts passifs ; la cible est touchée sur la case d'impact (pas de réduction de zone).
+
+- **Lignes retenues** : comme dans le DPT du theorycraft, seules les lignes dont le masque de cible sélectionne la
+  cible (le boss, ou un monstre non invoqué pour `--res`) ; les autres sont comptées en fin de tableau avec leur
+  raison (« 1 sur les invocations » pour la deuxième ligne de Concentration du Iop, sous-sorts lancés sur un allié
+  comme les arbres du Sadida…).
+- **Mêlée ou distance** : en jeu, un coup est en mêlée quand la cible est sur une case adjacente au lanceur, à
+  distance sinon, et les % de dommages et de résistances mêlée ou distance en dépendent. Un sort qui peut toucher des
+  deux façons (portée 1 à N, zone autour du lanceur) est calculé **deux fois, un tableau « Au contact » et un tableau
+  « À distance »** (un seul, avec la mention « mêmes valeurs », si le stuff et la cible n'ont aucun % mêlée ou
+  distance) ; `--melee` ou `--distance` n'en garde qu'un. Un coup que le boss bloque dans toutes ses phases
+  (invulnérabilité : Père Ver à distance) vaut 0, signalé en avertissement.
+- **Résistances par phase** : si une fiche manuelle donne des résistances différentes selon la phase, un tableau par
+  phase (ou groupe de phases de mêmes résistances), avec sa part du combat.
 
 **Protocole.**
 
@@ -684,11 +710,11 @@ dépendent ; la sortie dit quel cas elle calcule (en-tête du sort et hypothèse
 3. **Une cible connue.** Un Poutch : d'après les données, le Poutch Ingball (monstre 494) a 0 % de résistance dans les
    cinq éléments, soit le défaut de `--res`. Sur un monstre de résistances connues : `--res` avec ses pourcentages
    (Neutre, Terre, Feu, Eau, Air) ; sur un boss : `--boss <id> [--players N]`.
-4. **Taper et noter.** Lancer le sort 20 à 30 fois, sans zone autour de la cible, **dans le cas que la sortie
-   calcule** : au contact (case adjacente) pour un calcul en mêlée, à au moins 2 cases de la cible pour un calcul à
-   distance. Un sort de portée 1 à 6 lancé au contact reçoit en jeu les % de mêlée : si la sortie le calcule à
-   distance, l'écart vient de là dès que le stuff a des % de dommages mêlée ou distance. Noter chaque dégât affiché en
-   séparant coups normaux et critiques.
+4. **Taper et noter.** Lancer le sort 20 à 30 fois, sans zone autour de la cible, en notant la case : au contact
+   (case adjacente), comparer au tableau « Au contact » ; à 2 cases ou plus, au tableau « À distance » (`--melee` ou
+   `--distance` pour n'afficher que celui des relevés). Ne pas mélanger les deux cas dans une même série dès que le
+   stuff ou la cible ont des % de dommages ou de résistances mêlée ou distance. Noter chaque dégât affiché en séparant
+   coups normaux et critiques.
 5. **Comparer** à `npm run sim -- degats …` : chaque coup normal dans l'intervalle « Normal », chaque critique dans
    « Critique », la proportion de critiques proche de « %CC » (sur 30 lancers, un écart de ±18 points — deux
    écarts-types — reste plausible), la moyenne proche de « Espérance ».

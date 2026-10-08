@@ -4,7 +4,9 @@
  *  - `sharedStore()` : données du jeu (`NodeDataStore`) chargées UNE fois, à la première demande, pour les deux plugins
  *    (la configuration de Vite est regroupée en un seul fichier : ce module n'existe qu'en un exemplaire ; un
  *    redémarrage du serveur, par exemple quand `data/ai/presets.json` change, recharge tout).
- *  - `HttpError`, `readJson`, `sendJson` : erreurs et JSON des routes (`{ error }` et code HTTP).
+ *  - `HttpError`, `readJson`, `sendJson` : erreurs et JSON des routes (`{ error }` et code HTTP) ; `readJson` n'accepte
+ *    qu'un corps JSON envoyé par la page elle-même (`assertOwnPage`) : une page tierce ouverte dans le navigateur ne
+ *    peut ni lancer un calcul long du theorycraft ni écrire un fichier d'équipe.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { loadDataStore, type NodeDataStore } from '../../src/data/node'
@@ -26,8 +28,37 @@ export class HttpError extends Error {
   }
 }
 
-/** Corps JSON d'une requête (objet attendu, 2 Mo au plus). */
+/**
+ * Requête de la page elle-même, sinon erreur : corps déclaré JSON (`Content-Type: application/json`, 415 sinon — une
+ * page tierce peut envoyer sans contrôle CORS préalable un POST « simple », text/plain ou formulaire, mais pas un
+ * JSON), et `Sec-Fetch-Site` « same-origin » — à défaut (navigateur ancien, outil), `Origin` absente ou du même hôte
+ * que le serveur (403 sinon). Les appels de l'interface (web/src/boss-api.ts, web/src/stuffs-editor.ts) remplissent
+ * ces conditions.
+ */
+export function assertOwnPage(req: IncomingMessage): void {
+  const type = req.headers['content-type'] ?? ''
+  if (!/^application\/json\b/i.test(type)) throw new HttpError(415, `Corps JSON attendu (Content-Type: application/json, reçu ${type ? `« ${type} »` : 'aucun'})`)
+  // Navigateurs récents : Sec-Fetch-Site (fiable derrière un mandataire qui réécrit Host) ; sinon Origin contre Host.
+  const site = req.headers['sec-fetch-site']
+  if (site !== undefined) {
+    if (site !== 'same-origin' && site !== 'none') throw new HttpError(403, `Requête d'une autre page refusée (Sec-Fetch-Site: ${site})`)
+    return
+  }
+  const origin = req.headers.origin
+  if (origin !== undefined) {
+    let host: string | undefined
+    try {
+      host = new URL(origin).host
+    } catch {
+      host = undefined
+    }
+    if (!host || host !== req.headers.host) throw new HttpError(403, `Requête d'une autre origine refusée (${origin})`)
+  }
+}
+
+/** Corps JSON d'une requête de la page (`assertOwnPage`), objet attendu, 2 Mo au plus. */
 export async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+  assertOwnPage(req)
   const chunks: Buffer[] = []
   let size = 0
   for await (const c of req) {

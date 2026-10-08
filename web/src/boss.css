@@ -26,6 +26,20 @@
   opacity: 0.55;
   transition: opacity 0.2s;
 }
+/* Résultat de l'onglet Stuff : ses blocs restent des éléments de la grille du panneau. */
+.bv-stuff-out {
+  display: contents;
+}
+/* Résultat calculé pour d'autres réglages que ceux du formulaire (preset changé…). */
+.bv-stale-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r);
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, var(--border));
+  background: color-mix(in srgb, var(--gold) 10%, var(--surface));
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
 .boss code {
   font-family: var(--font-mono);
   font-size: 0.86em;

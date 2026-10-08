@@ -12,7 +12,9 @@ avertissements affichés.
 ## Fichiers
 
 - Un fichier par boss, nommé **`<monsterId>.json`** (id DofusDB du monstre, ex. `3534.json` pour Merkator). Un nom
-  différent est refusé.
+  différent n'est jamais appliqué : `loadBossOverrides` (page web, scripts) le refuse, avec tout le dossier (erreur
+  qui cite le fichier) ; la ligne de commande, qui ne lit que `<monsterId>.json`, le signale dans les avertissements
+  de la fiche du boss.
 - Les fichiers dont le nom commence par `_` (ex. `_template.json`, brouillons) et ce README sont ignorés.
 - Lecture : `loadBossOverrides()` (src/theorycraft/node.ts) ; validation stricte : `parseBossOverrides()`
   (src/theorycraft/overrides.ts). Une clé inconnue, un type inattendu ou une valeur hors domaine bloque le
@@ -35,7 +37,7 @@ Air]**, pourcentages en points (25 = 25 %).
 | `resPct` | 5 nombres | Résistances **effectives** imposées pour toutes les phases (après mécanique). |
 | `stats` | objet | Caractéristiques imposées au boss cible (clés de `Stats`, src/core/types.ts), ex. `{ "rangedResPct": 50 }`. `allResPct` est reporté sur les 5 éléments. |
 | `phases` | liste | **Remplace** les phases calculées. Chaque phase : `id` (unique), `name`, `states` (états du boss qui rendent ses sorts lançables), `weight` (part du combat, ≥ 0, normalisée), `resPct` (5 nombres ou `null`), `vulnerable` (`true`, `false`, `"melee"`, `"range"`), `notes`. Au moins une phase de poids > 0. |
-| `adds` | `[{ monsterId, grade?, count }]` | Monstres de la salle du boss : destinés à la cible du proxy de stuff (dégâts reçus, valeur des zones) ; le profil du boss les cite dans ses hypothèses sans les compter. |
+| `adds` | `[{ monsterId, grade?, count }]` | Monstres de la salle du boss : comptés dans les dégâts reçus de la cible du proxy de stuff (exposition 0,5 par monstre par rapport au boss) ; ni cibles des dégâts (pas de valeur des zones), ni comptés par le profil du boss, qui les cite dans ses hypothèses. |
 | `excludeSpells` | ids de sorts | Sorts que le boss ne lance pas en pratique : hors phases et hors dégâts. |
 | `positionalSpells` | ids de sorts | Sorts qui ne touchent qu'en position particulière : listés, mais hors pic et soutenu. Disjoint de `excludeSpells`. |
 | `mechanics` | `[{ kind, summary, counters?, punishes? }]` | Mécaniques ajoutées à la fiche (source « overrides »). `kind` : type de `MechanicKind` ; `counters` / `punishes` : utilités (`UtilityTag`) que la mécanique rend utiles / inutiles. |

@@ -1,10 +1,12 @@
 /**
  * Section « Boss » du visualiseur — tableaux triables (web/src/boss-ui.ts) et ordre initial des tableaux de l'onglet
  * « Classes » (web/src/boss-classes.ts) : sens du premier clic par colonne (rang croissant, valeurs décroissantes,
- * textes croissants), inversion au clic suivant, flèche et `aria-sort` de l'ordre initial. Fonctions pures (HTML).
+ * textes croissants), inversion au clic suivant, flèche et `aria-sort` de l'ordre initial ; résultat de l'onglet
+ * « Stuff » périmé quand le formulaire a changé depuis sa demande (web/src/boss-stuff.ts). Fonctions pures (HTML).
  */
 import { describe, expect, it } from 'vitest'
 import { defaultClassesSort } from '../web/src/boss-classes'
+import { staleStuffNote, type StuffForm } from '../web/src/boss-stuff'
 import { firstDir, nextSort, sortableTable, type Column } from '../web/src/boss-ui'
 
 interface Row {
@@ -52,5 +54,22 @@ describe('tableaux triables de la section Boss', () => {
     expect(defaultClassesSort('classes')).toEqual({ key: 'class', dir: 1 })
     expect(defaultClassesSort('stuff-cmp')).toBeUndefined()
     expect(defaultClassesSort('bosses')).toBeUndefined()
+  })
+})
+
+describe('onglet Stuff : résultat périmé', () => {
+  const done: StuffForm = { preset: 'cra_terre_mono', roxx: '', elements: 'preset', profile: 'balanced', top: 5, iterations: 30_000 }
+  const who = '« Crâ Terre mono-cible » (cra_terre_mono)'
+
+  it('mêmes réglages (espaces du lien RoxxSolver ignorés) : résultat à jour', () => {
+    expect(staleStuffNote(done, { ...done }, who)).toBeUndefined()
+    expect(staleStuffNote({ ...done, roxx: 'https://roxxsolver.com/x' }, { ...done, roxx: ' https://roxxsolver.com/x ' }, who)).toBeUndefined()
+  })
+
+  it('preset changé (à la main, ou par le bouton « Stuff » de l’onglet Classes) : « Résultat pour <preset> — relancez le calcul »', () => {
+    expect(staleStuffNote(done, { ...done, preset: 'iop_terre_burst' }, who)).toBe(
+      'Résultat pour « Crâ Terre mono-cible » (cra_terre_mono) — réglages changés depuis le calcul (preset) : relancez le calcul.',
+    )
+    expect(staleStuffNote(done, { ...done, elements: 'all', profile: 'defensive', iterations: 3_000 }, who)).toContain('(éléments, profil, recherche)')
   })
 })

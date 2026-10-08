@@ -38,6 +38,28 @@ const ELEMENT_FR: Readonly<Record<string, string>> = { earth: 'Terre', fire: 'Fe
 
 const opt = (value: string | number, label: string, selected: boolean) => `<option value="${attr(String(value))}"${selected ? ' selected' : ''}>${esc(label)}</option>`
 
+/** Réglages du formulaire qui changent le résultat, et leur nom dans la note « résultat périmé ». */
+const FORM_FIELDS: readonly (readonly [keyof StuffForm, string])[] = [
+  ['preset', 'preset'],
+  ['roxx', 'lien RoxxSolver'],
+  ['elements', 'éléments'],
+  ['profile', 'profil'],
+  ['top', 'stuffs rendus'],
+  ['iterations', 'recherche'],
+]
+
+/**
+ * Le résultat affiché répond-il encore au formulaire ? `done` : réglages de la demande qui l'a produit ; `who` : le
+ * personnage de ce résultat (« « Crâ Terre mono-cible » (cra_terre_mono) »). Undefined s'il y répond ; sinon la note
+ * « Résultat pour <preset> — … : relancez le calcul » (preset changé à la main, ou par le bouton « Stuff » de l'onglet
+ * Classes ; autre réglage changé).
+ */
+export function staleStuffNote(done: StuffForm, form: StuffForm, who: string): string | undefined {
+  const value = (f: StuffForm, k: keyof StuffForm) => (k === 'roxx' ? f.roxx.trim() : f[k])
+  const changed = FORM_FIELDS.filter(([k]) => value(done, k) !== value(form, k)).map(([, label]) => label)
+  return changed.length ? `Résultat pour ${who} — réglages changés depuis le calcul (${changed.join(', ')}) : relancez le calcul.` : undefined
+}
+
 /** Formulaire de l'onglet. */
 export function renderStuffForm(f: StuffForm, presets: readonly TheoryPreset[], busy: boolean): string {
   const classes = [...new Map(presets.map(p => [p.breedId, p.className])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'fr'))

@@ -186,7 +186,8 @@ fiche du stuff, comparaisons, poids des caractéristiques). Page « dev seulemen
 
 ## 5. Hors périmètre v1 (signalé à l'écran)
 Dégâts des invocations, glyphes, pièges, bombes ; buffs d'équipe entre personnages ; rampes multi-tours spécifiques
-(Fureur, Combo…) ; IA réelle du boss (le pic par sac à dos est une borne haute) ; positions et ligne de vue.
+(Fureur, Combo…) ; IA réelle du boss (le pic par sac à dos est optimiste sur une cible, mais zones, sorts en réaction
+et invocations ne sont pas comptés : le total peut être sous-estimé) ; positions et ligne de vue.
 
 ## 6. État de l'implémentation (2026-10-08)
 
@@ -249,7 +250,10 @@ Hors de `src/theorycraft/` :
 - CLI (`src/cli/theory.ts` : `bosses`, `boss`, `boss … classes|stuff`, `degats`) et page `#boss`
   (`web/plugins/theory.ts`, `web/src/boss.ts`) : chantiers d'interface conduits à part, qui étendent §2-§3 (options
   `--details`, `--no-overrides`, `--out`, calculateur `degats`, `GET /api/theory/presets`) ; description pour
-  l'utilisateur : `docs/theorycraft.md`.
+  l'utilisateur : `docs/theorycraft.md`. Options déclarées par commande (`THEORY_OPTIONS` : une option inconnue est
+  une erreur) ; `degats` filtre les lignes par masque de cible comme le DPT (dpt.ts) et calcule un tableau par jeu de
+  résistances quand une fiche manuelle les donne par phase. Page : onglet Boss absent de la version construite, POST
+  acceptés seulement en JSON de la page elle-même, effort du classement optimisé plafonné (10 000 itérations).
 
 Tests : `tests/theory-{bosses,overrides,profile,target,rotation,stances,utilities,classes,stuff}.test.ts` (12, 9, 23,
 4, 10, 5, 17, 20 et 25 cas), `tests/opt-stuff-target.test.ts` (12), `tests/data-fetch-schema.test.ts`,
