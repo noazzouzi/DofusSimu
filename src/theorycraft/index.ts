@@ -16,4 +16,5 @@ export {
   type BossProfileDetail,
   type BossProfileOptions,
   type BossSpellDetail,
+  type DamageApproximation,
 } from './bossProfile'

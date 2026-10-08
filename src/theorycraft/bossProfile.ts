@@ -14,7 +14,9 @@
  *     (déclencheur `D` = tout dommage, `DM` = mêlée, `DR` = distance) : 1163 traduit en `meleeResPct`/`rangedResPct`
  *     équivalents (Merkator 3534 : ×50 sur `DR` ⇒ 50 % de résistance distance) ; les autres sont des mécaniques. Il
  *     n'existe pas de code de déclencheur « entrée en combat » (docs/research/effects.md §6) : le sort de départ est
- *     lui-même lancé à l'entrée en combat, ses effets instantanés en tiennent lieu. Buffs d'une « phase de départ »
+ *     lui-même lancé à l'entrée en combat, ses effets instantanés en tiennent lieu. Un effet aléatoire (probabilité
+ *     < 1) n'est pas inconditionnel. La valeur d'un 1163 est lue comme le moteur (`modifierMagnitude` : `value` quand
+ *     les deux dés sont nuls). Buffs d'une « phase de départ »
  *     (sort dont un effet 406 retire les effets ailleurs, hors mort et hors remise à zéro) : non appliqués, signalés
  *     (Solar : +1000 esquive de l'Aurore ; Vortex : −100 PM de la phase invulnérable). États posés sur soi : drapeaux
  *     de spell-states (invulnérable, invulnérable mêlée / distance, indéplaçable…) ⇒ mécaniques ; une invulnérabilité
@@ -33,15 +35,27 @@
  *
  * Règles et hypothèses (affichées dans `assumptions` / `warnings`) :
  *  - Dégâts en % de PV (famille `hp`) : PV de référence d'un joueur `refHp` (défaut 4 000) ; boss supposé à mi-vie ;
- *    PV érodés supposés = 10 % des PV max. Ils vont dans `otherDamage` (drapeau `hp-based`) et, par élément, dans
- *    `hpDamageByElement` (extension de ce module).
+ *    PV érodés supposés = 10 % des PV max. Ils vont dans `otherDamage` (drapeau `hp-based`, comme le demande le
+ *    contrat) et, par élément, dans `hpDamageByElement` (extension de ce module) : en jeu les résistances de la cible
+ *    s'y appliquent (sauf 671), comme aux dégâts fixes élémentaires (144, 1063-1066) rangés dans `damageByElement`.
+ *  - TIRAGE ALÉATOIRE : comme le moteur (src/engine/effects/core.ts), un seul groupe aléatoire d'une liste d'effets
+ *    est joué (groupe = `group || −order−1`, probabilité = poids du groupe / somme des poids) ; chaque ligne aléatoire
+ *    compte pour sa probabilité (Fwetage : 5 éléments à 20 % ⇒ un seul élément en moyenne).
+ *  - BRANCHES SELON LA CIBLE : les lignes (non aléatoires) dont le masque pose une condition sur la cible (classe
+ *    `B#`, états `E#`/`e#`, paliers de PV `V#`/`v#`…) sont regroupées par condition ; les branches sont supposées
+ *    exclusives (Trahison : une branche par classe ; paires `E#`/`e#`) et seule la plus forte est retenue (borne
+ *    haute), les lignes sans condition s'y ajoutent.
  *  - Lignes DÉCLENCHÉES : un déclencheur périodique (`TB`/`TE` seuls : poisons, effets de début/fin de tour) compte
- *    ses dégâts × nombre de tours du buff (`triggerDuration`, sinon `duration` ; 0 ⇒ 1 ; infini ⇒ 3), sans critique ;
- *    tout autre déclencheur (réaction à une action du joueur : `D`, `DM`, `H`…) n'est PAS compté. Drapeau `triggered`.
+ *    ses dégâts × nombre de tours du buff (`triggerDuration`, sinon `duration` ; 0 ⇒ 1), sans critique, au plus
+ *    `SUSTAINED_TURNS` (6) tours : une durée infinie ou « tout le combat » (63, docs/research/effects.md §2) compte 6.
+ *    Tout autre déclencheur (réaction à une action du joueur : `D`, `DM`, `H`…) n'est PAS compté. Drapeau `triggered`.
  *  - Effets différés (`delay` > 0) : comptés au lancer (drapeau `delayed`). Zone qui exclut la case ciblée (anneau,
  *    croix sans centre…) : comptée (la cible voisine est touchée), drapeau `ring-excludes-target`.
  *  - Sous-sort lancé par un JOUEUR (792 & co. sur des ennemis : « la cible lance… ») : perspective inversée (ses
  *    alliés sont les joueurs), dégâts calculés avec les caractéristiques du boss — INCERTAIN.
+ *  - Sous-sort lancé par un ALLIÉ du boss (invocation, arme, Auroraire du Vortex… : 792 sur `a`/`g` + `F#`) : ses
+ *    dégâts ne sont PAS comptés (dégâts d'invocations hors périmètre v1, docs/design/theorycraft.md §5 ; ils sont
+ *    positionnels et dépendent des caractéristiques de l'allié). Drapeau `summon`, détail dans `allyCasts`.
  *  - Conditions d'états du lanceur dans les masques (`*E#`/`*e#`) : évaluées avec les états de la phase quand le
  *    lanceur est le boss ; un autre lanceur est supposé sans état.
  *  - Famille `mp` (dommages × PM restants) : ×1 (PM non utilisés, borne haute).
@@ -59,7 +73,7 @@ import type { EffectData, SpellLevelData, StatesClause, ZoneSpec } from '../data
 import { effectSpellRef, effectStateRef, effectSummonRef } from '../data/refs'
 import type { GameDataStore } from '../data/store'
 import { statBuffDef, statLabel } from '../engine/effects/buffs/stats'
-import { DAMAGE_SPECS, resolveElement, type DamageSpec } from '../engine/effects/damage/pipeline'
+import { DAMAGE_SPECS, modifierMagnitude, resolveElement, type DamageSpec } from '../engine/effects/damage/pipeline'
 import { createMonsterFighter } from '../engine/factory'
 import { cellToPoint, pointToCell } from '../map/geometry'
 import { isCellInZone } from '../map/zones'
@@ -93,8 +107,8 @@ export const DATA_SNAPSHOT = { date: '2026-10-04', patch: '3.6' } as const
 
 /** Profondeur maximale de sous-sorts suivis (sort de départ et sorts du boss). */
 const MAX_DEPTH = 4
-/** Ticks comptés pour un buff périodique de durée infinie. */
-const INFINITE_TICKS = 3
+/** `effectTriggerDuration` d'un effet déclenché qui écoute « tout le combat » (docs/research/effects.md §2). */
+const WHOLE_FIGHT = 63
 /** Part des PV du boss supposée restante (« mi-vie ») pour les dégâts en % de ses PV. */
 const BOSS_HP_SHARE = 0.5
 /** PV érodés supposés, en part des PV max (cible ou lanceur). */
@@ -119,13 +133,30 @@ export interface BossSpellDetail extends BossSpellProfile {
   initialCooldown: number
   /** Condition d'états complète du lanceur (forme disjonctive), absente si le sort est toujours lançable. */
   statesCondition?: StatesClause[]
-  /** Part de `otherDamage` attribuable à un élément (dégâts en % de PV élémentaires), par lancer. */
+  /**
+   * Part de `otherDamage` attribuable à un élément (dégâts en % de PV élémentaires), par lancer. En jeu, les
+   * résistances de la cible s'y appliquent (moteur : `computeUnboosted`) : un consommateur qui applique des résistances
+   * doit lire ce champ plutôt que `otherDamage` seul. Le reste de `otherDamage` ignore les résistances (671).
+   */
   hpDamageByElement: PerElement
   /** Monstres invoqués par le sort (ids). */
   summons: number[]
   /** Effets de dégâts non gérés rencontrés (1124-1128, 1131-1140, 1225, 1228), ignorés dans les dégâts. */
   unhandledEffects: number[]
+  /**
+   * Sous-sorts à dégâts lancés par un ALLIÉ du boss (« la cible lance… » sur une invocation, une arme…) : dégâts NON
+   * comptés. `monsterIds` : monstres exécutants désignés par le masque (`F#`), vide s'ils ne sont pas identifiés.
+   */
+  allyCasts: { spellId: number; monsterIds: number[] }[]
+  /** Approximations du calcul des dégâts de ce sort (voir `DamageApproximation`). */
+  approximations: DamageApproximation[]
 }
+
+/**
+ * Approximations du calcul des dégâts d'un sort : `random` = lignes aléatoires pondérées par leur probabilité (un seul
+ * groupe joué) ; `target-branches` = branches exclusives selon la cible (classe, états, PV), la plus forte retenue.
+ */
+export type DamageApproximation = 'random' | 'target-branches'
 
 /** Fiche du boss (extension de `BossProfile`). `castsPerTurn`/`castsPerTarget` des sorts : 0 = illimité (données). */
 export interface BossProfileDetail extends BossProfile {
@@ -221,6 +252,8 @@ interface MaskInfo {
   casterIsNot: number[]
   /** Autre condition (état de la cible, PV, entité qui vient d'apparaître…) : effet conditionnel. */
   otherConds: boolean
+  /** Conditions portant sur la CIBLE (`B#`, `E#`, `e#`, `V#`…), triées : signature de branche ('' si aucune). */
+  targetConds: string
 }
 
 const INCLUSION = /^[aAcCghHlLdDmMiIjJsSx]$/
@@ -229,7 +262,8 @@ const maskCache = new Map<string, MaskInfo>()
 function maskInfo(mask: string): MaskInfo {
   let mi = maskCache.get(mask)
   if (mi) return mi
-  mi = { inc: '', all: true, monsterIs: [], monsterNot: [], casterHas: [], casterNot: [], casterIs: [], casterIsNot: [], otherConds: false }
+  mi = { inc: '', all: true, monsterIs: [], monsterNot: [], casterHas: [], casterNot: [], casterIs: [], casterIsNot: [], otherConds: false, targetConds: '' }
+  const targetConds: string[] = []
   for (const raw of mask ? mask.split(',') : []) {
     const t = raw.trim()
     if (!t) continue
@@ -245,11 +279,11 @@ function maskInfo(mask: string): MaskInfo {
       switch (m[2]) {
         case 'E':
           if (onCaster) mi.casterHas.push(id)
-          else mi.otherConds = true // état exigé sur la cible
+          else targetConds.push(t) // état exigé sur la cible
           break
         case 'e':
           if (onCaster) mi.casterNot.push(id)
-          else mi.otherConds = true // état interdit sur la cible
+          else targetConds.push(t) // état interdit sur la cible
           break
         case 'F':
           ;(onCaster ? mi.casterIs : mi.monsterIs).push(id)
@@ -261,8 +295,11 @@ function maskInfo(mask: string): MaskInfo {
     }
     // *h, *l… (type du lanceur) : supposé vrai ; Sce/Atq/Def : sans effet (comme le moteur) ; le reste conditionne.
     if (/^\*[a-zA-Z]$/.test(t) || t === 'Sce' || t === 'Atq' || t === 'Def') continue
-    mi.otherConds = true
+    if (t[0] === '*') mi.otherConds = true // autre condition sur le lanceur (PV…)
+    else targetConds.push(t)
   }
+  if (targetConds.length) mi.otherConds = true
+  mi.targetConds = targetConds.sort().join(',')
   maskCache.set(mask, mi)
   return mi
 }
@@ -297,7 +334,10 @@ function hitsBossItself(mi: MaskInfo, flipped: boolean, executorIsBoss: boolean,
   return flipped ? has(mi.inc, 'AM') : has(mi.inc, executorIsBoss ? 'cCa' : 'a')
 }
 
-/** Lanceur d'un sous-sort « lancé par la cible » : un adversaire (perspective inversée), le boss, ou un allié. */
+/**
+ * Lanceur d'un sous-sort « lancé par la cible » : un adversaire (perspective inversée), le boss, ou un allié du boss
+ * (`flipped` et `executorIsBoss` faux : invocation, arme, Auroraire… — ses dégâts ne sont pas comptés).
+ */
 function subExecutor(mi: MaskInfo, flipped: boolean, executorIsBoss: boolean, bossId: number): { flipped: boolean; executorIsBoss: boolean } {
   if (enemyOnly(mi)) return { flipped: !flipped, executorIsBoss: false }
   return { flipped, executorIsBoss: executorIsBoss && !flipped && selectsSelf(mi, bossId) && !has(mi.inc, 'gA') }
@@ -346,10 +386,31 @@ function isPeriodic(triggers: string): boolean {
   return triggerCodes(triggers).every(c => c === 'TB' || c === 'TE')
 }
 
-/** Nombre de déclenchements d'un buff périodique (moteur : `triggerDuration ?? duration`, 0 ⇒ 1 tour). */
+/**
+ * Nombre de déclenchements comptés pour un buff périodique (moteur : `triggerDuration ?? duration`, 0 ⇒ 1 tour), borné
+ * à l'horizon du soutenu (`SUSTAINED_TURNS`) : une durée infinie (< 0) ou « tout le combat » (≥ 63) compte 6 tours,
+ * jamais 63 (Corruption, Guerre).
+ */
 function periodicTicks(e: EffectData): number {
   const turns = e.triggerDuration ?? e.duration
-  return turns < 0 ? INFINITE_TICKS : Math.max(1, turns)
+  if (turns < 0 || turns >= WHOLE_FIGHT) return SUSTAINED_TURNS
+  return Math.min(SUSTAINED_TURNS, Math.max(1, turns))
+}
+
+/**
+ * Probabilité de chaque effet aléatoire d'une liste (règle du moteur, src/engine/effects/core.ts : un seul groupe tiré,
+ * groupe = `group || −order−1`, probabilité ∝ somme des poids du groupe ; même calcul que src/ai/core/spellProfile.ts).
+ * Un groupe aléatoire seul est donc toujours joué (probabilité 1).
+ */
+function randomProbabilities(effects: readonly EffectData[]): Map<EffectData, number> {
+  const out = new Map<EffectData, number>()
+  const weights = new Map<number, number>()
+  const groupOf = (e: EffectData) => e.group || -e.order - 1
+  for (const e of effects) if (e.random > 0) weights.set(groupOf(e), (weights.get(groupOf(e)) ?? 0) + e.random)
+  if (!weights.size) return out
+  const total = sum([...weights.values()])
+  for (const e of effects) if (e.random > 0) out.set(e, total > 0 ? weights.get(groupOf(e))! / total : 0)
+  return out
 }
 
 function triggerLabel(triggers: string): string {
@@ -389,15 +450,23 @@ function ringExcludesTarget(zone: ZoneSpec): boolean {
 
 const zero5 = (): PerElement => [0, 0, 0, 0, 0]
 
-interface DamageAcc {
+/** Sommes de dégâts d'une branche (par lancer). */
+interface DamageSums {
   el: PerElement
   hpEl: PerElement
   hpOther: number
+}
+
+interface DamageAcc extends DamageSums {
+  /** Ensembles descriptifs PARTAGÉS entre l'accumulateur d'un sort et ses branches (union, quelle que soit la branche). */
   flags: Set<BossSpellFlag>
   unhandled: Set<number>
   summons: Set<number>
   /** États exigés du boss (`*E#`) par des lignes de dégâts sur les joueurs : candidats de phase. */
   casterStates: Set<number>
+  /** Sous-sorts à dégâts lancés par un allié du boss (non comptés) : sort → monstres exécutants (`F#`). */
+  allyCasts: Map<number, Set<number>>
+  approximations: Set<DamageApproximation>
 }
 
 interface WalkState {
@@ -407,11 +476,36 @@ interface WalkState {
   depth: number
   /** Multiplicateur des lignes périodiques (poisons) hérité des effets parents. */
   ticks: number
+  /** Probabilité cumulée des tirages aléatoires des effets parents (et de la ligne courante). */
+  weight: number
   periodic: boolean
   /** Sous un déclencheur non périodique : dégâts non comptés. */
   reactive: boolean
   delayed: boolean
   path: readonly SpellLevelData[]
+}
+
+const newAcc = (): DamageAcc => ({
+  el: zero5(),
+  hpEl: zero5(),
+  hpOther: 0,
+  flags: new Set(),
+  unhandled: new Set(),
+  summons: new Set(),
+  casterStates: new Set(),
+  allyCasts: new Map(),
+  approximations: new Set(),
+})
+/** Accumulateur d'une branche : sommes propres, ensembles descriptifs partagés avec `acc`. */
+const branchOf = (acc: DamageAcc): DamageAcc => ({ ...acc, el: zero5(), hpEl: zero5(), hpOther: 0 })
+const sumsTotal = (d: DamageSums): number => sum(d.el) + sum(d.hpEl) + d.hpOther
+
+function addSums(to: DamageSums, from: DamageSums): void {
+  for (let i = 0; i < 5; i++) {
+    to.el[i] += from.el[i]
+    to.hpEl[i] += from.hpEl[i]
+  }
+  to.hpOther += from.hpOther
 }
 
 /** Contexte de calcul des dégâts d'un boss (caractéristiques effectives, PV de référence). */
@@ -441,15 +535,14 @@ function hpRefs(maxHp: number, targetHp: number): Record<HpBasedSource, number> 
 /** Moyenne d'un jet [diceNum, diceSide] (diceSide 0 = valeur fixe). */
 const meanRoll = (e: EffectData): number => (e.diceNum + Math.max(e.diceSide, e.diceNum)) / 2
 
-function addDamage(ctx: DamageContext, spec: DamageSpec, e: EffectData, ws: WalkState, isMelee: boolean, acc: DamageAcc): void {
-  const k = ws.ticks
+function addDamage(ctx: DamageContext, spec: DamageSpec, e: EffectData, ws: WalkState, isMelee: boolean, acc: DamageSums): void {
+  const k = ws.ticks * ws.weight
   if (spec.family === 'hp') {
     // Source « cible » : un joueur (refHp) ; source « lanceur » : le boss, ou un joueur si la perspective est inversée.
     const refs = ws.flipped ? ctx.playerRefs : ctx.bossRefs
     const v = (meanRoll(e) / 100) * refs[spec.hpSource ?? 'casterLife'] * k
-    if (spec.element >= 0 && spec.element <= 4) acc.hpEl[spec.element] += v
+    if (spec.element >= 0 && spec.element <= 4 && !spec.ignoresRes) acc.hpEl[spec.element] += v
     else acc.hpOther += v
-    acc.flags.add('hp-based')
     return
   }
   const resolved = resolveElement(spec.element, ctx.attacker)
@@ -466,13 +559,48 @@ function addDamage(ctx: DamageContext, spec: DamageSpec, e: EffectData, ws: Walk
   acc.el[el] += expectedDamage(input, null, { min: e.diceNum, max: Math.max(e.diceSide, e.diceNum) }, 0) * k
 }
 
+/** La fermeture d'un niveau de sort contient-elle une ligne de dégâts (gérée ou non) ? */
+const damageClosureCache = new WeakMap<SpellLevelData, boolean>()
+function closureHasDamage(data: GameDataStore, level: SpellLevelData, depth = 0): boolean {
+  const known = damageClosureCache.get(level)
+  if (known !== undefined) return known
+  damageClosureCache.set(level, false) // garde contre les cycles
+  let found = false
+  for (const e of level.effects) {
+    if (DAMAGE_SPECS.has(e.effectId) || UNHANDLED_DAMAGE.has(e.effectId)) found = true
+    else if (CAST_EFFECTS.has(e.effectId) && depth < MAX_DEPTH) {
+      const ref = effectSpellRef(e)
+      const sub = ref && data.spellLevel(ref.spellId, { grade: ref.grade })
+      if (sub && closureHasDamage(data, sub, depth + 1)) found = true
+    }
+    if (found) break
+  }
+  damageClosureCache.set(level, found)
+  return found
+}
+
+/**
+ * Dégâts d'une liste d'effets sur un joueur, ajoutés à `acc`. Lignes aléatoires pondérées par leur probabilité ;
+ * lignes conditionnées par la cible regroupées par condition, seule la branche la plus forte est ajoutée.
+ */
 function walkDamage(ctx: DamageContext, effects: readonly EffectData[], ws: WalkState, states: readonly number[], isMelee: boolean, acc: DamageAcc): void {
+  const probs = randomProbabilities(effects)
+  let branches: Map<string, DamageAcc> | undefined
   for (const e of effects) {
     if (e.clientOnly) continue
     const mi = maskInfo(e.targetMask)
     if (ws.executorIsBoss && mi.casterHas.length && DAMAGE_SPECS.has(e.effectId) && hitsPlayers(mi, ws.flipped))
       for (const st of mi.casterHas) acc.casterStates.add(st)
     if (!casterCondOk(mi, states, ws.executorIsBoss, ctx.bossId)) continue
+    const p = e.random > 0 ? (probs.get(e) ?? 0) : 1
+    if (p <= 0) continue
+    // Ligne (non aléatoire) conditionnée par la cible : rangée dans la branche de sa condition.
+    let out = acc
+    if (mi.targetConds && e.random <= 0) {
+      branches ??= new Map()
+      out = branches.get(mi.targetConds) ?? branchOf(acc)
+      branches.set(mi.targetConds, out)
+    }
     let { ticks, periodic, reactive } = ws
     if (!isInstant(e)) {
       if (isPeriodic(e.triggers)) {
@@ -480,15 +608,18 @@ function walkDamage(ctx: DamageContext, effects: readonly EffectData[], ws: Walk
         periodic = true
       } else reactive = true
     }
+    const weight = ws.weight * p
     const delayed = ws.delayed || e.delay > 0
     const spec = DAMAGE_SPECS.get(e.effectId)
     if (spec) {
       if (!hitsPlayers(mi, ws.flipped)) continue
       if (periodic || reactive) acc.flags.add('triggered')
       if (reactive) continue
+      if (p < 1) acc.approximations.add('random')
       if (delayed) acc.flags.add('delayed')
       if (ringExcludesTarget(e.zone)) acc.flags.add('ring-excludes-target')
-      addDamage(ctx, spec, e, { ...ws, ticks, periodic }, isMelee, acc)
+      if (spec.family === 'hp') acc.flags.add('hp-based')
+      addDamage(ctx, spec, e, { ...ws, ticks, periodic, weight }, isMelee, out)
       continue
     }
     if (UNHANDLED_DAMAGE.has(e.effectId)) {
@@ -513,41 +644,73 @@ function walkDamage(ctx: DamageContext, effects: readonly EffectData[], ws: Walk
     if (!sub || ws.path.includes(sub)) continue
     acc.flags.add('sub-spell')
     const { flipped, executorIsBoss } = target ? subExecutor(mi, ws.flipped, ws.executorIsBoss, ctx.bossId) : ws
+    if (!flipped && !executorIsBoss) {
+      // Lancé par un allié du boss (invocation, arme…) : hors périmètre, non compté (docs/design/theorycraft.md §5).
+      if (closureHasDamage(ctx.data, sub)) {
+        acc.flags.add('summon')
+        let ids = acc.allyCasts.get(sub.spellId)
+        if (!ids) acc.allyCasts.set(sub.spellId, (ids = new Set()))
+        for (const id of mi.monsterIs) ids.add(id)
+      }
+      continue
+    }
+    if (p < 1 && closureHasDamage(ctx.data, sub)) acc.approximations.add('random')
     const subCrit = ws.crit && sub.criticalEffects.length > 0
     walkDamage(
       ctx,
       subCrit ? sub.criticalEffects : sub.effects,
-      { crit: subCrit, flipped, executorIsBoss, depth: ws.depth + 1, ticks, periodic, reactive, delayed, path: [...ws.path, sub] },
+      { crit: subCrit, flipped, executorIsBoss, depth: ws.depth + 1, ticks, weight, periodic, reactive, delayed, path: [...ws.path, sub] },
       states,
       isMelee,
-      acc,
+      out,
     )
   }
+  if (!branches) return
+  // Branches exclusives selon la cible : la plus forte (borne haute), ordre des données en cas d'égalité.
+  let best: DamageAcc | undefined
+  let hitting = 0
+  for (const b of branches.values()) {
+    const t = sumsTotal(b)
+    if (t > 0) hitting++
+    if (!best || t > sumsTotal(best)) best = b
+  }
+  if (hitting > 1) acc.approximations.add('target-branches')
+  if (best) addSums(acc, best)
 }
 
-interface SpellDamage {
-  el: PerElement
-  hpEl: PerElement
-  hpOther: number
+interface SpellDamage extends DamageSums {
   total: number
   flags: Set<BossSpellFlag>
   unhandled: number[]
   summons: number[]
   casterStates: number[]
+  allyCasts: { spellId: number; monsterIds: number[] }[]
+  approximations: DamageApproximation[]
 }
 
 /** Dégâts moyens d'un lancer (critique pondéré) pour un ensemble d'états du boss. */
 function spellDamage(ctx: DamageContext, level: SpellLevelData, states: readonly number[]): SpellDamage {
   const isMelee = level.range <= 1
-  const root: WalkState = { crit: false, flipped: false, executorIsBoss: true, depth: 0, ticks: 1, periodic: false, reactive: false, delayed: false, path: [level] }
-  const normal: DamageAcc = { el: zero5(), hpEl: zero5(), hpOther: 0, flags: new Set(), unhandled: new Set(), summons: new Set(), casterStates: new Set() }
+  const root: WalkState = {
+    crit: false,
+    flipped: false,
+    executorIsBoss: true,
+    depth: 0,
+    ticks: 1,
+    weight: 1,
+    periodic: false,
+    reactive: false,
+    delayed: false,
+    path: [level],
+  }
+  const normal = newAcc()
   walkDamage(ctx, level.effects, root, states, isMelee, normal)
   const p = level.criticalEffects.length ? critChance(level.critChance, ctx.attacker.critical) / 100 : 0
   let el = normal.el
   let hpEl = normal.hpEl
   let hpOther = normal.hpOther
   if (p > 0) {
-    const crit: DamageAcc = { ...normal, el: zero5(), hpEl: zero5(), hpOther: 0 }
+    const crit = branchOf(normal)
     walkDamage(ctx, level.criticalEffects, { ...root, crit: true }, states, isMelee, crit)
     const mix = (a: number, b: number) => a * (1 - p) + b * p
     el = el.map((v, i) => mix(v, crit.el[i])) as PerElement
@@ -564,9 +727,12 @@ function spellDamage(ctx: DamageContext, level: SpellLevelData, states: readonly
     unhandled: [...normal.unhandled].sort((a, b) => a - b),
     summons: [...normal.summons],
     casterStates: [...normal.casterStates].sort((a, b) => a - b),
+    allyCasts: [...normal.allyCasts].map(([spellId, ids]) => ({ spellId, monsterIds: [...ids].sort((a, b) => a - b) })),
+    approximations: APPROX_ORDER.filter(a => normal.approximations.has(a)),
   }
 }
 
+const APPROX_ORDER: readonly DamageApproximation[] = ['random', 'target-branches']
 const sum = (a: readonly number[]): number => a.reduce((s, v) => s + v, 0)
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -690,17 +856,21 @@ function analyzeStartingSpell(data: GameDataStore, bossId: number, level: SpellL
     { labels: Set<string>; min: number; max: number; triggers: Set<string>; conditional: boolean; transient: boolean; counters?: UtilityTag[] }
   >()
   const walk = (lvl: SpellLevelData, w: StartWalk) => {
+    const probs = randomProbabilities(lvl.effects)
     for (const e of lvl.effects) {
       if (e.clientOnly) continue
       const mi = maskInfo(e.targetMask)
       const own = isInstant(e) ? undefined : e.triggers
       const chained = !!(own && w.trigger)
       const trigger = own ?? w.trigger
-      const conditional = w.conditional || chained || e.delay > 0 || mi.otherConds || mi.casterHas.length > 0 || mi.casterNot.length > 0
+      // Tirage aléatoire perdu possible (probabilité < 1) : l'effet n'est pas acquis.
+      const random = e.random > 0 && (probs.get(e) ?? 0) < 1
+      const conditional =
+        w.conditional || chained || random || e.delay > 0 || mi.otherConds || mi.casterHas.length > 0 || mi.casterNot.length > 0
       const self = selectsSelf(mi, bossId) && casterIsBossOk(mi, bossId)
       const transient = w.path.some(l => removedSpells.has(l.spellId))
       if (self && e.effectId === 1163) {
-        const pct = e.diceNum
+        const pct = modifierMagnitude(e)
         const key = damageTakenScope(trigger)
         const qual = [trigger ? `sur ${triggerLabel(trigger)}` : '', conditional ? 'sous condition' : '', transient ? 'phase de départ, retiré ensuite' : '']
           .filter(Boolean)
@@ -1005,6 +1175,8 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
       hpDamageByElement: d.hpEl,
       summons: d.summons,
       unhandledEffects: d.unhandled,
+      allyCasts: d.allyCasts,
+      approximations: d.approximations,
     }
     if (l.statesCondition) detail.statesCondition = l.statesCondition.map(c => ({ has: c.has.slice(), not: c.not.slice() }))
     return detail
@@ -1140,6 +1312,13 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
   if (hpSpells.length)
     warnings.push(`${hpSpells.length} sort(s) infligent des dégâts en % de PV (${hpSpells.slice(0, 3).map(s => s.name).join(', ')}) : valeurs dépendant des PV de référence.`)
   if (scan.summons.size) warnings.push('Le boss invoque : les dégâts de ses invocations ne sont pas comptés.')
+  const allySpells = spells.filter(s => s.allyCasts.length)
+  if (allySpells.length) {
+    const executors = [...new Set(allySpells.flatMap(s => s.allyCasts.flatMap(c => c.monsterIds)))].map(id => data.monster(id)?.name ?? `Monstre ${id}`)
+    warnings.push(
+      `Sorts dont les dégâts sont portés par un allié du boss (${allySpells.slice(0, 4).map(s => `« ${s.name} »`).join(', ')}${executors.length ? ` ; lancés par : ${executors.slice(0, 4).join(', ')}` : ''}) : ces dégâts ne sont pas comptés.`,
+    )
+  }
   const unhandled = spells.filter(s => s.unhandledEffects.length)
   if (unhandled.length) {
     const ids = [...new Set(unhandled.flatMap(s => s.unhandledEffects))].sort((a, b) => a - b)
@@ -1155,14 +1334,20 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
       ? `Grade ${grade} pour ${players} joueur(s) : rang = joueurs − 3, borné à 1..5 (docs/research/vortex-audit.md §1.3).`
       : `Grade ${grade} imposé.`,
   )
-  assumptions.push(`Dégâts du boss contre un joueur à 0 % de résistance, critique pondéré ; % de PV : ${refHp} PV de référence par joueur, boss à mi-vie, PV érodés = 10 % des PV max.`)
+  assumptions.push(
+    `Dégâts du boss contre un joueur à 0 % de résistance, critique pondéré, lignes aléatoires pondérées par leur probabilité (un seul groupe tiré) ; % de PV : ${refHp} PV de référence par joueur, boss à mi-vie, PV érodés = 10 % des PV max.`,
+  )
+  if (spells.some(s => s.approximations.includes('target-branches')))
+    assumptions.push('Branches exclusives selon la cible (classe, états, paliers de PV) : la plus forte est retenue (borne haute).')
   assumptions.push(
     ov?.phases?.length
       ? 'Phases et poids de la fiche manuelle.'
       : `Phases à poids égaux${autoPhases.length > 1 ? ` (${autoPhases.length} phases dont « base »)` : ' (une seule phase : « base »)'}.`,
   )
   assumptions.push('Pic par tour = borne haute (meilleure combinaison de sorts sur une cible, sac à dos sur les PA), pas le comportement réel de l\'IA.')
-  assumptions.push(`Soutenu = sac à dos tour par tour sur ${SUSTAINED_TURNS} tours, relances tenues ; poisons comptés une fois par tour de durée.`)
+  assumptions.push(
+    `Soutenu = sac à dos tour par tour sur ${SUSTAINED_TURNS} tours, relances tenues ; poisons comptés une fois par tour de durée, ${SUSTAINED_TURNS} tours au plus (durée infinie ou « tout le combat » comprise).`,
+  )
   if (start.selfStates.some(s => data.state(s.stateId)?.invulnerable))
     assumptions.push('Le boss commence invulnérable : DPT calculé sur une fenêtre de vulnérabilité supposée.')
   if (ov) assumptions.push(`Fiche manuelle appliquée${ov.updatedAt ? ` (mise à jour ${ov.updatedAt})` : ''}.`)

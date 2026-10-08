@@ -101,9 +101,12 @@ describe('profil offensif', () => {
   })
 
   it('les dégâts en % de PV suivent les PV de référence (hypothèse affichée)', () => {
-    const base = bossProfile(data, 3835).spells.find(s => s.spellId === 5062)! // 50 % des PV érodés de la cible
-    const big = bossProfile(data, 3835, { refHp: 2 * DEFAULT_REF_HP }).spells.find(s => s.spellId === 5062)!
+    // Koumiho, Kaiyo : % des PV de la cible (Terre).
+    const base = bossProfile(data, 6394).spells.find(s => s.spellId === 17401)!
+    const big = bossProfile(data, 6394, { refHp: 2 * DEFAULT_REF_HP }).spells.find(s => s.spellId === 17401)!
+    expect(base.flags).toContain('hp-based')
     expect(base.otherDamage).toBeGreaterThan(0)
+    expect(base.hpDamageByElement[1]).toBeCloseTo(base.otherDamage, 9)
     expect(big.otherDamage).toBeCloseTo(2 * base.otherDamage, 6)
     expect(bossProfile(data, 3835, { refHp: 5000 }).assumptions.join(' ')).toMatch(/5000 PV de référence/)
   })
@@ -112,6 +115,59 @@ describe('profil offensif', () => {
     const p = bossProfile(data, 1045)
     expect(p.warnings.some(w => /≥ 100 %/.test(w) && /mécanique/.test(w))).toBe(true)
     expect(p.mechanics.some(m => m.kind === 'extreme-res')).toBe(true)
+  })
+})
+
+describe('tirages aléatoires, branches selon la cible, alliés, poisons', () => {
+  const spell = (bossId: number, spellId: number) => bossProfile(data, bossId).spells.find(s => s.spellId === spellId)!
+  const total = (s: { damageByElement: readonly number[]; otherDamage: number }) => sum(s.damageByElement) + s.otherDamage
+
+  it('un seul groupe aléatoire est joué : Fwetage (5 éléments à 20 %) et Mythos (4 à 25 %) comptent une ligne', () => {
+    const fwetage = spell(1194, 912) // Père Fwetar
+    expect(total(fwetage)).toBeCloseTo(640.1, 1) // et non 5 × 640
+    for (const v of fwetage.damageByElement) expect(v).toBeCloseTo(total(fwetage) / 5, 6)
+    expect(fwetage.approximations).toEqual(['random'])
+    const mythos = spell(827, 813) // Minotot
+    expect(total(mythos)).toBeCloseTo(427, 6) // et non 4 × 427
+    expect(mythos.damageByElement[0]).toBe(0)
+  })
+
+  it('branches exclusives selon la classe de la cible : Trahison (Servitude) garde une seule branche', () => {
+    const trahison = spell(5955, 15129) // 19 branches B# × 4 sous-sorts à 25 %
+    expect(total(trahison)).toBeCloseTo(351, 6)
+    expect(trahison.approximations).toEqual(['random', 'target-branches'])
+    expect(bossProfile(data, 5955).assumptions.some(a => /Branches exclusives/.test(a))).toBe(true)
+  })
+
+  it('poison « tout le combat » (63 tours) compté sur 6 tours au plus : Liquéfaction (Corruption)', () => {
+    // 792 à 50 % → maladie aléatoire (9 × 1/9) → dégâts fixes TB pendant 63 tours : 6 tours comptés.
+    expect(total(spell(6026, 15387))).toBeCloseTo(711.17, 1)
+  })
+
+  it("sous-sorts lancés par un allié du boss : non comptés, drapeau 'summon' et détail allyCasts", () => {
+    const line = spell(3835, 5062) // Vortex, En temps et en heure : l'Auroraire (3833) lance 5061
+    expect(total(line)).toBe(0)
+    expect(line.flags).toContain('summon')
+    expect(line.allyCasts).toEqual([{ spellId: 5061, monsterIds: [3833] }])
+    expect(bossProfile(data, 3835).warnings.some(w => /allié du boss/.test(w) && /Auroraire/.test(w))).toBe(true)
+    const celerite = spell(6014, 15266) // Guerre : les quatre armes frappent
+    expect(total(celerite)).toBe(0)
+    expect(celerite.allyCasts.flatMap(c => c.monsterIds)).toEqual([6010, 6011, 6012, 6013])
+    expect(Math.max(...bossProfile(data, 6014).phases.map(ph => ph.peakPerTurn))).toBeLessThan(4000)
+  })
+
+  it('« dommages subis » 1163 lu comme le moteur (value quand les deux dés sont nuls)', () => {
+    // Merkator dont le 1163 ×50 sur DR serait stocké dans `value` (forme d=0 v=50 des données 3.x).
+    const start = data.spellLevel(4009, { grade: 1 })!
+    const patched = { ...start, effects: start.effects.map(e => (e.effectId === 1163 ? { ...e, diceNum: 0, diceSide: 0, value: 50 } : e)) }
+    const store = new Proxy(data, {
+      get(target, key) {
+        if (key === 'spellLevel') return (id: number, sel: { grade?: number }) => (id === 4009 ? patched : target.spellLevel(id, sel))
+        const v = Reflect.get(target, key, target)
+        return typeof v === 'function' ? v.bind(target) : v
+      },
+    })
+    expect(bossProfile(store, 3534).stats.rangedResPct).toBe(50)
   })
 })
 
@@ -162,7 +218,11 @@ describe('ensemble des boss', () => {
       for (const ph of p.phases) {
         expect(Number.isFinite(ph.peakPerTurn) && Number.isFinite(ph.sustainedPerTurn)).toBe(true)
         expect(ph.sustainedPerTurn).toBeLessThanOrEqual(ph.peakPerTurn + 1e-6)
+        // Borne de plausibilité (mesuré le 2026-10-08 : pic max 6 980, Dragon Cochon) : 3 × PV de référence par tour.
+        expect(ph.peakPerTurn, `${p.name} / ${ph.name}`).toBeLessThan(3 * DEFAULT_REF_HP)
       }
+      // Par lancer (max mesuré 4 621, Brouillard Empoisonné du Scarabosse Doré) : 2 × PV de référence.
+      for (const s of p.spells) expect(sum(s.damageByElement) + s.otherDamage, `${p.name} / ${s.name}`).toBeLessThan(2 * DEFAULT_REF_HP)
       const s = sum(p.incomingShares)
       expect(s === 0 || Math.abs(s - 1) < 1e-9).toBe(true)
     }
@@ -181,12 +241,32 @@ describe('ensemble des boss', () => {
 
 describe('pureté de src/theorycraft', () => {
   const dir = fileURLToPath(new URL('../src/theorycraft/', import.meta.url))
-  const FORBIDDEN = /from\s+['"](node:[^'"]*|[^'"]*\/dungeons\/(vortex|generic\/dummy)[^'"]*)['"]/
+  // Spécificateurs interdits : modules Node (préfixés ou non) et code Vortex / dummy.
+  const SPEC = String.raw`(?:node:[^'"\`]*|(?:fs|path|os|url|child_process|module|worker_threads|crypto)(?:\/[^'"\`]*)?|[^'"\`]*\/dungeons\/(?:vortex|generic\/dummy)[^'"\`]*)`
+  // Toutes les formes d'import : `from '…'`, `import '…'`, `import('…')`, `require('…')`.
+  const FORBIDDEN = new RegExp(String.raw`(?:\bfrom\s*|\bimport\s*\(?\s*|\brequire\s*\(\s*)['"\`]${SPEC}['"\`]`)
+  const RELATIVE = /(?:\bfrom\s*|\bimport\s*\(?\s*)['"](\.[^'"]+)['"]/g
+  /** Source sans commentaires (les en-têtes citent « aucun import `node:` »). */
+  const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1')
+
+  it('le détecteur reconnaît les imports statiques, dynamiques, nus et require', () => {
+    for (const src of [
+      "import { readFileSync } from 'node:fs'",
+      "export * from '../dungeons/vortex/scenario'",
+      "import 'node:fs'",
+      "const fs = await import('node:fs')",
+      'const fs = require("fs")',
+      "const d = await import('../dungeons/generic/dummy')",
+    ])
+      expect(code(src)).toMatch(FORBIDDEN)
+    expect("import { critChance } from '../damage/crit'").not.toMatch(FORBIDDEN)
+    expect(code("/** Module PUR : aucun import `node:`. */\nimport type { Stats } from '../core/types' // import 'node:fs'")).not.toMatch(FORBIDDEN)
+  })
 
   it("aucun module sauf node.ts n'importe 'node:', src/dungeons/vortex ni src/dungeons/generic/dummy", () => {
     const files = readdirSync(dir).filter(f => f.endsWith('.ts') && f !== 'node.ts')
     expect(files).toEqual(expect.arrayContaining(['bosses.ts', 'bossProfile.ts', 'index.ts', 'overrides.ts', 'types.ts']))
-    for (const f of files) expect(readFileSync(join(dir, f), 'utf8'), f).not.toMatch(FORBIDDEN)
+    for (const f of files) expect(code(readFileSync(join(dir, f), 'utf8')), f).not.toMatch(FORBIDDEN)
   })
 
   it("ni directement ni transitivement depuis l'API publique (index.ts)", () => {
@@ -194,9 +274,9 @@ describe('pureté de src/theorycraft', () => {
     const visit = (file: string) => {
       if (seen.has(file)) return
       seen.add(file)
-      const src = readFileSync(file, 'utf8')
+      const src = code(readFileSync(file, 'utf8'))
       expect(src, file).not.toMatch(FORBIDDEN)
-      for (const m of src.matchAll(/(?:import|export)\b[^'"]*?from\s+['"](\.[^'"]+)['"]/g)) {
+      for (const m of src.matchAll(RELATIVE)) {
         const base = resolve(dirname(file), m[1])
         const next = [`${base}.ts`, join(base, 'index.ts')].find(existsSync)
         if (next) visit(next)
