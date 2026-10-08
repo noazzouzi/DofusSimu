@@ -8,39 +8,47 @@
  *     viennent du preset `presetId`, sinon du preset de base de la classe dont l'élément est la caractéristique
  *     élémentaire la plus haute du build ; un lien sans parchemins reçoit 100 partout (`fillScrolls`, signalé).
  *  2. Cible : `bossProxyOptions(profile, { role, profile, melee })` (target.ts) — cibles EXPLICITES (`strictTargets`),
- *     jamais le mix du Vortex ; « au contact » selon le preset (même liste que la campagne des stuffs,
- *     `MELEE_PRESET` de src/optimizer/builds.ts) sauf option `melee` ; PO visée 6 à distance sauf option `rangeNeed`
- *     (bonus de PO temporaires de la classe listés, non déduits).
+ *     jamais le mix du Vortex ; « au contact » par la règle commune à la comparaison des classes (`playsMelee` : boss
+ *     attaquable seulement au contact, ou preset de mêlée de la campagne des stuffs) sauf option `melee` ; PO visée 6
+ *     à distance sauf option `rangeNeed` (bonus de PO temporaires de la classe listés, non déduits). Objets à la fois
+ *     imposés et exclus : erreur.
  *  3. Références notées dans UN contexte de proxy commun (construit comme celui de l'optimiseur : build de départ comme
  *     référence) : départ, stuff du preset (quand le départ est le stuff de l'utilisateur), stuffs génériques de
  *     data/ai/presets.json hors stuffs de scénario (`theorySeedFilter` : jamais de `vortex_*`, objets ≤ niveau).
  *  4. `optimizeStuff` (src/optimizer/stuff/search.ts) avec ces options, graines filtrées par `theorySeedFilter`
  *     (départ + génériques + glouton), recuit de `iterations` itérations, relancé `restarts` fois (graines `seed`,
  *     `seed + 1`…) ; Dofus à sort passif du départ imposés (`keepPassives`, comme la commande CLI `stuff` : le proxy
- *     les valorise à 0) ; `elements: 'all'` : une recherche par élément (points du preset reportés sur la
- *     caractéristique de l'élément, stuff générique de l'élément comme départ ; le départ réel pour son propre élément).
+ *     les valorise à 0 ; les autres objets à sort passif ne sont pas imposés) ; `elements: 'all'` : une recherche par
+ *     élément (points du preset reportés sur la caractéristique de l'élément, stuff générique de l'élément comme
+ *     départ ; le départ réel pour son propre élément).
  *  5. Classement commun : candidats de la recherche re-notés en EXACT dans le contexte commun (logJ comparables entre
- *     recherches et éléments) ET stuffs de référence valides qui portent les objets imposés (départ, preset,
- *     génériques). Score : logJ du proxy ; mais le proxy ne pose aucune posture de classe — quand, au départ, le DPT
- *     soutenu sans posture est sous 1/1,2 du DPT en meilleure posture (Zobal, Forgelance, Pandawa… : DPT du proxy
- *     souvent nul), le score est le logJ SOUTENU (`logJSustained` : DPT du proxy remplacé par le DPT soutenu en posture
- *     × calibration) et un AFFINAGE en DPT soutenu suit (`polishSustained` : montées par coordonnées depuis les 3
- *     stuffs distincts les mieux classés, objets de tous les candidats, forgemagie re-planifiée ; ≈ 0,1-0,3 s). Sans
- *     cela, contre le Père Ver, le « meilleur » stuff d'un Zobal Psychopathe perdait 75 % de DPT soutenu (1 852 → 464).
+ *     recherches et éléments) ET stuffs de référence valides qui portent les objets imposés et aucun objet exclu
+ *     (départ, preset, génériques ; une référence qui porte un objet exclu reste dans la comparaison, signalée). Score :
+ *     logJ du proxy ; mais le proxy ne pose aucune posture de classe — quand, au départ, le DPT soutenu sans posture est
+ *     sous 1/1,2 du DPT en meilleure posture (Zobal, Forgelance, Pandawa… : DPT du proxy souvent faible), le score est le
+ *     logJ SOUTENU (`logJSustained` : DPT du proxy remplacé par le DPT soutenu en posture × calibration) et un AFFINAGE
+ *     en DPT soutenu suit (`polishSustained` : montées par coordonnées depuis les 3 stuffs distincts les mieux classés,
+ *     objets de tous les candidats, forgemagie re-planifiée ; ≈ 0,1-0,3 s). Sans cela, contre le Père Ver, le
+ *     « meilleur » stuff d'un Zobal Psychopathe perdait 75 % de DPT soutenu (1 852 → 464). L'affinage ne part que de
+ *     stuffs sans objet exclu et n'en ajoute jamais.
  *     Meilleur + `top` stuffs DISTINCTS (au moins `minDifferences` objets d'écart entre eux, défaut 2 — sinon le top
  *     n'offre que des variantes d'une même coiffe ; places restantes complétées par des ensembles d'objets simplement
  *     différents), triés par le score. Un départ invalide (stuff de niveau 200 joué plus bas…) n'est jamais présenté
  *     comme meilleur (`startValid`) ; un stuff de référence que rien ne bat reste le meilleur (signalé).
  *  6. Pour chaque stuff présenté : DPT du proxy (objectif de l'optimiseur : un tour, relances ignorées, calibration du
  *     preset, sans posture) ET DPT SOUTENU en régime établi (rotation.ts, `steady`, meilleure posture de stances.ts,
- *     phases attaquables pondérées) avec le détail par sort ; PV, PV effectifs, dégâts reçus par tour (exact) et par
- *     élément (forme fermée) ; logJ ; PA/PM/PO ; objets changés par rapport au départ ; fiche (`buildStuffSheet`).
+ *     phases attaquables pondérées) avec le détail par sort (`steadyBySpell` : part immédiate et poisons suivis) ; PV,
+ *     PV effectifs, dégâts reçus par tour (exact) et par élément (forme fermée) ; logJ ; PA/PM/PO ; objets changés par
+ *     rapport au départ ; fiche (`buildStuffSheet`).
  *  7. Poids marginaux des caractéristiques au meilleur stuff (`statWeightsAt` d'un contexte du proxy construit À ce
  *     stuff : le contexte commun fige rotation et éléments sur le départ ; classement soutenu : part des dégâts tirée du
- *     DPT soutenu en posture) traduits en équivalences lisibles (`statEquivalences`), la part des PA/PM/PO due aux
- *     pénalités de l'objectif séparée de la part modélisée.
+ *     DPT soutenu en posture ; classement par le proxy : part des dégâts d'un PA tirée du DPT soutenu, le DPT du proxy
+ *     — un tour isolé — évoluant par paliers) traduits en équivalences lisibles (`statEquivalences`), la part des
+ *     PA/PM/PO due aux pénalités de l'objectif séparée de la part modélisée.
  *  8. Avertissements chiffrés : perte de DPT soutenu du meilleur stuff par rapport au départ (> 15 %), pénalités
- *     d'objectif qui décident seules de l'ordre entre le départ et le meilleur, posture, PV effectifs plafonnés…
+ *     d'objectif qui décident seules de l'ordre entre le départ et le meilleur, posture, PV effectifs plafonnés, retrait
+ *     sans valeur contre ce boss (utilité du rôle ignorée), écart entre les dégâts reçus du proxy et le profil
+ *     offensif de la fiche (`incomingCoherence`), meilleur stuff dont la rotation n'a aucun sort de l'élément cherché…
  *
  * Réglages par défaut MESURÉS (scratchpad du 2026-10-08, 8 presets × 5 boss : Merkator, Père Ver, Vortex, Solar,
  * Comte Harebourg). Sans les 49 graines `vortex_*`, la recherche ne part que de 8 graines et le recuit compte
@@ -52,8 +60,8 @@
  *
  * Hypothèses affichées (`assumptions`) : jets max, forgemagie supposée (exos PA/PM/PO, ≤ 6 transcendances, pas
  * d'over), sorts passifs à 0, arme non lancée, ni invocations, glyphes, pièges, buffs ni buffs d'équipe, rotation du
- * boss par sac à dos (pas l'IA réelle), aucune position ni ligne de vue ; les CLASSEMENTS valent plus que les valeurs
- * absolues.
+ * boss par sac à dos (pas l'IA réelle : une estimation, qui peut être sous-estimée), aucune position ni ligne de vue ;
+ * les CLASSEMENTS valent plus que les valeurs absolues.
  *
  * Module d'ANALYSE : il tire le proxy de stuff et l'optimiseur, donc INDIRECTEMENT (par proxy.ts et search.ts, jamais
  * directement) src/dungeons/vortex/{clock,constants,params,placement}.ts, src/dungeons/generic/{dummy,skirmish}.ts et
@@ -81,7 +89,7 @@ import { buildStuffSheet, ROLE_LABELS_FR, statLabelFr, type StuffSheet } from '.
 import { bossFighter, playerFighterFromStats, theoryDptTable, withStates, type TheoryCharacter } from './fighters'
 import { sustainedDamage } from './rotation'
 import { bestStance, STANCES, type ClassStance } from './stances'
-import { bossProxyOptions } from './target'
+import { bossProxyOptions, incomingCoherence, playsMelee, refHpOf } from './target'
 import type {
   BossProfile,
   PerElement,
@@ -114,10 +122,6 @@ export const DEFAULT_TOP = 5
 export const DEFAULT_MIN_DIFFERENCES = 2
 /** Niveau par défaut (presets). */
 export const DEFAULT_LEVEL = 200
-/** Tours simulés pour le détail par sort du DPT soutenu (fenêtre qui contient une période du régime établi). */
-const ROTATION_TURNS = 24
-/** Plafond de tours si la période n'est pas atteinte dans `ROTATION_TURNS` (même plafond que rotation.ts). */
-const ROTATION_TURNS_MAX = 240
 /** Affinage soutenu : balayages maximaux de chaque montée par coordonnées. */
 const POLISH_SWEEPS = 6
 /** Affinage soutenu : montées lancées depuis les stuffs distincts les mieux classés. */
@@ -134,12 +138,6 @@ const STANCE_GAP = 1.2
 const DPT_LOSS_WARN = 0.15
 /** Pénalités de l'objectif du proxy (proxy.ts, `score`) — rappelées dans les textes seulement. */
 const PENALTY_TEXT = '×0,85 par PA, ×0,9 par PM et ×0,95 par PO sous les valeurs visées'
-
-/**
- * Presets joués au contact : PO non exigée (même liste que `MELEE_PRESET` de src/optimizer/builds.ts, campagne des
- * stuffs ; recopiée pour ne pas tirer l'optimiseur de builds).
- */
-const MELEE_PRESET = /^(iop_terre|ouginak|sacrieur|zobal|feca_protecteur|pandawa_saoul)/
 
 /** Stuff générique de chaque élément (data/ai/presets.json, equipment.md §12). */
 const GENERIC_BY_ELEMENT: Readonly<Record<StuffElement, string>> = { earth: 'terre', fire: 'feu', water: 'eau', air: 'air' }
@@ -185,13 +183,13 @@ export interface StuffVsBossOptions {
   exclude?: readonly number[]
   /** Graine de la première recherche (défaut 1). */
   seed?: number
-  /** Garder les Dofus à sort passif du départ (défaut vrai : passifs non valorisés par le proxy). */
+  /** Garder imposés les Dofus à sort passif du départ (défaut vrai : passifs non valorisés par le proxy). */
   keepPassives?: boolean
   /** Lien RoxxSolver sans parchemins : 100 partout (défaut vrai) ; faux = 0 comme le lien. */
   fillScrolls?: boolean
   /** Rôle imposé (défaut : rôle du preset). */
   role?: RoleId
-  /** Joué au contact (défaut : selon le preset). */
+  /** Joué au contact (défaut : règle commune `playsMelee` — boss attaquable seulement au contact, ou preset de mêlée). */
   melee?: boolean
   /**
    * PO visée par l'objectif (pénalité ×0,95 par PO manquante) ; défaut : 6 à distance, 0 au contact (target.ts). Les
@@ -233,8 +231,11 @@ interface Character {
   assumptions: string[]
 }
 
-/** Preset de base de la classe dont l'élément est celui du build (sinon le preset par défaut de la classe). */
-function presetForBuild(data: GameDataStore, build: CharacterBuild, presetId: string | undefined): { preset: Preset; note?: string } {
+/**
+ * Preset de base de la classe dont l'élément est celui du build ; à défaut (aucun preset de cet élément), le premier
+ * preset de la classe — repli signalé en avertissement (`fallback` : autre rôle, autres exposants possibles).
+ */
+function presetForBuild(data: GameDataStore, build: CharacterBuild, presetId: string | undefined): { preset: Preset; note?: string; fallback?: string } {
   if (presetId) {
     const p = resolvePreset(presetId)
     if (p.breedId !== build.breedId) throw new Error(`Preset « ${p.id} » d'une autre classe que le build (${p.className} ≠ classe ${build.breedId})`)
@@ -243,8 +244,13 @@ function presetForBuild(data: GameDataStore, build: CharacterBuild, presetId: st
   const list = BASE_PRESETS.filter(p => p.breedId === build.breedId)
   if (!list.length) throw new Error(`Aucun preset pour la classe ${build.breedId}`)
   const el = dominantElement(computeBuildStats(build, data).stats)
-  const p = list.find(x => x.element === el) ?? list[0]
-  return { preset: p, note: `Variantes de sorts, rôle et calibration du preset « ${p.id} » (${p.label}) : élément ${elementLabel(el)} du build (option presetId pour en choisir un autre).` }
+  const own = list.find(x => x.element === el)
+  if (own) return { preset: own, note: `Variantes de sorts, rôle et calibration du preset « ${own.id} » (${own.label}) : élément ${elementLabel(el)} du build (--class <preset> en ligne de commande, option presetId de l'API, pour en choisir un autre).` }
+  const p = list[0]
+  return {
+    preset: p,
+    fallback: `Aucun preset ${elementLabel(el)} pour la classe ${p.className} (élément du build) : preset « ${p.id} » (${p.label}, rôle ${ROLE_LABELS_FR[p.role] ?? p.role}) pris par défaut pour les variantes de sorts, le rôle et la calibration — --class <preset> en ligne de commande (option presetId de l'API) pour en choisir un autre.`,
+  }
 }
 
 function resolveCharacter(data: GameDataStore, input: StuffInput, level: number, fillScrolls: boolean, levelGiven: boolean): Character {
@@ -278,8 +284,9 @@ function resolveCharacter(data: GameDataStore, input: StuffInput, level: number,
     kind = 'build'
     build = { ...input.build, items: input.build.items.map(it => ({ ...it, exos: it.exos?.map(e => ({ ...e })) })) }
   }
-  const { preset, note } = presetForBuild(data, build, input.presetId)
+  const { preset, note, fallback } = presetForBuild(data, build, input.presetId)
   if (note) assumptions.push(note)
+  if (fallback) warnings.push(fallback)
   if (!build.spellVariants?.length) build.spellVariants = preset.variants.slice()
   if (levelGiven && level !== build.level) warnings.push(`Niveau demandé ${level} ignoré : le stuff fourni est de niveau ${build.level}.`)
   return { preset, start: build, input: kind, user: true, label: kind === 'roxx' ? 'Votre stuff (lien RoxxSolver)' : 'Votre stuff', warnings, assumptions }
@@ -356,65 +363,42 @@ export function itemSetKey(build: CharacterBuild): string {
 interface SteadyRun {
   steady: number
   burst: number
-  /** Lanceur (posture posée) et rotations par phase. */
-  a: Fighter
+  /** Rotations par phase. */
   runs: SustainedDamage[]
 }
 
 /** DPT soutenu pondéré par les phases (une posture). */
-function steadyOver(env: Env, a: Fighter, turns: number): SteadyRun {
+function steadyOver(env: Env, a: Fighter): SteadyRun {
   let steady = 0
   let burst = 0
   let w = 0
   const runs = env.targets.map((t, i) => {
-    const r = sustainedDamage(env.table, a, t, { turns })
+    const r = sustainedDamage(env.table, a, t)
     steady += env.weights[i] * r.steady
     burst += env.weights[i] * r.burst
     w += env.weights[i]
     return r
   })
-  return { steady: w > 0 ? steady / w : 0, burst: w > 0 ? burst / w : 0, a, runs }
-}
-
-/** Les `period` derniers tours simulés forment-ils une période du régime établi (leur moyenne redonne `steady`) ? */
-function periodWindowFits(x: SustainedDamage): boolean {
-  if (x.period <= 0 || x.casts.length < x.period) return false
-  const window = x.perTurn.slice(-x.period)
-  return Math.abs(window.reduce((s, v) => s + v, 0) / x.period - x.steady) <= 1e-6 * Math.max(1, x.steady)
+  return { steady: w > 0 ? steady / w : 0, burst: w > 0 ? burst / w : 0, runs }
 }
 
 /**
- * Détail par sort du régime établi : lancers d'une période (les `period` derniers tours simulés, vérifiés : leur
- * moyenne doit redonner `steady` ; sinon simulation plus longue, puis à défaut les derniers tours) × dégâts par lancer
- * (`perCast`, même lanceur et même phase que la rotation), pondérés par les phases.
+ * Détail par sort du régime établi : `steadyBySpell` de chaque phase (lancers par tour, dégâts crédités : part
+ * immédiate et poisons suivis, rotation.ts), pondéré par les phases. La somme des dégâts redonne le DPT soutenu.
  */
 function spellBreakdown(env: Env, run: SteadyRun): { spells: StuffSpellLine[]; period: number } {
   const acc = new Map<number, { casts: number; damage: number }>()
-  const a = run.a
-  const indexOf = new Map<number, number>()
-  a.spells.forEach((s, k) => indexOf.set(s.spellId, k))
   let w = 0
   let period = 0
   run.runs.forEach((r, i) => {
-    const target = env.targets[i]
-    let res = r
-    if (!periodWindowFits(res)) res = sustainedDamage(env.table, a, target, { turns: ROTATION_TURNS_MAX })
-    const ok = periodWindowFits(res)
-    const window = ok ? res.casts.slice(-res.period) : res.casts.slice(-Math.min(res.casts.length, 120))
-    const n = window.length || 1
-    period = Math.max(period, ok ? res.period : 0)
     const wi = env.weights[i]
     w += wi
-    for (const turn of window) {
-      for (const spellId of turn) {
-        const k = indexOf.get(spellId)
-        if (k === undefined) continue
-        const dmg = env.table.perCast(a, k, target).mean
-        const e = acc.get(spellId) ?? { casts: 0, damage: 0 }
-        e.casts += wi / n
-        e.damage += (wi * dmg) / n
-        acc.set(spellId, e)
-      }
+    period = Math.max(period, r.period)
+    for (const x of r.steadyBySpell) {
+      const e = acc.get(x.spellId) ?? { casts: 0, damage: 0 }
+      e.casts += wi * x.casts
+      e.damage += wi * x.damage
+      acc.set(x.spellId, e)
     }
   })
   const total = [...acc.values()].reduce((s, x) => s + x.damage, 0)
@@ -444,7 +428,7 @@ function bestSteady(env: Env, stats: Stats, maxHp: number): { run: SteadyRun; st
   const choice = bestStance(
     env.who.breedId,
     states => {
-      const run = steadyOver(env, withStates(base, states), ROTATION_TURNS)
+      const run = steadyOver(env, withStates(base, states))
       runs.set(states.join(','), run)
       return run.steady
     },
@@ -456,7 +440,7 @@ function bestSteady(env: Env, stats: Stats, maxHp: number): { run: SteadyRun; st
 /** DPT soutenu (meilleure posture), rafale et détail par sort ; `noStance` : soutenu sans aucun état (avertissement). */
 function damageOf(env: Env, stats: Stats, maxHp: number, proxyDpt: number): { damage: StuffDamage; noStance: number; states: number[] } {
   const { run, stance, base } = bestSteady(env, stats, maxHp)
-  const noStance = stance.states.length ? steadyOver(env, withStates(base, []), ROTATION_TURNS).steady : run.steady
+  const noStance = stance.states.length ? steadyOver(env, withStates(base, [])).steady : run.steady
   const { spells, period } = spellBreakdown(env, run)
   return {
     damage: { proxy: proxyDpt, steady: run.steady, burst: run.burst, stance: { id: stance.id, name: stance.name }, period, spells },
@@ -573,6 +557,11 @@ export interface StatEquivalenceOptions {
   steady?: number
   /** Classement soutenu : nom de la posture dont le DPT soutenu donne la part des dégâts (note). */
   sustainedStance?: string
+  /**
+   * Classement par le proxy : nom de la posture dont le DPT soutenu donne la part des dégâts d'un PA (note ; le DPT du
+   * proxy, un tour isolé, évolue par paliers).
+   */
+  apSustainedStance?: string
 }
 
 /**
@@ -591,6 +580,8 @@ export function statEquivalences(weights: Partial<Record<StatKey, number>>, elem
     '« Par poids de rune » : valeur pour une même dépense de forgemagie (poids des runes), relative à la référence.',
   ]
   if (opts.sustainedStance) notes.push(`Classement soutenu : la part des dégâts vient du DPT soutenu en posture « ${opts.sustainedStance} » (différences finies de la rotation établie), pas du DPT du proxy.`)
+  if (opts.apSustainedStance)
+    notes.push(`PA : la part des dégâts vient du DPT soutenu en posture « ${opts.apSustainedStance} » (rotation établie à PA − 1 et PA), pas du DPT du proxy : un tour isolé évolue par paliers (un PA de plus peut ne rien changer à la rafale et allonger la rotation établie).`)
   const main = ELEMENT_STAT[element]
   const positive = (k: StatKey) => (weights[k] ?? 0) > 1e-12
   const elemental = STUFF_ELEMENTS.map(e => ELEMENT_STAT[e])
@@ -645,7 +636,10 @@ function weightStep(k: StatKey): number {
  * et ses éléments aux caractéristiques de référence — le contexte commun (départ) ignorerait les sorts d'un autre
  * élément (meilleur stuff Feu d'un preset Terre, option `elements: 'all'`). Classement soutenu : terme de DPT du proxy
  * retiré (a = 0) et remplacé par a·∂ln(DPT soutenu)/∂point (posture du meilleur stuff, mêmes pas que
- * `statWeightsAt`). Rend aussi, pour PA/PM/PO, la part due aux pénalités de l'objectif (∂ln pénalités).
+ * `statWeightsAt`). Classement par le proxy : pour le PA seulement, a·Δln(DPT du proxy) remplacé par a·Δln(DPT
+ * soutenu) — le DPT du proxy (un tour isolé, sac à dos) évolue par paliers : un 12e PA peut laisser la rafale
+ * inchangée et ajouter plusieurs % au DPT soutenu (Iop Terre contre Merkator). Rend aussi, pour PA/PM/PO, la part due
+ * aux pénalités de l'objectif (∂ln pénalités).
  */
 function weightsAtBest(
   env: Env,
@@ -663,10 +657,19 @@ function weightsAtBest(
   )
   const weights = ctx.statWeightsAt(best.stats, best.maxHp)
   const cap = (k: 'ap' | 'mp' | 'range') => (k === 'ap' ? ctx.apTarget : k === 'mp' ? ctx.mpTarget : 6)
+  const cal = ctx.calibration > 0 ? ctx.calibration : 1
+  const lnSteady = (s: Stats, hp: number) => detLog(Math.max(1, steadyOver(env, withStates(playerFighterFromStats(env.data, env.who, s, hp), best.states)).steady * cal))
+  if (rankBy === 'proxy' && a > 0) {
+    // PA : part des dégâts tirée du DPT soutenu (voir l'en-tête), calibration commune (elle s'annule dans l'écart).
+    const s: Stats = { ...best.stats }
+    s.ap = Math.min(s.ap, cap('ap') - 1)
+    const lo = ctx.surrogate(s, best.maxHp).dpt
+    const loSteady = lnSteady(s, best.maxHp)
+    s.ap += 1
+    const hi = ctx.surrogate(s, best.maxHp).dpt
+    weights.ap = (weights.ap ?? 0) - a * (detLog(Math.max(1, hi)) - detLog(Math.max(1, lo))) + a * (lnSteady(s, best.maxHp) - loSteady)
+  }
   if (rankBy === 'sustained' && a > 0) {
-    const cal = ctx.calibration > 0 ? ctx.calibration : 1
-    const lnSteady = (s: Stats, hp: number) =>
-      detLog(Math.max(1, steadyOver(env, withStates(playerFighterFromStats(env.data, env.who, s, hp), best.states), ROTATION_TURNS).steady * cal))
     const base = lnSteady(best.stats, best.maxHp)
     for (const k of Object.keys(RUNE_WEIGHT_PER_POINT) as StatKey[]) {
       const s: Stats = { ...best.stats }
@@ -933,13 +936,16 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   const seed = opts.seed ?? 1
   const keepPassives = opts.keepPassives ?? true
   const expProfile = opts.profile ?? 'balanced'
+  const exclude = [...new Set(opts.exclude ?? [])]
+  const both = [...new Set(opts.fixed ?? [])].filter(id => exclude.includes(id))
+  if (both.length) throw new Error(`Objets à la fois imposés et exclus : ${both.map(id => `${data.item(id)?.name ?? 'objet'} (${id})`).join(', ')}.`)
 
   const ch = resolveCharacter(data, input, level, opts.fillScrolls ?? true, opts.level !== undefined)
   const preset = ch.preset
   const start = ch.start
   const buildLevel = start.level
   const role: RoleId = opts.role ?? preset.role
-  const melee = opts.melee ?? MELEE_PRESET.test(preset.extends ?? preset.id)
+  const melee = playsMelee(profile, preset.extends ?? preset.id, opts.melee)
   const variants = (start.spellVariants?.length ? start.spellVariants : preset.variants).slice()
   const presetId = preset.extends ?? preset.id
   const startStats = computeBuildStats(start, data)
@@ -953,10 +959,14 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   const member: MemberSpec = { name: start.name, breedId: preset.breedId, presetId, build: start, variants, role }
   const proxyMember: ProxyMember = { breedId: preset.breedId, level: buildLevel, variants, role, presetId, element: startElement, name: start.name }
   const ctx = createProxyContext(data, proxyMember, { stats: startStats.stats, maxHp: startStats.maxHp }, options)
+  warnings.push(...target.warnings)
+  // Dégâts reçus du proxy (PVe, objectif) face au profil offensif de la fiche (mêmes phases, joueur à 0 % de résistance).
+  const coherence = incomingCoherence(profile, target, ctx.incomingUndefended(refHpOf(profile)))
+  if (coherence?.warning) warnings.push(coherence.warning)
   const table = theoryDptTable(data)
   const targets = (options.targets ?? []).map(t => bossFighter(data, t.monsterId, { grade: t.grade ?? profile.grade, stats: t.stats, states: t.states }))
   const weights = (options.targets ?? []).map(t => t.weight)
-  const who: TheoryCharacter = { breedId: preset.breedId, level: buildLevel, variants, presetId, name: start.name }
+  const who: TheoryCharacter = { breedId: preset.breedId, level: buildLevel, variants, presetId, name: start.name, contact: melee }
   const env: Env = { data, ctx, table, who, preset, role, targets, weights, startItems: [] }
   const startEval = evaluate(env, start, { id: ch.user ? 'user' : 'start', origin: ch.user ? 'user' : 'start', label: ch.label })
   env.startItems = startEval.items
@@ -993,7 +1003,6 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   opts.onProgress?.({ step: 'evaluate', label: 'stuffs de référence', done: refs.length + 1, total: refs.length + 1 })
 
   // ── Optimisation(s) ──
-  const exclude = [...new Set(opts.exclude ?? [])]
   // Dofus à passif du départ gardés seulement s'ils sont portables à ce niveau (un preset de niveau 200 joué au niveau
   // 30 en porte de niveau 160-180) ; objets imposés au-dessus du niveau : écartés (ils rendraient tout stuff invalide).
   const wearable = (id: number) => (data.item(id)?.level ?? Infinity) <= buildLevel
@@ -1050,12 +1059,17 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   }
 
   // ── Classement commun : candidats de la recherche ET stuffs de référence valides (départ, preset, génériques) qui
-  // portent les objets imposés (un générique sans les Dofus gardés ne respecte pas `fixed`) ──
+  // portent les objets imposés (un générique sans les Dofus gardés ne respecte pas `fixed`) et aucun objet exclu ──
+  const hasExcluded = (b: CharacterBuild) => b.items.some(i => exclude.includes(i.itemId))
   const candidates: Pooled[] = [...pooled]
+  const skippedRefs: string[] = []
   for (const ev of [startEval, ...refs]) {
     const r = rankOf(ev)
-    if (ev.valid && r !== null && hasAll(ev.build, fixed)) candidates.push({ build: ev.build, rank: r, key: `ref:${ev.id}`, element: ev.element, ev })
+    if (!ev.valid || r === null || !hasAll(ev.build, fixed)) continue
+    if (hasExcluded(ev.build)) skippedRefs.push(ev.label)
+    else candidates.push({ build: ev.build, rank: r, key: `ref:${ev.id}`, element: ev.element, ev })
   }
+  if (skippedRefs.length) assumptions.push(`Stuffs de référence écartés du classement (objet exclu) : ${skippedRefs.join(', ')} — affichés dans la comparaison seulement.`)
   candidates.sort(byRank)
   const minDifferences = Math.max(1, Math.floor(opts.minDifferences ?? DEFAULT_MIN_DIFFERENCES))
   // ── Affinage soutenu (classement soutenu) : la recherche est aveugle aux dégâts en posture ──
@@ -1065,7 +1079,9 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
     const before = candidates[0].rank
     // Objets essayés : ceux de tous les candidats et de tous les stuffs de référence.
     const donors = [...candidates.map(p => p.build), ...refs.filter(e => !candidates.some(p => p.ev === e)).map(e => e.build)]
-    const starts = pickDistinct(candidates, POLISH_STARTS, minDifferences)
+    // Points de départ sans objet exclu (les candidats de la recherche n'en portent pas ; les références exclues sont
+    // déjà écartées) : l'affinage ne réintroduit jamais un objet interdit.
+    const starts = pickDistinct(candidates.filter(p => !hasExcluded(p.build)), POLISH_STARTS, minDifferences)
     for (const from of starts) {
       const point = polishSustained(env, proxyMember, options, from.build, donors, id => fixed.includes(id), id => !exclude.includes(id) && wearable(id))
       if (!point) continue
@@ -1128,10 +1144,22 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   const statWeights = statEquivalences(atBest.weights, best.element, {
     penalties: atBest.penalties,
     steady: best.damage.steady,
-    ...(rankBy === 'sustained' ? { sustainedStance: best.damage.stance.name } : {}),
+    ...(rankBy === 'sustained' ? { sustainedStance: best.damage.stance.name } : ctx.exponents.a > 0 ? { apSustainedStance: best.damage.stance.name } : {}),
   })
 
   // ── Avertissements ──
+  // Recherche limitée à l'élément du preset alors que la rotation du meilleur stuff n'a aucun sort de cet élément
+  // (Sram Air niveau 40 : sorts Air pas encore débloqués) : la référence des équivalences le trahit.
+  const mainStat = ELEMENT_STAT[best.element]
+  if (elementsMode === 'preset' && best.damage.steady >= 1 && statWeights.reference !== mainStat && statWeights.reference !== 'vitality') {
+    const rotation = best.damage.spells
+      .slice(0, 3)
+      .map(x => `${x.name} ${Math.round(x.share * 100)} %`)
+      .join(', ')
+    warnings.push(
+      `Aucun sort ${elementLabel(best.element)} dans la rotation du meilleur stuff contre ce boss (${rotation}) : la recherche n'a exploré que l'élément ${elementLabel(startElement)} (caractéristique principale ${statLabelFr(mainStat)}, sans valeur ici) alors que ${statLabelFr(statWeights.reference)} est la caractéristique élémentaire la plus utile — essayer --elements all (option elements: 'all' de l'API).`,
+    )
+  }
   if (best === startEval) warnings.push(`Aucun stuff trouvé ne bat le stuff de départ contre ce boss (${rankLabel}).`)
   else if (best.origin === 'generic' || best.origin === 'preset') warnings.push(`Le meilleur stuff est un stuff de référence (${best.label}) : la recherche n'a rien trouvé de mieux (${rankLabel}).`)
   if (best.damage.steady < 1) warnings.push('DPT soutenu nul contre ce boss (résistances ≥ 100 %, invulnérabilité ou sorts hors de portée) : le classement ne repose que sur la survie.')
@@ -1156,11 +1184,12 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   if (startValid && best !== startEval && startEval.penalty < best.penalty && noPenalty(startEval) > noPenalty(best)) {
     const po = startEval.range < ctx.rangeNeed
     warnings.push(
-      `Pénalités d'objectif décisives : sans elles (${ctx.apTarget} PA, ${ctx.mpTarget} PM, ${ctx.rangeNeed} PO visés), « ${startEval.label} » (${startEval.ap}/${startEval.mp}/${startEval.range}, pénalité ×${fr(startEval.penalty, 3)}) passerait devant le meilleur stuff (${fr(noPenalty(startEval), 3)} contre ${fr(noPenalty(best), 3)}).${po && buffs.length ? ` Bonus de PO de la classe non déduits de la PO visée : ${buffs.join(', ')}.` : ''}${po ? ' Option rangeNeed pour ajuster la PO visée.' : ''}`,
+      `Pénalités d'objectif décisives : sans elles (${ctx.apTarget} PA, ${ctx.mpTarget} PM, ${ctx.rangeNeed} PO visés), « ${startEval.label} » (${startEval.ap}/${startEval.mp}/${startEval.range}, pénalité ×${fr(startEval.penalty, 3)}) passerait devant le meilleur stuff (${fr(noPenalty(startEval), 3)} contre ${fr(noPenalty(best), 3)}).${po && buffs.length ? ` Bonus de PO de la classe non déduits de la PO visée : ${buffs.join(', ')}.` : ''}${po ? ' --range N en ligne de commande (option rangeNeed de l’API) pour ajuster la PO visée.' : ''}`,
     )
   }
   const removedPassives = best.changes.removed.filter(i => i.passive && wearable(i.itemId))
-  if (removedPassives.length) warnings.push(`Le meilleur stuff retire des objets à sort passif (${removedPassives.map(i => i.name).join(', ')}) que le proxy valorise à 0 : à garder si le passif compte (option keepPassives / fixed).`)
+  if (removedPassives.length)
+    warnings.push(`Le meilleur stuff retire des objets à sort passif (${removedPassives.map(i => i.name).join(', ')}) que le proxy valorise à 0 : à garder si le passif compte (--fixed <ids> en ligne de commande, option fixed de l'API).`)
   if (profile.level > buildLevel + 20) warnings.push(`Boss de niveau ${profile.level} pour un personnage de niveau ${buildLevel}.`)
 
   // ── Hypothèses ──
@@ -1175,15 +1204,15 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
     `Recherche : ${restarts} × ${fr(iterations)} itérations de recuit par élément (${restarts > 1 ? `graines ${seed} à ${seed + restarts - 1}` : `graine ${seed}`}), stuffs de départ des montées = départ + stuffs génériques hors scénario + glouton ; candidats re-notés en exact.`,
     'Jets max des objets ; forgemagie supposée réalisable : un exo PA, PM et PO au plus (s’ils sont utiles), jusqu’à 6 transcendances, aucun over (profil thlOptimized de l’optimiseur).',
     keepPassives
-      ? `Dofus et objets à sort passif (effet 1175) valorisés à 0 par le proxy : ceux du départ sont gardés imposés${passiveIds.length ? ` (${passiveIds.map(id => data.item(id)?.name ?? id).join(', ')})` : ''}.`
-      : 'Dofus et objets à sort passif (effet 1175) valorisés à 0 par le proxy et NON imposés (keepPassives: false).',
+      ? `Objets à sort passif (effet 1175) valorisés à 0 par le proxy : les Dofus à sort passif du départ sont gardés imposés${passiveIds.length ? ` (${passiveIds.map(id => data.item(id)?.name ?? id).join(', ')})` : ''} ; les autres objets à sort passif ne le sont pas (--fixed <ids> pour les garder).`
+      : 'Objets à sort passif (effet 1175) valorisés à 0 par le proxy ; Dofus du départ NON imposés (keepPassives: false).',
     'DPT : sorts de classe seulement (arme non lancée) ; ni invocations, glyphes, pièges, bombes, buffs entre sorts ni buffs d’équipe entre personnages ; aucune position, ligne de vue ni PM.',
     `DPT soutenu : rotation en régime établi (relances amorties), meilleure posture de classe supposée tenue tout le combat, NON calibré ; DPT du proxy : un tour isolé × calibration du preset (mesurée au Vortex), sans posture.`,
-    'PV effectifs : rotations du boss estimées par sac à dos (borne haute, pas l’IA réelle), plafonnés à 20 × PV ; ni soins, boucliers, érosion ni kit défensif de classe.',
+    'PV effectifs : rotations du boss estimées par sac à dos sur une cible (optimiste pour le boss sur une cible ; zones, sorts en réaction et invocations non comptés : le total peut être sous-estimé ; pas l’IA réelle), plafonnés à 20 × PV ; ni soins, boucliers, érosion ni kit défensif de classe.',
     `Variantes de sorts du preset « ${presetId} »${
       melee
         ? ' ; joué au contact (PO non exigée)'
-        : ` ; joué à distance (${ctx.rangeNeed} PO visées${opts.rangeNeed !== undefined ? ', option rangeNeed' : ''}${buffs.length ? ` ; bonus de PO temporaires de la classe NON déduits : ${buffs.join(', ')}` : ''})`
+        : ` ; joué à distance (${ctx.rangeNeed} PO visées${opts.rangeNeed !== undefined ? ', --range (option rangeNeed de l’API)' : ''}${buffs.length ? ` ; bonus de PO temporaires de la classe NON déduits : ${buffs.join(', ')}` : ''})`
     }.`,
     'Les CLASSEMENTS valent plus que les valeurs absolues.',
     ...target.assumptions,

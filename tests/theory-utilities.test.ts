@@ -201,26 +201,32 @@ describe('utilités chiffrées', () => {
 })
 
 describe('pertinence contre le boss', () => {
-  it('Père Ver (invulnérable à distance) : atout « mêlée » pour l\'Iop, limite « distance » pour le Crâ', () => {
+  it('Père Ver (invulnérable à distance) : atout « mêlée » pour l\'Iop, et pour le Crâ qui frappe aussi au contact ; limite « distance » d\'un pur distance', () => {
     const profile = bossProfile(data, PERE_VER)
     const ver = bossFighter(data, PERE_VER, { grade: profile.grade, stats: profile.stats })
-    // Sans forme de DPT mesurée : étiquettes mêlée / distance tirées des portées des sorts (classes.ts mesure la forme).
+    // Sans forme de DPT mesurée : étiquettes mêlée / distance tirées des COUPS POSSIBLES des sorts (règle du jeu, hits.ts :
+    // un sort de PO 1 à N frappe au contact comme à distance ; classes.ts mesure la forme).
     const iopU = util('iop_terre_burst', ver)
     expect(iopU.tags).toContain('melee')
     const iop = relevance(profile, iopU)
     expect(iop.atouts.some(a => /^Mêlée — invulnérable à distance/.test(a))).toBe(true)
+    // Crâ Terre : Flèche Vagabonde (PO 1 à 8) et d'autres flèches se lancent au contact — il s'adapte (atout, pas de limite).
     const craU = util('cra_terre_mono', ver)
     expect(craU.tags).toContain('range')
-    expect(craU.tags).not.toContain('melee')
-    const cra = relevance(profile, craU, { dealsDamage: false })
+    expect(craU.tags).toContain('melee')
+    expect(relevance(profile, craU).atouts.some(a => /^Mêlée — invulnérable à distance/.test(a))).toBe(true)
+    expect(relevance(profile, craU).limites.some(l => /^Distance/.test(l))).toBe(false)
+    // Un personnage qui ne frapperait qu'à distance : limite « distance », aucun atout « mêlée ».
+    const rangedU = { ...craU, tags: craU.tags.filter(t => t !== 'melee') }
+    const cra = relevance(profile, rangedU, { dealsDamage: false })
     expect(cra.limites.some(l => /^Distance — invulnérable à distance/.test(l))).toBe(true)
     expect(cra.atouts.some(a => /^Mêlée/.test(a))).toBe(false)
-    // Le Crâ ne touche pas le Père Ver : limite explicite, aucun atout lié aux dégâts (rafale…), mais l'érosion qu'il
-    // pose sur le boss vaut pour toute l'équipe (Engine.erosionPercent de la cible) et reste un atout.
+    // Qui ne touche pas le Père Ver : limite explicite, aucun atout lié aux dégâts (rafale…), mais l'érosion qu'il pose
+    // sur le boss vaut pour toute l'équipe (Engine.erosionPercent de la cible) et reste un atout.
     expect(cra.limites[0]).toMatch(/^Ne touche pas le boss/)
     expect(cra.atouts.some(a => /^Rafale|^Dégâts de zone|^Dégâts indirects|^Multi-élément/.test(a))).toBe(false)
     expect(cra.atouts.some(a => /^Érosion — le boss se soigne/.test(a))).toBe(true)
-    expect(relevance(profile, craU).limites.some(l => /^Ne touche pas/.test(l))).toBe(false)
+    expect(relevance(profile, rangedU).limites.some(l => /^Ne touche pas/.test(l))).toBe(false)
     // Le Père Ver n'a pas de PM : le retrait PM est une limite.
     const enu = relevance(profile, util('enutrof_retrait_pm_eau', ver))
     expect(enu.limites).toContain('Retrait PM — le boss n\'a pas de PM.')

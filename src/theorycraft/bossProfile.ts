@@ -59,7 +59,8 @@
  *  - Conditions d'états du lanceur dans les masques (`*E#`/`*e#`) : évaluées avec les états de la phase quand le
  *    lanceur est le boss ; un autre lanceur est supposé sans état.
  *  - Famille `mp` (dommages × PM restants) : ×1 (PM non utilisés, borne haute).
- *  - Pic = borne haute (meilleure combinaison de sorts sur UNE cible, relances ignorées d'un tour à l'autre), pas l'IA.
+ *  - Pic = meilleure combinaison de sorts sur UNE cible (relances ignorées d'un tour à l'autre), pas l'IA : optimiste
+ *    sur une cible, mais zones, sorts en réaction et invocations non comptés — une estimation, pas une borne.
  *  - Soutenu = sac à dos tour par tour pendant 6 tours, relances (`minCastInterval`) et relances initiales tenues.
  *
  * Module PUR : aucun import `node:`, rien de src/dungeons/vortex ni de src/dungeons/generic/dummy.
@@ -75,6 +76,7 @@ import type { GameDataStore } from '../data/store'
 import { statBuffDef, statLabel } from '../engine/effects/buffs/stats'
 import { DAMAGE_SPECS, modifierMagnitude, resolveElement, type DamageSpec } from '../engine/effects/damage/pipeline'
 import { createMonsterFighter } from '../engine/factory'
+import { imposeStats } from '../optimizer/stuff/targetFighter'
 import { cellToPoint, pointToCell } from '../map/geometry'
 import { isCellInZone } from '../map/zones'
 import { bossGradeFor } from './bosses'
@@ -109,8 +111,8 @@ export const DATA_SNAPSHOT = { date: '2026-10-04', patch: '3.6' } as const
 const MAX_DEPTH = 4
 /** `effectTriggerDuration` d'un effet déclenché qui écoute « tout le combat » (docs/research/effects.md §2). */
 const WHOLE_FIGHT = 63
-/** Part des PV du boss supposée restante (« mi-vie ») pour les dégâts en % de ses PV. */
-const BOSS_HP_SHARE = 0.5
+/** Part des PV du boss supposée restante (« mi-vie ») pour les dégâts en % de ses PV (fiche et proxy de stuff). */
+export const BOSS_HP_SHARE = 0.5
 /** PV érodés supposés, en part des PV max (cible ou lanceur). */
 const ERODED_SHARE = 0.1
 
@@ -150,6 +152,12 @@ export interface BossSpellDetail extends BossSpellProfile {
   allyCasts: { spellId: number; monsterIds: number[] }[]
   /** Approximations du calcul des dégâts de ce sort (voir `DamageApproximation`). */
   approximations: DamageApproximation[]
+  /**
+   * États du boss sous lesquels le détail des dégâts (`damageByElement`, `otherDamage`…) est calculé, quand ils diffèrent
+   * de `requiredStates` : lignes conditionnées par un état du boss (`*E#` des masques : Croqueleur, El Piko) — détail
+   * pris dans la phase où le sort frappe le plus.
+   */
+  damageStates?: number[]
 }
 
 /**
@@ -391,7 +399,7 @@ function isPeriodic(triggers: string): boolean {
  * à l'horizon du soutenu (`SUSTAINED_TURNS`) : une durée infinie (< 0) ou « tout le combat » (≥ 63) compte 6 tours,
  * jamais 63 (Corruption, Guerre).
  */
-function periodicTicks(e: EffectData): number {
+export function periodicTicks(e: EffectData): number {
   const turns = e.triggerDuration ?? e.duration
   if (turns < 0 || turns >= WHOLE_FIGHT) return SUSTAINED_TURNS
   return Math.min(SUSTAINED_TURNS, Math.max(1, turns))
@@ -1125,15 +1133,20 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
     mechanics.push({ kind: 'other', summary: `Sort de départ appliqué aux caractéristiques : ${parts.join(', ')}.`, source: 'data', spellId: startLevel?.spellId })
   }
 
-  // ── Fiche manuelle : caractéristiques puis résistances ──
+  // ── Fiche manuelle : caractéristiques (dérivées recalculées : tacle/fuite, esquives et retraits, initiative ; PV
+  // décalés de la Vitalité imposée — mêmes règles que les cibles du proxy) puis résistances ──
+  let hpDelta = 0
   if (ov?.stats) {
     const { allResPct, ...rest } = ov.stats
-    Object.assign(stats, rest)
+    const imposed = imposeStats(stats, rest)
+    Object.assign(stats, imposed.stats)
+    hpDelta = imposed.vitality
     // « % Résistance » globale imposée : reportée sur chaque élément (les formules ne la lisent pas dans Stats).
     if (allResPct) for (const k of Object.values(ELEMENT_RES_PCT)) stats[k] += allResPct
   }
   if (ov?.resPct) ov.resPct.forEach((v, i) => (stats[ELEMENT_RES_PCT[i as Element]] = v))
   const resPct = resOf(stats)
+  const maxHp = Math.max(1, fighter.maxHp + hpDelta)
 
   // ── 3. Sorts ──
   const ctx: DamageContext = {
@@ -1141,7 +1154,7 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
     bossId: monsterId,
     attacker: stats,
     input: { attacker: stats, defender: emptyStats(), element: 0, crit: false, isWeapon: false, isMelee: false, defenderIsPlayer: true },
-    bossRefs: hpRefs(fighter.maxHp, refHp),
+    bossRefs: hpRefs(maxHp, refHp),
     playerRefs: hpRefs(refHp, refHp),
   }
   const excluded = new Set(ov?.excludeSpells ?? [])
@@ -1153,35 +1166,6 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
     if (!d) memo.set(key, (d = spellDamage(ctx, levels[i], states)))
     return d
   }
-  const spells: BossSpellDetail[] = levels.map((l, i) => {
-    const requiredStates = l.statesCondition?.[0]?.has.slice() ?? []
-    const d = damageOf(i, requiredStates)
-    const flags = new Set(d.flags)
-    if (excluded.has(l.spellId)) flags.add('excluded')
-    if (positional.has(l.spellId)) flags.add('positional')
-    const detail: BossSpellDetail = {
-      spellId: l.spellId,
-      name: spellName(data, l.spellId),
-      apCost: l.apCost,
-      castsPerTurn: l.maxCastPerTurn,
-      castsPerTarget: l.maxCastPerTarget,
-      cooldown: l.minCastInterval,
-      requiredStates,
-      damageByElement: d.el,
-      otherDamage: sum(d.hpEl) + d.hpOther,
-      flags: FLAG_ORDER.filter(x => flags.has(x)),
-      range: l.range,
-      initialCooldown: l.initialCooldown,
-      hpDamageByElement: d.hpEl,
-      summons: d.summons,
-      unhandledEffects: d.unhandled,
-      allyCasts: d.allyCasts,
-      approximations: d.approximations,
-    }
-    if (l.statesCondition) detail.statesCondition = l.statesCondition.map(c => ({ has: c.has.slice(), not: c.not.slice() }))
-    return detail
-  })
-
   // ── 4. Phases ──
   const startVuln = vulnerabilityOf(data, start.selfStates.map(s => s.stateId), true)
   const autoPhases: PhaseDraft[] = [{ id: 'base', name: 'Base (aucun état)', states: [], weight: 1 }]
@@ -1237,6 +1221,44 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
       elementShares: (elTotal > 0 ? shareSource.map(v => v / elTotal) : zero5()) as PerElement,
     }
   })
+  // Détail par sort : dans la phase où il frappe le plus (états exigés par sa condition, ou états d'une phase où il est
+  // lançable — lignes `*E#` conditionnées par un état du boss), pas seulement sous sa condition d'états.
+  const spells: BossSpellDetail[] = levels.map((l, i) => {
+    const requiredStates = l.statesCondition?.[0]?.has.slice() ?? []
+    let damageStates = requiredStates
+    let d = damageOf(i, requiredStates)
+    for (const p of drafts) {
+      if (!statesConditionMet(l.statesCondition, p.states)) continue
+      const x = damageOf(i, p.states)
+      if (x.total > d.total + 1e-9) [d, damageStates] = [x, p.states.slice()]
+    }
+    const flags = new Set(d.flags)
+    if (excluded.has(l.spellId)) flags.add('excluded')
+    if (positional.has(l.spellId)) flags.add('positional')
+    const detail: BossSpellDetail = {
+      spellId: l.spellId,
+      name: spellName(data, l.spellId),
+      apCost: l.apCost,
+      castsPerTurn: l.maxCastPerTurn,
+      castsPerTarget: l.maxCastPerTarget,
+      cooldown: l.minCastInterval,
+      requiredStates,
+      damageByElement: d.el,
+      otherDamage: sum(d.hpEl) + d.hpOther,
+      flags: FLAG_ORDER.filter(x => flags.has(x)),
+      range: l.range,
+      initialCooldown: l.initialCooldown,
+      hpDamageByElement: d.hpEl,
+      summons: d.summons,
+      unhandledEffects: d.unhandled,
+      allyCasts: d.allyCasts,
+      approximations: d.approximations,
+    }
+    if (l.statesCondition) detail.statesCondition = l.statesCondition.map(c => ({ has: c.has.slice(), not: c.not.slice() }))
+    if (damageStates !== requiredStates) detail.damageStates = damageStates
+    return detail
+  })
+
   const hitting = phases.filter(p => p.peakPerTurn > 0 && sum(p.elementShares) > 0)
   const hitWeight = sum(hitting.map(p => p.weight))
   const incomingShares = zero5()
@@ -1287,7 +1309,8 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
   if (scan.shields.size) mechanics.push({ kind: 'boss-shield', summary: `Se donne ou donne des boucliers (${listSpells(scan.shields)}).`, source: 'data', counters: ['debuff', 'burst'] })
   if (scan.reflects.size)
     mechanics.push({ kind: 'reflect', summary: `Renvoie des dommages (${listSpells(scan.reflects)}).`, source: 'data', counters: ['indirect-damage'], punishes: ['burst'] })
-  if (scan.marks.size) mechanics.push({ kind: 'marks', summary: `Pose des glyphes ou des pièges (${listSpells(scan.marks)}).`, source: 'data', counters: ['placement'] })
+  // Pas de contre « placement » : déplacer le boss ne l'empêche pas de poser ses glyphes et pièges (MECHANIC_RELEVANCE.marks).
+  if (scan.marks.size) mechanics.push({ kind: 'marks', summary: `Pose des glyphes ou des pièges (${listSpells(scan.marks)}).`, source: 'data' })
   const hpSpells = spells.filter(s => s.flags.includes('hp-based'))
   if (hpSpells.length)
     mechanics.push({ kind: 'hp-based-damage', summary: `Dégâts en % de PV : ${hpSpells.slice(0, 4).map(s => s.name).join(', ')}.`, source: 'data' })
@@ -1344,7 +1367,7 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
       ? 'Phases et poids de la fiche manuelle.'
       : `Phases à poids égaux${autoPhases.length > 1 ? ` (${autoPhases.length} phases dont « base »)` : ' (une seule phase : « base »)'}.`,
   )
-  assumptions.push('Pic par tour = borne haute (meilleure combinaison de sorts sur une cible, sac à dos sur les PA), pas le comportement réel de l\'IA.')
+  assumptions.push('Pic par tour = meilleure combinaison de sorts sur UNE cible (sac à dos sur les PA), pas le comportement réel de l\'IA : optimiste sur une cible, mais zones, sorts en réaction et invocations non comptés — une estimation, le total peut être sous-estimé.')
   assumptions.push(
     `Soutenu = sac à dos tour par tour sur ${SUSTAINED_TURNS} tours, relances tenues ; poisons comptés une fois par tour de durée, ${SUSTAINED_TURNS} tours au plus (durée infinie ou « tout le combat » comprise).`,
   )
@@ -1359,7 +1382,7 @@ export function bossProfile(data: GameDataStore, monsterId: number, opts: BossPr
     name: m.name,
     grade,
     level: g.level,
-    hp: fighter.maxHp,
+    hp: maxHp,
     ap: stats.ap,
     mp: stats.mp,
     rawResPct,

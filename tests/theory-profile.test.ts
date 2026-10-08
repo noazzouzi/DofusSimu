@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest'
 import { loadDataStore } from '../src/data/node'
 import { listBosses } from '../src/theorycraft/bosses'
 import { bossProfile, DEFAULT_REF_HP } from '../src/theorycraft/bossProfile'
+import { bossFighter } from '../src/theorycraft/fighters'
 import { nodeDungeonSource } from '../src/theorycraft/node'
+import { bossProxyOptions } from '../src/theorycraft/target'
 import type { BossOverrides } from '../src/theorycraft/types'
 
 const data = loadDataStore()
@@ -200,6 +202,52 @@ describe('fiche manuelle', () => {
     expect(pos.phases[0].spellIds).toContain(4010)
     expect(Math.round(pos.phases[0].peakPerTurn)).toBe(916)
     expect(() => bossProfile(data, 3835, { overrides: { version: 1, monsterId: 3534 } })).toThrow(/concerne le monstre 3534/)
+  })
+
+  it('caractéristiques imposées : dérivées recalculées (esquives ← Sagesse, tacle ← Agilité, PV ← Vitalité), cible du proxy comprise', () => {
+    const plain = bossProfile(data, 3534)
+    const ov: BossOverrides = { version: 1, monsterId: 3534, stats: { wisdom: plain.stats.wisdom + 200, agility: plain.stats.agility + 300, vitality: plain.stats.vitality + 1000 } }
+    const p = bossProfile(data, 3534, { overrides: ov })
+    expect(p.stats.apParry - plain.stats.apParry).toBe(20)
+    expect(p.mpParry - plain.mpParry).toBe(20)
+    expect(p.tackle - plain.tackle).toBe(30)
+    expect(p.hp - plain.hp).toBe(1000)
+    // Cible du proxy de stuff (mêmes caractéristiques, combattant de fabrique surchargé) : mêmes dérivées, mêmes PV.
+    const t = bossProxyOptions(p, { role: 'killer' }).options.targets![0]
+    const f = bossFighter(data, 3534, { grade: p.grade, stats: t.stats, states: t.states })
+    expect([f.stats.apParry, f.stats.mpParry, f.stats.tackleBlock, f.maxHp]).toEqual([p.stats.apParry, p.stats.mpParry, p.stats.tackleBlock, p.hp])
+    // Dérivée imposée elle-même : gardée telle quelle.
+    const own = bossProfile(data, 3534, { overrides: { version: 1, monsterId: 3534, stats: { wisdom: plain.stats.wisdom + 200, mpParry: 7 } } })
+    expect(own.mpParry).toBe(7)
+    expect(own.stats.apParry - plain.stats.apParry).toBe(20)
+  })
+})
+
+describe('détail des sorts, mécaniques, hypothèses', () => {
+  it('Croqueleur : sorts qui ne frappent que sous un état du boss (`*E#`) détaillés dans la phase où ils frappent le plus', () => {
+    const p = bossProfile(data, 5664)
+    for (const name of ['Attraction gourmande', 'Total Impwâkt', 'Croustichoc']) {
+      const s = p.spells.find(x => x.name === name)!
+      expect(sum(s.damageByElement) + s.otherDamage, name).toBeGreaterThan(0)
+      expect(s.requiredStates, name).toEqual([])
+      expect(s.damageStates!.length, name).toBeGreaterThan(0)
+      expect(p.phases.some(ph => ph.states.join() === s.damageStates!.join()), name).toBe(true)
+    }
+    // Un sort sans condition d'état du boss garde son détail sans `damageStates` (Merkator).
+    expect(bossProfile(data, 3534).spells.every(s => s.damageStates === undefined)).toBe(true)
+  })
+
+  it('glyphes et pièges du boss : aucun contre « placement » porté par la fiche (Père Ver)', () => {
+    const marks = bossProfile(data, 4726).mechanics.filter(m => m.kind === 'marks')
+    expect(marks.length).toBeGreaterThan(0)
+    for (const m of marks) expect(m.counters ?? []).not.toContain('placement')
+  })
+
+  it('pic par tour présenté comme une estimation (optimiste sur une cible, peut être sous-estimé), pas une borne haute', () => {
+    const a = bossProfile(data, 3384).assumptions.join(' ')
+    expect(a).toMatch(/Pic par tour = meilleure combinaison de sorts sur UNE cible/)
+    expect(a).toMatch(/une estimation, le total peut être sous-estimé/)
+    expect(a).not.toMatch(/Pic par tour = borne haute/)
   })
 })
 

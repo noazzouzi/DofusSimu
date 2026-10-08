@@ -4,7 +4,7 @@
  * séparément depuis src/theorycraft/node.ts.
  */
 export * from './types'
-export { bossGradeFor, listBosses, normalize, resolveBoss, searchBosses, type ListBossesOptions } from './bosses'
+export { bossGradeFor, listBosses, MAX_PLAYERS, normalize, playersForGrade, resolveBoss, searchBosses, type ListBossesOptions } from './bosses'
 export { MECHANIC_KINDS, parseBossOverrides, UTILITY_TAGS } from './overrides'
 export {
   bossProfile,

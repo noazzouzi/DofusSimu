@@ -23,8 +23,15 @@
  *
  * Cibles : `ProxyOptions.targets` (sinon, défaut historique, le mix du Vortex ; `strictTargets` interdit ce défaut) ;
  * chaque cible peut porter des caractéristiques imposées et des états (`ProxyTarget.stats`/`states`, boss « en
- * combat » : résistances effectives, « −50 % à distance », phase), appliqués aux cibles, aux monstres qui frappent et à
+ * combat » : résistances effectives, « −50 % à distance », phase), des sorts retirés et des PV restants
+ * (`excludeSpells`/`hpShare` : fiche manuelle, boss « à mi-vie »), appliqués aux cibles, aux monstres qui frappent et à
  * la cible synthétique de la forme fermée (`applyTargetOverrides`).
+ *
+ * Table DPT : celle de l'IA (`createDptTable`, défaut : nombres du Vortex inchangés) ou, option `theoryTable`
+ * (theorycraft contre un boss), celle du theorycraft (src/theorycraft/hits.ts) — un sort du personnage lançable au
+ * contact et à distance compte dans le meilleur des deux coups (règle du jeu ; la forme fermée lit alors les % dommages
+ * mêlée ou distance de ce coup), et les sorts des monstres qui frappent suivent les conventions de la fiche du boss
+ * (poisons une fois par tour de durée, différés au lancer).
  *
  * Deux évaluations :
  *  - `exact(stats)` : vrais combattants (src/engine/factory) et `DptTable` sur chaque cible du mix (≈ 0,3-0,9 ms) —
@@ -41,6 +48,7 @@ import { critChance } from '../../damage/crit'
 import { expectedApMpRemoved } from '../../damage/apmp'
 import { heal } from '../../damage/heal'
 import { createDptTable, castDamage, isMeleeSpell, lineDamage, spellCritPct, type DptTableImpl } from '../../ai/core/dpt'
+import { CONTACT_TAG, TheoryDptTable, theoryDptTableOf } from '../../theorycraft/hits'
 import { calibrationOf } from '../../ai/core/dpt'
 import { zoneHitsCenter } from '../../ai/core/dpt'
 import { zoneRadius, type DamageLineX, type SpellProfileX } from '../../ai/core/spellProfile'
@@ -103,6 +111,10 @@ export interface ProxyTarget {
    * lançables pour les dégâts reçus, et les lignes conditionnées par l'état de la cible s'appliquent pour le DPT.
    */
   states?: number[]
+  /** Sorts retirés du monstre (ids : sorts exclus ou positionnels d'une fiche manuelle de boss) — dégâts reçus. */
+  excludeSpells?: number[]
+  /** PV restants du monstre en part de ses PV max (boss « à mi-vie » de la fiche : lignes en % de PV du lanceur). */
+  hpShare?: number
 }
 
 /**
@@ -143,6 +155,17 @@ export interface ProxyOptions {
   rangeNeed?: number
   /** Bonus d'initiative (équipe qui vise k = 4, §12.2) : × (1 + w·min(1, ini/5000)). Défaut 0. */
   initiativeWeight?: number
+  /**
+   * Table DPT du theorycraft (src/theorycraft/hits.ts, voir l'en-tête) au lieu de celle de l'IA. Défaut faux (Vortex,
+   * optimiseur : nombres inchangés).
+   */
+  theoryTable?: boolean
+  /**
+   * Personnage joué au contact (table du theorycraft seulement) : à égalité de la cible, un sort lançable au contact et
+   * à distance compte en mêlée — ses % dommages mêlée comptent (étiquette `CONTACT_TAG`, src/theorycraft/hits.ts).
+   * Défaut faux (à distance).
+   */
+  contact?: boolean
 }
 
 export interface ProxyScore {
@@ -341,7 +364,7 @@ export class ProxyContext {
     opts: ProxyOptions = {},
   ) {
     this.engine = proxyEngine(data)
-    this.dptTable = createDptTable(this.engine)
+    this.dptTable = opts.theoryTable ? theoryDptTableOf(this.engine) : createDptTable(this.engine)
     this.exponents = { ...ROLE_EXPONENTS[member.role], ...opts.exponents }
     this.apTarget = opts.apTarget ?? 12
     this.mpTarget = opts.mpTarget ?? 6
@@ -397,6 +420,7 @@ export class ProxyContext {
     })
     this.fighter.id = 0
     if (member.presetId) this.fighter.tags.presetId = member.presetId
+    if (opts.theoryTable && opts.contact) this.fighter.tags[CONTACT_TAG] = true
     bumpRev(this.fighter)
     this.calibration = calibrationOf(this.fighter)
 
@@ -415,20 +439,21 @@ export class ProxyContext {
         const ks = this.fighter.spells[i]
         if (ap === this.apTarget && p.level.rangeBoostable && p.level.range >= 3) needRange = 5
         const crit = p.level.criticalEffects.length ? p.level.critChance : 0
-        for (const line of castLines(this.fighter, synth, p, ks.isWeapon === true)) {
+        const { melee, lines: cast } = this.linesOf(this.fighter, i, synth)
+        for (const { line, weight } of cast) {
           const el = resolveElement(line.element, refStats)
           if (el < 0) continue
           const boosted = line.family === 'boosted' || line.family === 'mp'
-          const w = n * lineWeight(line)
+          const w = n * weight
           lines.push({
             boosted,
             element: el as Element,
             baseN: meanOf(line.min, line.max),
             baseC: meanOf(line.critMin, line.critMax),
             critBase: crit,
-            melee: isMeleeSpell(p),
+            melee,
             weight: w,
-            constant: boosted ? 0 : w * lineDamage(this.fighter, synth, line, spellId, ks.isWeapon === true, isMeleeSpell(p), 1, spellCritPct(this.fighter, p)).mean,
+            constant: boosted ? 0 : w * lineDamage(this.fighter, synth, line, spellId, ks.isWeapon === true, melee, 1, spellCritPct(this.fighter, p)).mean,
           })
         }
       }
@@ -448,15 +473,15 @@ export class ProxyContext {
         const i = mIndex.get(spellId)
         if (i === undefined) continue
         const p = mProfiles[i]
-        const melee = isMeleeSpell(p)
         const crit = spellCritPct(m, p) / 100
         const st = m.stats
+        const { melee, lines: cast } = this.linesOf(m, i, this.fighter)
         const mult = (1 + st.finalDamagePct / 100) * (1 + st.spellDamagePct / 100) * (1 + (melee ? st.meleeDamagePct : st.rangedDamagePct) / 100)
-        for (const line of castLines(m, this.fighter, p, false)) {
+        for (const { line, weight } of cast) {
           const el = resolveElement(line.element, st)
           if (el < 0) continue
           const boosted = line.family === 'boosted' || line.family === 'mp'
-          const w = this.incWeights[mi] * n * lineWeight(line)
+          const w = this.incWeights[mi] * n * weight
           const power = Math.max(0, st.power + st[ELEMENT_MAIN_STAT[el as Element]] + (st.spellPower ?? 0))
           const fixed = st[ELEMENT_FIXED_DAMAGE[el as Element]] + st.damage
           const inLine: InLine = {
@@ -479,6 +504,17 @@ export class ProxyContext {
     const zero = copyStats(refStats)
     for (const k of DEFENSE_KEYS) zero[k] = 0
     this.inc0Surrogate = this.incomingSurrogate(zero)
+  }
+
+  /**
+   * Lignes retenues d'un lancer du i-ème sort de `a` sur `d` et leur poids, et coup (mêlée ?) : table du theorycraft
+   * (`TheoryDptTable.castLines` : placement et coup de son `perCast`), sinon règle historique (`castLines`, portée ≤ 1
+   * = mêlée, heuristiques du sac à dos).
+   */
+  private linesOf(a: Fighter, i: number, d: Fighter): { melee: boolean; lines: { line: DamageLineX; weight: number }[] } {
+    if (this.dptTable instanceof TheoryDptTable) return this.dptTable.castLines(a, i, d)
+    const p = this.dptTable.profiles.ofFighter(a)[i]
+    return { melee: isMeleeSpell(p), lines: castLines(a, d, p, a.spells[i].isWeapon === true).map(line => ({ line, weight: lineWeight(line) })) }
   }
 
   // ── rotations utilitaires (soins, retraits) ──
@@ -666,6 +702,17 @@ export class ProxyContext {
     this.setFighter(s, maxHp)
     const m = this.incTargets[monster]
     return this.dptTable.turn(m, this.fighter, Math.max(0, ap ?? m.stats.ap), 'next').mean
+  }
+
+  /**
+   * Dégâts reçus par tour SANS défense (résistances, résistances fixes, critique, mêlée/distance et sorts à 0) de chaque
+   * monstre qui frappe (ordre de `incTargets`, poids NON appliqués), personnage de `maxHp` PV (lignes en % de ses PV ;
+   * défaut : PV de référence) — cohérence avec le profil offensif d'une fiche de boss.
+   */
+  incomingUndefended(maxHp = this.refMaxHp): number[] {
+    const zero = copyStats(this.refStats)
+    for (const k of DEFENSE_KEYS) zero[k] = 0
+    return this.incTargets.map((_, i) => this.incomingFrom(zero, maxHp, i))
   }
 
   /** Dommages de poussée reçus par tour (0 sans modèle de poussée) pour des dégâts sans défense `inc0`. */

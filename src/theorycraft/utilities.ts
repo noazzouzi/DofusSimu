@@ -93,6 +93,7 @@ import { createPlayerFighter } from '../engine/factory'
 import { casterPassesMask, compileTargetMask, matchesTargetMask } from '../engine/targetMask'
 import type { Fighter } from '../engine/types'
 import { theoryEngine } from './fighters'
+import { possibleHits } from './hits'
 import type { BossProfile, ClassUtilities, Confidence, DamageShape, MechanicKind, Relevance, UtilityKey, UtilityTag, UtilityValue } from './types'
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -619,9 +620,11 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
     if (dmgLines.length && r.p.apCost > 0) {
       if (dmgLines.some(l => l.dotTurns > 0)) indirect = true
       if (dmgLines.some(l => zoneRadius(l.zone) > 0 && !l.aroundCaster)) zoneDamage = true
+      // Coups possibles (règle du jeu, hits.ts) : un sort lançable au contact et à distance compte pour les deux styles.
       const perAp = r.p.baseDamage / r.p.apCost
-      if (r.p.maxRange <= 1) meleeBest = Math.max(meleeBest, perAp)
-      else rangeBest = Math.max(rangeBest, perAp)
+      const hits = possibleHits(r.p)
+      if (hits.melee) meleeBest = Math.max(meleeBest, perAp)
+      if (hits.range) rangeBest = Math.max(rangeBest, perAp)
     }
     for (const node of walks[ri]) {
       const shared = node.depth > 0 && sharedLevels.has(node.level)
@@ -985,12 +988,6 @@ export const MECHANIC_RELEVANCE: Readonly<Record<MechanicKind, { counters: Utili
  */
 export const DAMAGE_TAGS: ReadonlySet<UtilityTag> = new Set<UtilityTag>(['melee', 'range', 'zone', 'burst', 'indirect-damage', 'push-damage', 'multi-element'])
 
-/**
- * Réponses portées par les mécaniques des DONNÉES (bossProfile.ts) que la pertinence n'accepte pas : déplacer le boss
- * (« placement ») ne l'empêche pas de poser ses glyphes et pièges, ni n'aide l'équipe à les éviter.
- */
-const REJECTED_DATA_COUNTERS: Readonly<Partial<Record<MechanicKind, readonly UtilityTag[]>>> = { marks: ['placement'] }
-
 /** Seuil (en %) sous lequel une mécanique « % dommages finaux » du boss est jugée anecdotique pour la pertinence. */
 export const FINAL_DAMAGE_MIN_PCT = 10
 
@@ -1028,8 +1025,7 @@ export function relevance(profile: BossProfile, utilities: ClassUtilities, opts:
   for (const m of profile.mechanics) {
     if (m.kind === 'final-damage' && summaryMagnitude(m.summary) < FINAL_DAMAGE_MIN_PCT) continue
     const rel = MECHANIC_RELEVANCE[m.kind] ?? MECHANIC_RELEVANCE.other
-    const rejected = m.source === 'data' ? (REJECTED_DATA_COUNTERS[m.kind] ?? []) : []
-    const counters = [...new Set([...rel.counters, ...(m.counters ?? []).filter(t => !rejected.includes(t))])]
+    const counters = [...new Set([...rel.counters, ...(m.counters ?? [])])]
     // Retrait puni : la mécanique dit quelle réserve est punie (déclencheur MPA ou APA) ; sinon PA et PM.
     const punishes = m.kind === 'punished-removal' && m.punishes?.length ? [...m.punishes] : [...new Set([...rel.punishes, ...(m.punishes ?? [])])]
     for (const t of counters) if (tags.has(t) && !punishes.includes(t) && (hits || !DAMAGE_TAGS.has(t))) add(atouts, `${cap(UTILITY_TAG_LABELS[t])} — ${rel.note}.`)
