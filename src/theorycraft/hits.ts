@@ -8,9 +8,10 @@
  * sort de PO 1 à 8 y est toujours « à distance » — il vaudrait 0 contre une phase vulnérable seulement en mêlée (Père
  * Ver) et subirait le « −50 % à distance » de Merkator. Ce module, réservé au theorycraft (l'IA du Vortex garde sa
  * règle) :
- *  - `possibleHits(profil)` : coups possibles d'un sort sur un ennemi (même règle que le calculateur `degats`) — mêlée
- *    si PO min ≤ 1 ≤ PO max ou si une ligne centrée sur le lanceur touche une case adjacente ; distance si PO max ≥ 2
- *    ou si une telle ligne touche une case à 2 cases ou plus ; aucun ennemi atteignable : règle de l'IA ;
+ *  - `possibleHits(profil, keep?)` : coups possibles d'un sort sur un ennemi (fonction partagée avec le calculateur
+ *    `degats` de la CLI, qui restreint `keep` aux lignes touchant sa cible) — mêlée si PO min ≤ 1 ≤ PO max ou si une
+ *    ligne centrée sur le lanceur touche une case adjacente ; distance si PO max ≥ 2 ou si une telle ligne touche une
+ *    case à 2 cases ou plus ; aucun ennemi atteignable : règle de l'IA ;
  *  - `TheoryDptTable` (sous-classe du sac à dos, `theoryDptTableOf(moteur)`) :
  *     · PERSONNAGE : un sort lançable au contact ET à distance est évalué dans les deux cas et le coup retenu est celui
  *       que la CIBLE subit le mieux (`meleeResPct`/`rangedResPct`, « dommages subis » mêlée/distance : « −50 % à
@@ -56,23 +57,31 @@ const HITS = new WeakMap<SpellProfileX, { melee: boolean; range: boolean }>()
  * Coups possibles d'un sort sur un ennemi (voir l'en-tête). Cible sur la case d'impact : distance = PO min..max ;
  * lignes centrées sur le lanceur (portée 0, sous-sorts « autour du lanceur ») : distances des cases de leur zone
  * (`zoneCells`). Aucun ennemi atteignable : heuristique de l'IA (`isMeleeSpell`, portée ≤ 1).
+ *
+ * `keep` : lignes centrées sur le lanceur prises en compte (défaut : celles qui touchent un ennemi, résultat mis en
+ * cache par profil ; le calculateur `degats` de la CLI : celles qui touchent SA cible, masques de cible compris — non
+ * mis en cache). Même règle du jeu dans les deux cas.
  */
-export function possibleHits(prof: SpellProfileX): { melee: boolean; range: boolean } {
+export function possibleHits(prof: SpellProfileX, keep?: (l: DamageLineX) => boolean): { melee: boolean; range: boolean } {
+  if (keep) return computeHits(prof, keep)
   let r = HITS.get(prof)
-  if (r) return r
+  if (!r) HITS.set(prof, (r = computeHits(prof, l => l.sides.enemy)))
+  return r
+}
+
+function computeHits(prof: SpellProfileX, keep: (l: DamageLineX) => boolean): { melee: boolean; range: boolean } {
   let melee = prof.minRange <= 1 && prof.maxRange >= 1
   let range = prof.maxRange >= 2
   for (const l of prof.damage) {
-    if (!l.sides.enemy || !(l.aroundCaster || prof.maxRange === 0)) continue
+    if (!keep(l) || !(l.aroundCaster || prof.maxRange === 0)) continue
     for (const cell of zoneCells(l.zone, PROBE_CELL, PROBE_CELL)) {
       const d = distance(PROBE_CELL, cell)
       if (d === 1) melee = true
       else if (d >= 2) range = true
     }
   }
-  r = !melee && !range ? (isMeleeSpell(prof) ? { melee: true, range: false } : { melee: false, range: true }) : { melee, range }
-  HITS.set(prof, r)
-  return r
+  if (!melee && !range) return isMeleeSpell(prof) ? { melee: true, range: false } : { melee: false, range: true }
+  return { melee, range }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------

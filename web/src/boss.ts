@@ -5,7 +5,8 @@
  *
  *  - recherche de boss avec suggestions (nom du boss ou du donjon, sans accents ni casse : `searchBosses`, le même que
  *    la CLI), Expéditions incluses sur demande, liste complète tant qu'aucun boss n'est choisi ;
- *  - réglage du nombre de joueurs (1 à 8, grade déduit) ou du grade ;
+ *  - réglage du nombre de joueurs (1 à 8, grade déduit) ou du grade (composition de l'onglet Classes : grade + 3
+ *    personnages, `playersForGrade`, comme la CLI) ;
  *  - onglets « Fiche » (web/src/boss-sheet.ts), « Classes » (web/src/boss-classes.ts : stuffs des presets, ou
  *    optimisés contre le boss à la demande) et « Stuff » (web/src/boss-stuff.ts : meilleur stuff d'un preset ou d'un
  *    lien RoxxSolver).
@@ -18,7 +19,7 @@
  * de sa demande : un formulaire changé depuis (preset, bouton « Stuff » de l'onglet Classes) le grise, avec la note
  * « Résultat pour <preset> — … relancez le calcul ».
  */
-import { bossGradeFor, searchBosses } from '@/theorycraft/bosses'
+import { bossGradeFor, MAX_PLAYERS, playersForGrade, searchBosses } from '@/theorycraft/bosses'
 import { theoryApi, type BossEntry, type BossProfileDetail, type ClassRanking, type Scale, type StuffVsBossResult, type TheoryPreset } from './boss-api'
 import { defaultClassesSort, renderClasses, type ClassesUi } from './boss-classes'
 import { renderSheet } from './boss-sheet'
@@ -590,11 +591,13 @@ export class BossView {
     // Nombre de grades inconnu tant que l'index n'est pas chargé : 5 (donjons modulaires), corrigé à son arrivée.
     const gradeCount = e?.gradeCount ?? 5
     const autoGrade = bossGradeFor(this.players, gradeCount)
-    // Grade imposé : le nombre de joueurs ne s'applique plus (« — ») ; en choisir un revient au grade déduit.
+    // Grade imposé : le nombre de joueurs ne fixe plus le grade (« — ») ; la composition de l'onglet Classes compte
+    // alors G + 3 personnages (`playersForGrade`, comme la CLI). En choisir un revient au grade déduit.
     const imposed = this.grade !== null
+    const team = this.grade !== null ? playersForGrade(this.grade) : this.players
     const players =
-      (imposed ? '<option value="" selected>—</option>' : '') +
-      Array.from({ length: 8 }, (_, i) => i + 1)
+      (imposed ? `<option value="" selected>— (composition de ${team})</option>` : '') +
+      Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1)
         .map(n => `<option value="${n}"${!imposed && n === this.players ? ' selected' : ''}>${n} joueur${n > 1 ? 's' : ''}</option>`)
         .join('')
     const grades =
@@ -605,7 +608,7 @@ export class BossView {
     const facts = [
       d ? `${esc(d.name)} · donjon niv. ${d.level}` : '',
       p ? `boss niv. ${p.level}` : e ? `boss niv. ${e.bossLevel}` : '',
-      p ? `grade ${p.grade}${p.players !== undefined ? ` (${p.players} joueur${p.players > 1 ? 's' : ''})` : ' (imposé)'}` : '',
+      p ? `grade ${p.grade}${p.players !== undefined ? ` (${p.players} joueur${p.players > 1 ? 's' : ''})` : ` (imposé, composition de ${playersForGrade(p.grade)})`}` : '',
       e?.isExpedition ? 'Expédition' : '',
     ].filter(Boolean)
     return `<section class="panel bv-hero">
@@ -620,7 +623,9 @@ export class BossView {
         }<span class="bv-chip">id ${this.id}</span></p>
       </div>
       <div class="bv-scale">
-        <label class="bv-field"><span>Joueurs</span><span class="select-wrap"><select data-act="players" aria-label="Nombre de joueurs"${imposed ? ' title="Grade imposé : le nombre de joueurs ne s’applique pas. En choisir un revient au grade déduit des joueurs."' : ''}>${players}</select></span></label>
+        <label class="bv-field"><span>Joueurs</span><span class="select-wrap"><select data-act="players" aria-label="Nombre de joueurs"${
+          imposed ? ` title="Grade imposé : le nombre de joueurs ne fixe plus le grade ; la composition de l’onglet Classes compte grade + 3 personnages (${team}), comme la ligne de commande. Choisir un nombre de joueurs revient au grade déduit des joueurs."` : ''
+        }>${players}</select></span></label>
         <label class="bv-field"><span>Grade</span><span class="select-wrap"><select data-act="grade" aria-label="Grade du boss">${grades}</select></span></label>
       </div>
     </section>`

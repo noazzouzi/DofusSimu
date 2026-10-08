@@ -1,9 +1,10 @@
 /**
  * Theorycraft — coups au contact ou à distance et table DPT du theorycraft (src/theorycraft/hits.ts) : règle du jeu (un
- * coup est de mêlée dès que la cible est adjacente, quelle que soit la portée du sort), choix du coup par la cible
- * (Merkator « −50 % à distance », Père Ver vulnérable en mêlée seule), style du personnage à égalité, table de l'IA
- * inchangée, décomposition d'un lancer (part immédiate, poisons : cumul du niveau qui porte l'effet), conventions de la
- * fiche du boss pour les sorts d'un monstre (Klime : poison compté une fois par tour de durée).
+ * coup est de mêlée dès que la cible est adjacente, quelle que soit la portée du sort ; zone autour du lanceur, lignes
+ * retenues par `keep` comme le calculateur `degats`), choix du coup par la cible (Merkator « −50 % à distance », Père
+ * Ver vulnérable en mêlée seule), style du personnage à égalité, table de l'IA inchangée, décomposition d'un lancer
+ * (part immédiate, poisons : cumul du niveau qui porte l'effet), conventions de la fiche du boss pour les sorts d'un
+ * monstre (Klime : poison compté une fois par tour de durée).
  */
 import { describe, expect, it } from 'vitest'
 import { castDamage, createDptTable } from '../src/ai/core/dpt'
@@ -27,6 +28,7 @@ const FLECHE_VAGABONDE = 32455
 const FLECHE_TYRANNIQUE = 32448
 const FLECHE_DEVORANTE = 32446
 const COLERE_DE_IOP = 13124
+const TERRE_DU_MILIEU = 23738
 
 function player(presetId: string, contact = false): Fighter {
   const a = playerFighterFromMember(data, presetMember(getPreset(presetId), data))
@@ -53,6 +55,16 @@ describe('coups possibles (règle du jeu)', () => {
     expect(possibleHits(profileOf(cra, FLECHE_TYRANNIQUE))).toEqual({ melee: false, range: true })
     expect(possibleHits(profileOf(cra, FLECHE_DEVORANTE))).toEqual({ melee: true, range: true })
     expect(possibleHits(profileOf(player('iop_terre_burst'), COLERE_DE_IOP))).toEqual({ melee: true, range: false })
+  })
+
+  it('zone autour du lanceur (PO 0) : distances des cases de la zone ; `keep` restreint les lignes comptées (calculateur `degats`)', () => {
+    const p = profileOf(player('forgelance_zone_terre'), TERRE_DU_MILIEU)
+    expect([p.minRange, p.maxRange]).toEqual([0, 0])
+    expect(possibleHits(p)).toEqual({ melee: true, range: true })
+    // Défaut = lignes qui touchent un ennemi ; même résultat avec ce filtre explicite (non mis en cache).
+    expect(possibleHits(p, l => l.sides.enemy)).toEqual(possibleHits(p))
+    // Aucune ligne retenue : portée seule, puis règle de l'IA (portée ≤ 1 ⇒ mêlée).
+    expect(possibleHits(p, () => false)).toEqual({ melee: true, range: false })
   })
 })
 

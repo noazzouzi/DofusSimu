@@ -38,7 +38,7 @@ export function axisValue(axis: RankingAxis, v: number): string {
 function axisNote(axis: RankingAxis, r: ClassRanking): string {
   switch (axis) {
     case 'damage':
-      return 'Valeur : DPT soutenu analytique (classement). « Étalonné » = × étalonnage moteur du preset (contrôle, data/ai/calibration.json).'
+      return 'Valeur : DPT soutenu analytique (classement). « Étal. preset » = facteur d’étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s’applique pas au DPT soutenu.'
     case 'survival':
       return r.stuff === 'optimized'
         ? 'PV effectifs du stuff seul (stuff optimisé de chaque preset) ; le kit défensif de la classe compte dans l’axe Soin.'
@@ -67,8 +67,15 @@ function detailColumns(axis: RankingAxis): Column<Row>[] {
   switch (axis) {
     case 'damage':
       return [
-        { key: 'cal', label: 'Étalonné', num: true, title: 'DPT × étalonnage moteur du preset (contrôle)', sort: r => r.e.dpt.calibrated, cell: r => `${fmtNum(r.e.dpt.calibrated)} <small class="bv-muted">×${fmtNum(r.e.dpt.calibration, 2)}</small>` },
-        { key: 'burst', label: 'Rafale', num: true, title: 'Meilleur tour isolé (relances ignorées)', sort: r => r.e.dpt.burst, cell: r => fmtNum(r.e.dpt.burst) },
+        {
+          key: 'cal',
+          label: 'Étal. preset',
+          num: true,
+          title: 'Facteur d’étalonnage du preset (data/ai/calibration.json, contre un Buboxor) : indicatif, il ne s’applique pas au DPT soutenu',
+          sort: r => r.e.dpt.calibration,
+          cell: r => `×${fmtNum(r.e.dpt.calibration, 2)}`,
+        },
+        { key: 'burst', label: 'Rafale', num: true, title: 'Premier tour d’un combat (relances et poisons actifs ignorés ; poisons comptés pour toute leur durée)', sort: r => r.e.dpt.burst, cell: r => fmtNum(r.e.dpt.burst) },
         { key: 'el', label: 'Élément (rés.)', sort: r => r.e.elementMatch.resPct, cell: r => elementChip(r.e.elementMatch.element, fmtPct(r.e.elementMatch.resPct)) },
         { key: 'stance', label: 'Posture', sort: r => r.e.stance.name, cell: r => (r.e.stance.id === 'base' ? '<span class="bv-muted">—</span>' : esc(r.e.stance.name)) },
       ]
