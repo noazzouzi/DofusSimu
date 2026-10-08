@@ -4,7 +4,7 @@
  * stuffs optimisés), meilleur stuff objet par objet (icônes DofusDB, repli hors ligne sur l'initiale de l'emplacement),
  * objets changés, autres stuffs du top, comparaison des éléments, équivalences des caractéristiques, DPT par sort,
  * hypothèses et avertissements ; style de jeu du personnage (au contact ou à distance) et son explication quand il
- * diffère de celui du preset. HTML seulement : rien n'est recalculé ici.
+ * diffère de celui du preset ou que la part mesurée le contredit. HTML seulement : rien n'est recalculé ici.
  */
 import type { ExpProfile, StuffVsBossResult, TheoryPreset } from './boss-api'
 import type { StuffEvaluation, StuffItemLine } from '@/theorycraft/types'
@@ -298,7 +298,7 @@ export function renderStuffResult(r: StuffVsBossResult, sort: SortState | undefi
   return `<p class="bv-lead">${esc(c.className)} niveau ${c.level} · preset <code>${esc(c.presetId)}</code> (${esc(c.presetLabel)}) · rôle ${esc(c.roleLabel)} · ${esc(c.elementLabel)} · ${esc(
     c.style.label,
   )}${c.input !== 'preset' ? ` · départ : ${c.input === 'roxx' ? 'votre lien RoxxSolver' : 'votre build'}` : ''}</p>
-    ${c.style.reason ? `<p class="bv-note">Joué ${esc(c.style.label)} : ${esc(c.style.reason)} — ${r.options.rangeNeed > 0 ? `${r.options.rangeNeed} PO visées` : 'PO non exigée'}${c.style.contact ? ', % dommages mêlée valorisés' : ''}.</p>` : ''}
+    ${c.style.reason ? `<p class="bv-note">Joué ${esc(c.style.label)} : ${esc(c.style.reason)} — ${r.options.rangeNeed > 0 ? `${r.options.rangeNeed} PO visées` : 'PO non exigée'}${c.style.contact && !c.style.mismatch ? ', % dommages mêlée valorisés' : ''}.</p>` : ''}
     ${best(r, icons)}
     ${comparison(r, sort)}
     ${others(r, icons)}

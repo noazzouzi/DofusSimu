@@ -39,7 +39,7 @@ export function axisValue(axis: RankingAxis, v: number): string {
 function axisNote(axis: RankingAxis, r: ClassRanking): string {
   switch (axis) {
     case 'damage':
-      return 'Valeur : DPT soutenu analytique (classement). « Étal. preset » = facteur d’étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s’applique pas au DPT soutenu. « Jeu » : style retenu contre ce boss (au contact : PO non exigée) et part du DPT soutenu au contact ; * = différent du style du preset.'
+      return 'Valeur : DPT soutenu analytique (classement). « Étal. preset » = facteur d’étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s’applique pas au DPT soutenu. « Jeu » : style retenu contre ce boss (au contact : PO non exigée) et part du DPT soutenu au contact (— : aucun dégât, style du preset) ; * = différent du style du preset ; ! = contredit par cette part (la majorité du DPT passe par des coups de l’autre style, voir les hypothèses).'
     case 'survival':
       return r.stuff === 'optimized'
         ? 'PV effectifs du stuff seul (stuff optimisé de chaque preset) ; le kit défensif de la classe compte dans l’axe Soin.'
@@ -86,7 +86,7 @@ function detailColumns(axis: RankingAxis, ranking: ClassRanking): Column<Row>[] 
         {
           key: 'style',
           label: 'Jeu (au contact)',
-          title: 'Style retenu contre ce boss (au contact : PO non exigée par l’optimiseur) et part du DPT soutenu portée par des coups au contact ; * = différent du style du preset',
+          title: 'Style retenu contre ce boss (au contact : PO non exigée par l’optimiseur) et part du DPT soutenu portée par des coups au contact ; * = différent du style du preset ; ! = contredit par cette part',
           sort: r => r.e.style.contactShare ?? (r.e.style.contact ? 1 : 0),
           cell: r => `<span${r.e.style.reason ? ` title="${attr(`Joué ${r.e.style.label} : ${r.e.style.reason}`)}"` : ''}>${styleText(r.e)}</span>`,
         },
@@ -129,10 +129,13 @@ function detailColumns(axis: RankingAxis, ranking: ClassRanking): Column<Row>[] 
   }
 }
 
-/** Style de jeu (« contact* (100 %) ») : « * » si différent de celui du preset, part du DPT soutenu au contact (comme la CLI). */
+/**
+ * Style de jeu (« contact* 100 % ») : « * » si différent de celui du preset, « ! » si la part mesurée le contredit, part
+ * du DPT soutenu au contact (« — » sans dégâts), comme la CLI.
+ */
 function styleText(e: PresetEvaluation): string {
   const st = e.style
-  return `${st.contact ? 'contact' : 'distance'}${st.contact !== st.presetContact ? '*' : ''}${st.contactShare !== undefined ? ` <small class="bv-sub">${fmtPct(st.contactShare * 100)}</small>` : ''}`
+  return `${st.contact ? 'contact' : 'distance'}${st.contact !== st.presetContact ? '*' : ''}${st.mismatch ? '!' : ''} <small class="bv-sub">${st.contactShare !== undefined ? fmtPct(st.contactShare * 100) : '—'}</small>`
 }
 
 /** Détail déplié d'un preset : atouts, limites, confiance, avertissements. */

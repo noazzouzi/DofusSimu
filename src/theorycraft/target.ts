@@ -28,7 +28,9 @@
  *    coups au contact (`contactShare` de rotation.ts, mesurée par l'appelant avec la table du theorycraft : Crâ Terre
  *    mono contre Merkator, « −50 % à distance » : 100 %) ; sinon à distance. Le style décidé pilote `melee` ci-dessus
  *    (PO visée, étiquette `contact`) et les libellés ; une phrase d'explication (`PlayStyle.reason`) accompagne un style
- *    différent de celui du preset (`contactEdge` : ce qui fait mieux subir au boss les coups au contact) ;
+ *    différent de celui du preset (`contactEdge` : ce qui fait mieux subir au boss les coups au contact) ou contredit
+ *    par la part mesurée (`PlayStyle.mismatch` : preset de mêlée contre un boss qui subit mieux les coups à distance,
+ *    `rangedEdge` — il reste au contact —, choix explicite) ;
  *  - `removalVoid` : réserve (PM, PA) dont le retrait ne compte pas contre ce boss (puni, ou réserve absente) ;
  *  - `incomingCoherence` : tour reçu du proxy SANS défense comparé au pic de la fiche (mêmes phases, mêmes poids, PV de
  *    référence de la fiche) ; au-delà de `INCOMING_GAP`, avertissement chiffré (les deux modèles comptent encore
@@ -79,25 +81,49 @@ export function playsMelee(profile: BossProfile, presetId: string, override?: bo
 }
 
 /**
- * Ce qui fait subir au boss les coups au contact mieux que ceux à distance (texte : « −50 % à distance », phases
+ * Ce qui fait subir au boss les coups `contact` (au contact, sinon à distance) mieux que les autres (texte : réduction
+ * de l'autre côté, phases invulnérables de l'autre côté), sinon undefined (le boss ne les distingue pas).
+ */
+function hitEdge(profile: BossProfile, contact: boolean): string | undefined {
+  const ranged = profile.stats.rangedResPct ?? 0
+  const melee = profile.stats.meleeResPct ?? 0
+  const [worse, better] = contact ? [ranged, melee] : [melee, ranged]
+  const [worseHit, betterHit] = contact ? ['à distance', 'au contact'] : ['au contact', 'à distance']
+  const parts: string[] = []
+  if (worse > better) parts.push(better ? `${fmt(worse)} % de réduction ${worseHit} contre ${fmt(better)} % ${betterHit}` : `−${fmt(worse)} % ${worseHit}`)
+  const only = profile.phases.filter(p => p.weight > 0 && p.vulnerable === (contact ? 'melee' : 'range'))
+  if (only.length) parts.push(`invulnérable ${worseHit} en phase ${only.map(p => `« ${p.name} »`).join(', ')}`)
+  return parts.length ? parts.join(' ; ') : undefined
+}
+
+/**
+ * Ce qui fait subir au boss les coups au contact mieux que ceux à distance (« −50 % à distance » de Merkator, phases
  * invulnérables à distance), sinon undefined (le boss ne les distingue pas).
  */
 export function contactEdge(profile: BossProfile): string | undefined {
-  const parts: string[] = []
-  const ranged = profile.stats.rangedResPct ?? 0
-  const melee = profile.stats.meleeResPct ?? 0
-  if (ranged > melee) parts.push(melee ? `${fmt(ranged)} % de réduction à distance contre ${fmt(melee)} % au contact` : `−${fmt(ranged)} % à distance`)
-  const only = profile.phases.filter(p => p.weight > 0 && p.vulnerable === 'melee')
-  if (only.length) parts.push(`invulnérable à distance en phase ${only.map(p => `« ${p.name} »`).join(', ')}`)
-  return parts.length ? parts.join(' ; ') : undefined
+  return hitEdge(profile, true)
+}
+
+/**
+ * Ce qui fait subir au boss les coups à distance mieux que ceux au contact (« −50 % au contact » de Hanshi, phases
+ * invulnérables au contact), sinon undefined (symétrique de `contactEdge`).
+ */
+export function rangedEdge(profile: BossProfile): string | undefined {
+  return hitEdge(profile, false)
 }
 
 /**
  * Style de jeu d'un preset contre ce boss (voir l'en-tête) : `explicit` (option `melee`) d'abord ; sinon au contact si
  * le boss n'est attaquable qu'au contact, si le preset est un preset de mêlée ou si `shape.contactShare` (part du DPT
- * soutenu portée par des coups au contact, `contactShare` de rotation.ts, mesurée avec le style de `playsMelee`)
- * atteint `CONTACT_SHARE` ; sinon à distance. `presetId` : preset de base (`extends` d'un preset dérivé). Règle
- * unique de `classes` et `stuff`.
+ * soutenu portée par des coups au contact, `contactShare` de rotation.ts, mesurée avec le style de `playsMelee` ou le
+ * choix explicite ; absente sans dégâts) atteint `CONTACT_SHARE` ; sinon à distance. `presetId` : preset de base
+ * (`extends` d'un preset dérivé). Règle unique de `classes` et `stuff`.
+ *
+ * `reason` explique un style différent de celui du preset, ou un style contredit par la part mesurée (`mismatch`) :
+ * preset de mêlée dont la majorité du DPT passe par des coups à distance (Hanshi, « −50 % au contact » : le preset
+ * reste au contact, règle de la décision), choix explicite contraire à la part mesurée. Dans ces deux cas, DPT et
+ * équivalences comptent toujours le coup que le boss subit le mieux (hits.ts) : le style ne fixe que la PO visée et le
+ * coup retenu à égalité.
  */
 export function resolveStyle(profile: BossProfile, presetId: string, shape?: { contactShare?: number }, explicit?: boolean): PlayStyle {
   const presetContact = MELEE_PRESET.test(presetId)
@@ -109,8 +135,17 @@ export function resolveStyle(profile: BossProfile, presetId: string, shape?: { c
   else if (presetContact) [contact, source] = [true, 'preset']
   else if (share !== undefined && share >= CONTACT_SHARE) [contact, source] = [true, 'dpt']
   else [contact, source] = [false, 'preset']
+  // La majorité du DPT mesuré passe par des coups de l'autre style : le style décidé reste, la sortie le dit.
+  const mismatch = share !== undefined && (contact ? share < CONTACT_SHARE : share >= CONTACT_SHARE)
   let reason: string | undefined
-  if (contact !== presetContact) {
+  if (mismatch) {
+    const why = source === 'explicit' ? 'choix explicite (option melee)' : source === 'boss' ? 'le boss n\'est attaquable qu\'au contact' : contact ? 'preset de mêlée' : 'preset à distance'
+    const edge = contact ? rangedEdge(profile) : contactEdge(profile)
+    const counted = contact
+      ? `mais seulement ${fmt(share * 100)} % de son DPT soutenu contre ce boss passe par des coups au contact${edge ? `, le boss subissant mieux les coups à distance (${edge})` : ' (sorts qui ne frappent qu\'à distance)'} : DPT et équivalences comptent ces coups à distance (% dommages distance)`
+      : `mais ${fmt(share * 100)} % de son DPT soutenu contre ce boss passe par des coups au contact${edge ? `, que le boss subit mieux (${edge})` : ' (sorts qui ne frappent qu\'au contact)'} : DPT et équivalences comptent ces coups au contact (% dommages mêlée)`
+    reason = `${why}, ${counted}${source === 'explicit' ? ' — le choix explicite ne fixe que la PO visée et le coup retenu à égalité' : ''}`
+  } else if (contact !== presetContact) {
     if (source === 'explicit') reason = 'choix explicite (option melee)'
     else if (source === 'boss') reason = 'le boss n\'est attaquable qu\'au contact'
     else if (source === 'dpt') {
@@ -118,7 +153,15 @@ export function resolveStyle(profile: BossProfile, presetId: string, shape?: { c
       reason = `${fmt(share! * 100)} % de son DPT soutenu contre ce boss passe par des coups au contact${edge ? `, que le boss subit mieux (${edge})` : ' (sorts qui ne frappent qu\'au contact)'}`
     }
   }
-  return { contact, label: contact ? 'au contact' : 'à distance', presetContact, source, ...(share !== undefined ? { contactShare: share } : {}), ...(reason ? { reason } : {}) }
+  return {
+    contact,
+    label: contact ? 'au contact' : 'à distance',
+    presetContact,
+    source,
+    ...(share !== undefined ? { contactShare: share } : {}),
+    ...(reason ? { reason } : {}),
+    ...(mismatch ? { mismatch } : {}),
+  }
 }
 
 /** Mécanique « retrait puni » qui vise cette réserve. */

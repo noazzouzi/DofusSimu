@@ -3,7 +3,7 @@
  * contre ce boss ? » (`StuffVsBossResult`, src/theorycraft/stuff.ts ; docs/design/theorycraft.md §1.9).
  *
  * Sections : boss et personnage (style de jeu, `character.style`, et son explication quand il diffère de celui du
- * preset) ; tableau comparatif (départ, stuff du preset, génériques, puis optimisés : score de
+ * preset ou que la part mesurée le contredit) ; tableau comparatif (départ, stuff du preset, génériques, puis optimisés : score de
  * classement — logJ du proxy ou logJ soutenu, `ranking` —, DPT soutenu, DPT du proxy, PV, PV effectifs, dégâts reçus,
  * PA/PM/PO, pénalité de l'objectif) ; meilleur stuff détaillé (posture, dégâts reçus par
  * élément, objets par emplacement avec forgemagie, points et parchemins, objets changés, DPT par sort) ; autres stuffs
@@ -99,8 +99,12 @@ export function formatStuffVsBoss(r: StuffVsBossResult, opts: FormatStuffOptions
   out.push(
     `  Personnage : ${c.className} niveau ${c.level}, preset ${c.presetId} (${c.presetLabel}), rôle ${c.roleLabel}, élément ${c.elementLabel}, ${c.style.label}${c.input !== 'preset' ? ` — stuff fourni (${c.input === 'roxx' ? 'lien RoxxSolver' : 'build'})` : ''}`,
   )
-  // Style différent de celui du preset (Crâ contre Merkator : joué au contact) : pourquoi, et ce qui en dépend.
-  if (c.style.reason) out.push(`  Jeu : joué ${c.style.label} : ${c.style.reason} — ${r.options.rangeNeed > 0 ? `${r.options.rangeNeed} PO visées` : 'PO non exigée'}${c.style.contact ? ', % dommages mêlée valorisés' : ''}.`)
+  // Style différent de celui du preset (Crâ contre Merkator : joué au contact) ou contredit par la part mesurée (Iop
+  // Terre contre Hanshi) : pourquoi, et ce qui en dépend.
+  if (c.style.reason)
+    out.push(
+      `  Jeu : joué ${c.style.label} : ${c.style.reason} — ${r.options.rangeNeed > 0 ? `${r.options.rangeNeed} PO visées` : 'PO non exigée'}${c.style.contact && !c.style.mismatch ? ', % dommages mêlée valorisés' : ''}.`,
+    )
   out.push('  Les classements valent plus que les valeurs absolues (voir les hypothèses).')
   out.push('')
 

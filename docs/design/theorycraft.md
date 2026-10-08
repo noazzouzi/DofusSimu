@@ -210,7 +210,7 @@ aux §0-§5.*
 | `hits.ts` | Coups au contact ou à distance : `possibleHits` (règle du jeu, mêlée ⇔ cible adjacente ; fonction partagée avec le calculateur `degats`, filtre `keep` de ses lignes), `TheoryDptTable` (`theoryDptTableOf`) : sac à dos du theorycraft dont `perCast` retient, pour un personnage, le coup que la cible subit le mieux (style du personnage à égalité, `CONTACT_TAG`) et, pour un monstre, les conventions de la fiche ; `split` (part immédiate et poisons d'un lancer), `castLines` (forme fermée du proxy). L'IA du Vortex garde `isMeleeSpell`. | oui |
 | `rotation.ts` | `sustainedDamage` : DPT soutenu tour par tour (`perTurn`, `mean`, `burst`, `casts`, `steady`, `period`, `steadyBySpell`) ; poisons suivis d'un tour à l'autre avec la table du theorycraft ; `contactShare` : part du régime établi portée par des coups au contact (`hitOf`), mesure du style de jeu. | oui |
 | `stances.ts` | `STANCES` (Zobal, Forgelance, Pandawa, Eliotrope, Steamer, Ouginak), `STANCE_NOTES`, `bestStance`. | oui |
-| `target.ts` | `bossProxyOptions` : fiche → `ProxyOptions` explicites (`strictTargets`), une cible par phase attaquable, dégâts reçus par phase qui frappe (boss à mi-vie, sorts exclus et positionnels retirés), adds de la fiche (exposition `ADD_EXPOSURE` 0,5), table du theorycraft (`theoryTable`, `contact`), PO voulue 6 à distance, 0 au contact ; règles communes à `classes` et `stuff` : `resolveStyle` (style de jeu : choix explicite, sinon au contact si le boss n'est attaquable qu'au contact, si le preset est de mêlée ou si au moins `CONTACT_SHARE` = 50 % du DPT soutenu passe par des coups au contact ; explication via `contactEdge`), `playsMelee` (règle sans mesure, style de la mesure), `removalVoid`, `incomingCoherence`. | oui ² |
+| `target.ts` | `bossProxyOptions` : fiche → `ProxyOptions` explicites (`strictTargets`), une cible par phase attaquable, dégâts reçus par phase qui frappe (boss à mi-vie, sorts exclus et positionnels retirés), adds de la fiche (exposition `ADD_EXPOSURE` 0,5), table du theorycraft (`theoryTable`, `contact`), PO voulue 6 à distance, 0 au contact ; règles communes à `classes` et `stuff` : `resolveStyle` (style de jeu : choix explicite, sinon au contact si le boss n'est attaquable qu'au contact, si le preset est de mêlée ou si au moins `CONTACT_SHARE` = 50 % du DPT soutenu passe par des coups au contact ; explication via `contactEdge`, contradiction de la part mesurée via `rangedEdge`, `PlayStyle.mismatch`), `playsMelee` (règle sans mesure, style de la mesure), `removalVoid`, `incomingCoherence`. | oui ² |
 | `utilities.ts` | `classUtilities` (utilités chiffrées depuis les profils de sorts NETTOYÉS, tours mixtes), `MECHANIC_RELEVANCE`, `relevance`, `CLASS_MODEL_LIMITS`, `CLASS_CONFIDENCE`. | oui |
 | `classes.ts` | `rankClasses` → `ClassRanking` (question 2). | non ³ |
 | `stuff.ts` | `stuffVsBoss` → `StuffVsBossResult` (question 1), `statEquivalences`, `dominantElement`. | non ³ |
@@ -263,7 +263,7 @@ Hors de `src/theorycraft/` :
   pic présenté comme une estimation) et, grade imposé, même composition que la CLI (`playersForGrade`).
 
 Tests : `tests/theory-{bosses,overrides,profile,target,hits,rotation,stances,utilities,classes,stuff,style}.test.ts`
-(12, 9, 27, 9, 7, 12, 5, 17, 26, 30 et 13 cas), `tests/opt-stuff-target.test.ts` (14), `tests/data-fetch-schema.test.ts`,
+(12, 9, 27, 9, 7, 12, 5, 17, 26, 30 et 20 cas), `tests/opt-stuff-target.test.ts` (14), `tests/data-fetch-schema.test.ts`,
 `tests/data-fetch-script.test.ts` ; CLI et page : `tests/cli-theory.test.ts`, `tests/web-theory.test.ts`,
 `tests/web-boss-ui.test.ts`.
 
@@ -300,18 +300,32 @@ Tests : `tests/theory-{bosses,overrides,profile,target,hits,rotation,stances,uti
   `stuffVsBoss` : choix explicite (option `melee`) d'abord ; sinon au contact si `playsMelee` le dit ou si au moins
   50 % du DPT soutenu contre le boss (phases attaquables pondérées, meilleure posture) passe par des coups au contact
   — `contactShare` (rotation.ts) sur le régime établi, coup de chaque sort par `TheoryDptTable.hitOf`, mesurée avec le
-  stuff du preset (classes, avant toute optimisation) ou de départ (stuff) et le style de `playsMelee` (à égalité de
-  la cible, ce style tranche : pas de circularité). Le style décidé (`PlayStyle` : `contact`, `label`,
-  `presetContact`, `source`, `contactShare`, `reason`) pilote `rangeNeed` (0 au contact), `ProxyOptions.contact` et
-  l'étiquette `CONTACT_TAG` (% mêlée valorisés à égalité), les libellés et une explication quand il diffère du style
-  du preset (« joué au contact : 100 % de son DPT soutenu contre ce boss passe par des coups au contact, que le boss
-  subit mieux (−50 % à distance) ») : colonne « Jeu » des classes (CLI et page), ligne « Jeu » et hypothèses du stuff,
-  équivalences (plus de PO valorisée au contact). `--range N` (`rangeNeed`) garde la main sur la PO visée. Mesures
-  (2026-10-08) : contre Merkator, les 39 presets de base à distance ont 100 % de leur DPT au contact et y sont joués
-  (valeurs du classement par défaut inchangées) ; Crâ Terre mono, meilleur stuff (réglages par défaut) DPT soutenu
-  2 205 → 2 202 et PVe 6 692 → 7 066, générique Feu (5 PO) sans pénalité, stuffs à 4 PO dans le top ; contre le Comte
-  Harebourg (symétrique), il reste à distance (0 %, 6 PO), le Iop Terre au contact. L'IA du Vortex (`src/ai`) et la
-  convention des coups du BOSS (mêlée ⇔ PO ≤ 1) sont inchangées.
+  stuff du preset (classes, avant toute optimisation) ou de départ (stuff) — pour un preset sous le niveau 200, sans
+  équipement dans les DEUX modules (ses objets niveau 200 ne se portent pas ; `stuff` mesurait d'abord sur ce départ
+  invalide et divergeait des classes : Osamodas Pacte contre Harebourg au niveau 150, 40 % contre 51 %) — et le style
+  de `playsMelee` ou du choix explicite (à égalité de la cible, ce style tranche : pas de circularité) ; sans aucun
+  dégât (Kimbo sans fiche), pas de part (`undefined`, « — ») et style du preset. Le style décidé (`PlayStyle` :
+  `contact`, `label`, `presetContact`, `source`, `contactShare`, `reason`, `mismatch`) pilote `rangeNeed` (0 au
+  contact), `ProxyOptions.contact` et l'étiquette `CONTACT_TAG` (% mêlée valorisés à égalité), les libellés et une
+  explication quand il diffère du style du preset (« joué au contact : 100 % de son DPT soutenu contre ce boss passe
+  par des coups au contact, que le boss subit mieux (−50 % à distance) ») : colonne « Jeu » des classes (CLI et page),
+  ligne « Jeu » et hypothèses du stuff, équivalences (plus de PO valorisée au contact ; « PO non exigée (--range 0) »
+  quand c'est l'option qui l'impose à un personnage joué à distance). `--range N` (`rangeNeed`) garde la main sur la
+  PO visée, l'option `melee` sur le style ; ni l'un ni l'autre ne change le coup compté (celui que le boss subit le
+  mieux) : un choix explicite contraire à la part mesurée est signalé (`mismatch` : « le choix explicite ne fixe que
+  la PO visée et le coup retenu à égalité »). Mesures (2026-10-08) : contre Merkator, tous les presets de base à
+  distance (39 sur 39) ont 100 % de leur DPT au contact et y sont joués (valeurs du classement par défaut
+  inchangées) ; Crâ Terre mono, meilleur stuff (réglages par défaut) DPT soutenu 2 205 → 2 202 et PVe 6 692 → 7 066,
+  générique Feu (5 PO) sans pénalité, stuffs à 4 PO dans le top ; contre le Comte Harebourg (symétrique), il reste à
+  distance (0 %, 6 PO), le Iop Terre au contact. Sur les boss qui ne distinguent pas les coups (Comte Harebourg,
+  Solar, Vortex), trois presets à distance passent au contact parce que leurs sorts ne frappent qu'au contact :
+  `ecaflip_terre_entrave` (52 %), `forgelance_zone_terre` (87 %), `iop_soutien` (79 %) — leur objectif (`stuff`,
+  `classes --optimize`) ne vise plus de PO (6 avant), leur DPT par défaut est inchangé. **Asymétrie assumée** (la
+  décision dit « sinon style du preset ») : un preset de mêlée reste au contact même si la majorité de son DPT passe
+  par des coups à distance — contre Hanshi (« réduction mêlée 50 % »), les 10 presets de mêlée ont de 0 à 43 % de leur
+  DPT au contact (Iop Terre : 0 %, équivalences en % dommages distance) ; c'est signalé (`mismatch` : « ! » dans la
+  colonne « Jeu », hypothèse « Au contact malgré leur DPT », ligne « Jeu » du stuff), pas corrigé. L'IA du Vortex
+  (`src/ai`) et la convention des coups du BOSS (mêlée ⇔ PO ≤ 1) sont inchangées.
 - **Poisons et rafale (audit final).** Le sac à dos compte un poison × min(durée, 2) × 0,8 à CHAQUE lancer, sans cumul
   ni recouvrement (Flèche Tyrannique, cumul 1, lancée deux fois par tour : 3,2 échéances par tour au lieu d'une). Le
   DPT soutenu suit désormais les instances actives sur la cible (une échéance par tour, sans critique, 6 au plus ;
@@ -400,4 +414,10 @@ Tests : `tests/theory-{bosses,overrides,profile,target,hits,rotation,stances,uti
   dans le guide (§4 et §5).
 - Style de jeu unique par personnage (au contact ou à distance tout le combat, décidé avec le stuff de départ) : un
   preset qui alternerait n'est pas modélisé ; le style n'est pas re-décidé au stuff optimisé.
+- Preset de mêlée contre un boss qui subit mieux les coups à distance (Hanshi) : il reste au contact (PO non exigée)
+  alors que son DPT et ses équivalences comptent des coups à distance — signalé, à trancher. La règle symétrique (le
+  jouer à distance sous 50 % au contact) lui ferait viser 6 PO, convention des presets à distance sans rapport avec
+  des sorts de portée 1 à 4 lancés à deux cases du boss ; une PO visée propre à la portée des sorts serait la piste.
+- Effet des trois presets passés au contact sur les boss ordinaires (`ecaflip_terre_entrave`, `forgelance_zone_terre`,
+  `iop_soutien`) : objectif sans PO visée dans `stuff` et `classes --optimize`, non revérifié en jeu.
 - Hors périmètre v1 inchangé (§5).

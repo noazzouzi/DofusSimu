@@ -5,8 +5,8 @@
  * membres, hypothèses et avertissements. Aucune note globale : chaque axe est montré avec son unité. Rang partagé des ex
  * æquo marqué « = » (Survie : PV effectifs du stuff seul, identiques par stuff générique). Colonnes de contrôle : facteur
  * d'étalonnage du preset (indicatif : il ne s'applique pas au DPT soutenu), style de jeu (« Jeu » : au contact ou à
- * distance, « * » s'il diffère de celui du preset, part du DPT soutenu au contact ; explication pour les membres
- * proposés), retraits du tour mixte et des tours consacrés, débit de soin brut et plafond. Tableaux alignés en largeur
+ * distance, « * » s'il diffère de celui du preset, « ! » si la part mesurée le contredit, part du DPT soutenu au
+ * contact ; explication pour les membres proposés), retraits du tour mixte et des tours consacrés, débit de soin brut et plafond. Tableaux alignés en largeur
  * fixe, sans émoji.
  *
  * Module PUR (types et mise en forme seulement) : utilisable côté navigateur.
@@ -67,7 +67,9 @@ function axisNote(axis: RankingAxis, r: ClassRanking): string | undefined {
     case 'damage':
       return [
         '  Valeur : DPT soutenu analytique (classement) ; « Étal. preset » = facteur d\'étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s\'applique pas au DPT soutenu.',
-        '  « Jeu » : style retenu contre ce boss (au contact : PO non exigée par l\'optimiseur) et, entre parenthèses, part du DPT soutenu portée par des coups au contact ; « * » = style différent de celui du preset (voir les hypothèses).',
+        `  « Jeu » : style retenu contre ce boss (au contact : PO non exigée par l'optimiseur) et, entre parenthèses, part du DPT soutenu portée par des coups au contact ; « * » = style différent de celui du preset${
+          r.presets.some(e => e.style.mismatch) ? ' ; « ! » = style contredit par cette part, la majorité du DPT passant par des coups de l\'autre style' : ''
+        }${r.presets.some(e => e.style.contactShare === undefined) ? ' ; « — » = aucun dégât contre ce boss, style du preset' : ''} (voir les hypothèses).`,
       ].join('\n')
     case 'survival':
       return '  Stuff seul : même valeur pour les presets d\'un même stuff générique (rang partagé « = »).'
@@ -82,10 +84,13 @@ function axisNote(axis: RankingAxis, r: ClassRanking): string | undefined {
   }
 }
 
-/** Style de jeu (« contact* (100 %) ») : « * » si différent de celui du preset, part du DPT soutenu au contact. */
+/**
+ * Style de jeu (« contact* (100 %) ») : « * » si différent de celui du preset, « ! » si la part mesurée le contredit
+ * (`mismatch`), part du DPT soutenu au contact (« — » sans dégâts).
+ */
 function styleText(e: PresetEvaluation): string {
   const st = e.style
-  return `${st.contact ? 'contact' : 'distance'}${st.contact !== st.presetContact ? '*' : ''}${st.contactShare !== undefined ? ` (${fmtPct(st.contactShare * 100)})` : ''}`
+  return `${st.contact ? 'contact' : 'distance'}${st.contact !== st.presetContact ? '*' : ''}${st.mismatch ? '!' : ''} (${st.contactShare !== undefined ? fmtPct(st.contactShare * 100) : '—'})`
 }
 
 /** Facteur d'étalonnage du preset (« ×0,73 ») : indicatif, jamais multiplié au DPT soutenu. */

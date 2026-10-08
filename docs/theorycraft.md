@@ -295,10 +295,10 @@ onglet Boss est retiré (une adresse `#boss` y mène aux combats).
   indicateur de chargement).
 - Onglet **Stuff** : choix du preset, champ « lien RoxxSolver », éléments (ceux du preset ou les quatre), profil,
   taille du top ; résultat : style de jeu du personnage (au contact ou à distance, avec son explication quand il
-  diffère de celui du preset, §3.2), tableau comparatif, meilleur stuff objet par objet (icônes DofusDB, repli hors
-  ligne), objets changés, équivalences des caractéristiques, DPT par sort, hypothèses et avertissements. Un réglage
-  changé après le calcul (preset, ou bouton « Stuff » de l'onglet Classes) grise le résultat : « Résultat pour
-  <preset> — … relancez le calcul ».
+  diffère de celui du preset ou que la part de son DPT au contact le contredit, §3.2), tableau comparatif, meilleur
+  stuff objet par objet (icônes DofusDB, repli hors ligne), objets changés, équivalences des caractéristiques, DPT par
+  sort, hypothèses et avertissements. Un réglage changé après le calcul (preset, ou bouton « Stuff » de l'onglet
+  Classes) grise le résultat : « Résultat pour <preset> — … relancez le calcul ».
 - L'adresse garde l'état : `#boss/<monsterId>` (fiche) ou `#boss/<monsterId>/<onglet>` (`classes`, `stuff` ; ex.
   `#boss/4726/classes`), à mettre en favori.
 
@@ -363,17 +363,19 @@ fiche manuelle le calcul la prend au pied de la lettre (aucun dégât). Le class
 « Rés. levées » (DPT si la mécanique ramène ces résistances à 0) et s'en sert pour la composition :
 
 ```
-   #  Classe      Preset                   Valeur  Étal. preset  Rafale  Élément (rés.)  Posture                Rés. levées  Confiance
-  --  ----------  -----------------------  ------  ------------  ------  --------------  ---------------------  -----------  ---------
-   1  Crâ         cra_feu_zone                  0         ×0,73       0  Feu (400 %)     —                            3 485  basse
-   2  Iop         iop_soutien                   0         ×1,00       0  Terre (400 %)   —                            3 433  basse
-   3  Ecaflip     ecaflip_terre_entrave         0         ×1,00       0  Terre (400 %)   —                            3 213  basse
+  « Jeu » : style retenu contre ce boss (au contact : PO non exigée par l'optimiseur) et, entre parenthèses, part du DPT soutenu portée par des coups au contact ; « * » = style différent de celui du preset ; « — » = aucun dégât contre ce boss, style du preset (voir les hypothèses).
+   #  Classe      Preset                   Valeur  Étal. preset  Rafale  Élément (rés.)  Posture                Jeu (au contact)  Rés. levées  Confiance
+  --  ----------  -----------------------  ------  ------------  ------  --------------  ---------------------  ----------------  -----------  ---------
+   1  Crâ         cra_feu_zone                  0         ×0,73       0  Feu (400 %)     —                      distance (—)            3 485  basse
+   2  Iop         iop_soutien                   0         ×1,00       0  Terre (400 %)   —                      distance (—)            3 433  basse
+   3  Ecaflip     ecaflip_terre_entrave         0         ×1,00       0  Terre (400 %)   —                      distance (—)            3 213  basse
   […]
   Notes :
     - DPT nul pour tous les presets (résistances ≥ 100 % sans fiche manuelle) : les places « Dégâts » sont classées sur le DPT si la mécanique lève ces résistances.
 ```
 
-Pour un résultat utile, écrire la fiche manuelle du boss (§5).
+Sans aucun dégât, la part du DPT au contact n'est pas mesurée (« — » dans la colonne « Jeu ») : chaque preset garde
+son style (§3.2, « Style de jeu »). Pour un résultat utile, écrire la fiche manuelle du boss (§5).
 
 ### 3.2 Le classement des classes
 
@@ -400,20 +402,48 @@ distance) ; à égalité, le style du personnage (au contact ⇒ mêlée). Les %
 suivent ce coup (une classe de contact valorise ses % mêlée). Un sort de portée minimale 2 ou plus ne frappe qu'à
 distance, un sort de portée 1 qu'au contact. L'IA du Vortex garde sa propre règle (mêlée ⇔ portée max ≤ 1).
 
-**Style de jeu (colonne « Jeu »).** Un preset est joué là où il porte la majorité de son DPT. Il est joué **au
-contact** si le boss n'est attaquable qu'au contact (Père Ver), si son preset est un preset de mêlée (Iop Terre,
-Ouginak, Sacrieur, Zobal, Féca protecteur, Pandawa Saoul) ou si **au moins 50 % de son DPT soutenu contre ce boss**
-passe par des coups au contact (mesuré avec le stuff du preset, ou le stuff de départ pour `stuff`) ; sinon à
-distance. Contre Merkator (−50 % à distance), presque tous les presets à distance frappent au contact et y sont donc
-joués (Crâ Terre mono : 100 %) ; contre le Comte Harebourg, qui ne distingue pas les coups, le Crâ Terre mono reste à
-distance (0 %) et le Iop Terre au contact (preset de mêlée). Le style décide de tout ce qui en dépend : la PO visée
-par l'objectif de l'optimiseur (6 à distance, aucune au contact : `--optimize`, `stuff`), le coup d'un sort lançable
-des deux façons quand le boss ne les distingue pas (au contact ⇒ mêlée, ses % dommages mêlée comptent), les libellés
-(« au contact » / « à distance ») et une explication quand il diffère du style du preset (« joué au contact : 100 % de
-son DPT soutenu contre ce boss passe par des coups au contact, que le boss subit mieux (−50 % à distance) »). La
-colonne « Jeu » donne le style et, entre parenthèses, la part du DPT soutenu au contact ; « * » marque un style
-différent de celui du preset. Règle unique (`resolveStyle`, `src/theorycraft/target.ts`) pour le classement et le
-meilleur stuff ; `--range N` (`stuff`) garde la main sur la PO visée, et l'option `melee` de l'API sur le style.
+**Style de jeu (colonne « Jeu »).** Un preset à distance est joué au contact quand il y porte la majorité de son
+DPT ; un preset de mêlée reste au contact (limite ci-dessous). Un preset est joué **au contact** si le boss n'est
+attaquable qu'au contact (Père Ver), si son preset est un preset de mêlée (Iop Terre, Ouginak, Sacrieur, Zobal, Féca
+protecteur, Pandawa Saoul) ou si **au moins 50 % de son DPT soutenu contre ce boss** passe par des coups au contact ;
+sinon à distance. La part est mesurée avec le stuff du preset (avant toute optimisation ; sans équipement sous le
+niveau 200, comme les mesures du classement) ou, pour `stuff`, le stuff fourni ; sans aucun dégât (Kimbo sans fiche)
+elle n'est pas mesurée (« — ») et le preset garde son style. Deux causes font jouer un preset à distance au contact :
+- le boss subit mieux les coups au contact : contre Merkator (−50 % à distance), tous les presets de base à distance
+  (39 sur 39) frappent au contact (100 % chacun) et y sont joués, dont le Crâ Terre mono ;
+- ses sorts ne frappent qu'au contact (portée 1) : même contre un boss qui ne distingue pas les coups (Comte
+  Harebourg, Solar, Vortex), `ecaflip_terre_entrave` (52 %), `forgelance_zone_terre` (87 %) et `iop_soutien` (79 %)
+  sont joués au contact (« contact* », hypothèse « Joués au contact par leur DPT … sorts qui ne frappent qu'au
+  contact »). Leur objectif ne vise donc plus de PO (`stuff`, `classes --optimize`) ; leur DPT soutenu par défaut ne
+  change pas.
+
+Contre le Comte Harebourg, le Crâ Terre mono reste à distance (0 %) et le Iop Terre au contact (preset de mêlée,
+100 %). Le style décide de tout ce qui en dépend : la PO visée par l'objectif de l'optimiseur (6 à distance, aucune au
+contact : `--optimize`, `stuff`), le coup d'un sort lançable des deux façons quand le boss ne les distingue pas (au
+contact ⇒ mêlée, ses % dommages mêlée comptent), les libellés (« au contact » / « à distance ») et une explication
+quand il diffère du style du preset (« joué au contact : 100 % de son DPT soutenu contre ce boss passe par des coups au
+contact, que le boss subit mieux (−50 % à distance) »). La colonne « Jeu » donne le style et, entre parenthèses, la
+part du DPT soutenu au contact ; « * » marque un style différent de celui du preset, « ! » un style contredit par cette
+part. Règle unique (`resolveStyle`, `src/theorycraft/target.ts`) pour le classement et le meilleur stuff.
+
+**Limite : preset de mêlée contre un boss qui subit mieux les coups à distance.** La règle n'est pas symétrique : un
+preset de mêlée reste au contact même si la majorité de son DPT passe par des coups à distance. Contre Hanshi
+(« réduction mêlée 50 % »), les sorts des presets de mêlée lançables au contact comme à distance (Pression, Épée de
+Iop, Pugilat pour le Iop Terre) comptent à distance, le coup que le boss subit le mieux : le Iop Terre reste « au
+contact », sans PO visée, mais 0 % de son DPT soutenu passe au contact, et ses équivalences valorisent ses % dommages
+distance, pas ses % mêlée. La sortie le dit : « contact! (0 %) » dans la colonne « Jeu » (les 10 presets de mêlée
+contre Hanshi, de 0 à 43 %), hypothèse « Au contact malgré leur DPT », ligne « Jeu » du meilleur stuff (« joué au
+contact : preset de mêlée, mais seulement 0 % de son DPT soutenu contre ce boss passe par des coups au contact, le
+boss subissant mieux les coups à distance (−50 % au contact) : DPT et équivalences comptent ces coups à distance »).
+
+**Choix explicite.** `--range N` (`stuff`, option `rangeNeed` de l'API) impose la PO visée ; l'option `melee` de
+l'API impose le style. Ni l'un ni l'autre ne change le coup compté : un sort lançable des deux façons garde le coup
+que le boss subit le mieux, le style ne tranche qu'à égalité. Joué à distance contre Merkator (`melee: false`), le Crâ
+Terre mono vise 6 PO, mais son DPT et ses équivalences restent au contact ; la ligne « Jeu » le signale (« choix
+explicite (option melee), mais 100 % de son DPT soutenu contre ce boss passe par des coups au contact … — le choix
+explicite ne fixe que la PO visée et le coup retenu à égalité »). Avec `--range 0`, un personnage joué à distance le
+reste (ligne « Personnage ») : seule la PO n'est plus exigée (« PO non exigée (--range 0, option rangeNeed de
+l'API) » dans les équivalences).
 
 **Poisons.** Le DPT soutenu suit chaque poison tour par tour : une application pose ses échéances (une par tour, sans
 critique, 6 au plus), au-delà du **cumul maximal** du sort la plus ancienne instance est retirée, et un lancer ne vaut
@@ -568,7 +598,12 @@ Chaque sortie liste les siennes ; voici l'ensemble, sans fard.
   cible visée. Un coup compté au contact suppose que le personnage atteigne une case adjacente au boss et y reste.
 - **Un style de jeu par personnage**, au contact ou à distance tout le combat (§3.2), décidé avec le stuff du preset
   (ou de départ) : l'objectif de l'optimiseur suit ce seul style (PO visée), même pour un personnage qui alternerait ;
-  chaque sort lançable des deux façons garde le coup que le boss subit le mieux.
+  chaque sort lançable des deux façons garde le coup que le boss subit le mieux, quel que soit le style (choix
+  explicite compris : il ne fixe que la PO visée et le coup retenu à égalité).
+- **Un preset de mêlée reste au contact**, même quand la majorité de son DPT passe par des coups à distance (Hanshi,
+  « réduction mêlée 50 % » : Iop Terre « contact! (0 %) ») : aucune PO visée, mais DPT et équivalences comptent ces
+  coups à distance. Signalé (« ! », hypothèse, ligne « Jeu ») ; la règle symétrique (le jouer à distance, 6 PO visées)
+  n'est pas appliquée.
 - Ni invocations (les vôtres comme celles du boss), ni glyphes, pièges, bombes, tourelles ; l'arme n'est pas lancée.
 - Ni rampes ni cumuls entre tours (Fureur, Colère de Iop au retour de relance, paliers de Flèche Dévorante), ni buffs
   entre sorts d'un même personnage, ni PA rendus en cours de tour. Poisons suivis tour par tour dans le DPT soutenu
@@ -716,11 +751,12 @@ Profil offensif par phase
   […]
 Dégâts (DPT soutenu)
   Valeur : DPT soutenu analytique (classement) ; « Étal. preset » = facteur d'étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s'applique pas au DPT soutenu.
-   #  Classe      Preset                 Valeur  Étal. preset  Rafale  Élément (rés.)  Posture                Rés. levées  Confiance
-  --  ----------  ---------------------  ------  ------------  ------  --------------  ---------------------  -----------  ---------
-   1  Iop         iop_terre_burst         2 360         ×1,00   2 360  Terre (200 %)   —                            3 388  moyenne
-   2  Féca        feca_glyphes            2 229         ×1,00   2 229  Terre (200 %)   —                            3 111  basse
-   3  Ecaflip     ecaflip_terre_entrave   2 180         ×1,00   2 180  Terre (200 %)   —                            3 213  moyenne
+  « Jeu » : style retenu contre ce boss (au contact : PO non exigée par l'optimiseur) et, entre parenthèses, part du DPT soutenu portée par des coups au contact ; « * » = style différent de celui du preset (voir les hypothèses).
+   #  Classe      Preset                 Valeur  Étal. preset  Rafale  Élément (rés.)  Posture                Jeu (au contact)  Rés. levées  Confiance
+  --  ----------  ---------------------  ------  ------------  ------  --------------  ---------------------  ----------------  -----------  ---------
+   1  Iop         iop_terre_burst         2 360         ×1,00   2 360  Terre (200 %)   —                      contact (100 %)         3 388  moyenne
+   2  Féca        feca_glyphes            2 229         ×1,00   2 229  Terre (200 %)   —                      distance (0 %)          3 111  basse
+   3  Ecaflip     ecaflip_terre_entrave   2 180         ×1,00   2 180  Terre (200 %)   —                      distance (38 %)         3 213  moyenne
 ```
 
 La colonne « Élément (rés.) » affiche la résistance **moyenne** pondérée par les phases (200 % = moyenne de 400 % et

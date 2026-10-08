@@ -189,6 +189,10 @@ describe('POST classes et stuff', () => {
     const lifted = fmtNum(first.dpt.resLifted!)
     expect(html).toContain(`>${lifted}<`)
     expect(cli).toContain(lifted)
+    // Aucun dégât : aucune part au contact mesurée, style du preset (« — » sur la page comme dans la CLI).
+    expect(r.presets.every(e => e.style.contactShare === undefined && e.style.source === 'preset' && e.style.contact === e.style.presetContact)).toBe(true)
+    expect(html).toContain(`${first.style.contact ? 'contact' : 'distance'} <small class="bv-sub">—</small>`)
+    expect(cli).toMatch(new RegExp(`${first.presetId} .* ${first.style.contact ? 'contact' : 'distance'} \\(—\\)`))
   })
 
   it('classes : paramètres invalides ⇒ 400, boss inconnu ⇒ 404', () => {

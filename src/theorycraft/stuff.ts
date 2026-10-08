@@ -11,7 +11,10 @@
  *     comparaison des classes (`resolveStyle`, target.ts) : option `melee` d'abord ; sinon au contact si le boss n'est
  *     attaquable qu'au contact, si le preset est un preset de mêlée ou si au moins 50 % du DPT soutenu du stuff de
  *     départ contre ce boss passe par des coups au contact (`contactShare`, rotation.ts, mesurée avec le style de la
- *     règle sans mesure `playsMelee`) ; sinon à distance — avec une explication quand il diffère du style du preset.
+ *     règle sans mesure `playsMelee` ou de l'option `melee` ; preset sous le niveau 200 : sans équipement, comme les
+ *     classes ; sans dégâts, style du preset) ; sinon à distance — avec une explication quand il diffère du style du
+ *     preset ou que la part mesurée le contredit (preset de mêlée contre un boss qui subit mieux les coups à distance,
+ *     option `melee` contraire : DPT et équivalences comptent le coup que le boss subit le mieux, hits.ts).
  *     Cible : `bossProxyOptions(profile, { role, profile, melee })` (target.ts) — cibles EXPLICITES (`strictTargets`),
  *     jamais le mix du Vortex ; PO visée 6 à distance, 0 au contact, sauf option `rangeNeed` (bonus de PO temporaires
  *     de la classe listés, non déduits) ; au contact, étiquette `contact` (à égalité de la cible, % mêlée valorisés).
@@ -83,7 +86,7 @@ import { hasPassive, STUFF_POSITIONS } from '../optimizer/stuff/pools'
 import type { ExponentProfile } from '../optimizer/stuff/profiles'
 import { createProxyContext, ELEMENT_STAT, type ProxyContext, type ProxyMember, type ProxyOptions, type ProxyScore } from '../optimizer/stuff/proxy'
 import { optimizeStuff, theorySeedFilter, type StuffCandidate, type StuffResult } from '../optimizer/stuff/search'
-import { allocatePoints, BASE_PRESETS, presetBuild, resolvePreset, STUFFS, type Preset, type StuffTemplate } from '../optimizer/team/presets'
+import { allocatePoints, BASE_PRESETS, PRESET_LEVEL, presetBuild, resolvePreset, STUFFS, type Preset, type StuffTemplate } from '../optimizer/team/presets'
 import { roxxImport } from '../optimizer/team/roxx'
 import type { MemberSpec } from '../optimizer/types'
 import { computeBuildStats, fullScrolls, type CharacterBuild, type EquippedItem } from '../stats/build'
@@ -93,7 +96,7 @@ import { buildStuffSheet, ROLE_LABELS_FR, statLabelFr, type StuffSheet } from '.
 import { bossFighter, playerFighterFromStats, theoryDptTable, withStates, type TheoryCharacter } from './fighters'
 import { contactShare, sustainedDamage } from './rotation'
 import { bestStance, STANCES, type ClassStance } from './stances'
-import { bossProxyOptions, CONTACT_SHARE, incomingCoherence, playsMelee, refHpOf, resolveStyle } from './target'
+import { bossProxyOptions, CONTACT_SHARE, DEFAULT_RANGE_NEED, incomingCoherence, playsMelee, refHpOf, resolveStyle } from './target'
 import type {
   BossProfile,
   PerElement,
@@ -196,7 +199,9 @@ export interface StuffVsBossOptions {
   role?: RoleId
   /**
    * Joué au contact (choix explicite ; défaut : règle commune `resolveStyle` — boss attaquable seulement au contact,
-   * preset de mêlée, ou au moins 50 % du DPT soutenu du départ contre ce boss porté par des coups au contact).
+   * preset de mêlée, ou au moins 50 % du DPT soutenu du départ contre ce boss porté par des coups au contact). Il fixe
+   * la PO visée et le coup retenu à égalité de la cible ; un sort lançable des deux façons compte toujours le coup que
+   * le boss subit le mieux (hits.ts) — signalé quand la majorité du DPT passe alors par l'autre style.
    */
   melee?: boolean
   /**
@@ -566,8 +571,13 @@ export interface StatEquivalenceOptions {
   penalties?: Partial<Record<'ap' | 'mp' | 'range', number>>
   /** DPT soutenu du stuff : sous 1, la référence en Vitalité s'explique par l'absence de dégâts. */
   steady?: number
-  /** PO visée par l'objectif (défaut 6) : 0 au contact, la PO ne vaut alors rien (note). */
+  /** PO visée par l'objectif (défaut 6, plafond de la PO dans la note) : à 0, la PO ne vaut rien (note). */
   rangeNeed?: number
+  /**
+   * Joué au contact (style) : explique une PO non exigée (« joué au contact ») ; `false` avec `rangeNeed` 0 : PO non
+   * exigée parce qu'imposée (--range 0, option rangeNeed de l'API). Défaut : joué au contact.
+   */
+  contact?: boolean
   /** Classement soutenu : nom de la posture dont le DPT soutenu donne la part des dégâts (note). */
   sustainedStance?: string
   /**
@@ -587,11 +597,12 @@ export interface StatEquivalenceOptions {
  * forgemagie. Caractéristiques sans valeur (poids ≤ 0) omises ; tri par valeur par point décroissante.
  */
 export function statEquivalences(weights: Partial<Record<StatKey, number>>, element: StuffElement, opts: StatEquivalenceOptions = {}): StuffStatWeights {
+  const rangeNeed = opts.rangeNeed ?? DEFAULT_RANGE_NEED
   const notes = [
     'Poids marginaux ∂logJ/∂point de la forme fermée d’un proxy construit AU meilleur stuff (son élément, sa rotation) : valables pour CE boss, CE rôle et CE profil, et pour de petits changements (linéarisation locale).',
-    opts.rangeNeed === 0
-      ? `PA et PM : valeur d’un point SOUS le plafond (12 PA, 6 PM) — au-delà du plafond un point ne vaut rien ; PO non exigée (joué au contact) : une PO ne vaut rien. Elle comprend les pénalités de l’objectif (${PENALTY_TEXT}) : un réglage de l’objectif, pas un effet du boss, affiché à part (« dont … de pénalité d’objectif »).`
-      : `PA, PM et PO : valeur d’un point SOUS le plafond (12 PA, 6 PM, 6 PO) — au-delà du plafond un point ne vaut rien. Elle comprend les pénalités de l’objectif (${PENALTY_TEXT}) : un réglage de l’objectif, pas un effet du boss, affiché à part (« dont … de pénalité d’objectif »).`,
+    rangeNeed <= 0
+      ? `PA et PM : valeur d’un point SOUS le plafond (12 PA, 6 PM) — au-delà du plafond un point ne vaut rien ; PO non exigée (${opts.contact === false ? '--range 0, option rangeNeed de l’API' : 'joué au contact'}) : une PO ne vaut rien. Elle comprend les pénalités de l’objectif (${PENALTY_TEXT}) : un réglage de l’objectif, pas un effet du boss, affiché à part (« dont … de pénalité d’objectif »).`
+      : `PA, PM et PO : valeur d’un point SOUS le plafond (12 PA, 6 PM, ${rangeNeed} PO) — au-delà du plafond un point ne vaut rien. Elle comprend les pénalités de l’objectif (${PENALTY_TEXT}) : un réglage de l’objectif, pas un effet du boss, affiché à part (« dont … de pénalité d’objectif »).`,
     '« Par poids de rune » : valeur pour une même dépense de forgemagie (poids des runes), relative à la référence.',
   ]
   if (opts.sustainedStance) notes.push(`Classement soutenu : la part des dégâts vient du DPT soutenu en posture « ${opts.sustainedStance} » (différences finies de la rotation établie), pas du DPT du proxy.`)
@@ -939,7 +950,7 @@ function styleRule(st: PlayStyle): string {
     case 'preset':
       return st.contact
         ? 'preset de mêlée'
-        : `preset à distance${st.contactShare !== undefined ? `, ${fr(st.contactShare * 100, 0)} % du DPT soutenu contre ce boss au contact (${seuil})` : ''}`
+        : `preset à distance, ${st.contactShare !== undefined ? `${fr(st.contactShare * 100, 0)} % du DPT soutenu contre ce boss au contact (${seuil})` : 'aucun dégât contre ce boss (part au contact non mesurée)'}`
   }
 }
 
@@ -985,21 +996,25 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   const assumptions = [...ch.assumptions]
 
   // ── Style de jeu (`resolveStyle`, règle commune à `rankClasses`) : part du DPT soutenu portée par des coups au contact,
-  // mesurée au stuff de départ avec le style de la règle sans mesure (`playsMelee`) ; choix explicite `melee` prioritaire.
-  // Les phases attaquables (cibles du DPT) ne dépendent pas du style. ──
-  const ruleContact = playsMelee(profile, presetId)
-  const ruleTarget = bossProxyOptions(profile, { role, profile: expProfile, melee: opts.melee ?? ruleContact })
+  // mesurée avec le style de la règle sans mesure (`playsMelee`) ou le choix explicite `melee` (prioritaire), au stuff de
+  // départ — sauf pour un preset sous le niveau 200 : sans équipement, comme `rankClasses` (ses objets niveau 200 ne se
+  // portent pas), pour que les deux décident sur le même stuff. Les phases attaquables (cibles du DPT) ne dépendent pas
+  // du style. ──
+  const ruleContact = playsMelee(profile, presetId, opts.melee)
+  const ruleTarget = bossProxyOptions(profile, { role, profile: expProfile, melee: ruleContact })
   const table = theoryDptTable(data)
   const targets = (ruleTarget.options.targets ?? []).map(t => bossFighter(data, t.monsterId, { grade: t.grade ?? profile.grade, stats: t.stats, states: t.states }))
   const weights = (ruleTarget.options.targets ?? []).map(t => t.weight)
   const base: TheoryCharacter = { breedId: preset.breedId, level: buildLevel, variants, presetId, name: start.name }
-  const measured = bestSteady({ data, table, who: { ...base, contact: ruleContact }, targets, weights }, startStats.stats, startStats.maxHp)
+  const unstuffed = ch.input === 'preset' && buildLevel < PRESET_LEVEL
+  const styleStats = unstuffed ? computeBuildStats(presetBuild(preset, data, { level: buildLevel, stuff: 'unstuffed' }), data) : startStats
+  const measured = bestSteady({ data, table, who: { ...base, contact: ruleContact }, targets, weights }, styleStats.stats, styleStats.maxHp)
   const share = contactShare(table, withStates(measured.base, measured.stance.states), targets, weights, measured.run.runs)
   const style = resolveStyle(profile, presetId, { contactShare: share }, opts.melee)
   const melee = style.contact
 
   // ── Cible et contexte commun (comme celui de l'optimiseur : build de départ comme référence) ──
-  const target = melee === (opts.melee ?? ruleContact) ? ruleTarget : bossProxyOptions(profile, { role, profile: expProfile, melee })
+  const target = melee === ruleContact ? ruleTarget : bossProxyOptions(profile, { role, profile: expProfile, melee })
   const options: ProxyOptions = opts.rangeNeed !== undefined ? { ...target.options, rangeNeed: Math.max(0, Math.floor(opts.rangeNeed)) } : target.options
   const member: MemberSpec = { name: start.name, breedId: preset.breedId, presetId, build: start, variants, role }
   const proxyMember: ProxyMember = { breedId: preset.breedId, level: buildLevel, variants, role, presetId, element: startElement, name: start.name }
@@ -1187,6 +1202,7 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
     penalties: atBest.penalties,
     steady: best.damage.steady,
     rangeNeed: ctx.rangeNeed,
+    contact: melee,
     ...(rankBy === 'sustained' ? { sustainedStance: best.damage.stance.name } : ctx.exponents.a > 0 ? { apSustainedStance: best.damage.stance.name } : {}),
   })
 
@@ -1252,11 +1268,11 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
     'DPT : sorts de classe seulement (arme non lancée) ; ni invocations, glyphes, pièges, bombes, buffs entre sorts ni buffs d’équipe entre personnages ; aucune position, ligne de vue ni PM.',
     `DPT soutenu : rotation en régime établi (relances amorties), meilleure posture de classe supposée tenue tout le combat, NON calibré ; DPT du proxy : un tour isolé × calibration du preset (mesurée au Vortex), sans posture.`,
     'PV effectifs : rotations du boss estimées par sac à dos sur une cible (optimiste pour le boss sur une cible ; zones, sorts en réaction et invocations non comptés : le total peut être sous-estimé ; pas l’IA réelle), plafonnés à 20 × PV ; ni soins, boucliers, érosion ni kit défensif de classe.',
-    `Variantes de sorts du preset « ${presetId} » ; joué ${style.label} (${
-      ctx.rangeNeed <= 0
-        ? 'PO non exigée'
-        : `${ctx.rangeNeed} PO visées${opts.rangeNeed !== undefined ? ', --range (option rangeNeed de l’API)' : ''}${buffs.length ? ` ; bonus de PO temporaires de la classe NON déduits : ${buffs.join(', ')}` : ''}`
-    })${style.reason ? ` : ${style.reason}` : ` — ${styleRule(style)}`}.`,
+    `Variantes de sorts du preset « ${presetId} » ; joué ${style.label} (${ctx.rangeNeed <= 0 ? 'PO non exigée' : `${ctx.rangeNeed} PO visées`}${
+      opts.rangeNeed !== undefined ? ', --range (option rangeNeed de l’API)' : ''
+    }${buffs.length ? ` ; bonus de PO temporaires de la classe NON déduits : ${buffs.join(', ')}` : ''})${style.reason ? ` : ${style.reason}` : ` — ${styleRule(style)}`}${
+      unstuffed && style.contactShare !== undefined ? ' ; part au contact mesurée sans équipement (objets du preset de niveau 200), comme la comparaison des classes' : ''
+    }.`,
     'Les CLASSEMENTS valent plus que les valeurs absolues.',
     ...target.assumptions,
     ...profile.assumptions.map(a => `Boss : ${a}`),

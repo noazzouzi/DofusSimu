@@ -333,7 +333,8 @@ export interface DamageShape {
   burstRatio: number
   /**
    * Part du DPT soutenu CONTRE LE BOSS (phases attaquables pondérées) portée par des coups au contact (`contactShare`,
-   * rotation.ts) — mesure du style de jeu (`resolveStyle`, target.ts). Absente hors du classement des classes.
+   * rotation.ts) — mesure du style de jeu (`resolveStyle`, target.ts). Absente hors du classement des classes, et sans
+   * dégâts contre le boss.
    */
   contactShare?: number
 }
@@ -357,11 +358,21 @@ export interface PlayStyle {
   source: 'explicit' | 'boss' | 'preset' | 'dpt'
   /**
    * Part du DPT soutenu contre le boss (phases attaquables pondérées, meilleure posture) portée par des coups au contact,
-   * mesurée avec le stuff de départ et le style de la règle sans mesure (`playsMelee`) ; absente si non mesurée.
+   * mesurée avec le stuff du preset (sans équipement sous le niveau 200, comme `rankClasses`) ou le stuff fourni, et le
+   * style de la règle sans mesure (`playsMelee`) ou le choix explicite ; absente si non mesurée ou sans dégâts.
    */
   contactShare?: number
-  /** Explication quand le style diffère de celui du preset (`presetContact`), sans le « joué au contact : » initial. */
+  /**
+   * Explication, sans le « joué au contact : » initial, quand le style diffère de celui du preset (`presetContact`) ou
+   * quand la part mesurée le contredit (`mismatch`).
+   */
   reason?: string
+  /**
+   * Style contredit par la part mesurée : la majorité du DPT soutenu passe par des coups de l'autre style (preset de
+   * mêlée contre un boss qui subit mieux les coups à distance, choix explicite). DPT et équivalences comptent ces
+   * coups-là (le coup que le boss subit le mieux) ; le style ne fixe que la PO visée et le coup retenu à égalité.
+   */
+  mismatch?: boolean
 }
 
 export interface ClassUtilities {
