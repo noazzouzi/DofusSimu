@@ -437,11 +437,14 @@ export async function coOptimizeTeam(data: GameDataStore, base: FightSpec, pool:
       let chosen = result.best.build
       if (opts.stuffValidation !== false) {
         const cands = result.front.filter(c => c.key !== 'start')
-        validation = await validateStuffs(spec, i, cands, pool, { ...(opts.stuffValidation || {}), cache: opts.cache, objective: opts.objective })
+        // Départ invalide : ni joué (le moteur le refuse) ni retenu ; la référence est le premier candidat.
+        validation = await validateStuffs(spec, i, cands, pool, { ...(opts.stuffValidation || {}), cache: opts.cache, objective: opts.objective, startValid: result.startValid })
         chosen = validation.builds[validation.chosen]
       }
       spec = { ...spec, team: spec.team.map((x, k) => (k === i ? { ...x, build: { ...chosen, spellVariants: x.build.spellVariants ?? chosen.spellVariants } } : x)) }
-      log.push(`L3 ${m.name} : proxy ${result.start.score.logJ.toFixed(3)} → ${result.best.score.logJ.toFixed(3)}${validation ? `, combats : build ${validation.chosen} retenu (objectif ${validation.objectives[validation.chosen].toFixed(3)} contre ${validation.objectives[0].toFixed(3)})` : ''}`)
+      const start = result.startValid ? '' : ' (départ invalide)'
+      const ref = validation && !validation.startIncluded ? 'le meilleur candidat du proxy' : 'le départ'
+      log.push(`L3 ${m.name} : proxy ${result.start.score.logJ.toFixed(3)}${start} → ${result.best.score.logJ.toFixed(3)}${validation ? `, combats : build ${validation.chosen} retenu (objectif ${validation.objectives[validation.chosen].toFixed(3)} contre ${validation.objectives[0].toFixed(3)} pour ${ref})` : ''}`)
       pass.push({ member: m.name, result, validation })
     }
     stuffPasses.push(pass)

@@ -249,10 +249,20 @@ export interface BossProfile {
 export interface SustainedDamage {
   /** Dégâts attendus de chaque tour simulé (relances et lancers tenus d'un tour à l'autre). */
   perTurn: number[]
-  /** Moyenne des tours (DPT soutenu). */
+  /**
+   * Moyenne des tours simulés, depuis un début de combat (sorts à relance prêts au tour 1) : dépend de l'horizon
+   * (`turns`) et penche vers la rafale sur un horizon court.
+   */
   mean: number
   /** Meilleur tour isolé (rafale, relances ignorées). */
   burst: number
   /** Sorts lancés à chaque tour (ids). */
   casts: number[][]
+  /**
+   * DPT soutenu en régime établi (relances amorties, indépendant de l'horizon) : moyenne d'une période de la rotation.
+   * C'est le « soutenu » de ce contrat (en-tête) : la valeur à utiliser pour classer.
+   */
+  steady: number
+  /** Période du régime établi en tours (0 : non trouvée dans le plafond de simulation, `steady` approché). */
+  period: number
 }

@@ -6,6 +6,10 @@
  * `prefix12` + `phase2` (§15.4 point 7) si le scénario a ces micro-scénarios (Vortex), sinon le combat complet. Le build
  * retenu est celui d'objectif moyen maximal ; le build actuel n'est remplacé que si la différence appariée est positive
  * (z ≥ `minZ`, défaut 0 : meilleur objectif moyen) — le proxy propose, les combats décident.
+ *
+ * Build actuel INVALIDE (`StuffResult.startValid` faux : objets au-dessus du niveau, conditions…) : le moteur le refuse
+ * (`buildTeam`, runner.ts) et il ne doit de toute façon jamais être retenu. Avec `startValid: false`, il n'est ni joué
+ * ni proposé : la référence (indice 0) devient le premier candidat (normalement `StuffResult.best`).
  */
 import type { FightCache } from '../cache'
 import type { FightExecutor } from '../montecarlo'
@@ -23,15 +27,26 @@ export interface StuffValidationOptions {
   minZ?: number
   cache?: FightCache
   objective?: Objective
+  /**
+   * Le build actuel du membre est-il valide (`StuffResult.startValid`) ? Défaut vrai. Faux : il n'est pas joué et la
+   * référence des comparaisons appariées (indice 0) est le premier candidat (voir l'en-tête).
+   */
+  startValid?: boolean
 }
 
 export interface StuffValidation {
   /** Index du membre. */
   member: number
-  /** Builds comparés (0 = build actuel). */
+  /** Builds comparés (0 = référence : build actuel, ou premier candidat si `startIncluded` est faux). */
   builds: CharacterBuild[]
+  /**
+   * Le build actuel est-il joué (indice 0) ? Faux quand il est invalide (`startValid: false`) : `builds[i]` est alors
+   * le candidat `i` (sinon le candidat `i − 1`).
+   */
+  startIncluded: boolean
   objectives: number[]
   winRates: number[]
+  /** Comparaisons appariées avec la référence (indice 0). */
   paired: PairedObjective[]
   chosen: number
   evals: ConfigEval[][]
@@ -46,7 +61,10 @@ export function defaultValidationKinds(scenarioId: string): WorkerTask['kind'][]
 /** Compare des builds d'un membre dans l'équipe (voir l'en-tête). */
 export async function validateStuffs(base: FightSpec, member: number, candidates: readonly (StuffCandidate | CharacterBuild)[], pool: FightExecutor, opts: StuffValidationOptions = {}): Promise<StuffValidation> {
   const seeds = campaignSeeds(opts.masterSeed ?? 0x57f, opts.seeds ?? 32)
-  const builds = [base.team[member].build, ...candidates.map(c => ('build' in c ? c.build : c))]
+  const startIncluded = opts.startValid ?? true
+  const proposed = candidates.map(c => ('build' in c ? c.build : c))
+  if (!startIncluded && !proposed.length) throw new Error(`Validation des stuffs : le build actuel de « ${base.team[member].name} » est invalide et aucun candidat valide n'est proposé`)
+  const builds = startIncluded ? [base.team[member].build, ...proposed] : proposed
   const specs = builds.map(build => ({ ...base, team: base.team.map((m, i) => (i === member ? { ...m, build: { ...build, spellVariants: m.build.spellVariants ?? build.spellVariants } } : m)) }))
   const kinds = opts.kinds ?? defaultValidationKinds(base.scenarioId)
   const evals: ConfigEval[][] = []
@@ -60,5 +78,5 @@ export async function validateStuffs(base: FightSpec, member: number, candidates
     const p = paired[i]
     if (p.diff > 0 && p.z >= (opts.minZ ?? 0) && objectives[i] > objectives[chosen]) chosen = i
   }
-  return { member, builds, objectives, winRates, paired, chosen, evals }
+  return { member, builds, startIncluded, objectives, winRates, paired, chosen, evals }
 }

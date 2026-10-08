@@ -9,9 +9,19 @@
  *    `castsPerTurn`/`castsPerTarget` du tour, critère d'états du lanceur) ;
  *  - après les lancers (`castSpell`, src/engine/cast.ts) : relance du sort = `minCastInterval` (après modificateurs de
  *    sort), relevée à `globalCooldown` (la relance globale s'applique aussi au lanceur).
- * Sortie (`SustainedDamage`, types.ts) : dégâts de chaque tour, moyenne (DPT soutenu), rafale (un tour sur un
- * combattant neuf, relances ignorées : `turn(…, 'next')`) et sorts lancés par tour. Le soutenu ne dépasse jamais la
- * rafale (chaque tour choisit parmi un sous-ensemble des sorts, avec les mêmes PA).
+ * Point de départ : début de combat SANS relance initiale (tous les sorts prêts au tour 1 ; option `initialCooldowns`
+ * pour les relances initiales du moteur). Sortie (`SustainedDamage`, types.ts) :
+ *  - `perTurn`, `casts`, `mean` : les `turns` premiers tours et leur moyenne. Cette moyenne dépend de l'horizon : un sort
+ *    de relance c est lancé ceil(turns / c) fois (dès le tour 1) au lieu de turns / c en régime établi, ce qui la tire
+ *    vers la rafale (mesuré, presets de base contre un boss neutre : jusqu'à +2,05 % au-dessus du régime établi sur
+ *    6 tours, Pandawa Saoul et Sram poisons) ;
+ *  - `steady`, `period` : RÉGIME ÉTABLI (« relances amorties » du contrat), indépendant de l'horizon. La suite des tours
+ *    est déterministe et ne dépend que des relances en cours au début du tour (compteurs remis à zéro, états figés) :
+ *    elle devient périodique dès qu'un état de relances se répète ; `steady` est la moyenne d'une période. C'est la
+ *    valeur à utiliser pour classer ;
+ *  - `burst` : rafale (un tour sur un combattant neuf, relances ignorées : `turn(…, 'next')`).
+ * Ni la moyenne ni le régime établi ne dépassent la rafale (chaque tour choisit parmi un sous-ensemble des sorts, avec
+ * les mêmes PA).
  *
  * NON calibré : aucune `calibrationOf` (facteur figé par preset, mesuré au Vortex) — les classes se comparent sur
  * l'analytique brut.
@@ -25,7 +35,8 @@
  *  - ni invocations, glyphes, pièges, bombes, arme ; DoT × min(durée, 2) × 0,8 et effets différés × 0,8 (heuristiques
  *    du sac à dos) ; aucune contrainte de position, de PM ni de ligne de vue ;
  *  - états du lanceur et de la cible FIGÉS (posture : stances.ts ; phase du boss : fighters.ts) ;
- *  - relances initiales (`initialCooldown`) ignorées par défaut (régime de croisière ; option `initialCooldowns`).
+ *  - relances initiales (`initialCooldown`) ignorées par défaut (option `initialCooldowns`) : sans effet sur `steady`
+ *    tant que le même cycle est atteint, elles ne changent que les premiers tours.
  *
  * Les combattants passés ne sont pas modifiés : la simulation travaille sur des copies superficielles (relances et
  * compteurs propres, caractéristiques et sorts partagés en lecture seule ; mêmes empreintes de cache DPT).
@@ -43,9 +54,25 @@ export interface SustainedOptions {
   ap?: number
   /**
    * Relances initiales des sorts (`initialCooldown`, posées à l'entrée en combat par le moteur) : début de combat réel
-   * plutôt que régime de croisière. Défaut faux.
+   * plutôt que tous les sorts prêts au tour 1. Défaut faux.
    */
   initialCooldowns?: boolean
+}
+
+/**
+ * Plafond de tours simulés pour trouver la période du régime établi (au-delà, `steady` est la moyenne des
+ * `STEADY_FALLBACK` derniers tours et `period` vaut 0). Presets de base : période de 1 à 5 tours.
+ */
+const MAX_STEADY_TURNS = 240
+const STEADY_FALLBACK = 120
+
+/** Clé d'un état de relances (ordre des sorts indifférent). */
+function cooldownKey(cds: Readonly<Record<number, number>>): string {
+  return Object.keys(cds)
+    .map(Number)
+    .sort((x, y) => x - y)
+    .map(k => `${k}:${cds[k]}`)
+    .join(',')
 }
 
 /** Copie superficielle « au repos » : aucune relance, aucun lancer ce tour (l'original n'est pas touché). */
@@ -84,8 +111,19 @@ export function sustainedDamage(table: DptTableImpl, a: Fighter, d: Fighter, opt
   }
   const perTurn: number[] = []
   const casts: number[][] = []
-  for (let t = 0; t < turns; t++) {
+  // Premier tour de chaque état de relances (après décompte) : une répétition ferme la période du régime établi.
+  const seen = new Map<string, number>()
+  let cycle: [number, number] | undefined
+  for (let t = 0; t < Math.max(turns, MAX_STEADY_TURNS) && (t < turns || !cycle); t++) {
     cds = decremented(cds)
+    if (!cycle) {
+      const key = cooldownKey(cds)
+      const first = seen.get(key)
+      if (first !== undefined) {
+        cycle = [first, t]
+        if (t >= turns) break
+      } else seen.set(key, t)
+    }
     sim.cooldowns = cds
     sim.castsThisTurn = {}
     sim.castsOnTarget = {}
@@ -104,6 +142,11 @@ export function sustainedDamage(table: DptTableImpl, a: Fighter, d: Fighter, opt
     }
     cds = next
   }
-  const mean = perTurn.reduce((s, x) => s + x, 0) / turns
-  return { perTurn, mean, burst, casts }
+  const avg = (xs: readonly number[]) => xs.reduce((s, x) => s + x, 0) / xs.length
+  const steadyTurns = cycle ? perTurn.slice(cycle[0], cycle[1]) : perTurn.slice(-STEADY_FALLBACK)
+  const steady = avg(steadyTurns)
+  const period = cycle ? cycle[1] - cycle[0] : 0
+  perTurn.length = turns
+  casts.length = turns
+  return { perTurn, mean: avg(perTurn), burst, casts, steady, period }
 }

@@ -218,7 +218,7 @@ export interface BestStanceOptions {
 
 /**
  * Meilleure posture d'une classe pour une évaluation donnée (ex. `states => sustainedDamage(table, withStates(a,
- * states), boss).mean`). Départage : ordre de `STANCES` (posture initiale d'abord). Déterministe.
+ * states), boss).steady`, DPT soutenu en régime établi). Départage : ordre de `STANCES` (posture initiale d'abord). Déterministe.
  */
 export function bestStance(breedId: number, evaluate: (states: number[]) => number, opts: BestStanceOptions = {}): StanceChoice {
   const all = stancesOf(breedId, opts.knownSpells).map(stance => ({ stance, value: evaluate(stance.states.slice()) }))

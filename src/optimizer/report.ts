@@ -115,7 +115,8 @@ export interface OptimizationReport {
   plan: ReportPlan
   results: ReportResults
   history: string[]
-  stuff?: { member: string; startLogJ: number; bestLogJ: number; startDpt: number; bestDpt: number; startEhp: number; bestEhp: number; ms: number }[]
+  /** `startValid` : absent des anciens rapports ; faux = départ invalide (objets au-dessus du niveau…), jamais retenu. */
+  stuff?: { member: string; startValid?: boolean; startLogJ: number; bestLogJ: number; startDpt: number; bestDpt: number; startEhp: number; bestEhp: number; ms: number }[]
   variants?: { accepted: { member: string; pair: number; from: string; to: string; reason: string }[]; base: number; final: number }
   tune?: { accepted: boolean; diff: number; z: number; selected: string[] }
   campaign?: { stages: { name: string; teams: number; kept: string[] }[]; t0Evaluated?: number }
@@ -341,6 +342,7 @@ export function buildReport(data: GameDataStore, input: ReportInput): Optimizati
   if (input.stuff) {
     report.stuff = input.stuff.map(s => ({
       member: s.member,
+      startValid: s.startValid,
       startLogJ: s.start.score.logJ,
       bestLogJ: s.best.score.logJ,
       startDpt: s.start.score.dpt,
@@ -515,7 +517,7 @@ export function renderMarkdown(r: OptimizationReport): string {
       if (r.campaign.t0Evaluated) L.push(`- T0 analytique : ${r.campaign.t0Evaluated} équipes notées.`)
       for (const s of r.campaign.stages) L.push(`- ${s.name} : ${s.teams} équipes → ${s.kept.length} gardées (${s.kept.slice(0, 4).join(' ; ')}${s.kept.length > 4 ? ' ; …' : ''}).`)
     }
-    if (r.stuff) for (const s of r.stuff) L.push(`- Stuff ${s.member} (proxy) : log J ${s.startLogJ.toFixed(3)} → ${s.bestLogJ.toFixed(3)} (DPT ${s.startDpt.toFixed(0)} → ${s.bestDpt.toFixed(0)}, EHP ${s.startEhp.toFixed(0)} → ${s.bestEhp.toFixed(0)}, ${(s.ms / 1000).toFixed(1)} s).`)
+    if (r.stuff) for (const s of r.stuff) L.push(`- Stuff ${s.member} (proxy) : log J ${s.startLogJ.toFixed(3)} → ${s.bestLogJ.toFixed(3)} (DPT ${s.startDpt.toFixed(0)} → ${s.bestDpt.toFixed(0)}, EHP ${s.startEhp.toFixed(0)} → ${s.bestEhp.toFixed(0)}, ${(s.ms / 1000).toFixed(1)} s${s.startValid === false ? ', départ invalide' : ''}).`)
     if (r.variants) L.push(`- Variantes : objectif ${r.variants.base.toFixed(3)} → ${r.variants.final.toFixed(3)} ; ${r.variants.accepted.map(a => `${a.member} : ${a.from} → ${a.to} (${a.reason})`).join(' ; ') || 'aucune bascule significative'}.`)
     if (r.tune) L.push(`- θ (CEM) : ${r.tune.accepted ? 'accepté' : 'rejeté, θ₀ conservé'} (Δ ${r.tune.diff.toFixed(4)}, z ${r.tune.z.toFixed(2)} ; ${r.tune.selected.length} paramètres).`)
     for (const h of r.history) L.push(`- ${h}`)

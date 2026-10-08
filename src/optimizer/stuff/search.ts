@@ -104,7 +104,8 @@ export interface StuffResult {
   start: StuffCandidate
   /**
    * Le build de départ est-il valide (`computeBuildStats`) ? Un départ invalide (ex. stuff de niveau 200 d'un preset
-   * joué au niveau 60) n'est jamais rendu comme `best` quand un candidat valide existe.
+   * joué au niveau 60) n'est jamais rendu comme `best` quand un candidat valide existe. À transmettre à la validation
+   * par combats (`validateStuffs`, option `startValid`) : le moteur refuse un build invalide.
    */
   startValid: boolean
   best: StuffCandidate

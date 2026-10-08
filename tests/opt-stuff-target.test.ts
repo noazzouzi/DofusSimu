@@ -2,16 +2,20 @@
  * Cible explicite du proxy de stuff (docs/design/theorycraft.md §1.4, §4 bis) : caractéristiques imposées et états des
  * cibles (`ProxyTarget.stats`/`states`), `strictTargets`, cohérence exact / forme fermée avec surcharges, profils
  * d'exposants partagés (`applyProfile`), graines de la recherche (`seedFilter`, `theorySeedFilter`) et départ invalide
- * sous le niveau 200 (jamais rendu comme meilleur build).
+ * sous le niveau 200 (jamais rendu comme meilleur build, ni joué ni retenu par la validation par combats).
  */
 import { describe, expect, it } from 'vitest'
+import { loadTheta } from '../src/ai'
 import { Rng } from '../src/core/rng'
 import { loadDataStore } from '../src/data/node'
 import { VORTEX_TARGET_MIX } from '../src/dungeons/generic/dummy'
+import { createLocalPool } from '../src/optimizer/pool/pool'
 import { buildPools, STUFF_POSITIONS } from '../src/optimizer/stuff/pools'
 import { applyProfile, EXPONENT_PROFILES } from '../src/optimizer/stuff/profiles'
 import { applyTargetOverrides, createProxyContext, ROLE_EXPONENTS, type ProxyOptions, type ProxyTarget } from '../src/optimizer/stuff/proxy'
 import { optimizeStuff, theorySeedFilter } from '../src/optimizer/stuff/search'
+import { validateStuffs } from '../src/optimizer/stuff/validate'
+import type { FightSpec } from '../src/optimizer/types'
 import { vortexProxyOptions } from '../src/optimizer/stuff/vortex'
 import { getPreset, presetMember, STUFFS } from '../src/optimizer/team/presets'
 import { createMonsterFighter } from '../src/engine/factory'
@@ -231,6 +235,35 @@ describe('graines de la recherche et départ invalide', () => {
       // Le départ invalide se note mieux (objets de niveau 200) : c'était le bogue.
       expect(r.start.score.logJ).toBeGreaterThan(r.best.score.logJ)
       for (const c of r.front) expect(computeBuildStats(c.build, data).valid).toBe(true)
+    }
+  })
+
+  it('validation par combats : un départ invalide n\'est ni joué (le moteur le refuse) ni retenu', async () => {
+    const m = presetMember(getPreset('iop_terre_burst'), data, { level: 60 })
+    const r = optimizeStuff(data, m, { iterations: 0, proxy: { targets: [{ monsterId: BOUFTOU_ROYAL, weight: 1, grade: 1 }], strictTargets: true }, seedFilter: theorySeedFilter({ level: 60 }) })
+    expect(r.startValid).toBe(false)
+    const cands = r.front.filter(c => c.key !== 'start')
+    expect(cands.length).toBeGreaterThan(1)
+    // Petit combat de contrôle réel (1 graine, fil courant) : la référence de la validation est le membre de l'équipe.
+    const spec: FightSpec = { scenarioId: 'control:143393281:3834', team: [m], mode: 'scripted', theta: loadTheta(), variantPolicy: 'default', monsterNoise: 0 }
+    const pool = createLocalPool(data)
+    try {
+      // Sans l'option : le départ est joué en premier et le moteur refuse le build (runner.ts, `buildTeam`).
+      await expect(validateStuffs(spec, 0, cands, pool, { seeds: 1, kinds: ['full'] })).rejects.toThrow(/Build invalide/)
+      const v = await validateStuffs(spec, 0, cands, pool, { seeds: 1, kinds: ['full'], startValid: r.startValid })
+      expect(v.startIncluded).toBe(false)
+      expect(v.builds).toEqual(cands.map(c => c.build))
+      expect(v.objectives).toHaveLength(cands.length)
+      for (const b of v.builds) expect(computeBuildStats(b, data).valid).toBe(true)
+      // Référence = premier candidat (le meilleur du proxy) ; le build retenu est un candidat.
+      expect(cands[0]).toBe(r.best)
+      expect(v.paired[0].diff).toBe(0)
+      expect(v.chosen).toBeGreaterThanOrEqual(0)
+      expect(v.chosen).toBeLessThan(cands.length)
+      for (let i = 1; i < v.builds.length; i++) if (v.paired[i].diff > 0) expect(v.objectives[v.chosen]).toBeGreaterThanOrEqual(v.objectives[i])
+      await expect(validateStuffs(spec, 0, [], pool, { seeds: 1, kinds: ['full'], startValid: false })).rejects.toThrow(/aucun candidat valide/)
+    } finally {
+      await pool.close()
     }
   })
 })

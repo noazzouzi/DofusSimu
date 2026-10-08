@@ -108,7 +108,7 @@ describe('postures : choix', () => {
 describe('postures : DPT soutenu contre un boss neutre', () => {
   /** DPT soutenu médian des presets de base sans posture (référence « classe ordinaire »). */
   const median = (() => {
-    const xs = BASE_PRESETS.filter(p => !STANCES[p.breedId]).map(p => sustainedDamage(table, playerFighterFromMember(data, presetMember(p, data)), boss).mean)
+    const xs = BASE_PRESETS.filter(p => !STANCES[p.breedId]).map(p => sustainedDamage(table, playerFighterFromMember(data, presetMember(p, data)), boss).steady)
     xs.sort((a, b) => a - b)
     return xs[xs.length >> 1]
   })()
@@ -118,8 +118,8 @@ describe('postures : DPT soutenu contre un boss neutre', () => {
     for (const [presetId, stanceId] of Object.entries(want)) {
       const p = getPreset(presetId)
       const a = playerFighterFromMember(data, presetMember(p, data))
-      const before = sustainedDamage(table, a, boss).mean
-      const choice = bestStance(p.breedId, st => sustainedDamage(table, withStates(a, st), boss).mean, { knownSpells: a.spells.map(s => s.spellId) })
+      const before = sustainedDamage(table, a, boss).steady
+      const choice = bestStance(p.breedId, st => sustainedDamage(table, withStates(a, st), boss).steady, { knownSpells: a.spells.map(s => s.spellId) })
       expect(choice.stance.id).toBe(stanceId)
       // Non trivial : au moins 80 % du DPT soutenu médian des classes sans posture.
       expect(choice.value).toBeGreaterThan(0.8 * median)
@@ -130,6 +130,6 @@ describe('postures : DPT soutenu contre un boss neutre', () => {
     }
     // Sans posture, le Zobal ne lance presque rien (sorts à masque) : ≈ 0 en soutenu.
     const zobal = playerFighterFromMember(data, presetMember(getPreset('zobal_rempart'), data))
-    expect(sustainedDamage(table, zobal, boss).mean).toBeLessThan(0.1 * median)
+    expect(sustainedDamage(table, zobal, boss).steady).toBeLessThan(0.1 * median)
   })
 })

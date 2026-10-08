@@ -1,9 +1,9 @@
 /**
  * Theorycraft — combattants hors combat (src/theorycraft/fighters.ts) et DPT soutenu (src/theorycraft/rotation.ts,
  * docs/design/theorycraft.md §1.5) : soutenu ≤ rafale, relances tenues d'un tour à l'autre (un sort à relance n'est pas
- * lancé à chaque tour), déterminisme, combattants passés intacts, cohérence avec le proxy de stuff, modules purs.
+ * lancé à chaque tour), régime établi (relances amorties, indépendant de l'horizon), déterminisme, combattants passés
+ * intacts, cohérence avec le proxy de stuff, modules purs (graphe transitif des imports d'exécution).
  */
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { loadDataStore } from '../src/data/node'
 import type { Fighter } from '../src/engine/types'
@@ -13,6 +13,7 @@ import { computeBuildStats } from '../src/stats/build'
 import { assertDistinct, bossFighter, playerFighterFromMember, playerFighterFromStats, theoryDptTable, withStates } from '../src/theorycraft/fighters'
 import { sustainedDamage } from '../src/theorycraft/rotation'
 import { initialStance } from '../src/theorycraft/stances'
+import { runtimeImportClosure, runtimeImports } from './import-graph-helpers'
 
 const data = loadDataStore()
 const table = theoryDptTable(data)
@@ -140,6 +141,35 @@ describe('DPT soutenu (rotation tour par tour)', () => {
     expect(start.casts).toEqual([[], [23396], [], [23396]])
     expect(start.burst).toBe(cruise.burst)
     expect(start.mean).toBeCloseTo(cruise.mean, 9)
+    // Régime établi : un lancer tous les deux tours, quel que soit le départ.
+    for (const s of [cruise, start]) {
+      expect(s.period).toBe(2)
+      expect(s.steady).toBeCloseTo(cruise.burst / 2, 9)
+    }
+  })
+
+  it('régime établi : indépendant de l\'horizon, périodique, ≤ rafale ; la moyenne sur 6 tours penche vers la rafale', () => {
+    let biased = 0
+    for (const p of BASE_PRESETS) {
+      const a = playerOf(p.id)
+      const s6 = sustainedDamage(table, a, boss)
+      const s60 = sustainedDamage(table, a, boss, { turns: 60 })
+      expect([s6.steady, s6.period]).toEqual([s60.steady, s60.period])
+      expect(s6.period).toBeGreaterThanOrEqual(1)
+      expect(s6.period).toBeLessThanOrEqual(10)
+      expect(s6.steady).toBeLessThanOrEqual(s6.burst + 1e-9)
+      // Fin d'un long horizon : rotation périodique de période `period`, de moyenne `steady`.
+      const k = s60.period
+      const tail = s60.perTurn.slice(60 - k)
+      tail.forEach((x, i) => expect(x).toBeCloseTo(s60.perTurn[60 - 2 * k + i], 9))
+      expect(tail.reduce((x, y) => x + y, 0) / k).toBeCloseTo(s6.steady, 9)
+      // Sur 6 tours, chaque sort à relance part dès le tour 1 : la moyenne ne passe pas sous le régime établi de plus
+      // d'un arrondi (mesuré : jusqu'à +2,05 % au-dessus, Pandawa Saoul et Sram poisons).
+      if (s6.mean > s6.steady * 1.01) biased++
+    }
+    expect(biased).toBeGreaterThanOrEqual(2)
+    const saoul = sustainedDamage(table, playerOf('pandawa_saoul'), boss)
+    expect(saoul.mean).toBeGreaterThan(saoul.steady * 1.015)
   })
 
   it('déterministe et sans effet sur les combattants passés', () => {
@@ -168,17 +198,33 @@ describe('DPT soutenu (rotation tour par tour)', () => {
 })
 
 describe('modules du theorycraft purs', () => {
-  it('fighters, rotation, stances : ni `node:`, ni src/dungeons, ni le proxy (défaut du Vortex)', () => {
-    let n = 0
-    for (const f of ['fighters', 'rotation', 'stances']) {
-      const src = readFileSync(`src/theorycraft/${f}.ts`, 'utf8')
-      const imports = [...src.matchAll(/^import[^'"]*['"]([^'"]+)['"]/gm)].map(m => m[1])
-      n += imports.length
-      for (const spec of imports) {
-        expect(spec.startsWith('node:')).toBe(false)
-        expect(spec).not.toMatch(/dungeons|optimizer\/stuff\/(proxy|vortex)$/)
-      }
-    }
-    expect(n).toBeGreaterThan(5)
+  it('fighters, rotation, stances : ni paquet ni `node:`, ni src/dungeons, ni le proxy ou le Vortex, même indirectement', () => {
+    const c = runtimeImportClosure(['fighters', 'rotation', 'stances'].map(f => `src/theorycraft/${f}.ts`))
+    // Le dépôt n'a aucune dépendance d'exécution (package.json) : tout spécificateur externe serait un module Node ou
+    // un outil de développement.
+    expect(c.external).toEqual([])
+    expect(c.files.filter(f => /^src\/dungeons\/|^src\/optimizer\/stuff\/(proxy|vortex)\.ts$/.test(f))).toEqual([])
+    expect(c.files).toContain('src/optimizer/stuff/targetFighter.ts')
+    expect(c.files.length).toBeGreaterThan(20)
+  })
+
+  it('graphe des imports : suit les imports indirects, ignore les imports de type', () => {
+    // proxy.ts tire le mix du Vortex (dummy.ts) par un import direct, et ses dépendances par des imports indirects.
+    const proxy = runtimeImportClosure(['src/optimizer/stuff/proxy.ts']).files
+    expect(proxy).toContain('src/dungeons/generic/dummy.ts')
+    expect(proxy).toContain('src/dungeons/vortex/placement.ts')
+    const src = [
+      "import type { A } from './a'",
+      "import { type B, type C } from './b'",
+      "export type { D } from './d'",
+      "import { E, type F } from './e'",
+      "export { G } from './g'",
+      "export * from './h'",
+      "import './i'",
+      "import * as J from './j'",
+      "const k = await import('./k')",
+      "const l = require('node:fs')",
+    ].join('\n')
+    expect(runtimeImports(src)).toEqual(['./e', './g', './h', './i', './j', './k', 'node:fs'])
   })
 })
