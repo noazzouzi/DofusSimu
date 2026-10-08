@@ -168,19 +168,20 @@ Mécaniques
 ```
 Dégâts (DPT soutenu)
   Valeur : DPT soutenu analytique (classement) ; « Étal. preset » = facteur d'étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s'applique pas au DPT soutenu.
-   #  Classe      Preset                      Valeur  Étal. preset  Rafale  Élément (rés.)  Posture                Confiance
-  --  ----------  --------------------------  ------  ------------  ------  --------------  ---------------------  ---------
-   1  Crâ         cra_feu_zone                 2 837         ×0,73   2 837  Feu (10 %)      —                      moyenne
-   2  Iop         iop_soutien                  2 744         ×1,00   2 744  Terre (20 %)    —                      moyenne
-   3  Ouginak     ouginak_eau_air              2 593         ×1,05   2 593  Eau (10 %)      Sans Rage              moyenne
-   4  Ecaflip     ecaflip_terre_entrave        2 569         ×1,00   2 569  Terre (20 %)    —                      moyenne
-   5  Sadida      sadida_soin                  2 497         ×1,00   2 497  Eau (10 %)      —                      basse
+  « Jeu » : style retenu contre ce boss (au contact : PO non exigée par l'optimiseur) et, entre parenthèses, part du DPT soutenu portée par des coups au contact ; « * » = style différent de celui du preset (voir les hypothèses).
+   #  Classe      Preset                      Valeur  Étal. preset  Rafale  Élément (rés.)  Posture                Jeu (au contact)  Confiance
+  --  ----------  --------------------------  ------  ------------  ------  --------------  ---------------------  ----------------  ---------
+   1  Crâ         cra_feu_zone                 2 837         ×0,73   2 837  Feu (10 %)      —                      contact* (100 %)  moyenne
+   2  Iop         iop_soutien                  2 744         ×1,00   2 744  Terre (20 %)    —                      contact* (100 %)  moyenne
+   3  Ouginak     ouginak_eau_air              2 593         ×1,05   2 593  Eau (10 %)      Sans Rage              contact (100 %)   moyenne
+   4  Ecaflip     ecaflip_terre_entrave        2 569         ×1,00   2 569  Terre (20 %)    —                      contact* (100 %)  moyenne
+   5  Sadida      sadida_soin                  2 497         ×1,00   2 497  Eau (10 %)      —                      contact* (100 %)  basse
   […]
-  11  Sram        sram_terre_pieges            2 320         ×0,83   2 320  Terre (20 %)    —                      basse
+  11  Sram        sram_terre_pieges            2 320         ×0,83   2 320  Terre (20 %)    —                      contact* (100 %)  basse
   […]
-  15  Zobal       zobal_psychopathe            2 250         ×1,00   2 394  Terre (20 %)    Masque du Psychopathe  moyenne
+  15  Zobal       zobal_psychopathe            2 250         ×1,00   2 394  Terre (20 %)    Masque du Psychopathe  contact (100 %)   moyenne
   […]
-  19  Sacrieur    sacrieur_sacrifice           1 489         ×1,00   1 509  Air (50 %)      —                      moyenne
+  19  Sacrieur    sacrieur_sacrifice           1 489         ×1,00   1 509  Air (50 %)      —                      contact (100 %)   moyenne
   […]
 Composition suggérée (4 personnage(s))
   Rôle             Classe   Preset                 Raison
@@ -199,7 +200,9 @@ la cible est sur une case adjacente, quelle que soit la portée du sort (§3.2, 
 portée 1 à N se lance au contact. Aucun preset de base n'a donc un DPT nul contre lui — le Crâ Feu frappe au contact
 avec Flèche Dévorante, Flèches Enflammées et Flèche Détonante, l'Enutrof avec Pelle Aurifère et Lancer de Pièces ;
 seuls les sorts qui ne peuvent pas toucher une case adjacente (portée minimale 2 ou plus, comme Flèche Tyrannique)
-valent 0. Tous les personnages sont alors supposés jouer au contact (aucune PO exigée).
+valent 0. Tous les personnages y sont joués au contact (aucune PO exigée) : colonne « Jeu », où « contact* » marque un
+preset à distance joué au contact (§3.2, « Style de jeu ») et la parenthèse la part de son DPT soutenu portée par des
+coups au contact.
 
 **Stuff.** `boss merkator stuff --class cra_terre_mono` (extrait) :
 
@@ -207,41 +210,46 @@ valent 0. Tous les personnages sont alors supposés jouer au contact (aucune PO 
 Stuff contre Merkator (3534) — grade 1 (4 joueurs), niveau 220, 13 000 PV
   Résistances effectives : Neutre 14 % · Terre 27 % · Feu 16 % · Eau 22 % · Air 12 % (plus faible : Air) ; réduction distance 50 %
   Mécaniques : Tenter de lui retirer des PM déclenche une riposte (« Mer Veille ») ; Dommages subis à distance ×50 % (sur coup à distance) : équivaut à 50 % de résistance distance ; % Dommages finaux : +2 (sur coup à distance) ; Indéplaçable : état « Indéplaçable » (97) dès le début du combat ; Retire des PA/PM aux joueurs (Mer Kantile, Baphe Thysca)
-  Personnage : Crâ niveau 200, preset cra_terre_mono (Crâ Terre mono-cible), rôle Tueur, élément Terre, à distance
+  Personnage : Crâ niveau 200, preset cra_terre_mono (Crâ Terre mono-cible), rôle Tueur, élément Terre, au contact
+  Jeu : joué au contact : 100 % de son DPT soutenu contre ce boss passe par des coups au contact, que le boss subit mieux (−50 % à distance) — PO non exigée, % dommages mêlée valorisés.
   Les classements valent plus que les valeurs absolues (voir les hypothèses).
 
 Comparaison
   Stuff                                                         logJ (écart au départ)  DPT soutenu  DPT proxy     PV    PVe  Reçus/tour  PA/PM/PO  Pénalité
   Stuff du preset (Terre — Cœur Saignant / Brouce / Torkéloni…                   7,965        2 128      2 198  4 153  5 393       1 546    12/6/6         —
-  Générique Feu — Séculaire / Cycloïde / Atcham / Padgref               7,844 (−0,120)        2 024      2 091  3 603  4 812       1 504    12/6/5    ×0,950
-  Générique Air — Allister / Cycloïde / Submergée                       7,674 (−0,291)        1 461      1 509  4 153  5 835       1 429    12/6/5    ×0,950
+  Générique Feu — Séculaire / Cycloïde / Atcham / Padgref               7,895 (−0,069)        2 024      2 091  3 603  4 812       1 504    12/6/5         —
+  Générique Air — Allister / Cycloïde / Submergée                       7,725 (−0,239)        1 461      1 509  4 153  5 835       1 429    12/6/5         —
   Générique Eau — Danathor / Sinistrofu                                 7,648 (−0,317)        1 370      1 415  4 103  5 245       1 571    12/6/6         —
+  Générique Tank — Anerice / Pol Ouatnos / Gloursonne / Balei…          7,461 (−0,504)        1 021      1 054  5 053  9 597       1 057    11/6/3    ×0,850
   Générique Sagesse/retrait — Léthaline / Ventouse / Anerice …          7,404 (−0,561)          861        890  4 253  6 867       1 244    12/6/6         —
-  Générique Tank — Anerice / Pol Ouatnos / Gloursonne / Balei…          7,307 (−0,658)        1 021      1 054  5 053  9 597       1 057    11/6/3    ×0,729
-  Optimisé n° 1                                                         8,054 (+0,090)        2 205      2 277  4 753  6 692       1 426    12/6/6         —
-  Optimisé n° 2                                                         8,047 (+0,082)        2 133      2 204  4 303  7 053       1 225    12/6/6         —
-  Optimisé n° 3                                                         8,046 (+0,082)        2 128      2 199  4 153  7 078       1 178    12/6/6         —
-  Optimisé n° 4                                                         8,046 (+0,081)        2 098      2 167  4 753  7 308       1 306    12/6/6         —
-  Optimisé n° 5                                                         8,042 (+0,078)        2 097      2 166  4 753  7 229       1 320    12/6/6         —
+  Optimisé n° 1                                                         8,070 (+0,105)        2 202      2 274  4 503  7 066       1 280    12/6/6         —
+  Optimisé n° 2                                                         8,055 (+0,090)        2 030      2 097  4 253  8 133       1 050    12/6/4         —
+  Optimisé n° 3                                                         8,050 (+0,086)        2 099      2 169  4 203  7 403       1 140    12/6/4         —
+  Optimisé n° 4                                                         8,049 (+0,084)        1 943      2 007  5 053  8 821       1 150    12/6/5         —
+  Optimisé n° 5                                                         8,048 (+0,083)        1 975      2 041  4 253  8 459       1 010    12/6/4         —
   Classement par le logJ du proxy (objectif de l’optimiseur) ; stuffs de référence et candidats de la recherche classés ensemble.
   […]
-Meilleur stuff : Optimisé n° 1 — logJ 8,054 (+0,090 par rapport au départ)
-  DPT soutenu 2 205 (rafale 2 205, période 1 tour, posture « Sans posture ») ; DPT proxy 2 277
-  PV 4 753, PVe 6 692, dégâts reçus 1 426/tour (Terre 621, Eau 808)
+Meilleur stuff : Optimisé n° 1 — logJ 8,070 (+0,105 par rapport au départ)
+  DPT soutenu 2 202 (rafale 2 202, période 1 tour, posture « Sans posture ») ; DPT proxy 2 274
+  PV 4 503, PVe 7 066, dégâts reçus 1 280/tour (Terre 670, Eau 612)
   12 PA, 6 PM, 6 PO
   Objets :
   […]
   DPT soutenu par sort (lancers/tour × dégâts par lancer) :
     Sort                PA  Lancers/tour  Dégâts/lancer  Dégâts/tour  Part
-    Flèche Vagabonde     3          2,00            561        1 121  51 %
+    Flèche Vagabonde     3          2,00            560        1 121  51 %
     Œil pour Œil         3          1,00            571          571  26 %
-    Flèche Assaillante   3          1,00            513          513  23 %
+    Flèche Assaillante   3          1,00            510          510  23 %
 ```
 
 Merkator subit 50 % de dommages en moins à distance : les trois sorts de la rotation, lançables au contact comme à
 distance (portée minimale 0 ou 1), sont comptés **au contact**, le coup que la cible subit le mieux (§3.2, « Au contact
-ou à distance ») ; les % dommages mêlée du Crâ comptent donc, et non ses % distance (équivalences, §3.3). Le Crâ reste
-joué à distance pour l'objectif de l'optimiseur (6 PO visées, règle « au contact » du §3.2).
+ou à distance »). Tout le DPT soutenu du Crâ passe donc par des coups au contact, et ce Crâ est **joué au contact**
+(ligne « Jeu », §3.2 « Style de jeu ») : l'objectif de l'optimiseur n'exige plus de PO (le générique Feu, à 5 PO, n'a
+plus de pénalité ; des stuffs à 4 PO entrent dans le top) et ses % dommages mêlée comptent, non ses % distance
+(équivalences, §3.3). Contre le Comte Harebourg, qui ne distingue pas les coups au contact des coups à distance, le
+même preset reste joué à distance : 0 % de son DPT soutenu au contact, 6 PO visées (`boss "comte harebourg" stuff
+--class cra_terre_mono`, ligne « Personnage : … à distance »).
 
 **Comparer les éléments.** `boss solar stuff --class cra:terre --elements all` lance une recherche par élément et les
 compare dans un même contexte (même personnage, mêmes variantes de sorts, points reportés sur la caractéristique de
@@ -281,14 +289,16 @@ onglet Boss est retiré (une adresse `#boss` y mène aux combats).
   punissent ; avertissements et hypothèses repliables. La fiche manuelle `data/bosses/<id>.json` est appliquée si elle
   existe.
 - Onglet **Classes** : un tableau triable par axe (rangs partagés « =1 », mêmes colonnes que la ligne de commande,
-  dont le facteur « Étal. preset » et, contre un boss aux résistances ≥ 100 % sans fiche, « Rés. levées », §3.1), la
-  composition suggérée avec ses raisons, atouts, limites et confiance dépliables ; le bouton « optimiser les stuffs »
-  relance le classement avec des stuffs optimisés contre le boss (plus long, indicateur de chargement).
+  dont le facteur « Étal. preset », le style de jeu « Jeu » (§3.2) et, contre un boss aux résistances ≥ 100 % sans
+  fiche, « Rés. levées », §3.1), la composition suggérée avec ses raisons, atouts, limites et confiance dépliables ; le
+  bouton « optimiser les stuffs » relance le classement avec des stuffs optimisés contre le boss (plus long,
+  indicateur de chargement).
 - Onglet **Stuff** : choix du preset, champ « lien RoxxSolver », éléments (ceux du preset ou les quatre), profil,
-  taille du top ; résultat : tableau comparatif, meilleur stuff objet par objet (icônes DofusDB, repli hors ligne),
-  objets changés, équivalences des caractéristiques, DPT par sort, hypothèses et avertissements. Un réglage changé
-  après le calcul (preset, ou bouton « Stuff » de l'onglet Classes) grise le résultat : « Résultat pour <preset> — …
-  relancez le calcul ».
+  taille du top ; résultat : style de jeu du personnage (au contact ou à distance, avec son explication quand il
+  diffère de celui du preset, §3.2), tableau comparatif, meilleur stuff objet par objet (icônes DofusDB, repli hors
+  ligne), objets changés, équivalences des caractéristiques, DPT par sort, hypothèses et avertissements. Un réglage
+  changé après le calcul (preset, ou bouton « Stuff » de l'onglet Classes) grise le résultat : « Résultat pour
+  <preset> — … relancez le calcul ».
 - L'adresse garde l'état : `#boss/<monsterId>` (fiche) ou `#boss/<monsterId>/<onglet>` (`classes`, `stuff` ; ex.
   `#boss/4726/classes`), à mettre en favori.
 
@@ -390,10 +400,20 @@ distance) ; à égalité, le style du personnage (au contact ⇒ mêlée). Les %
 suivent ce coup (une classe de contact valorise ses % mêlée). Un sort de portée minimale 2 ou plus ne frappe qu'à
 distance, un sort de portée 1 qu'au contact. L'IA du Vortex garde sa propre règle (mêlée ⇔ portée max ≤ 1).
 
-**Joué au contact.** Un personnage est supposé jouer **au contact** (aucune PO exigée par l'objectif de l'optimiseur)
-si le boss n'est attaquable qu'au contact (Père Ver) ou si son preset est un preset de mêlée (Iop Terre, Ouginak,
-Sacrieur, Zobal, Féca protecteur, Pandawa Saoul) ; sinon à distance (6 PO visées). Règle unique (`playsMelee`) pour
-le classement et le meilleur stuff.
+**Style de jeu (colonne « Jeu »).** Un preset est joué là où il porte la majorité de son DPT. Il est joué **au
+contact** si le boss n'est attaquable qu'au contact (Père Ver), si son preset est un preset de mêlée (Iop Terre,
+Ouginak, Sacrieur, Zobal, Féca protecteur, Pandawa Saoul) ou si **au moins 50 % de son DPT soutenu contre ce boss**
+passe par des coups au contact (mesuré avec le stuff du preset, ou le stuff de départ pour `stuff`) ; sinon à
+distance. Contre Merkator (−50 % à distance), presque tous les presets à distance frappent au contact et y sont donc
+joués (Crâ Terre mono : 100 %) ; contre le Comte Harebourg, qui ne distingue pas les coups, le Crâ Terre mono reste à
+distance (0 %) et le Iop Terre au contact (preset de mêlée). Le style décide de tout ce qui en dépend : la PO visée
+par l'objectif de l'optimiseur (6 à distance, aucune au contact : `--optimize`, `stuff`), le coup d'un sort lançable
+des deux façons quand le boss ne les distingue pas (au contact ⇒ mêlée, ses % dommages mêlée comptent), les libellés
+(« au contact » / « à distance ») et une explication quand il diffère du style du preset (« joué au contact : 100 % de
+son DPT soutenu contre ce boss passe par des coups au contact, que le boss subit mieux (−50 % à distance) »). La
+colonne « Jeu » donne le style et, entre parenthèses, la part du DPT soutenu au contact ; « * » marque un style
+différent de celui du preset. Règle unique (`resolveStyle`, `src/theorycraft/target.ts`) pour le classement et le
+meilleur stuff ; `--range N` (`stuff`) garde la main sur la PO visée, et l'option `melee` de l'API sur le style.
 
 **Poisons.** Le DPT soutenu suit chaque poison tour par tour : une application pose ses échéances (une par tour, sans
 critique, 6 au plus), au-delà du **cumul maximal** du sort la plus ancienne instance est retirée, et un lancer ne vaut
@@ -453,14 +473,15 @@ contre ce boss :
   **profil** : `defensive` retire 0,2 à a et l'ajoute à b, `offensive` ajoute 0,15 à a et le retire à b.
 - **UTIL** : l'utilité du rôle (retraits, soins, tacle…).
 - **Pénalités** : ×0,85 par PA, ×0,9 par PM et ×0,95 par PO sous les valeurs visées (12 PA, 6 PM, 6 PO à distance ou
-  0 au contact ; `--range N` pour viser moins, ex. un Crâ qui compte sur ses bonus de PO temporaires). Un réglage de
-  l'objectif, pas un effet du boss : la colonne *Pénalité* l'affiche (×0,950 = une PO manquante ; ×0,729 = 1 PA et
-  3 PO manquants).
+  aucune au contact, selon le style de jeu du §3.2 ; `--range N` pour viser moins, ex. un Crâ joué à distance qui
+  compte sur ses bonus de PO temporaires). Un réglage de l'objectif, pas un effet du boss : la colonne *Pénalité*
+  l'affiche (×0,950 = une PO manquante à distance ; contre Merkator, où le Crâ est joué au contact, le générique Tank à
+  11/6/3 n'est pénalisé que pour son PA manquant : ×0,850).
 
-**Lire logJ.** Il n'a de sens qu'à personnage, rôle, profil et boss égaux. Un écart de +0,090 signifie J × e^0,090
-≈ ×1,09 : environ 9 % de mieux sur l'objectif, à répartir entre dégâts (poids a) et survie (poids b). Dans l'exemple de
-Merkator, l'« Optimisé n° 1 » gagne 4 % de DPT soutenu (2 128 → 2 205) et 24 % de PVe (5 393 → 6 692) sur le stuff du
-preset ; l'« Optimisé n° 2 » échange un peu de DPT contre des PVe (2 133 et 7 053) : le top montre ces compromis.
+**Lire logJ.** Il n'a de sens qu'à personnage, rôle, profil et boss égaux. Un écart de +0,105 signifie J × e^0,105
+≈ ×1,11 : environ 11 % de mieux sur l'objectif, à répartir entre dégâts (poids a) et survie (poids b). Dans l'exemple de
+Merkator, l'« Optimisé n° 1 » gagne 3 % de DPT soutenu (2 128 → 2 202) et 31 % de PVe (5 393 → 7 066) sur le stuff du
+preset ; l'« Optimisé n° 2 » échange du DPT contre des PVe (2 030 et 8 133) : le top montre ces compromis.
 
 **Colonnes du tableau** :
 
@@ -518,20 +539,23 @@ caractéristique principale du stuff (dérivées de l'objectif au meilleur stuff
 
 ```
 Équivalences des caractéristiques contre ce boss (référence : Force)
-  1 PA (sous le plafond) ≈ 725 Force, dont 519 de pénalité d’objectif (207 pour les effets modélisés) — par poids de rune : ×7,25
-  1 PM (sous le plafond) ≈ 336 Force, dont 336 de pénalité d’objectif (0 pour les effets modélisés) — par poids de rune : ×3,74
-  1 Portée (sous le plafond) ≈ 164 Force, dont 164 de pénalité d’objectif (0 pour les effets modélisés) — par poids de rune : ×3,21
-  1 % Dommages aux sorts ≈ 22,2 Force — par poids de rune : ×1,48
-  1 % Dommages mêlée ≈ 21 Force — par poids de rune : ×1,40
-  1 % Résistance aux sorts ≈ 9,62 Force — par poids de rune : ×0,64
+  1 PA (sous le plafond) ≈ 698 Force, dont 508 de pénalité d’objectif (190 pour les effets modélisés) — par poids de rune : ×6,98
+  1 PM (sous le plafond) ≈ 329 Force, dont 329 de pénalité d’objectif (0 pour les effets modélisés) — par poids de rune : ×3,66
+  1 % Dommages aux sorts ≈ 21,6 Force — par poids de rune : ×1,44
+  1 % Dommages mêlée ≈ 20,5 Force — par poids de rune : ×1,37
+  1 % Résistance aux sorts ≈ 9,42 Force — par poids de rune : ×0,63
 ```
 
-- « 1 % Dommages mêlée ≈ 21 Force » : pour ce Crâ contre Merkator, 1 % de dommages mêlée vaut 21 Force — ses sorts
-  frappent au contact, le coup que Merkator subit le mieux (§3.2) ; ses % distance n'apparaissent pas.
+- « 1 % Dommages mêlée ≈ 20,5 Force » : pour ce Crâ contre Merkator, 1 % de dommages mêlée vaut 20,5 Force — ses
+  sorts frappent au contact, le coup que Merkator subit le mieux, et il y est joué (§3.2) ; ses % distance
+  n'apparaissent pas.
 - **PA, PM, PO** : valeur d'un point *sous le plafond* (au-delà, un point ne vaut rien), dont la part due aux seules
-  **pénalités de l'objectif** (« dont 519 de pénalité d'objectif ») : la part *modélisée* (dégâts, survie) est le reste
-  (207 Force pour un PA). Un PM vaut 0 pour les effets modélisés : aucune position n'est simulée.
-- **Par poids de rune** : la même comparaison à coût de forgemagie égal (poids des runes) ; ×1,40 = plus rentable que
+  **pénalités de l'objectif** (« dont 508 de pénalité d'objectif ») : la part *modélisée* (dégâts, survie) est le reste
+  (190 Force pour un PA). Un PM vaut 0 pour les effets modélisés : aucune position n'est simulée. La **Portée**
+  n'apparaît pas ici : joué au contact, le Crâ n'a aucune PO visée, une PO ne vaut rien. Joué à distance (`boss
+  "comte harebourg" stuff --class cra_terre_mono`) : « 1 Portée (sous le plafond) ≈ 164 Force, dont 164 de pénalité
+  d'objectif » et « 1 % Dommages distance ≈ 21 Force ».
+- **Par poids de rune** : la même comparaison à coût de forgemagie égal (poids des runes) ; ×1,37 = plus rentable que
   la Force à la forgemagie.
 - Valeurs locales (petits changements autour du meilleur stuff), pour ce boss, ce rôle et ce profil.
 
@@ -542,6 +566,9 @@ Chaque sortie liste les siennes ; voici l'ensemble, sans fard.
 **Pas un combat.**
 - Aucune position, ligne de vue, déplacement, tacle ni placement ; aucun PM dépensé ; un sort de zone frappe la seule
   cible visée. Un coup compté au contact suppose que le personnage atteigne une case adjacente au boss et y reste.
+- **Un style de jeu par personnage**, au contact ou à distance tout le combat (§3.2), décidé avec le stuff du preset
+  (ou de départ) : l'objectif de l'optimiseur suit ce seul style (PO visée), même pour un personnage qui alternerait ;
+  chaque sort lançable des deux façons garde le coup que le boss subit le mieux.
 - Ni invocations (les vôtres comme celles du boss), ni glyphes, pièges, bombes, tourelles ; l'arme n'est pas lancée.
 - Ni rampes ni cumuls entre tours (Fureur, Colère de Iop au retour de relance, paliers de Flèche Dévorante), ni buffs
   entre sorts d'un même personnage, ni PA rendus en cours de tour. Poisons suivis tour par tour dans le DPT soutenu

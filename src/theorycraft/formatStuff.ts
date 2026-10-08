@@ -2,7 +2,8 @@
  * Theorycraft contre un boss — rendu texte (français, CLI) de la question (1) « quel stuff est le plus intéressant
  * contre ce boss ? » (`StuffVsBossResult`, src/theorycraft/stuff.ts ; docs/design/theorycraft.md §1.9).
  *
- * Sections : boss et personnage ; tableau comparatif (départ, stuff du preset, génériques, puis optimisés : score de
+ * Sections : boss et personnage (style de jeu, `character.style`, et son explication quand il diffère de celui du
+ * preset) ; tableau comparatif (départ, stuff du preset, génériques, puis optimisés : score de
  * classement — logJ du proxy ou logJ soutenu, `ranking` —, DPT soutenu, DPT du proxy, PV, PV effectifs, dégâts reçus,
  * PA/PM/PO, pénalité de l'objectif) ; meilleur stuff détaillé (posture, dégâts reçus par
  * élément, objets par emplacement avec forgemagie, points et parchemins, objets changés, DPT par sort) ; autres stuffs
@@ -96,8 +97,10 @@ export function formatStuffVsBoss(r: StuffVsBossResult, opts: FormatStuffOptions
   out.push(`  Résistances effectives : ${b.resPct.map((v, i) => `${ELEMENTS_FR[i]} ${num(v)} %`).join(' · ')} (plus faible : ${weakest})${reductions.length ? ` ; réduction ${reductions.join(', ')}` : ''}`)
   if (b.mechanics.length) out.push(`  Mécaniques : ${b.mechanics.join(' ; ')}`)
   out.push(
-    `  Personnage : ${c.className} niveau ${c.level}, preset ${c.presetId} (${c.presetLabel}), rôle ${c.roleLabel}, élément ${c.elementLabel}, ${c.melee ? 'au contact' : 'à distance'}${c.input !== 'preset' ? ` — stuff fourni (${c.input === 'roxx' ? 'lien RoxxSolver' : 'build'})` : ''}`,
+    `  Personnage : ${c.className} niveau ${c.level}, preset ${c.presetId} (${c.presetLabel}), rôle ${c.roleLabel}, élément ${c.elementLabel}, ${c.style.label}${c.input !== 'preset' ? ` — stuff fourni (${c.input === 'roxx' ? 'lien RoxxSolver' : 'build'})` : ''}`,
   )
+  // Style différent de celui du preset (Crâ contre Merkator : joué au contact) : pourquoi, et ce qui en dépend.
+  if (c.style.reason) out.push(`  Jeu : joué ${c.style.label} : ${c.style.reason} — ${r.options.rangeNeed > 0 ? `${r.options.rangeNeed} PO visées` : 'PO non exigée'}${c.style.contact ? ', % dommages mêlée valorisés' : ''}.`)
   out.push('  Les classements valent plus que les valeurs absolues (voir les hypothèses).')
   out.push('')
 
@@ -113,7 +116,9 @@ export function formatStuffVsBoss(r: StuffVsBossResult, opts: FormatStuffOptions
   out.push(`  ${r.ranking.reason}`)
   out.push('  DPT soutenu : rotation établie (relances amorties), meilleure posture, non calibré. DPT proxy : objectif de l’optimiseur (un tour, × calibration du preset, sans posture).')
   out.push('  PVe : PV effectifs (PV × dégâts reçus sans défense / avec défenses)' + (rows.some(x => x[5].endsWith('*')) ? ' ; * = plafond de 20 × PV atteint.' : '.'))
-  out.push(`  Pénalité : facteur de l’objectif pour PA/PM/PO sous les valeurs visées (12 PA, 6 PM, ${r.options.rangeNeed} PO ; ×0,85, ×0,9, ×0,95 par point manquant), compris dans ${scoreName} — un réglage, pas un effet du boss.`)
+  out.push(
+    `  Pénalité : facteur de l’objectif pour PA/PM/PO sous les valeurs visées (12 PA, 6 PM, ${r.options.rangeNeed > 0 ? `${r.options.rangeNeed} PO` : 'PO non exigée'} ; ×0,85, ×0,9, ×0,95 par point manquant), compris dans ${scoreName} — un réglage, pas un effet du boss.`,
+  )
   if (!r.startValid) out.push('  Le stuff de départ est invalide : il n’est jamais retenu comme meilleur.')
   out.push('')
 

@@ -16,9 +16,10 @@
  *     · PERSONNAGE : un sort lançable au contact ET à distance est évalué dans les deux cas et le coup retenu est celui
  *       que la CIBLE subit le mieux (`meleeResPct`/`rangedResPct`, « dommages subis » mêlée/distance : « −50 % à
  *       distance » de Merkator, phase vulnérable en mêlée seule), comparé sans les % dommages mêlée/distance du lanceur ;
- *       à égalité, le style du personnage (étiquette `CONTACT_TAG` : joué au contact ⇒ mêlée, sinon distance). Les %
- *       dommages du lanceur suivent ce coup ; `hitOf` dit lequel (le proxy de stuff y lit quels % dommages comptent :
- *       une classe de contact valorise ses % mêlée).
+ *       à égalité, le style du personnage (étiquette `CONTACT_TAG` : joué au contact ⇒ mêlée, sinon distance ; style
+ *       décidé par `resolveStyle`, target.ts, d'après la part du DPT soutenu que portent ces coups). Les % dommages du
+ *       lanceur suivent ce coup ; `hitOf` dit lequel (le proxy de stuff y lit quels % dommages comptent : une classe
+ *       de contact valorise ses % mêlée ; `contactShare`, rotation.ts, la part du DPT soutenu au contact).
  *       Heuristiques du sac à dos inchangées dans `perCast` (poisons × min(durée, 2) × 0,8, différés × 0,8 : `turn`,
  *       proxy de stuff) ; le DPT soutenu (rotation.ts) suit, lui, les poisons actifs à partir de `split` ;
  *     · MONSTRE (dégâts reçus) : conventions de la fiche du boss (bossProfile.ts) pour que le tour reçu du proxy et le

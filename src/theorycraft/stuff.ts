@@ -7,11 +7,15 @@
  *     un lien de partage RoxxSolver (`roxxImport`). Pour un build ou un lien, variantes de sorts, rôle et calibration
  *     viennent du preset `presetId`, sinon du preset de base de la classe dont l'élément est la caractéristique
  *     élémentaire la plus haute du build ; un lien sans parchemins reçoit 100 partout (`fillScrolls`, signalé).
- *  2. Cible : `bossProxyOptions(profile, { role, profile, melee })` (target.ts) — cibles EXPLICITES (`strictTargets`),
- *     jamais le mix du Vortex ; « au contact » par la règle commune à la comparaison des classes (`playsMelee` : boss
- *     attaquable seulement au contact, ou preset de mêlée de la campagne des stuffs) sauf option `melee` ; PO visée 6
- *     à distance sauf option `rangeNeed` (bonus de PO temporaires de la classe listés, non déduits). Objets à la fois
- *     imposés et exclus : erreur.
+ *  2. Style de jeu, puis cible. Style (au contact ou à distance, `character.style`) par la règle commune à la
+ *     comparaison des classes (`resolveStyle`, target.ts) : option `melee` d'abord ; sinon au contact si le boss n'est
+ *     attaquable qu'au contact, si le preset est un preset de mêlée ou si au moins 50 % du DPT soutenu du stuff de
+ *     départ contre ce boss passe par des coups au contact (`contactShare`, rotation.ts, mesurée avec le style de la
+ *     règle sans mesure `playsMelee`) ; sinon à distance — avec une explication quand il diffère du style du preset.
+ *     Cible : `bossProxyOptions(profile, { role, profile, melee })` (target.ts) — cibles EXPLICITES (`strictTargets`),
+ *     jamais le mix du Vortex ; PO visée 6 à distance, 0 au contact, sauf option `rangeNeed` (bonus de PO temporaires
+ *     de la classe listés, non déduits) ; au contact, étiquette `contact` (à égalité de la cible, % mêlée valorisés).
+ *     Objets à la fois imposés et exclus : erreur.
  *  3. Références notées dans UN contexte de proxy commun (construit comme celui de l'optimiseur : build de départ comme
  *     référence) : départ, stuff du preset (quand le départ est le stuff de l'utilisateur), stuffs génériques de
  *     data/ai/presets.json hors stuffs de scénario (`theorySeedFilter` : jamais de `vortex_*`, objets ≤ niveau).
@@ -87,12 +91,13 @@ import type { PrimaryStat } from '../stats/characteristicPoints'
 import { RUNE_WEIGHT_PER_POINT } from '../stats/forgemagie'
 import { buildStuffSheet, ROLE_LABELS_FR, statLabelFr, type StuffSheet } from '../stats/sheet'
 import { bossFighter, playerFighterFromStats, theoryDptTable, withStates, type TheoryCharacter } from './fighters'
-import { sustainedDamage } from './rotation'
+import { contactShare, sustainedDamage } from './rotation'
 import { bestStance, STANCES, type ClassStance } from './stances'
-import { bossProxyOptions, incomingCoherence, playsMelee, refHpOf } from './target'
+import { bossProxyOptions, CONTACT_SHARE, incomingCoherence, playsMelee, refHpOf, resolveStyle } from './target'
 import type {
   BossProfile,
   PerElement,
+  PlayStyle,
   StatEquivalence,
   StuffDamage,
   StuffElement,
@@ -189,7 +194,10 @@ export interface StuffVsBossOptions {
   fillScrolls?: boolean
   /** Rôle imposé (défaut : rôle du preset). */
   role?: RoleId
-  /** Joué au contact (défaut : règle commune `playsMelee` — boss attaquable seulement au contact, ou preset de mêlée). */
+  /**
+   * Joué au contact (choix explicite ; défaut : règle commune `resolveStyle` — boss attaquable seulement au contact,
+   * preset de mêlée, ou au moins 50 % du DPT soutenu du départ contre ce boss porté par des coups au contact).
+   */
   melee?: boolean
   /**
    * PO visée par l'objectif (pénalité ×0,95 par PO manquante) ; défaut : 6 à distance, 0 au contact (target.ts). Les
@@ -367,8 +375,11 @@ interface SteadyRun {
   runs: SustainedDamage[]
 }
 
+/** Ce que demande le DPT soutenu (posture, phases) : sans le contexte du proxy, pour mesurer avant de le construire. */
+type DptEnv = Pick<Env, 'data' | 'table' | 'who' | 'targets' | 'weights'>
+
 /** DPT soutenu pondéré par les phases (une posture). */
-function steadyOver(env: Env, a: Fighter): SteadyRun {
+function steadyOver(env: DptEnv, a: Fighter): SteadyRun {
   let steady = 0
   let burst = 0
   let w = 0
@@ -422,7 +433,7 @@ function spellBreakdown(env: Env, run: SteadyRun): { spells: StuffSpellLine[]; p
 }
 
 /** DPT soutenu pondéré par les phases, à la meilleure posture de la classe (stances.ts). */
-function bestSteady(env: Env, stats: Stats, maxHp: number): { run: SteadyRun; stance: ClassStance; base: Fighter } {
+function bestSteady(env: DptEnv, stats: Stats, maxHp: number): { run: SteadyRun; stance: ClassStance; base: Fighter } {
   const base = playerFighterFromStats(env.data, env.who, stats, maxHp)
   const runs = new Map<string, SteadyRun>()
   const choice = bestStance(
@@ -555,6 +566,8 @@ export interface StatEquivalenceOptions {
   penalties?: Partial<Record<'ap' | 'mp' | 'range', number>>
   /** DPT soutenu du stuff : sous 1, la référence en Vitalité s'explique par l'absence de dégâts. */
   steady?: number
+  /** PO visée par l'objectif (défaut 6) : 0 au contact, la PO ne vaut alors rien (note). */
+  rangeNeed?: number
   /** Classement soutenu : nom de la posture dont le DPT soutenu donne la part des dégâts (note). */
   sustainedStance?: string
   /**
@@ -576,7 +589,9 @@ export interface StatEquivalenceOptions {
 export function statEquivalences(weights: Partial<Record<StatKey, number>>, element: StuffElement, opts: StatEquivalenceOptions = {}): StuffStatWeights {
   const notes = [
     'Poids marginaux ∂logJ/∂point de la forme fermée d’un proxy construit AU meilleur stuff (son élément, sa rotation) : valables pour CE boss, CE rôle et CE profil, et pour de petits changements (linéarisation locale).',
-    `PA, PM et PO : valeur d’un point SOUS le plafond (12 PA, 6 PM, 6 PO) — au-delà du plafond un point ne vaut rien. Elle comprend les pénalités de l’objectif (${PENALTY_TEXT}) : un réglage de l’objectif, pas un effet du boss, affiché à part (« dont … de pénalité d’objectif »).`,
+    opts.rangeNeed === 0
+      ? `PA et PM : valeur d’un point SOUS le plafond (12 PA, 6 PM) — au-delà du plafond un point ne vaut rien ; PO non exigée (joué au contact) : une PO ne vaut rien. Elle comprend les pénalités de l’objectif (${PENALTY_TEXT}) : un réglage de l’objectif, pas un effet du boss, affiché à part (« dont … de pénalité d’objectif »).`
+      : `PA, PM et PO : valeur d’un point SOUS le plafond (12 PA, 6 PM, 6 PO) — au-delà du plafond un point ne vaut rien. Elle comprend les pénalités de l’objectif (${PENALTY_TEXT}) : un réglage de l’objectif, pas un effet du boss, affiché à part (« dont … de pénalité d’objectif »).`,
     '« Par poids de rune » : valeur pour une même dépense de forgemagie (poids des runes), relative à la référence.',
   ]
   if (opts.sustainedStance) notes.push(`Classement soutenu : la part des dégâts vient du DPT soutenu en posture « ${opts.sustainedStance} » (différences finies de la rotation établie), pas du DPT du proxy.`)
@@ -911,6 +926,23 @@ function polishSustained(
   return cur.rank > startRank + 1e-9 ? cur : undefined
 }
 
+/** Règle qui a fixé le style de jeu (hypothèses), quand `PlayStyle.reason` ne l'explique pas. */
+function styleRule(st: PlayStyle): string {
+  const seuil = `seuil ${fr(CONTACT_SHARE * 100, 0)} %`
+  switch (st.source) {
+    case 'explicit':
+      return 'choix explicite (option melee de l’API)'
+    case 'boss':
+      return 'boss attaquable seulement au contact'
+    case 'dpt':
+      return `au moins ${fr((st.contactShare ?? 0) * 100, 0)} % du DPT soutenu contre ce boss au contact (${seuil})`
+    case 'preset':
+      return st.contact
+        ? 'preset de mêlée'
+        : `preset à distance${st.contactShare !== undefined ? `, ${fr(st.contactShare * 100, 0)} % du DPT soutenu contre ce boss au contact (${seuil})` : ''}`
+  }
+}
+
 /** Sorts de la classe qui donnent de la PO (effet 117) : bonus temporaires, non déduits de la PO visée. */
 function rangeBuffs(f: Fighter): string[] {
   const out: string[] = []
@@ -945,7 +977,6 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   const start = ch.start
   const buildLevel = start.level
   const role: RoleId = opts.role ?? preset.role
-  const melee = playsMelee(profile, preset.extends ?? preset.id, opts.melee)
   const variants = (start.spellVariants?.length ? start.spellVariants : preset.variants).slice()
   const presetId = preset.extends ?? preset.id
   const startStats = computeBuildStats(start, data)
@@ -953,8 +984,22 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   const warnings = [...ch.warnings]
   const assumptions = [...ch.assumptions]
 
+  // ── Style de jeu (`resolveStyle`, règle commune à `rankClasses`) : part du DPT soutenu portée par des coups au contact,
+  // mesurée au stuff de départ avec le style de la règle sans mesure (`playsMelee`) ; choix explicite `melee` prioritaire.
+  // Les phases attaquables (cibles du DPT) ne dépendent pas du style. ──
+  const ruleContact = playsMelee(profile, presetId)
+  const ruleTarget = bossProxyOptions(profile, { role, profile: expProfile, melee: opts.melee ?? ruleContact })
+  const table = theoryDptTable(data)
+  const targets = (ruleTarget.options.targets ?? []).map(t => bossFighter(data, t.monsterId, { grade: t.grade ?? profile.grade, stats: t.stats, states: t.states }))
+  const weights = (ruleTarget.options.targets ?? []).map(t => t.weight)
+  const base: TheoryCharacter = { breedId: preset.breedId, level: buildLevel, variants, presetId, name: start.name }
+  const measured = bestSteady({ data, table, who: { ...base, contact: ruleContact }, targets, weights }, startStats.stats, startStats.maxHp)
+  const share = contactShare(table, withStates(measured.base, measured.stance.states), targets, weights, measured.run.runs)
+  const style = resolveStyle(profile, presetId, { contactShare: share }, opts.melee)
+  const melee = style.contact
+
   // ── Cible et contexte commun (comme celui de l'optimiseur : build de départ comme référence) ──
-  const target = bossProxyOptions(profile, { role, profile: expProfile, melee })
+  const target = melee === (opts.melee ?? ruleContact) ? ruleTarget : bossProxyOptions(profile, { role, profile: expProfile, melee })
   const options: ProxyOptions = opts.rangeNeed !== undefined ? { ...target.options, rangeNeed: Math.max(0, Math.floor(opts.rangeNeed)) } : target.options
   const member: MemberSpec = { name: start.name, breedId: preset.breedId, presetId, build: start, variants, role }
   const proxyMember: ProxyMember = { breedId: preset.breedId, level: buildLevel, variants, role, presetId, element: startElement, name: start.name }
@@ -963,10 +1008,7 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   // Dégâts reçus du proxy (PVe, objectif) face au profil offensif de la fiche (mêmes phases, joueur à 0 % de résistance).
   const coherence = incomingCoherence(profile, target, ctx.incomingUndefended(refHpOf(profile)))
   if (coherence?.warning) warnings.push(coherence.warning)
-  const table = theoryDptTable(data)
-  const targets = (options.targets ?? []).map(t => bossFighter(data, t.monsterId, { grade: t.grade ?? profile.grade, stats: t.stats, states: t.states }))
-  const weights = (options.targets ?? []).map(t => t.weight)
-  const who: TheoryCharacter = { breedId: preset.breedId, level: buildLevel, variants, presetId, name: start.name, contact: melee }
+  const who: TheoryCharacter = { ...base, contact: melee }
   const env: Env = { data, ctx, table, who, preset, role, targets, weights, startItems: [] }
   const startEval = evaluate(env, start, { id: ch.user ? 'user' : 'start', origin: ch.user ? 'user' : 'start', label: ch.label })
   env.startItems = startEval.items
@@ -1144,6 +1186,7 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   const statWeights = statEquivalences(atBest.weights, best.element, {
     penalties: atBest.penalties,
     steady: best.damage.steady,
+    rangeNeed: ctx.rangeNeed,
     ...(rankBy === 'sustained' ? { sustainedStance: best.damage.stance.name } : ctx.exponents.a > 0 ? { apSustainedStance: best.damage.stance.name } : {}),
   })
 
@@ -1180,7 +1223,7 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
   }
   // Pénalités d'objectif décisives (PA/PM/PO sous les valeurs visées) : un réglage, pas un effet du boss.
   const noPenalty = (e: Evaluated) => rankOf(e)! - detLog(e.penalty)
-  const buffs = melee || ctx.rangeNeed <= 0 ? [] : rangeBuffs(playerFighterFromStats(data, who, startStats.stats, startStats.maxHp))
+  const buffs = ctx.rangeNeed <= 0 ? [] : rangeBuffs(playerFighterFromStats(data, who, startStats.stats, startStats.maxHp))
   if (startValid && best !== startEval && startEval.penalty < best.penalty && noPenalty(startEval) > noPenalty(best)) {
     const po = startEval.range < ctx.rangeNeed
     warnings.push(
@@ -1209,11 +1252,11 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
     'DPT : sorts de classe seulement (arme non lancée) ; ni invocations, glyphes, pièges, bombes, buffs entre sorts ni buffs d’équipe entre personnages ; aucune position, ligne de vue ni PM.',
     `DPT soutenu : rotation en régime établi (relances amorties), meilleure posture de classe supposée tenue tout le combat, NON calibré ; DPT du proxy : un tour isolé × calibration du preset (mesurée au Vortex), sans posture.`,
     'PV effectifs : rotations du boss estimées par sac à dos sur une cible (optimiste pour le boss sur une cible ; zones, sorts en réaction et invocations non comptés : le total peut être sous-estimé ; pas l’IA réelle), plafonnés à 20 × PV ; ni soins, boucliers, érosion ni kit défensif de classe.',
-    `Variantes de sorts du preset « ${presetId} »${
-      melee
-        ? ' ; joué au contact (PO non exigée)'
-        : ` ; joué à distance (${ctx.rangeNeed} PO visées${opts.rangeNeed !== undefined ? ', --range (option rangeNeed de l’API)' : ''}${buffs.length ? ` ; bonus de PO temporaires de la classe NON déduits : ${buffs.join(', ')}` : ''})`
-    }.`,
+    `Variantes de sorts du preset « ${presetId} » ; joué ${style.label} (${
+      ctx.rangeNeed <= 0
+        ? 'PO non exigée'
+        : `${ctx.rangeNeed} PO visées${opts.rangeNeed !== undefined ? ', --range (option rangeNeed de l’API)' : ''}${buffs.length ? ` ; bonus de PO temporaires de la classe NON déduits : ${buffs.join(', ')}` : ''}`
+    })${style.reason ? ` : ${style.reason}` : ` — ${styleRule(style)}`}.`,
     'Les CLASSEMENTS valent plus que les valeurs absolues.',
     ...target.assumptions,
     ...profile.assumptions.map(a => `Boss : ${a}`),
@@ -1247,6 +1290,7 @@ export function stuffVsBoss(data: GameDataStore, input: StuffInput, profile: Bos
       elementLabel: elementLabel(startElement),
       level: buildLevel,
       melee,
+      style,
       input: ch.input,
       variants,
     },

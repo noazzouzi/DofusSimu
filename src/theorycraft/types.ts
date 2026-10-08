@@ -331,6 +331,37 @@ export interface DamageShape {
   meleeShare: number
   rangeShare: number
   burstRatio: number
+  /**
+   * Part du DPT soutenu CONTRE LE BOSS (phases attaquables pondérées) portée par des coups au contact (`contactShare`,
+   * rotation.ts) — mesure du style de jeu (`resolveStyle`, target.ts). Absente hors du classement des classes.
+   */
+  contactShare?: number
+}
+
+/**
+ * Style de jeu d'un preset contre un boss (`resolveStyle`, target.ts) : au contact ou à distance. Il pilote la PO visée
+ * par l'objectif (`rangeNeed` : 0 au contact, 6 à distance), l'étiquette « joué au contact » du proxy et de la table du
+ * theorycraft (`CONTACT_TAG` : à égalité de la cible, % mêlée valorisés) et les libellés des rendus.
+ */
+export interface PlayStyle {
+  /** Joué au contact. */
+  contact: boolean
+  /** « au contact » ou « à distance ». */
+  label: string
+  /** Style propre du preset : preset de mêlée (`MELEE_PRESET`) ⇒ au contact, sinon à distance. */
+  presetContact: boolean
+  /**
+   * Ce qui décide : `explicit` = choix explicite (option `melee`) ; `boss` = boss attaquable seulement au contact ;
+   * `preset` = style du preset ; `dpt` = au moins `CONTACT_SHARE` du DPT soutenu passe par des coups au contact.
+   */
+  source: 'explicit' | 'boss' | 'preset' | 'dpt'
+  /**
+   * Part du DPT soutenu contre le boss (phases attaquables pondérées, meilleure posture) portée par des coups au contact,
+   * mesurée avec le stuff de départ et le style de la règle sans mesure (`playsMelee`) ; absente si non mesurée.
+   */
+  contactShare?: number
+  /** Explication quand le style diffère de celui du preset (`presetContact`), sans le « joué au contact : » initial. */
+  reason?: string
 }
 
 export interface ClassUtilities {
@@ -390,6 +421,8 @@ export interface PresetEvaluation {
   /** Stuff utilisé : identifiant du stuff générique, `unstuffed` (sans objet), ou `optimized`. */
   stuff: string
   stance: { id: string; name: string; states: number[] }
+  /** Style de jeu contre ce boss (`resolveStyle`, target.ts : même règle que `stuffVsBoss`), décidé avec le stuff du preset. */
+  style: PlayStyle
   dpt: {
     /** DPT soutenu en régime établi (rotation.ts `steady`), NON calibré, pondéré par les phases attaquables. */
     steady: number
@@ -711,8 +744,10 @@ export interface StuffVsBossResult {
     element: StuffElement
     elementLabel: string
     level: number
-    /** Joué au contact (PO non exigée). */
+    /** Joué au contact (= `style.contact`). */
     melee: boolean
+    /** Style de jeu contre ce boss (`resolveStyle`, target.ts : même règle que `rankClasses`), décidé au stuff de départ. */
+    style: PlayStyle
     /** Origine du stuff de départ. */
     input: 'preset' | 'build' | 'roxx'
     variants: (0 | 1)[]

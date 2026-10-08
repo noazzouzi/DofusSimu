@@ -7,7 +7,7 @@
  * le mix du Vortex. Aucun accès fichier : les accès Node restent dans node.ts.
  */
 export * from './index'
-export { ADD_EXPOSURE, bossProxyOptions, DEFAULT_RANGE_NEED, type BossProxyOptions, type BossTarget } from './target'
+export { ADD_EXPOSURE, bossProxyOptions, CONTACT_SHARE, DEFAULT_RANGE_NEED, resolveStyle, type BossProxyOptions, type BossTarget } from './target'
 export { AXIS_INFO, COMPOSITION_RULES, COMPOSITION_THRESHOLDS, rankClasses, RANKING_AXES, type RankClassesOptions } from './classes'
 export {
   DEFAULT_ITERATIONS,
@@ -22,7 +22,7 @@ export {
 } from './stuff'
 export { CLASS_CONFIDENCE, CLASS_MODEL_LIMITS, classUtilities, MECHANIC_RELEVANCE, relevance, UTILITY_TAG_LABELS } from './utilities'
 export { STANCES, bestStance, stancesOf } from './stances'
-export { sustainedDamage } from './rotation'
+export { contactShare, sustainedDamage } from './rotation'
 export { ELEMENT_LABELS, formatBoss, type FormatBossOptions } from './formatBoss'
 export { formatClasses, type FormatClassesOptions } from './formatClasses'
 export { formatStuffVsBoss, type FormatStuffOptions } from './formatStuff'

@@ -4,8 +4,10 @@
  * preset), le meilleur preset de chaque classe par axe, la composition suggérée avec ses règles, atouts et limites des
  * membres, hypothèses et avertissements. Aucune note globale : chaque axe est montré avec son unité. Rang partagé des ex
  * æquo marqué « = » (Survie : PV effectifs du stuff seul, identiques par stuff générique). Colonnes de contrôle : facteur
- * d'étalonnage du preset (indicatif : il ne s'applique pas au DPT soutenu), retraits du tour mixte et des tours
- * consacrés, débit de soin brut et plafond. Tableaux alignés en largeur fixe, sans émoji.
+ * d'étalonnage du preset (indicatif : il ne s'applique pas au DPT soutenu), style de jeu (« Jeu » : au contact ou à
+ * distance, « * » s'il diffère de celui du preset, part du DPT soutenu au contact ; explication pour les membres
+ * proposés), retraits du tour mixte et des tours consacrés, débit de soin brut et plafond. Tableaux alignés en largeur
+ * fixe, sans émoji.
  *
  * Module PUR (types et mise en forme seulement) : utilisable côté navigateur.
  */
@@ -30,6 +32,7 @@ function axisDetail(axis: RankingAxis, e: PresetEvaluation): string[] {
         fmtNum(e.dpt.burst),
         `${ELEMENT_LABELS[e.elementMatch.element] ?? '?'} (${fmtPct(e.elementMatch.resPct)})`,
         e.stance.id === 'base' ? '—' : e.stance.name,
+        styleText(e),
       ]
     case 'survival':
       return [fmtNum(e.survival.hp), fmtNum(e.survival.incoming), e.survival.turnsToDie > 0 ? fmtNum(e.survival.turnsToDie, 1) : '—']
@@ -43,7 +46,7 @@ function axisDetail(axis: RankingAxis, e: PresetEvaluation): string[] {
 }
 
 const DETAIL_HEADERS: Readonly<Record<RankingAxis, string[]>> = {
-  damage: ['Étal. preset', 'Rafale', 'Élément (rés.)', 'Posture'],
+  damage: ['Étal. preset', 'Rafale', 'Élément (rés.)', 'Posture', 'Jeu (au contact)'],
   survival: ['PV', 'Reçus/tour', 'Tours'],
   control: ['PM', 'PA', 'PM seul', 'PA seul'],
   heal: ['Brut', 'Soin', 'Bouclier', 'Réduction', 'Armure'],
@@ -51,7 +54,7 @@ const DETAIL_HEADERS: Readonly<Record<RankingAxis, string[]>> = {
 }
 
 const DETAIL_ALIGN: Readonly<Record<RankingAxis, string>> = {
-  damage: 'rrll',
+  damage: 'rrlll',
   survival: 'rrr',
   control: 'rrrr',
   heal: 'rrrrr',
@@ -62,7 +65,10 @@ const DETAIL_ALIGN: Readonly<Record<RankingAxis, string>> = {
 function axisNote(axis: RankingAxis, r: ClassRanking): string | undefined {
   switch (axis) {
     case 'damage':
-      return '  Valeur : DPT soutenu analytique (classement) ; « Étal. preset » = facteur d\'étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s\'applique pas au DPT soutenu.'
+      return [
+        '  Valeur : DPT soutenu analytique (classement) ; « Étal. preset » = facteur d\'étalonnage du preset (data/ai/calibration.json : moteur / sac à dos joué dans le moteur, contre un Buboxor) — indicatif, il ne s\'applique pas au DPT soutenu.',
+        '  « Jeu » : style retenu contre ce boss (au contact : PO non exigée par l\'optimiseur) et, entre parenthèses, part du DPT soutenu portée par des coups au contact ; « * » = style différent de celui du preset (voir les hypothèses).',
+      ].join('\n')
     case 'survival':
       return '  Stuff seul : même valeur pour les presets d\'un même stuff générique (rang partagé « = »).'
     case 'control':
@@ -74,6 +80,12 @@ function axisNote(axis: RankingAxis, r: ClassRanking): string | undefined {
     default:
       return undefined
   }
+}
+
+/** Style de jeu (« contact* (100 %) ») : « * » si différent de celui du preset, part du DPT soutenu au contact. */
+function styleText(e: PresetEvaluation): string {
+  const st = e.style
+  return `${st.contact ? 'contact' : 'distance'}${st.contact !== st.presetContact ? '*' : ''}${st.contactShare !== undefined ? ` (${fmtPct(st.contactShare * 100)})` : ''}`
 }
 
 /** Facteur d'étalonnage du preset (« ×0,73 ») : indicatif, jamais multiplié au DPT soutenu. */
@@ -126,13 +138,14 @@ export function formatClasses(r: ClassRanking, opts: FormatClassesOptions = {}):
     out.push('', 'Tous les presets évalués')
     out.push(
       textTable(
-        ['Preset', 'Stuff', 'Posture', 'DPT', 'Étal. preset', 'Rafale', 'PV eff.', 'Contrôle', 'Soin', 'Apport %', 'Confiance'],
+        ['Preset', 'Stuff', 'Posture', 'Jeu (au contact)', 'DPT', 'Étal. preset', 'Rafale', 'PV eff.', 'Contrôle', 'Soin', 'Apport %', 'Confiance'],
         [...r.presets]
           .sort((a, b) => b.axes.damage - a.axes.damage || a.presetId.localeCompare(b.presetId))
           .map(e => [
             e.presetId,
             e.stuff,
             e.stance.id === 'base' ? '—' : e.stance.name,
+            styleText(e),
             fmtNum(e.dpt.steady),
             calibrationText(e),
             fmtNum(e.dpt.burst),
@@ -142,7 +155,7 @@ export function formatClasses(r: ClassRanking, opts: FormatClassesOptions = {}):
             fmtNum(e.team.gainPct, 1),
             e.confidence.level,
           ]),
-        'lllrrrrrrrl',
+        'llllrrrrrrrl',
       ),
     )
   }
@@ -156,7 +169,8 @@ export function formatClasses(r: ClassRanking, opts: FormatClassesOptions = {}):
   for (const m of r.composition.members) {
     const e = byId.get(m.presetId)
     if (!e) continue
-    out.push(`  ${m.className} (${m.presetId}) — confiance ${e.confidence.level}`)
+    out.push(`  ${m.className} (${m.presetId}) — confiance ${e.confidence.level}, joué ${e.style.label}`)
+    if (e.style.reason) out.push(`    Jeu : joué ${e.style.label} : ${e.style.reason}.`)
     out.push(`    Atouts : ${e.relevance.atouts.length ? e.relevance.atouts.join(' ') : 'aucun atout particulier contre ce boss.'}`)
     out.push(`    Limites : ${e.relevance.limites.length ? e.relevance.limites.join(' ') : 'aucune limite particulière détectée.'}`)
     if (e.confidence.reasons.length) out.push(`    Non modélisé : ${e.confidence.reasons.join(' ')}`)
