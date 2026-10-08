@@ -7,7 +7,9 @@
  *   POST classes { id, players?, grade?, stuff?, iterations?, profile? }                    classement (`ClassRanking`)
  *   POST stuff   { id, players?, grade?, preset?, roxx?, elements?, profile?, top?, iterations?, rangeNeed? }
  *                                                                                         meilleur stuff (`StuffVsBossResult`)
- * Erreurs : `{ error }` et code HTTP (400 paramètre invalide, 404 boss ou route inconnus, 405 méthode, 500 imprévu).
+ * Erreurs : `{ error }` et code HTTP (400 paramètre invalide, 403 requête d'une autre origine, 404 boss ou route
+ * inconnus, 405 méthode, 415 corps non JSON, 500 imprévu). Un POST doit être un JSON (`Content-Type: application/json`)
+ * de la page elle-même (`readJson`, web/plugins/store.ts) : une page tierce ne peut pas lancer de calcul long.
  *
  * La logique des routes vit dans des fonctions PURES exportées (`theoryBosses`, `theoryBoss`, `theoryClasses`,
  * `theoryStuff`, `theoryPresets`, et l'aiguillage `theoryRoute`), testées sans HTTP (tests/web-theory.test.ts) ; le
@@ -47,11 +49,17 @@ import { loadBossOverrides, nodeDungeonSource } from '../../src/theorycraft/node
 import { HttpError, readJson, sendJson, sharedStore } from './store'
 
 const API = '/api/theory/'
-/** Bornes des paramètres numériques (le serveur de développement calcule en synchrone : pas de recherche démesurée). */
+/**
+ * Bornes des paramètres numériques (le serveur de développement calcule en synchrone : pas de recherche démesurée).
+ * `iterations` du stuff : une recherche (≈ 10 s par élément à 100 000) ; `classesIterations` : une recherche PAR
+ * preset (49) en stuffs optimisés — 10 000 itérations ≈ 30 s de calcul bloquant (mesure de l'audit), 200 000 en
+ * prendraient près de 6 min : au-delà, la CLI (`boss … classes --optimize --iterations N`).
+ */
 export const THEORY_LIMITS = {
   players: { min: 1, max: 8 },
   top: { min: 1, max: 10 },
   iterations: { min: 0, max: 200_000 },
+  classesIterations: { min: 0, max: 10_000 },
   rangeNeed: { min: 0, max: 20 },
 } as const
 const PROFILES: readonly ExponentProfile[] = ['balanced', 'defensive', 'offensive']
@@ -179,7 +187,7 @@ export function theoryBoss(env: TheoryEnv, p: TheoryParams): BossProfileDetail {
 export function theoryClasses(env: TheoryEnv, p: TheoryParams): ClassRanking {
   const profile = profileOf(env, p)
   const stuff = oneOf(p.stuff, 'stuff', ['preset', 'optimized'] as const)
-  const iterations = intParam(p.iterations, 'iterations', THEORY_LIMITS.iterations.min, THEORY_LIMITS.iterations.max)
+  const iterations = intParam(p.iterations, 'iterations', THEORY_LIMITS.classesIterations.min, THEORY_LIMITS.classesIterations.max)
   const expProfile = oneOf(p.profile, 'profile', PROFILES)
   return rankClasses(env.data, profile, { stuff, iterations, profile: expProfile })
 }

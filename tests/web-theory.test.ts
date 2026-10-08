@@ -1,16 +1,18 @@
 /**
  * Section « Boss » du visualiseur — routes de l'API du serveur de développement (web/plugins/theory.ts), testées sans
  * HTTP par leurs fonctions pures : index des boss (Expéditions), presets de base, fiche de Merkator (joueurs, grade,
- * nom), fiche manuelle appliquée ou illisible, classement des classes, meilleur stuff (preset, lien RoxxSolver), erreurs
- * 400 / 404 / 405 et aiguillage.
+ * nom), fiche manuelle appliquée ou illisible, classement des classes (effort plafonné), meilleur stuff (preset, lien
+ * RoxxSolver), erreurs 400 / 404 / 405, aiguillage, et corps des POST refusés hors de la page elle-même (415, 403).
  */
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import type { IncomingMessage } from 'node:http'
 import { join } from 'node:path'
+import { Readable } from 'node:stream'
 import { afterAll, describe, expect, it } from 'vitest'
 import { loadDataStore } from '../src/data/node'
 import { BASE_PRESETS } from '../src/optimizer/team/presets'
-import { HttpError } from '../web/plugins/store'
+import { HttpError, readJson } from '../web/plugins/store'
 import {
   theoryBoss,
   theoryBosses,
@@ -19,6 +21,7 @@ import {
   theoryPresets,
   theoryRoute,
   theoryStuff,
+  THEORY_LIMITS,
   type TheoryParams,
 } from '../web/plugins/theory'
 
@@ -135,6 +138,13 @@ describe('POST classes et stuff', () => {
     expect(statusOf(() => theoryClasses(env, { id: 1 }))).toBe(404)
   })
 
+  it('classes : effort plafonné (une recherche par preset, calcul synchrone) — plus bas que celui du stuff', () => {
+    expect(THEORY_LIMITS.classesIterations.max).toBe(10_000)
+    expect(THEORY_LIMITS.classesIterations.max).toBeLessThan(THEORY_LIMITS.iterations.max)
+    // 200 000 itérations × 49 presets ≈ 6 min de serveur gelé : refusé avant tout calcul.
+    for (const iterations of [10_001, 200_000]) expect(statusOf(() => theoryClasses(env, { id: MERKATOR, stuff: 'optimized', iterations }))).toBe(400)
+  })
+
   it('stuff : preset « cra:terre » contre Merkator (recherche courte)', () => {
     const r = theoryStuff(env, { id: MERKATOR, preset: 'cra:terre', iterations: 0, top: 2 })
     expect(r.character).toMatchObject({ presetId: 'cra_terre_mono', breedId: 9, input: 'preset' })
@@ -184,5 +194,37 @@ describe('aiguillage des routes', () => {
     expect(statusOf(() => theoryRoute(env, { method: 'POST', route: 'boss' }))).toBe(405)
     expect(statusOf(() => theoryRoute(env, { method: 'GET', route: 'classes' }))).toBe(405)
     expect(statusOf(() => theoryRoute(env, { method: 'DELETE', route: 'bosses' }))).toBe(405)
+  })
+})
+
+describe('corps des POST : la page elle-même seulement', () => {
+  /** Requête POST simulée : en-têtes et corps. */
+  const req = (headers: Record<string, string>, body = '{"id":3534}'): IncomingMessage =>
+    Object.assign(Readable.from([Buffer.from(body)]), { headers: { host: 'localhost:5173', ...headers } }) as unknown as IncomingMessage
+  /** Code HTTP du refus de `readJson` (0 : accepté). */
+  const refused = async (headers: Record<string, string>): Promise<number> => {
+    try {
+      await readJson(req(headers))
+      return 0
+    } catch (e) {
+      expect(e).toBeInstanceOf(HttpError)
+      return (e as HttpError).status
+    }
+  }
+
+  it('JSON de la page (fetch de boss-api.ts / stuffs-editor.ts) : accepté', async () => {
+    expect(await readJson(req({ 'content-type': 'application/json', 'sec-fetch-site': 'same-origin', origin: 'http://localhost:5173' }))).toEqual({ id: 3534 })
+    // Sans en-têtes de navigateur (outil en ligne de commande) : JSON suffit.
+    expect(await refused({ 'content-type': 'application/json; charset=utf-8' })).toBe(0)
+  })
+
+  it('POST « simple » d’une page tierce (text/plain, formulaire, sans type) : 415, aucun calcul lancé', async () => {
+    for (const type of ['text/plain', 'application/x-www-form-urlencoded', 'multipart/form-data; boundary=x']) expect(await refused({ 'content-type': type })).toBe(415)
+    expect(await refused({})).toBe(415)
+  })
+
+  it('JSON d’une autre page (Sec-Fetch-Site, ou Origin d’un autre hôte) : 403', async () => {
+    for (const site of ['cross-site', 'same-site']) expect(await refused({ 'content-type': 'application/json', 'sec-fetch-site': site })).toBe(403)
+    for (const origin of ['https://exemple.org', 'http://localhost:5174', 'null']) expect(await refused({ 'content-type': 'application/json', origin })).toBe(403)
   })
 })

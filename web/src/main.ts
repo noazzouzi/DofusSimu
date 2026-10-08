@@ -1,6 +1,8 @@
 /**
  * Point d'entrée du visualiseur : sections « Combats », « Stuffs » (`#stuffs`) et « Boss » (`#boss/<monsterId>[/<onglet>]`,
  * theorycraft contre un boss, serveur de développement), choix de la source du replay, thème, fichiers, API globale.
+ * La section « Boss » n'existe qu'avec le serveur de développement (`npm run dev`, API web/plugins/theory.ts) : dans la
+ * version construite, son onglet est retiré et `#boss` mène aux combats.
  *
  * Sources (par priorité) : balise <script type="application/json" id="replay-data"> embarquée,
  * paramètre `?replay=<url>`, sinon le replay de démonstration intégré. Le menu liste aussi les
@@ -68,10 +70,14 @@ const VIEWS: Readonly<Record<View, string>> = { combats: 'combat-view', stuffs: 
 const stuffs = new StuffsView($('stuffs-view'), stuffCatalog)
 /** Titre de la section « Boss » (suit le boss affiché ; appliqué seulement quand la section est visible). */
 let bossTitle = 'Boss · DofusSimu'
-const boss = new BossView($('boss-view'), title => {
-  bossTitle = title
-  if (currentView() === 'boss') document.title = title
-})
+/** Section « Boss » : serveur de développement seulement (son API n'existe pas dans la version construite). */
+const boss = import.meta.env.DEV
+  ? new BossView($('boss-view'), title => {
+      bossTitle = title
+      if (currentView() === 'boss') document.title = title
+    })
+  : undefined
+if (!boss) document.querySelector('.view-tab[data-view="boss"]')?.remove()
 /** Titre de la section « Combats » (titre du replay), gardé pendant qu'une autre section est affichée. */
 let combatTitle = document.title
 
@@ -80,7 +86,7 @@ const hashParts = () => location.hash.replace(/^#\/?/, '').split('/')
 
 function currentView(): View {
   const v = hashParts()[0]
-  return v === 'stuffs' || v === 'boss' ? v : 'combats'
+  return v === 'stuffs' || (v === 'boss' && boss) ? v : 'combats'
 }
 
 /** Titre du document pour une section autre que « Combats ». */
@@ -98,7 +104,7 @@ function route(): void {
   }
   // Titre du replay gardé AVANT que la section « Boss » ne pose le sien.
   if (view !== 'combats' && wasCombats) combatTitle = document.title
-  if (view === 'boss') {
+  if (view === 'boss' && boss) {
     boss.show(hashParts().slice(1))
     // L'onglet « Boss » de la barre du haut ramène au dernier boss consulté (« Tous les boss » : lien de la section).
     document.querySelector('.view-tab[data-view="boss"]')?.setAttribute('href', location.hash || '#boss')
