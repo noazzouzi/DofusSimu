@@ -15,9 +15,12 @@
 // - `bonusCharacteristics` : mêmes renommages, valeurs nulles retirées.
 // Il est idempotent : renormaliser un grade déjà normalisé le rend à l'identique.
 //
-// Garde-fou : `assertBossResistances` refuse une extraction où un boss a un grade sans ses 5 résistances en %.
-// Sens de `paLostDodge` (même grandeur que `paDodge`, valeur baissée par la 3.7) et procédure de ré-extraction :
-// docs/research/dofusdb-api.md §10. Fixtures : tests/fixtures/dofusdb-3.7/. Tests : tests/data-fetch-schema.test.ts.
+// Garde-fou : `assertBossResistances` refuse une extraction où un boss a un grade sans ses 5 résistances en %, où le
+// boss témoin (Vortex 3835) manque ou n'est plus `isBoss`, ou sans aucun boss (champ `isBoss` renommé : sans cela, le
+// contrôle des résistances ne vérifierait plus rien). Sens de `paLostDodge` (même grandeur que `paDodge`, esquive PA
+// finale ramenée à ⌈70 %⌉ par la 3.7) et procédure de ré-extraction : docs/research/dofusdb-api.md §10.
+// Fixtures : tests/fixtures/dofusdb-3.7/ (et l'extrait 3.6 figé tests/fixtures/dofusdb-3.6/). Tests :
+// tests/data-fetch-schema.test.ts (module), tests/data-fetch-script.test.ts (script complet, faux serveur local).
 // Aucune dépendance (importé par scripts/fetch-dofusdb.mjs, types dans dofusdb-normalize.d.mts).
 // =====================================================================================
 
@@ -28,7 +31,9 @@ export const RESISTANCE_FIELDS = ['neutralResistance', 'earthResistance', 'fireR
  * Clé du schéma 3.7 → clé normalisée. Sert aux grades ET à `bonusCharacteristics` (mêmes noms dans l'API).
  * Les champs qui existaient en 3.6 reprennent leur nom 3.6 ; les nouveaux prennent le nom déjà employé par
  * `bonusCharacteristics` en 3.6 (`tackleBlock`, `bonus<Élément>Damage`) ou, à défaut, un nom calqué sur l'existant
- * (`<élément>ResistanceFlat`). Les autres clés 3.7 (`criticalDamageReduction`, `initiativeBonus`…) gardent leur nom.
+ * (`<élément>ResistanceFlat`). Les autres clés 3.7 gardent leur nom d'API : `criticalDamageReduction`,
+ * `pushDamageReduction` (aussi mots-clés de characteristics.json, ids 87 et 85), `initiativeBonus` (mot-clé
+ * `initiative` dans characteristics.json, id 44), `percentDamageBonus`…
  */
 export const RENAMED_37 = {
   reductionNeutral: 'neutralResistance',
@@ -36,7 +41,8 @@ export const RENAMED_37 = {
   reductionFire: 'fireResistance',
   reductionWater: 'waterResistance',
   reductionAir: 'airResistance',
-  // Même grandeur, valeur changée par la 3.7 : bonus fixe ajouté à Sagesse/10 (−30 % d'esquive PA, §10).
+  // Même grandeur, valeur changée par la 3.7 : bonus fixe ajouté à Sagesse/10 ; la 3.7 y inscrit la baisse de 30 %
+  // de l'esquive PA finale (⌈0,7 × (Sagesse/10 + paDodge 3.6)⌉, §10.2).
   paLostDodge: 'paDodge',
   mpLostDodge: 'pmDodge',
   rangeBonus: 'bonusRange',
@@ -59,8 +65,8 @@ const API_NAME_37 = Object.fromEntries(Object.entries(RENAMED_37).map(([api, nor
 
 /**
  * Champs facultatifs (schéma 3.7 seulement), écrits dans cet ordre quand ils sont non nuls. Tous sont convertis en
- * caractéristiques par src/data/convert.ts (GRADE_STAT_FIELDS) sauf `percentDamageBonus` (sens INCERTAIN :
- * Puissance ou % de dommages) et `maxSummon` (le moteur lit `stats.summons` dans les masques de cible).
+ * caractéristiques par src/data/convert.ts (GRADE_STAT_FIELDS_37) sauf `maxSummon` (le moteur lit `stats.summons` dans
+ * les masques de cible) ; `percentDamageBonus` → Puissance (déduit, §10.1).
  */
 export const OPTIONAL_GRADE_FIELDS = [
   'neutralResistanceFlat', 'earthResistanceFlat', 'fireResistanceFlat', 'waterResistanceFlat', 'airResistanceFlat',
@@ -200,30 +206,50 @@ export function gameVersionInfo(gradeSchemas, override) {
   return { version: 'inconnue', source: `schémas de grades mélangés ou inconnus : ${JSON.stringify(gradeSchemas)}` };
 }
 
-/** Grades de boss (monstres NORMALISÉS `isBoss`) auxquels il manque au moins une des 5 résistances en %. */
-export function bossResistanceProblems(monsters) {
+/**
+ * Boss témoins : doivent figurer dans toute extraction complète, marqués `isBoss`. Le Vortex (Œil de Vortex, donjon
+ * 87) est la référence du projet. Sans témoin, un renommage de `isBoss` désactiverait le contrôle des résistances
+ * (plus aucun monstre à vérifier) sans la moindre erreur.
+ */
+export const SENTINEL_BOSS_IDS = [3835];
+
+/**
+ * Problèmes des boss d'une liste de monstres NORMALISÉS : grade `isBoss` auxquels il manque au moins une des 5
+ * résistances en %, boss sans grade, aucun monstre `isBoss`, boss témoin (`requiredBossIds`) absent ou plus `isBoss`.
+ */
+export function bossResistanceProblems(monsters, { requiredBossIds = SENTINEL_BOSS_IDS } = {}) {
   const problems = [];
+  const nameOf = (m) => m.name?.fr ?? m.name?.en ?? 'sans nom';
+  if (!monsters.some((m) => m.isBoss)) problems.push(`aucun monstre isBoss parmi ${monsters.length} (champ isBoss renommé ?)`);
+  for (const id of requiredBossIds) {
+    const m = monsters.find((x) => x.id === id);
+    if (!m) problems.push(`boss témoin ${id} absent de l'extraction`);
+    else if (!m.isBoss) problems.push(`${nameOf(m)} (${id}) : boss témoin plus marqué isBoss (champ renommé ?)`);
+  }
   for (const m of monsters) {
     if (!m.isBoss) continue;
-    const name = m.name?.fr ?? m.name?.en ?? 'sans nom';
-    if (!m.grades?.length) problems.push(`${name} (${m.id}) : aucun grade`);
+    if (!m.grades?.length) problems.push(`${nameOf(m)} (${m.id}) : aucun grade`);
     for (const g of m.grades ?? []) {
       const missing = RESISTANCE_FIELDS.filter((k) => typeof g[k] !== 'number' || !Number.isFinite(g[k]));
-      if (missing.length) problems.push(`${name} (${m.id}), grade ${g.grade} : ${missing.join(', ')} manquante(s)`);
+      if (missing.length) problems.push(`${nameOf(m)} (${m.id}), grade ${g.grade} : ${missing.join(', ')} manquante(s)`);
     }
   }
   return problems;
 }
 
-/** Garde-fou de fin d'extraction : lève une erreur explicite si un grade de boss n'a pas ses 5 résistances. */
-export function assertBossResistances(monsters, maxShown = 10) {
-  const problems = bossResistanceProblems(monsters);
+/**
+ * Garde-fou d'extraction : lève une erreur explicite (en français) si `bossResistanceProblems` trouve un problème.
+ * Appelé par scripts/fetch-dofusdb.mjs avant toute publication dans data/dofusdb/.
+ */
+export function assertBossResistances(monsters, { maxShown = 10, requiredBossIds = SENTINEL_BOSS_IDS } = {}) {
+  const problems = bossResistanceProblems(monsters, { requiredBossIds });
   if (!problems.length) return;
   const shown = problems.slice(0, maxShown).map((p) => `  - ${p}`);
   if (problems.length > maxShown) shown.push(`  … et ${problems.length - maxShown} autre(s)`);
   throw new Error(
-    `Extraction DofusDB refusée : ${problems.length} grade(s) de boss sans leurs 5 résistances en %.\n${shown.join('\n')}\n` +
+    `Extraction DofusDB refusée : ${problems.length} problème(s) sur les boss (grades sans leurs 5 résistances en %, ` +
+      `boss témoin absent ou plus marqué isBoss).\n${shown.join('\n')}\n` +
       "Le schéma de l'API a sans doute encore changé : compléter RENAMED_37 dans scripts/lib/dofusdb-normalize.mjs " +
-      '(voir docs/research/dofusdb-api.md §10), puis relancer. monsters.json n\'a pas été écrit.',
+      '(voir docs/research/dofusdb-api.md §10), puis relancer.',
   );
 }

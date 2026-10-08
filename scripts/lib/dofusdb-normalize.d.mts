@@ -35,5 +35,10 @@ export function gameVersionInfo(
   gradeSchemas: Partial<Record<ApiGradeSchema, number>>,
   override?: string | boolean,
 ): { version: string; source: string }
-export function bossResistanceProblems(monsters: readonly GuardedMonster[]): string[]
-export function assertBossResistances(monsters: readonly GuardedMonster[], maxShown?: number): void
+/** Boss témoins exigés par défaut par le garde-fou (Vortex 3835). */
+export const SENTINEL_BOSS_IDS: readonly number[]
+export function bossResistanceProblems(monsters: readonly GuardedMonster[], options?: { requiredBossIds?: readonly number[] }): string[]
+export function assertBossResistances(
+  monsters: readonly GuardedMonster[],
+  options?: { maxShown?: number; requiredBossIds?: readonly number[] },
+): void

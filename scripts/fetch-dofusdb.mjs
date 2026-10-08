@@ -21,19 +21,22 @@
 //   --game-version=X.Y        version du jeu inscrite dans manifest.json (game.version) ; sans cette option,
 //                             elle est déduite du schéma des grades de monstres (3.6 ou 3.7, l'API ne la publie pas)
 //
-// Garde-fou : l'extraction échoue (sans écrire monsters.json) si un boss a un grade sans ses 5 résistances en %,
-// ce qui arriverait en silence si DofusDB renommait encore ses champs (schéma 3.7 : scripts/lib/dofusdb-normalize.mjs).
+// Garde-fou : l'extraction échoue si un boss a un grade sans ses 5 résistances en %, si le Vortex (3835) manque ou
+// n'est plus marqué isBoss, ou si aucun monstre n'est boss : ce qui arriverait en silence si DofusDB renommait encore
+// ses champs (schéma 3.7 : scripts/lib/dofusdb-normalize.mjs).
 //
 // Sorties (data/dofusdb/) : breeds.json (+ rôles), class-spells.json, item-spells.json,
 //   spell-states.json, effects.json, characteristics.json, item-types.json, equipment.json,
 //   item-sets.json, monsters.json, monster-races.json, monster-spells.json, dungeons.json,
 //   dungeon-maps.json, achievements-vortex.json, challenges.json, manifest.json.
+// Écriture tout ou rien : les fichiers sont préparés dans .cache/dofusdb-out/ (gitignoré) et déplacés dans
+// data/dofusdb/ seulement à la fin d'une extraction réussie ; un échec (garde-fou, HTTP…) laisse data/dofusdb intact.
 // Cache brut (gitignoré) : .cache/dofusdb/<service>/<requête>.json (réponse API telle quelle).
 //
 // Aucune dépendance : Node >= 22 (fetch natif). Documentation : docs/research/dofusdb-api.md
 // =====================================================================================
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
@@ -48,6 +51,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const API = (process.env.DOFUSDB_API ?? 'https://api.dofusdb.fr').replace(/\/$/, '');
 const CACHE_DIR = path.join(ROOT, '.cache', 'dofusdb');
 const OUT_DIR = path.join(ROOT, 'data', 'dofusdb');
+// Fichiers de sortie préparés ici, puis déplacés dans OUT_DIR en fin d'extraction réussie (publishOutputs).
+const STAGING_DIR = path.join(ROOT, '.cache', 'dofusdb-out');
 const PAGE_SIZE = 50; // maximum accepté par l'API
 
 const argv = process.argv.slice(2);
@@ -340,15 +345,37 @@ function serialize(value, pretty) {
   return `${JSON.stringify(value)}\n`;
 }
 
+/** Prépare un fichier de sortie dans STAGING_DIR (publié dans data/dofusdb/ par publishOutputs, en fin de run). */
 async function writeOut(name, value, { pretty = false, count } = {}) {
-  await mkdir(OUT_DIR, { recursive: true });
+  await mkdir(STAGING_DIR, { recursive: true });
   const txt = serialize(value, pretty);
-  const file = path.join(OUT_DIR, name);
+  const file = path.join(STAGING_DIR, name);
   await writeFile(file, txt);
   const n = count ?? (Array.isArray(value) ? value.length : undefined);
   written.push({ file: name, bytes: Buffer.byteLength(txt), count: n });
-  log(`  -> data/dofusdb/${name} (${(Buffer.byteLength(txt) / 1024).toFixed(0)} Ko${n != null ? `, ${n} entrées` : ''})`);
+  log(`  -> ${path.relative(ROOT, file)} (${(Buffer.byteLength(txt) / 1024).toFixed(0)} Ko${n != null ? `, ${n} entrées` : ''})`);
   return Buffer.byteLength(txt);
+}
+
+/**
+ * Fin d'extraction réussie : déplace les fichiers préparés dans data/dofusdb/ (manifest.json en dernier). Avant cet
+ * appel, aucun fichier de data/dofusdb/ n'a été touché : un échec en cours de route laisse les données intactes.
+ */
+async function publishOutputs() {
+  await mkdir(OUT_DIR, { recursive: true });
+  const names = [...new Set(written.map((w) => w.file))];
+  for (const name of [...names.filter((n) => n !== 'manifest.json'), ...names.filter((n) => n === 'manifest.json')]) {
+    const from = path.join(STAGING_DIR, name);
+    const to = path.join(OUT_DIR, name);
+    try {
+      await rename(from, to);
+    } catch (e) {
+      if (e.code !== 'EXDEV') throw e;
+      await copyFile(from, to); // .cache sur un autre système de fichiers que data/
+    }
+  }
+  await rm(STAGING_DIR, { recursive: true, force: true });
+  log(`== Publication : ${names.length} fichier(s) déplacé(s) de ${path.relative(ROOT, STAGING_DIR)} vers ${path.relative(ROOT, OUT_DIR)}`);
 }
 
 // ------------------------------------------------------------------------------------
@@ -896,7 +923,8 @@ async function stepMonsters() {
       hideInBestiary: m.hideInBestiary || undefined,
     }),
   );
-  // Garde-fou : refuse (avant écriture) un boss dont un grade a perdu ses résistances.
+  // Garde-fou : refuse l'extraction si un grade de boss a perdu ses résistances, si le Vortex manque ou n'est plus
+  // boss, ou si aucun monstre n'est boss (isBoss renommé). Rien n'est encore publié dans data/dofusdb.
   assertBossResistances(out);
   if (!out.some((m) => m.tags)) {
     log("  ATTENTION : aucun monstre n'a de tags (constaté sur /monsters/<id> en 3.7 pour Vortex, Kimbo et Merkator) ; l'IA s'en sert (archetype.ts : 'summon').");
@@ -1234,6 +1262,7 @@ async function stepChallengesAndVortexAchievements() {
 async function main() {
   const t0 = Date.now();
   log(`DofusDB -> ${path.relative(ROOT, OUT_DIR)} (API ${API}, concurrence ${CONCURRENCY}, cache ${REFRESH ? 'ignoré' : 'utilisé'})`);
+  await rm(STAGING_DIR, { recursive: true, force: true }); // restes d'un run interrompu
   const ref = await stepReferenceTables();
   const typesById = new Map(ref.types.map((t) => [t.id, t]));
   const breeds = await stepBreeds();
@@ -1315,10 +1344,15 @@ async function main() {
     http: { ...stats, seconds: Math.round((Date.now() - t0) / 1000) },
   };
   await writeOut('manifest.json', manifest, { pretty: true });
+  await publishOutputs();
   log(`Terminé en ${manifest.http.seconds} s — ${stats.requests} requêtes HTTP, ${stats.cacheHits} lectures cache, ${stats.retries} retries.`);
 }
 
 main().catch((e) => {
   console.error(e);
+  console.error(
+    `\nÉchec de l'extraction : data/dofusdb n'a pas été modifié (les fichiers préparés dans ${path.relative(ROOT, STAGING_DIR)} ` +
+      'ne sont publiés qu’en fin d’extraction réussie).',
+  );
   process.exit(1);
 });

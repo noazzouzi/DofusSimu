@@ -279,9 +279,11 @@ export interface RawMonsterGrade {
   waterResistance?: number
   airResistance?: number
   /**
-   * Esquive PA / PM : bonus fixes, ajoutés à Sagesse/10 par le moteur (engine/factory.ts). 3.7 : `paLostDodge` /
-   * `mpLostDodge`, même grandeur ; `paLostDodge` est devenu négatif (Vortex −24 = −30 % de 80) avec la baisse de 30 %
-   * de l'esquive PA des monstres.
+   * Esquive PA / PM : bonus fixes, ajoutés à ⌊Sagesse/10⌋ par le moteur (engine/factory.ts). 3.7 : `paLostDodge` /
+   * `mpLostDodge`, même grandeur et même sens. La 3.7 baisse de 30 % l'esquive PA finale des monstres et l'inscrit dans
+   * ce bonus : esquive finale 3.7 = ⌈0,7 × (⌊Sagesse/10⌋ + paDodge 3.6)⌉, soit paLostDodge = paDodge 3.6 −
+   * ⌊0,3 × (paDodge 3.6 + ⌊Sagesse/10⌋)⌋ (Vortex 0 → −24, Bwork Mage 10 → 4 ou 3 ; docs/research/dofusdb-api.md
+   * §10.2). `mpLostDodge` = `pmDodge`.
    */
   paDodge?: number
   pmDodge?: number
@@ -325,7 +327,7 @@ export interface RawMonsterGrade {
   /** Retrait PA / PM. */
   apAttack?: number
   mpAttack?: number
-  /** INCERTAIN (Puissance ou % de dommages ?) : conservé tel quel, non converti en caractéristique. */
+  /** Puissance (DÉDUIT, non vérifié en jeu : couple Dommages / Puissance comme `trapDamageBonus` / `…Percent`). */
   percentDamageBonus?: number
   /** Invocations simultanées : conservé tel quel, non converti (le moteur lit `stats.summons` dans les masques). */
   maxSummon?: number

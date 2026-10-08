@@ -473,7 +473,11 @@ export function itemSetBonusesFor(set: ItemSetData, equipped: number): readonly 
  * Champs de grade apparus avec le schéma DofusDB 3.7 (noms normalisés par scripts/lib/dofusdb-normalize.mjs) ->
  * caractéristique runtime. Lus seulement s'ils sont présents : les données extraites en 3.6 n'en ont aucun, leur
  * conversion est donc inchangée. Comme `paDodge` (ajouté à Sagesse/10), tacle, fuite et initiative sont des bonus
- * que createMonsterFighter ajoute aux dérivées. Non convertis : `percentDamageBonus` (sens INCERTAIN) et `maxSummon`.
+ * que createMonsterFighter ajoute aux dérivées. `percentDamageBonus` = Puissance, DÉDUIT (non vérifié en jeu) : même
+ * couple que `trapDamageBonus` / `trapDamageBonusPercent` (« Dommages Pièges » / « Puissance Pièges » dans
+ * characteristics.json), et l'Explobombe 3.7 hérite à la fois de `damageBonus` et de `percentDamageBonus` (100 %
+ * chacun) : dommages et puissance du Roublard. Non converti : `maxSummon` (le moteur lit `stats.summons` dans les
+ * masques de cible, targetMask.ts).
  */
 const GRADE_STAT_FIELDS_37: readonly (readonly [keyof RawMonsterGrade, StatKey])[] = [
   ['neutralResistanceFlat', 'neutralRes'],
@@ -487,6 +491,7 @@ const GRADE_STAT_FIELDS_37: readonly (readonly [keyof RawMonsterGrade, StatKey])
   ['tackleEvade', 'tackleEvade'],
   ['initiativeBonus', 'initiative'],
   ['damageBonus', 'damage'],
+  ['percentDamageBonus', 'power'],
   ['bonusNeutralDamage', 'neutralDamage'],
   ['bonusEarthDamage', 'earthDamage'],
   ['bonusFireDamage', 'fireDamage'],
