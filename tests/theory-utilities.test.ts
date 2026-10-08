@@ -2,8 +2,11 @@
  * Theorycraft — utilités chiffrées d'un personnage (src/theorycraft/utilities.ts, docs/design/theorycraft.md §1.6) :
  * retrait PM de l'Enutrof, soins de l'Eniripsa sans le faux désenvoûtement des Mots (pièges des profils de sorts),
  * « dommages subis » du Crâ, de l'Iop, du Forgelance (posture Armé) et de l'Huppermage (combinaison dédoublonnée),
- * réduction et armure du Féca ; pertinence contre les mécaniques d'un boss (Père Ver ⇒ mêlée, Merkator ⇒ retrait PM
- * puni) ; tables de mécaniques et de limites de classe ; déterminisme ; modules purs.
+ * réduction et armure du Féca ; tours mixtes (retrait PM + PA, soin + bouclier : un seul budget de PA), retraits sûrs
+ * plafonnés à la réserve, érosion pondérée (Tarot et Roulette de l'Ecaflip) ; pertinence contre les mécaniques d'un boss
+ * (Père Ver ⇒ mêlée, Merkator ⇒ retrait PM puni, « % dommages finaux » anecdotique ignoré, glyphes sans faux atout
+ * « placement », personnage qui ne frappe pas) ; tables de mécaniques et de limites de classe ; déterminisme ; modules
+ * purs.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
@@ -15,7 +18,7 @@ import { bossProfile } from '../src/theorycraft/bossProfile'
 import { bossFighter, playerFighterFromMember, theoryEngine, withStates } from '../src/theorycraft/fighters'
 import { MECHANIC_KINDS } from '../src/theorycraft/overrides'
 import { initialStance, STANCES } from '../src/theorycraft/stances'
-import type { DamageShape } from '../src/theorycraft/types'
+import type { BossProfile } from '../src/theorycraft/types'
 import {
   CLASS_CONFIDENCE,
   CLASS_MODEL_LIMITS,
@@ -41,7 +44,7 @@ function playerOf(presetId: string): Fighter {
   return withStates(a, initialStance(p.breedId, a.spells.map(s => s.spellId)).states)
 }
 
-const util = (presetId: string, boss = harebourg, damage?: DamageShape) => classUtilities(data, playerOf(presetId), boss, damage ? { damage } : {})
+const util = (presetId: string, boss = harebourg) => classUtilities(data, playerOf(presetId), boss)
 
 describe('utilités chiffrées', () => {
   it('Enutrof retrait PM : plusieurs PM retirés par tour contre l\'esquive du Comte Harebourg', () => {
@@ -51,16 +54,46 @@ describe('utilités chiffrées', () => {
     expect(u.values.mpRemoved.value).toBeLessThanOrEqual(harebourg.stats.mp)
     expect(u.values.mpRemoved.spells.join(' ')).toMatch(/Maladresse|Pelle Aurifère/)
     expect(u.tags).toContain('mp-removal')
-    // L'esquive compte : à Retrait nul, moins de PM retirés pour les mêmes tentatives.
+    // L'esquive compte : à Retrait nul, moins de PM retirés.
     const weak = classUtilities(data, { ...playerOf('enutrof_retrait_pm_eau'), stats: { ...playerOf('enutrof_retrait_pm_eau').stats, mpReduction: 0 } }, harebourg)
-    expect(weak.removal.mp.attempted).toBeCloseTo(u.removal.mp.attempted, 6)
     expect(weak.values.mpRemoved.value).toBeLessThan(u.values.mpRemoved.value)
+    // Retraite Anticipée retire aussi les PM de tous les alliés (« A,g » sur toute la carte) : signalé.
+    expect(u.notes.join(' ')).toMatch(/touche aussi les alliés.*Retraite Anticipée/)
+  })
+
+  it('retraits sûrs plafonnés à la réserve résultat par résultat : un boss à 1 PM ne perd jamais plus d\'1 PM', () => {
+    const u = classUtilities(data, playerOf('enutrof_retrait_pm_eau'), { ...harebourg, stats: { ...harebourg.stats, mp: 1 } })
+    expect(u.removal.mp.sure).toBeGreaterThan(0)
+    expect(u.values.mpRemoved.value).toBeLessThanOrEqual(1 + 1e-9)
+    expect(u.values.mpRemoved.value).toBeGreaterThan(0.5)
+  })
+
+  it('tour MIXTE de retrait : PM + PA en un seul budget de PA, jamais la somme des deux tours consacrés', () => {
+    for (const id of ['enutrof_retrait_pm_eau', 'huppermage_entrave', 'cra_air_entrave']) {
+      const a = playerOf(id)
+      const u = classUtilities(data, a, harebourg)
+      const mix = u.removal.combined
+      const dedicated = [u.values.mpRemoved.value, u.values.apRemoved.value]
+      expect(mix.apSpent, id).toBeLessThanOrEqual(a.stats.ap + 1e-9)
+      // Au moins la meilleure réserve seule, et strictement moins que les deux tours consacrés additionnés.
+      expect(mix.mp + mix.ap, id).toBeGreaterThanOrEqual(Math.max(...dedicated) - 1e-9)
+      expect(mix.mp + mix.ap, id).toBeLessThan(dedicated[0] + dedicated[1])
+    }
+    // Réserve exclue (retrait puni) : le tour mixte ne vise que l'autre.
+    const apOnly = classUtilities(data, playerOf('huppermage_entrave'), harebourg, { removalPools: ['ap'] })
+    expect(apOnly.removal.combined.mp).toBe(0)
+    expect(apOnly.removal.combined.ap).toBeCloseTo(apOnly.values.apRemoved.value, 6)
   })
 
   it('Eniripsa : soigne, sans le faux désenvoûtement des Mots (406 sur sa propre Fée)', () => {
     const u = util('eniripsa_soin_feu')
     expect(u.values.heal.value).toBeGreaterThan(1000)
     expect(u.tags).toContain('heal')
+    // Tour mixte soin + bouclier : un budget de PA, pas la somme des deux rotations consacrées.
+    expect(u.values.shield.value).toBeGreaterThan(0)
+    expect(u.care.apSpent).toBeLessThanOrEqual(playerOf('eniripsa_soin_feu').stats.ap + 1e-9)
+    expect(u.care.heal + u.care.shield).toBeGreaterThanOrEqual(Math.max(u.values.heal.value, u.values.shield.value) - 1e-9)
+    expect(u.care.heal + u.care.shield).toBeLessThan(u.values.heal.value + u.values.shield.value)
     // Piège des profils bruts : Mot Espiègle est marqué « dispel » par spellProfile (sous-sort 406 sur la Fée).
     const idx = createSpellProfileIndex(theoryEngine(data))
     const motEspiegle = data.spellLevel(25877, { playerLevel: 200 })!
@@ -102,6 +135,19 @@ describe('utilités chiffrées', () => {
     expect(u.values.mpRemoved.spells.join(' ')).not.toMatch(/<sprite/)
     expect(u.removal.mp.attempted).toBeLessThan(12)
     expect(u.notes.join(' ')).toMatch(/Sous-sorts partagés dédoublonnés/)
+  })
+
+  it('érosion pondérée : cartes aléatoires du Tarot (1 sur 22) presque nulles, Roulette (toute la carte, alliés compris) écartée', () => {
+    const hybride = util('ecaflip_feu_hybride')
+    expect(hybride.values.erosion.value).toBeLessThan(2)
+    expect(hybride.tags).not.toContain('erosion')
+    // Prédation (érosion 15 sûre, ennemis seuls) reste ; Roulette (« a,A » en zone « a ») est écartée et signalée.
+    const zone = util('ecaflip_air_zone')
+    expect(zone.values.erosion.value).toBeCloseTo(15, 6)
+    expect(zone.values.erosion.spells).toEqual(['Prédation'])
+    expect(zone.notes.join(' ')).toMatch(/Érosion de zone qui touche aussi les alliés, écartée : Roulette/)
+    // Crâ : Tir Perçant (+25 % d'érosion sur la cible, sort sûr) intact.
+    expect(util('cra_terre_mono').values.erosion.value).toBeGreaterThanOrEqual(20)
   })
 
   it('Féca protecteur : réduction alliée (Bouclier Féca, Ataraxie au premier coup) et armure (Rempart)', () => {
@@ -155,17 +201,26 @@ describe('utilités chiffrées', () => {
 })
 
 describe('pertinence contre le boss', () => {
-  const melee: DamageShape = { meleeShare: 1, rangeShare: 0.2, burstRatio: 1 }
-  const ranged: DamageShape = { meleeShare: 0, rangeShare: 1, burstRatio: 1 }
-
   it('Père Ver (invulnérable à distance) : atout « mêlée » pour l\'Iop, limite « distance » pour le Crâ', () => {
     const profile = bossProfile(data, PERE_VER)
     const ver = bossFighter(data, PERE_VER, { grade: profile.grade, stats: profile.stats })
-    const iop = relevance(profile, util('iop_terre_burst', ver, melee))
+    // Sans forme de DPT mesurée : étiquettes mêlée / distance tirées des portées des sorts (classes.ts mesure la forme).
+    const iopU = util('iop_terre_burst', ver)
+    expect(iopU.tags).toContain('melee')
+    const iop = relevance(profile, iopU)
     expect(iop.atouts.some(a => /^Mêlée — invulnérable à distance/.test(a))).toBe(true)
-    const cra = relevance(profile, util('cra_terre_mono', ver, ranged))
+    const craU = util('cra_terre_mono', ver)
+    expect(craU.tags).toContain('range')
+    expect(craU.tags).not.toContain('melee')
+    const cra = relevance(profile, craU, { dealsDamage: false })
     expect(cra.limites.some(l => /^Distance — invulnérable à distance/.test(l))).toBe(true)
     expect(cra.atouts.some(a => /^Mêlée/.test(a))).toBe(false)
+    // Le Crâ ne touche pas le Père Ver : limite explicite, aucun atout lié aux dégâts (rafale…), mais l'érosion qu'il
+    // pose sur le boss vaut pour toute l'équipe (Engine.erosionPercent de la cible) et reste un atout.
+    expect(cra.limites[0]).toMatch(/^Ne touche pas le boss/)
+    expect(cra.atouts.some(a => /^Rafale|^Dégâts de zone|^Dégâts indirects|^Multi-élément/.test(a))).toBe(false)
+    expect(cra.atouts.some(a => /^Érosion — le boss se soigne/.test(a))).toBe(true)
+    expect(relevance(profile, craU).limites.some(l => /^Ne touche pas/.test(l))).toBe(false)
     // Le Père Ver n'a pas de PM : le retrait PM est une limite.
     const enu = relevance(profile, util('enutrof_retrait_pm_eau', ver))
     expect(enu.limites).toContain('Retrait PM — le boss n\'a pas de PM.')
@@ -178,6 +233,22 @@ describe('pertinence contre le boss', () => {
     expect(enu.limites.some(l => /^Retrait PM — retrait PA\/PM puni/.test(l))).toBe(true)
     expect(enu.limites.some(l => /^Retrait PA — retrait PA\/PM puni/.test(l))).toBe(false)
     expect(enu.limites.some(l => /^Placement — indéplaçable/.test(l))).toBe(true)
+    // « % Dommages finaux : +2 » (sur coup à distance) : anecdotique, pas d'atout « boucliers / soin » ; à +15 %, si.
+    const eni = util('eniripsa_soin_feu', merk)
+    expect(eni.tags).toContain('shield')
+    const finalDamage = profile.mechanics.find(m => m.kind === 'final-damage')!
+    expect(finalDamage.summary).toMatch(/\+2\b/)
+    expect(relevance(profile, eni).atouts.some(a => /le boss frappe plus fort/.test(a))).toBe(false)
+    const stronger: BossProfile = { ...profile, mechanics: profile.mechanics.map(m => (m === finalDamage ? { ...m, summary: '+15 % Dommages finaux (dès le début du combat).' } : m)) }
+    expect(relevance(stronger, eni).atouts.some(a => /le boss frappe plus fort/.test(a))).toBe(true)
+  })
+
+  it('glyphes et pièges du boss (Comte Harebourg) : pas de faux atout « placement »', () => {
+    const profile = bossProfile(data, HAREBOURG)
+    expect(profile.mechanics.some(m => m.kind === 'marks')).toBe(true)
+    for (const id of ['cra_feu_zone', 'eniripsa_soin_feu', 'enutrof_retrait_pm_eau', 'pandawa_placement']) {
+      expect(relevance(profile, util(id)).atouts.some(a => /^Placement/.test(a)), id).toBe(false)
+    }
   })
 
   it('tables : toutes les mécaniques ont une règle et une phrase ; toutes les classes ont leurs limites et une confiance', () => {

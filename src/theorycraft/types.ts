@@ -279,9 +279,11 @@ export interface UtilityValue {
 
 /**
  * Utilités chiffrées d'un personnage (unités) :
- *  - `mpRemoved`, `apRemoved` : PM / PA retirés au boss par tour (espérance contre son esquive, rotation CONSACRÉE au
- *    retrait, relances amorties) ; `rangeRemoval` : PO retirée par lancer (meilleur sort) ;
- *  - `heal`, `shield` : PV soignés / PV de bouclier par tour sur un allié (rotation consacrée, relances amorties) ;
+ *  - `mpRemoved`, `apRemoved` : PM / PA retirés au boss par tour (espérance contre son esquive, rotation CONSACRÉE à
+ *    cette réserve, relances amorties) ; deux valeurs NON additionnables (chacune suppose tout le tour : le tour mixte
+ *    est `ClassUtilities.removal.combined`) ; `rangeRemoval` : PO retirée par lancer (meilleur sort) ;
+ *  - `heal`, `shield` : PV soignés / PV de bouclier posés par tour, TOTAL D'ÉQUIPE (rotation consacrée, relances
+ *    amorties ; limite de lancers par cible × personnages visables) ; non additionnables (tour mixte : `care`) ;
  *  - `allyReduction` : % de dommages en moins sur un allié (× 1163 < 100) × temps d'effet ; `allyArmor` : dommages
  *    retirés par coup (armure 265/105, réduite au niveau) × temps d'effet ; `selfReduction` : idem sur soi seulement ;
  *  - `damageTaken` : % de dommages subis en plus posé sur le boss (× 1163 > 100) × temps d'effet ;
@@ -323,8 +325,22 @@ export interface ClassUtilities {
   /** États du lanceur supposés (posture). */
   states: number[]
   values: Record<UtilityKey, UtilityValue>
-  /** Points tentés par tour (esquivables) et sûrs (non esquivables), par réserve, avant l'esquive du boss. */
-  removal: { mp: { attempted: number; sure: number }; ap: { attempted: number; sure: number } }
+  /**
+   * Points tentés par tour (esquivables) et sûrs (non esquivables) de la rotation consacrée à chaque réserve, avant
+   * l'esquive du boss ; et `combined` : tour de retrait MIXTE (un seul budget de PA, réserves qui comptent seulement —
+   * option `removalPools`) : PM et PA retirés espérés, PA dépensés, sorts (ajout v1.1).
+   */
+  removal: {
+    mp: { attempted: number; sure: number }
+    ap: { attempted: number; sure: number }
+    combined: { mp: number; ap: number; apSpent: number; spells: string[] }
+  }
+  /**
+   * Tour de soin MIXTE (ajout v1.1) : un seul budget de PA pour les soins et les boucliers (total d'équipe), après
+   * l'entretien des sources des meilleures réduction et armure alliées ; PV soignés, PV de bouclier posés, PA dépensés,
+   * sorts.
+   */
+  care: { heal: number; shield: number; apSpent: number; spells: string[] }
   /** Apport offensif à un allié de référence, en % de ses dégâts (heuristique décomposée, utilities.ts). */
   offensiveGain: { total: number; parts: { label: string; pct: number }[] }
   /** Forme du DPT, si elle a été mesurée (sinon les étiquettes mêlée/distance viennent des portées des sorts). */
@@ -370,6 +386,13 @@ export interface PresetEvaluation {
     /** Soutenu de chaque posture évaluée. */
     stances: { id: string; steady: number }[]
     /**
+     * Étalonnage moteur du preset (`calibrationOf`, data/ai/calibration.json : rapport « dégâts simulés / analytique »
+     * mesuré en mini-combat contre un Buboxor, borné à [0,5 ; 2]) et soutenu × étalonnage. Contrôle affiché à côté, le
+     * classement reste sur `steady` (ajout v1.1).
+     */
+    calibration: number
+    calibrated: number
+    /**
      * Boss à résistances ≥ 100 % (mécanique, sans fiche manuelle) : soutenu contre la phase principale si la mécanique
      * les lève (ramenées à 0) — repli de la composition quand tous les DPT sont nuls.
      */
@@ -387,8 +410,31 @@ export interface PresetEvaluation {
     /** PV / dégâts reçus par tour (0 si le boss ne frappe pas). */
     turnsToDie: number
   }
-  control: { mpRemoved: number; apRemoved: number; value: number }
-  heal: { heal: number; shield: number; reduction: number; armor: number; value: number }
+  /**
+   * Contrôle : `mpRemoved` / `apRemoved` = rotation consacrée à chaque réserve (non additionnables ; 0 si le retrait est
+   * puni ou si le boss n'a pas la réserve) ; `combined` = tour mixte (un budget de PA) ; `value` = combined.mp +
+   * combined.ap (valeur de l'axe).
+   */
+  control: { mpRemoved: number; apRemoved: number; combined: { mp: number; ap: number }; value: number }
+  /**
+   * Soin (PV par tour, total d'équipe) : `heal` / `shield` = rotations consacrées (non additionnables) ; `reduction`
+   * (%) et `armor` (dommages retirés par coup) ; `mixed` = tour mixte soin + bouclier ; `raw` = mixte + réduction ×
+   * dégâts de référence + armure × coups ; `cap` = dégâts d'un tour du boss sur un personnage (médiane des presets) ;
+   * `value` = min(raw, cap) (valeur de l'axe : PV UTILES) ; `protectionRaw` / `protection` = boucliers (rotation
+   * consacrée) + réduction + armure, sans soin (règle « Protection »), brut / plafonné.
+   */
+  heal: {
+    heal: number
+    shield: number
+    reduction: number
+    armor: number
+    mixed: { heal: number; shield: number }
+    raw: number
+    cap: number
+    value: number
+    protectionRaw: number
+    protection: number
+  }
   team: { gainPct: number; parts: { label: string; pct: number }[] }
   /** Valeur de chaque axe (unités : DPT, PV effectifs, points retirés, PV par tour, % de dégâts d'un allié). */
   axes: Record<RankingAxis, number>
@@ -397,6 +443,8 @@ export interface PresetEvaluation {
   confidence: { level: Confidence; reasons: string[] }
   /** Élément du preset face au boss : résistance effective (phases attaquables pondérées) et rang (0 = le plus faible). */
   elementMatch: { element: number; resPct: number; rank: number }
+  /** Mode 'optimized' : objectif J du proxy (mêmes options) du stuff de départ et du stuff retenu (ajout v1.1). */
+  optimization?: { startJ: number; bestJ: number }
   warnings: string[]
 }
 
@@ -405,6 +453,11 @@ export interface ClassSummary {
   className: string
   /** Meilleur preset de la classe sur chaque axe. */
   best: Record<RankingAxis, { presetId: string; value: number }>
+  /**
+   * Confiance du MODÈLE pour la classe (`CLASS_CONFIDENCE` : mécaniques de classe non modélisées), indépendante du
+   * preset ; la confiance d'un preset (`PresetEvaluation.confidence`) peut être plus basse (posture incertaine,
+   * invocateur, DPT nul contre ce boss).
+   */
   confidence: Confidence
 }
 
@@ -412,8 +465,11 @@ export interface AxisRanking {
   axis: RankingAxis
   label: string
   unit: string
-  /** Une ligne par classe (son meilleur preset sur l'axe), meilleure d'abord. */
-  entries: { breedId: number; className: string; presetId: string; value: number }[]
+  /**
+   * Une ligne par classe (son meilleur preset sur l'axe), meilleure d'abord. `rank` : rang partagé par les ex æquo
+   * (1, 1, 3…), `tied` : valeur égale à celle d'une autre ligne (ajout v1.1).
+   */
+  entries: { breedId: number; className: string; presetId: string; value: number; rank: number; tied: boolean }[]
 }
 
 export interface CompositionMember {

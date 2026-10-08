@@ -48,14 +48,22 @@
  *  - classes à posture (classes.ts) : utilités calculées dans chaque posture tenable et fusionnées (`mergeUtilities` :
  *    meilleure posture par utilité, changement non compté).
  *
- * Chiffrage par tour (relances amorties, comme le soutenu de rotation.ts) : pour le retrait, le soin et le bouclier,
- * rotation CONSACRÉE à l'axe (glouton par valeur / PA sur les PA du personnage ; un sort de relance k compte 1/k lancer
- * par tour et consomme 1/k de son coût ; lancers par tour, et par cible pour le boss). Les axes ne s'additionnent pas :
- * un tour passé à retirer des PM n'est pas passé à frapper. Retraits : `expectedApMpRemoved` (Retrait du personnage
- * contre l'Esquive du boss, réserve = PM/PA du boss, interpolation linéaire entre nombres de tentatives entiers), plus
- * les points non esquivables, plafonnés à la réserve. Temps d'effet d'un buff : min(1, durée / relance) (durée infinie :
- * 1). `ProxyContext.removedPoints` (proxy de stuff) mesure la même chose sur les profils BRUTS (portes ignorées,
- * Huppermage gonflé) et sans limite de lancers par cible : il n'est pas utilisé ici.
+ * Chiffrage par tour (relances amorties, comme le soutenu de rotation.ts) : glouton par valeur / PA sur les PA du
+ * personnage ; un sort de relance k compte 1/k lancer par tour et consomme 1/k de son coût ; lancers par tour, par cible
+ * pour le boss, par cible × personnages visables (`DEFAULT_ALLY_TARGETS`) pour un soin ou un bouclier.
+ *  - rotations CONSACRÉES (`values.mpRemoved`, `apRemoved`, `heal`, `shield`) : chacune suppose TOUT le tour ; elles ne
+ *    s'additionnent pas entre elles ;
+ *  - tours MIXTES, un seul budget de PA : `removal.combined` (PM et PA retirés ensemble, réserves qui comptent : la
+ *    meilleure de trois rotations — glouton sur les points pondérés par la chance du premier point, rotation PM seule,
+ *    rotation PA seule) et `care` (soin + bouclier, après l'entretien des meilleures réduction et armure alliées). Ce
+ *    sont les valeurs des axes Contrôle et Soin de classes.ts ;
+ *  - retraits : tentatives esquivables d'abord, sur la réserve pleine (l'ordre qui retire le plus), puis points non
+ *    esquivables, plafonnés à la réserve résultat par résultat (E[min(X + sûrs, réserve)], distribution exacte de
+ *    `apMpRemovalDistribution`) ; un retrait qui touche aussi les alliés (Retraite Anticipée) est compté et signalé ;
+ *  - temps d'effet d'un buff : min(1, durée / relance) (durée infinie : 1) ; érosion pondérée comme les autres effets
+ *    (chemin, branche, tirage), une érosion de zone qui touche aussi les alliés (Roulette, Tarot) est écartée.
+ * `ProxyContext.removedPoints` (proxy de stuff) mesure le retrait sur les profils BRUTS (portes ignorées, Huppermage
+ * gonflé) et sans limite de lancers par cible : il n'est pas utilisé ici.
  *
  * Apport offensif (`offensiveGain`, heuristique affichée décomposée) : % de dégâts gagnés par un allié de référence
  * (caractéristique + Puissance `REF_ALLY_POWER`, jet de base `REF_BASE_HIT`, `REF_ALLY_AP` PA) = « dommages subis »
@@ -63,15 +71,16 @@
  * REF_ALLY_POWER / 100)) + PA × 100 / REF_ALLY_AP (les PM ne comptent pas : effet de position).
  *
  * Pertinence (`relevance`) : table `MECHANIC_RELEVANCE` (mécanique du boss → utilités utiles / punies, avec une phrase)
- * combinée aux `counters`/`punishes` propres à chaque mécanique du profil. Confiance (`CLASS_MODEL_LIMITS`,
- * `classConfidence`) : mécaniques de classe que le DPT ne modélise pas (section « [À modéliser] » de la carte des sorts de
- * classe ; docs/research/classes/*.md).
+ * combinée aux `counters`/`punishes` propres à chaque mécanique du profil ; pas d'atout lié aux dégâts pour un personnage
+ * qui ne frappe pas le boss, mécanique « % dommages finaux » anecdotique (< `FINAL_DAMAGE_MIN_PCT`) ignorée.
+ * Confiance (`CLASS_MODEL_LIMITS`, `classConfidence`) : mécaniques de classe que le DPT ne modélise pas (section « [À
+ * modéliser] » de la carte des sorts de classe ; docs/research/classes/*.md).
  *
  * Module PUR : aucun import `node:`, ni de src/dungeons, ni du proxy de stuff.
  */
 import { createSpellProfileIndex, maskSides, zoneRadius, type SpellProfileIndexX, type SpellProfileX } from '../ai/core/spellProfile'
 import { ELEMENT_MAIN_STAT, Element, type Stats } from '../core/types'
-import { expectedApMpRemoved } from '../damage/apmp'
+import { apMpRemovalDistribution, apMpRemovalProbability } from '../damage/apmp'
 import { critChance } from '../damage/crit'
 import { heal, shieldFromLevel, shieldFromMaxHp } from '../damage/heal'
 import { armorReduction } from '../damage/misc'
@@ -104,6 +113,11 @@ export const REF_HITS_PER_TURN = 2
 export const REF_BASE_HIT = 30
 /** PA de l'allié de référence. */
 export const REF_ALLY_AP = 12
+/**
+ * Personnages qu'un soin ou un bouclier peut viser dans un tour (lanceur compris) : groupe de 4 par défaut
+ * (`DEFAULT_PLAYERS` de bossProfile.ts). La limite de lancers PAR CIBLE d'un sort de soin vaut donc × 4 par tour.
+ */
+export const DEFAULT_ALLY_TARGETS = 4
 
 /** Seuils des étiquettes de capacité (`tags`) : en dessous, l'utilité est jugée anecdotique. */
 export const TAG_THRESHOLDS = {
@@ -131,6 +145,11 @@ export const TAG_THRESHOLDS = {
 } as const
 
 const CASTER_SUBSPELL: ReadonlySet<number> = new Set([1160, 2160, 2960])
+/**
+ * Rayon (cases) à partir duquel une zone couvre toute l'aire de combat (« a »/« A » : 63, Retraite Anticipée : cercle 63) :
+ * une ligne de ce type qui accepte les alliés les touche à coup sûr (sinon cela dépend des positions, non modélisées).
+ */
+const GLOBAL_RADIUS = 20
 const MAX_SUB_DEPTH = 4
 const ARMOR: ReadonlySet<number> = new Set([265, 105])
 const EROSION = 776
@@ -375,6 +394,9 @@ interface Effect {
   key: UtilityKey
   value: number
   source: string
+  src: Source
+  /** Lancers par tour qui entretiennent l'effet : 1 / max(1, relance, durée) ; 0 pour une durée infinie. */
+  casts: number
 }
 
 function emptySource(key: string, name: string, level: SpellLevelData, shared: boolean): Source {
@@ -427,33 +449,63 @@ function cleanName(name: string): string {
   return sprites.length ? `${base} (${sprites.join(' + ')})` : base
 }
 
-/** Points retirés espérés pour un nombre de tentatives fractionnaire (interpolation entre les entiers voisins). */
-function expectedRemoved(removal: number, dodge: number, pool: number, tries: number): number {
-  if (pool <= 0 || tries <= 0) return 0
-  const lo = Math.floor(tries)
-  const hi = Math.ceil(tries)
-  const at = (n: number) => (n <= 0 ? 0 : expectedApMpRemoved(Math.max(0, Math.round(removal)), Math.max(0, Math.round(dodge)), pool, pool, Math.min(24, n)))
+/**
+ * Points retirés espérés sur une réserve `pool` (PM ou PA du boss) : `tries` tentatives esquivables (nombre fractionnaire :
+ * interpolation entre les entiers voisins) faites d'abord, sur la réserve pleine — l'ordre que choisit le joueur, chaque
+ * tentative ayant plus de chances quand il reste plus de points —, puis `sure` points non esquivables, le tout plafonné
+ * à la réserve RÉSULTAT PAR RÉSULTAT : E[min(X + sûrs, réserve)] sur la distribution exacte de X
+ * (`apMpRemovalDistribution`), et non min(E[X] + sûrs, réserve) qui surestime quand la réserve est atteinte.
+ */
+function expectedRemoved(removal: number, dodge: number, pool: number, tries: number, sure: number): number {
+  if (pool <= 0) return 0
+  const ra = Math.max(0, Math.round(removal))
+  const es = Math.max(0, Math.round(dodge))
+  const at = (n: number) => {
+    const dist = n <= 0 ? [1] : apMpRemovalDistribution(ra, es, pool, pool, Math.min(24, n))
+    return dist.reduce((a, p, k) => a + p * Math.min(pool, k + sure), 0)
+  }
+  const t = Math.max(0, tries)
+  const lo = Math.floor(t)
+  const hi = Math.ceil(t)
   if (lo === hi) return at(lo)
-  return at(lo) + (tries - lo) * (at(hi) - at(lo))
+  return at(lo) + (t - lo) * (at(hi) - at(lo))
 }
 
-/** Rotation consacrée à un axe (voir l'en-tête) : lancers amortis par source, sur `ap` PA. */
-function dedicatedRotation(sources: readonly Source[], ap: number, value: (s: Source) => number, enemyTarget: boolean): { source: Source; k: number }[] {
+/** Rotation : lancers par tour amortis (k) par source, et PA consommés par tour. */
+interface Rotation {
+  casts: { source: Source; k: number }[]
+  apSpent: number
+}
+
+/**
+ * Rotation glouton par valeur / PA (voir l'en-tête) : lancers amortis par source, sur `ap` PA. Cible ennemie : limite de
+ * lancers par cible (le boss) ; cible alliée : limite par cible × `allyTargets` (un soin peut viser chaque allié).
+ */
+function dedicatedRotation(sources: readonly Source[], ap: number, value: (s: Source) => number, enemyTarget: boolean, allyTargets = DEFAULT_ALLY_TARGETS): Rotation {
   const list = sources
     .map((s, i) => ({ s, i, v: value(s) }))
     .filter(x => x.v > 0 && x.s.apCost > 0)
     .sort((x, y) => y.v / y.s.apCost - x.v / x.s.apCost || x.i - y.i)
-  const out: { source: Source; k: number }[] = []
+  const casts: { source: Source; k: number }[] = []
   let budget = ap
   for (const { s } of list) {
-    const max = s.cooldown > 0 ? 1 : Math.min(s.perTurn, enemyTarget ? s.perTarget : 99)
+    const max = s.cooldown > 0 ? 1 : Math.min(s.perTurn, enemyTarget ? s.perTarget : s.perTarget * Math.max(1, allyTargets))
     const n = Math.min(max, Math.floor(budget / s.apCost + 1e-9))
     if (n <= 0) continue
     const k = n / Math.max(1, s.cooldown)
     budget -= k * s.apCost
-    out.push({ source: s, k })
+    casts.push({ source: s, k })
   }
-  return out
+  return { casts, apSpent: ap - budget }
+}
+
+/** Noms des sources d'une rotation, plus forte contribution d'abord. */
+function rotationSpells(rot: Rotation, per: (x: Source) => number): string[] {
+  return rot.casts
+    .map(r => ({ n: r.source.name, v: r.k * per(r.source) }))
+    .filter(x => x.v > 0)
+    .sort((a, b) => b.v - a.v || a.n.localeCompare(b.n))
+    .map(x => x.n)
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -465,6 +517,13 @@ export interface ClassUtilitiesOptions {
   refAllyHp?: number
   /** Forme du DPT mesurée (classes.ts) : étiquettes mêlée / distance / rafale. */
   damage?: DamageShape
+  /**
+   * Réserves du boss qui comptent pour le tour de retrait MIXTE (`removal.combined`) : défaut, celles que le boss a
+   * (PM > 0, PA > 0). classes.ts retire une réserve dont le retrait est puni par le boss.
+   */
+  removalPools?: readonly ('mp' | 'ap')[]
+  /** Personnages visables par un soin ou un bouclier dans un tour (défaut `DEFAULT_ALLY_TARGETS`). */
+  allyTargets?: number
 }
 
 /**
@@ -546,6 +605,8 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
   let glyphOrTrap = false
   let meleeBest = 0
   let rangeBest = 0
+  const alsoAllies = new Set<string>()
+  const erosionOnAllies = new Set<string>()
   // Une ligne d'un nœud n'est comptée qu'une fois par source (meilleur chemin) : par sort racine, ou une seule fois en
   // tout pour un sous-sort partagé.
   const seen = new Map<string, number>()
@@ -587,6 +648,8 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
       }
       const gates = node.gates
       const capOf = (pool: 'ap' | 'mp') => Math.max(0, pool === 'mp' ? boss.stats.mp : boss.stats.ap)
+      // Lancers par tour qui entretiennent un effet de durée `duration` (infinie : 0, lancé une fois).
+      const castsFor = (duration: number) => (duration < 0 ? 0 : 1 / Math.max(1, source.cooldown, duration))
 
       // Retraits PA/PM (sur le boss ; plafonnés à sa réserve par lancer ; retraits différés exclus, comme le proxy).
       const removals = p.removals.filter(x => x.delay <= 0)
@@ -595,13 +658,16 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
         const v = k * Math.min(capOf(x.pool) || x.value, x.value)
         if (x.pool === 'mp') x.dodgeable ? (source.mpTry += v) : (source.mpSure += v)
         else x.dodgeable ? (source.apTry += v) : (source.apSure += v)
+        // Retrait qui frappe aussi les alliés à coup sûr (Retraite Anticipée : « A,g » sur toute la carte) : coût d'équipe
+        // signalé (une petite zone ne les touche que s'ils y sont : positions non modélisées).
+        if (v > 0 && zoneRadius(x.zone) >= GLOBAL_RADIUS && reachOf(x.mask, x.zone, gates, 'ally')) alsoAllies.add(source.name)
       }
       // Pertes de PA/PM imposées à un allié par un buff (Précipitation de l'Iop : +5 PA puis −3 PA) : retranchées du
       // buff de la même source.
       const allyLoss = p.removals.filter(x => !x.dodgeable && !reachOf(x.mask, x.zone, gates, 'boss'))
       for (const [x, lw] of lineWeights(allyLoss, x => reachOf(x.mask, x.zone, gates, 'ally'))) {
         const k = once(`al${p.removals.indexOf(x)}`, node.weight * lw)
-        if (k) effects.push({ key: x.pool === 'ap' ? 'allyAp' : 'allyMp', value: -k * x.value * uptime(x.duration, source.cooldown), source: source.name })
+        if (k) effects.push({ key: x.pool === 'ap' ? 'allyAp' : 'allyMp', value: -k * x.value * uptime(x.duration, source.cooldown), source: source.name, src: source, casts: castsFor(x.duration) })
       }
       // Soins (sur un allié), critique pondéré.
       const crit = p.level.criticalEffects.length ? critChance(p.level.critChance, s.critical) / 100 : 0
@@ -623,14 +689,14 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
       const buffs = p.stats.filter(x => x.sign > 0 && (!x.sides.enemy || !attack) && allyStatKey(x.stat))
       for (const [x, lw] of lineWeights(buffs, x => reachOf(x.mask, x.zone, gates, 'ally'))) {
         const k = once(`st${p.stats.indexOf(x)}`, node.weight * lw)
-        if (k) effects.push({ key: allyStatKey(x.stat)!, value: k * x.value * uptime(x.duration, source.cooldown), source: source.name })
+        if (k) effects.push({ key: allyStatKey(x.stat)!, value: k * x.value * uptime(x.duration, source.cooldown), source: source.name, src: source, casts: castsFor(x.duration) })
       }
       // Débuffs du boss, retrait de PO, pertes de PA/PM non esquivables portées par une caractéristique.
       const debuffs = p.stats.filter(x => x.sign < 0)
       for (const [x, lw] of lineWeights(debuffs, x => reachOf(x.mask, x.zone, gates, 'boss'))) {
         const k = once(`st${p.stats.indexOf(x)}`, node.weight * lw)
         if (!k) continue
-        if (x.stat === 'range') effects.push({ key: 'rangeRemoval', value: k * x.value, source: source.name })
+        if (x.stat === 'range') effects.push({ key: 'rangeRemoval', value: k * x.value, source: source.name, src: source, casts: castsFor(x.duration) })
         else if ((x.stat === 'ap' || x.stat === 'mp') && !PCT_AP_MP_LOSS.has(x.effectId)) {
           const v = k * Math.min(capOf(x.stat) || x.value, x.value)
           if (x.stat === 'mp') source.mpSure += v
@@ -656,7 +722,7 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
       const push = (key: UtilityKey, e: EffectData, lw: number, v: number) => {
         const k = once(`ef${node.level.effects.indexOf(e)}`, node.weight * lw)
         const prob = e.random > 0 ? (probs.get(e) ?? 0) : 1
-        if (k) effects.push({ key, value: k * prob * uptime(effectDuration(e), source.cooldown) * v, source: source.name })
+        if (k) effects.push({ key, value: k * prob * uptime(effectDuration(e), source.cooldown) * v, source: source.name, src: source, casts: castsFor(effectDuration(e)) })
       }
       for (const [e, lw] of rawFor(e => e.effectId === RECEIVED && receivedPct(e) > 100, 'boss')) push('damageTaken', e, lw, receivedPct(e) - 100)
       const reductions = (e: EffectData) => e.effectId === RECEIVED && receivedPct(e) < 100
@@ -664,7 +730,13 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
       for (const [e, lw] of allyRed) push('allyReduction', e, lw, (100 - receivedPct(e)) * perHit)
       for (const [e, lw] of rawFor(e => reductions(e) && !allyRed.has(e), 'self')) push('selfReduction', e, lw, (100 - receivedPct(e)) * perHit)
       for (const [e, lw] of rawFor(e => ARMOR.has(e.effectId), 'ally')) push('allyArmor', e, lw, armorReduction(e.diceNum + e.value, fighter.level))
-      for (const [e] of rawFor(e => e.effectId === EROSION, 'boss')) effects.push({ key: 'erosion', value: meanOf(e.diceNum, e.diceSide), source: source.name })
+      // Érosion posée sur le boss (toute attaque qu'il subit l'érode davantage : Engine.erosionPercent de la cible), pondérée
+      // comme les autres effets (chemin, branche, tirage aléatoire, temps d'effet). Une ligne sur toute l'aire de combat qui
+      // touche aussi les alliés (Roulette, carte « La Mort » du Tarot : « a,A » en zone « a ») érode l'équipe : écartée.
+      for (const [e, lw] of rawFor(e => e.effectId === EROSION, 'boss')) {
+        if (zoneRadius(e.zone) >= GLOBAL_RADIUS && reachOf(e.targetMask, e.zone, gates, 'ally')) erosionOnAllies.add(source.name)
+        else push('erosion', e, lw, meanOf(e.diceNum, e.diceSide))
+      }
       if (rawFor(e => DISPEL.has(e.effectId), 'boss').size) counts.dispel.add(source.name)
       // Lignes réservées à un monstre précis (invocation de la classe : Fée, Gardien…), écartées : comptées pour les notes.
       for (const list of [p.heals, p.shields, p.stats, p.removals] as { mask: string }[][]) {
@@ -676,35 +748,8 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
   // ── Chiffrage par tour ──
   const all = [...sources.values()]
   const ap = Math.max(0, s.ap)
+  const allyTargets = opts.allyTargets ?? DEFAULT_ALLY_TARGETS
   const values = Object.fromEntries(UTILITY_KEYS.map(k => [k, { value: 0, spells: [] as string[] }])) as Record<UtilityKey, UtilityValue>
-  const setFrom = (key: UtilityKey, rot: { source: Source; k: number }[], per: (x: Source) => number, total: number) => {
-    values[key] = {
-      value: total,
-      spells: rot
-        .map(r => ({ n: r.source.name, v: r.k * per(r.source) }))
-        .filter(x => x.v > 0)
-        .sort((a, b) => b.v - a.v || a.n.localeCompare(b.n))
-        .map(x => x.n),
-    }
-  }
-  const removal = { mp: { attempted: 0, sure: 0 }, ap: { attempted: 0, sure: 0 } }
-  for (const pool of ['mp', 'ap'] as const) {
-    const tryOf = (x: Source) => (pool === 'mp' ? x.mpTry : x.apTry)
-    const sureOf = (x: Source) => (pool === 'mp' ? x.mpSure : x.apSure)
-    const rot = dedicatedRotation(all, ap, x => tryOf(x) + sureOf(x), true)
-    const tries = rot.reduce((a, r) => a + r.k * tryOf(r.source), 0)
-    const sure = rot.reduce((a, r) => a + r.k * sureOf(r.source), 0)
-    removal[pool] = { attempted: tries, sure }
-    const reserve = Math.max(0, pool === 'mp' ? boss.stats.mp : boss.stats.ap)
-    const removalStat = pool === 'mp' ? s.mpReduction : s.apReduction
-    const dodge = pool === 'mp' ? boss.stats.mpParry : boss.stats.apParry
-    const v = Math.min(reserve, expectedRemoved(removalStat, dodge, reserve, tries) + sure)
-    setFrom(pool === 'mp' ? 'mpRemoved' : 'apRemoved', rot, x => tryOf(x) + sureOf(x), v)
-  }
-  const healRot = dedicatedRotation(all, ap, x => x.heal, false)
-  setFrom('heal', healRot, x => x.heal, healRot.reduce((a, r) => a + r.k * r.source.heal, 0))
-  const shieldRot = dedicatedRotation(all, ap, x => x.shield, false)
-  setFrom('shield', shieldRot, x => x.shield, shieldRot.reduce((a, r) => a + r.k * r.source.shield, 0))
   // Buffs et débuffs : meilleure source (somme des lignes d'une même source ; érosion et PO : meilleure ligne).
   const maxKeys = new Set<UtilityKey>(['erosion', 'rangeRemoval'])
   for (const key of ['damageTaken', 'allyReduction', 'selfReduction', 'allyArmor', 'allyPower', 'allyDamage', 'allyFinalDamage', 'allyAp', 'allyMp', 'erosion', 'rangeRemoval'] as UtilityKey[]) {
@@ -720,6 +765,68 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
   for (const key of ['placement', 'summons', 'dispel', 'debuff'] as const) {
     const names = [...counts[key]].sort((a, b) => a.localeCompare(b))
     values[key] = { value: names.length, spells: names }
+  }
+
+  // Retraits : par réserve, rotation CONSACRÉE à cette réserve (`values.mpRemoved` / `apRemoved`, étiquettes, règle
+  // « Retrait PM » de la composition : meilleure de deux gloutons, points bruts ou points pondérés par la chance du
+  // premier point — sûrs : 1 —) ; et tour MIXTE (`removal.combined`, axe Contrôle) : UN budget de PA pour les réserves
+  // qui comptent, meilleure de trois rotations (glouton pondéré sur ces réserves, rotation PM seule, rotation PA seule),
+  // chacune évaluée sur les deux réserves.
+  const reserveOf = (pool: 'mp' | 'ap') => Math.max(0, pool === 'mp' ? boss.stats.mp : boss.stats.ap)
+  const tryOf = (pool: 'mp' | 'ap', x: Source) => (pool === 'mp' ? x.mpTry : x.apTry)
+  const sureOf = (pool: 'mp' | 'ap', x: Source) => (pool === 'mp' ? x.mpSure : x.apSure)
+  const removalOf = (pool: 'mp' | 'ap') => (pool === 'mp' ? s.mpReduction : s.apReduction)
+  const dodgeOf = (pool: 'mp' | 'ap') => (pool === 'mp' ? boss.stats.mpParry : boss.stats.apParry)
+  const sumRot = (rot: Rotation, per: (x: Source) => number) => rot.casts.reduce((a, r) => a + r.k * per(r.source), 0)
+  const removedIn = (pool: 'mp' | 'ap', rot: Rotation) =>
+    expectedRemoved(removalOf(pool), dodgeOf(pool), reserveOf(pool), sumRot(rot, x => tryOf(pool, x)), sumRot(rot, x => sureOf(pool, x)))
+  const removal: ClassUtilities['removal'] = { mp: { attempted: 0, sure: 0 }, ap: { attempted: 0, sure: 0 }, combined: { mp: 0, ap: 0, apSpent: 0, spells: [] } }
+  const first = (pool: 'mp' | 'ap') => apMpRemovalProbability(Math.max(0, Math.round(removalOf(pool))), Math.max(0, Math.round(dodgeOf(pool))), reserveOf(pool), reserveOf(pool))
+  const dedicated: Record<'mp' | 'ap', Rotation> = { mp: { casts: [], apSpent: 0 }, ap: { casts: [], apSpent: 0 } }
+  for (const pool of ['mp', 'ap'] as const) {
+    const per = (x: Source) => tryOf(pool, x) + sureOf(pool, x)
+    const raw = dedicatedRotation(all, ap, per, true)
+    const weighted = dedicatedRotation(all, ap, x => first(pool) * tryOf(pool, x) + sureOf(pool, x), true)
+    const rot = (dedicated[pool] = removedIn(pool, weighted) > removedIn(pool, raw) + 1e-12 ? weighted : raw)
+    removal[pool] = { attempted: sumRot(rot, x => tryOf(pool, x)), sure: sumRot(rot, x => sureOf(pool, x)) }
+    values[pool === 'mp' ? 'mpRemoved' : 'apRemoved'] = { value: removedIn(pool, rot), spells: rotationSpells(rot, per) }
+  }
+  const pools = (opts.removalPools ?? (['mp', 'ap'] as const)).filter(p => reserveOf(p) > 0)
+  if (pools.length) {
+    const weighted = (x: Source) => pools.reduce((a, p) => a + first(p) * tryOf(p, x) + sureOf(p, x), 0)
+    const candidates = [dedicatedRotation(all, ap, weighted, true), dedicated.mp, dedicated.ap]
+    const total = (rot: Rotation) => pools.reduce((a, p) => a + removedIn(p, rot), 0)
+    const best = candidates.reduce((a, b) => (total(b) > total(a) + 1e-12 ? b : a))
+    removal.combined = {
+      mp: pools.includes('mp') ? removedIn('mp', best) : 0,
+      ap: pools.includes('ap') ? removedIn('ap', best) : 0,
+      apSpent: best.apSpent,
+      spells: rotationSpells(best, x => pools.reduce((a, p) => a + tryOf(p, x) + sureOf(p, x), 0)),
+    }
+  }
+
+  // Soins et boucliers : rotation consacrée à chacun (`values.heal` / `shield`), et tour MIXTE (`care`, axe Soin) : un
+  // budget de PA ; les sources des meilleures réduction et armure alliées sont entretenues d'abord (1 / max(relance,
+  // durée) lancer par tour, leurs propres soins et boucliers compris), le reste des PA va au glouton soin + bouclier.
+  const healRot = dedicatedRotation(all, ap, x => x.heal, false, allyTargets)
+  values.heal = { value: sumRot(healRot, x => x.heal), spells: rotationSpells(healRot, x => x.heal) }
+  const shieldRot = dedicatedRotation(all, ap, x => x.shield, false, allyTargets)
+  values.shield = { value: sumRot(shieldRot, x => x.shield), spells: rotationSpells(shieldRot, x => x.shield) }
+  const reserved = new Map<Source, number>()
+  for (const key of ['allyReduction', 'allyArmor'] as const) {
+    const lines = effects.filter(e => e.key === key && e.source === values[key].spells[0])
+    if (!lines.length) continue
+    reserved.set(lines[0].src, Math.max(reserved.get(lines[0].src) ?? 0, ...lines.map(e => e.casts)))
+  }
+  const reservedAp = [...reserved].reduce((a, [x, k]) => a + k * x.apCost, 0)
+  const careRot = dedicatedRotation(all.filter(x => !reserved.has(x)), Math.max(0, ap - reservedAp), x => x.heal + x.shield, false, allyTargets)
+  const careAll: Rotation = { casts: [...[...reserved].map(([source, k]) => ({ source, k })), ...careRot.casts], apSpent: reservedAp + careRot.apSpent }
+  const care: ClassUtilities['care'] = {
+    heal: sumRot(careAll, x => x.heal),
+    shield: sumRot(careAll, x => x.shield),
+    apSpent: careAll.apSpent,
+    // Contributions soin + bouclier d'abord, puis les sources de réduction / armure entretenues.
+    spells: [...new Set([...rotationSpells(careAll, x => x.heal + x.shield), ...[...reserved.keys()].map(x => x.name)])],
   }
 
   const offensiveGain = offensiveGainOf(values)
@@ -764,12 +871,15 @@ export function classUtilities(data: DataStore, fighter: Fighter, boss: Fighter,
   if (glyphOrTrap) notes.push('Glyphes et pièges : effets posés au sol non chiffrés (dégâts et utilités hors calcul).')
   if (values.summons.value) notes.push('Invocations : comptées en nombre de sorts, leurs dégâts et utilités ne sont pas chiffrés.')
   if (boss.stats.mp <= 0) notes.push('Le boss n\'a pas de PM : retrait PM sans valeur.')
+  if (alsoAllies.size) notes.push(`Retrait qui touche aussi les alliés (coût d'équipe non compté) : ${[...alsoAllies].sort((a, b) => a.localeCompare(b)).join(', ')}.`)
+  if (erosionOnAllies.size) notes.push(`Érosion de zone qui touche aussi les alliés, écartée : ${[...erosionOnAllies].sort((a, b) => a.localeCompare(b)).join(', ')}.`)
 
   return {
     breedId: fighter.breedId ?? 0,
     states: fighter.states.slice(),
     values,
     removal,
+    care,
     offensiveGain,
     ...(shape ? { damage: { ...shape } } : {}),
     tags: [...tags].sort(),
@@ -810,13 +920,19 @@ export function mergeUtilities(list: readonly ClassUtilities[], labels: readonly
   ) as Record<UtilityKey, UtilityValue>
   const iMp = best(u => u.values.mpRemoved.value)
   const iAp = best(u => u.values.apRemoved.value)
+  const iMix = best(u => u.removal.combined.mp + u.removal.combined.ap)
+  const iCare = best(u => u.care.heal + u.care.shield)
+  for (const i of [iMix, iCare]) if (i !== 0) from.add(i)
   const notes = [...new Set(list.flatMap(u => u.notes))]
   if (from.size) notes.unshift(`Utilités prises dans la meilleure posture : ${[...from].map(i => `« ${labels[i]} »`).join(', ')} (changement de posture non compté).`)
+  const mix = list[iMix].removal.combined
+  const care = list[iCare].care
   return {
     breedId: list[0].breedId,
     states: list[0].states.slice(),
     values,
-    removal: { mp: { ...list[iMp].removal.mp }, ap: { ...list[iAp].removal.ap } },
+    removal: { mp: { ...list[iMp].removal.mp }, ap: { ...list[iAp].removal.ap }, combined: { ...mix, spells: mix.spells.slice() } },
+    care: { ...care, spells: care.spells.slice() },
     offensiveGain: offensiveGainOf(values),
     ...(list[0].damage ? { damage: { ...list[0].damage } } : {}),
     tags: [...new Set(list.flatMap(u => u.tags))].sort(),
@@ -855,31 +971,68 @@ export const MECHANIC_RELEVANCE: Readonly<Record<MechanicKind, { counters: Utili
   summons: { counters: ['zone'], punishes: [], note: 'le boss invoque : la zone touche aussi ses invocations' },
   'boss-heal': { counters: ['erosion', 'burst'], punishes: [], note: 'le boss se soigne : érosion et rafale' },
   'boss-shield': { counters: ['debuff', 'burst'], punishes: [], note: 'bouclier du boss : désenvoûtement et rafale' },
-  marks: { counters: ['placement'], punishes: [], note: 'glyphes ou pièges : le placement aide à les éviter' },
+  marks: { counters: [], punishes: [], note: 'glyphes ou pièges du boss : se placer hors de leurs zones (positions non modélisées, aucune réponse de classe chiffrée)' },
   phases: { counters: ['burst'], punishes: [], note: 'phases : la rafale au bon tour compte plus que le soutenu' },
   'mp-cost': { counters: ['range'], punishes: [], note: 'chaque PM utilisé coûte : jouer statique, à distance' },
   other: { counters: [], punishes: [], note: 'mécanique non classée : voir son résumé' },
 }
 
 /**
+ * Étiquettes qui ne valent que si le personnage frappe le boss (style, rafale, zone, dégâts indirects, poussée,
+ * multi-élément). L'érosion, les « dommages subis », les débuffs et les retraits restent : ce sont des effets posés sur le
+ * boss qui servent toute l'équipe (l'érosion vaut pour tous les dégâts qu'il subit, Engine.erosionPercent de la cible),
+ * même quand l'invulnérabilité annule les dégâts du lanceur (le moteur n'annule que les dégâts).
+ */
+export const DAMAGE_TAGS: ReadonlySet<UtilityTag> = new Set<UtilityTag>(['melee', 'range', 'zone', 'burst', 'indirect-damage', 'push-damage', 'multi-element'])
+
+/**
+ * Réponses portées par les mécaniques des DONNÉES (bossProfile.ts) que la pertinence n'accepte pas : déplacer le boss
+ * (« placement ») ne l'empêche pas de poser ses glyphes et pièges, ni n'aide l'équipe à les éviter.
+ */
+const REJECTED_DATA_COUNTERS: Readonly<Partial<Record<MechanicKind, readonly UtilityTag[]>>> = { marks: ['placement'] }
+
+/** Seuil (en %) sous lequel une mécanique « % dommages finaux » du boss est jugée anecdotique pour la pertinence. */
+export const FINAL_DAMAGE_MIN_PCT = 10
+
+/** Plus grande valeur absolue citée dans le résumé d'une mécanique (« % Dommages finaux : +2 à +10 » → 10), sinon ∞. */
+function summaryMagnitude(summary: string): number {
+  const nums = [...summary.matchAll(/[+−-]?\d+(?:[.,]\d+)?/g)].map(m => Math.abs(Number(m[0].replace('−', '-').replace(',', '.'))))
+  return nums.length ? Math.max(...nums) : Infinity
+}
+
+export interface RelevanceOptions {
+  /**
+   * Le personnage frappe-t-il ce boss (DPT soutenu, ou DPT « résistances levées », > 0) ? Faux : pas d'atout lié aux
+   * dégâts (`DAMAGE_TAGS`) et une limite « ne touche pas le boss ». Défaut vrai.
+   */
+  dealsDamage?: boolean
+}
+
+/**
  * Atouts et limites d'un personnage contre un boss : pour chaque mécanique du profil, les utilités présentes (`tags`)
  * qui y répondent (atouts) ou qu'elle punit (limites), avec la phrase de `MECHANIC_RELEVANCE` ; plus deux règles de
  * caractéristiques du boss (aucun PM ⇒ retrait PM inutile ; esquive PM/PA qui ramène le retrait à moins d'un point).
+ * Une mécanique « % dommages finaux » sous `FINAL_DAMAGE_MIN_PCT` est ignorée (bruit) ; un personnage qui ne frappe
+ * pas le boss (`dealsDamage` faux) n'a pas d'atout lié aux dégâts.
  */
-export function relevance(profile: BossProfile, utilities: ClassUtilities): Relevance {
+export function relevance(profile: BossProfile, utilities: ClassUtilities, opts: RelevanceOptions = {}): Relevance {
   const tags = new Set(utilities.tags)
+  const hits = opts.dealsDamage !== false
   const atouts: string[] = []
   const limites: string[] = []
   const add = (list: string[], text: string) => {
     if (!list.includes(text)) list.push(text)
   }
   const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1)
+  if (!hits) add(limites, 'Ne touche pas le boss — DPT soutenu nul contre lui : seuls ses apports hors dégâts comptent.')
   for (const m of profile.mechanics) {
+    if (m.kind === 'final-damage' && summaryMagnitude(m.summary) < FINAL_DAMAGE_MIN_PCT) continue
     const rel = MECHANIC_RELEVANCE[m.kind] ?? MECHANIC_RELEVANCE.other
-    const counters = [...new Set([...rel.counters, ...(m.counters ?? [])])]
+    const rejected = m.source === 'data' ? (REJECTED_DATA_COUNTERS[m.kind] ?? []) : []
+    const counters = [...new Set([...rel.counters, ...(m.counters ?? []).filter(t => !rejected.includes(t))])]
     // Retrait puni : la mécanique dit quelle réserve est punie (déclencheur MPA ou APA) ; sinon PA et PM.
     const punishes = m.kind === 'punished-removal' && m.punishes?.length ? [...m.punishes] : [...new Set([...rel.punishes, ...(m.punishes ?? [])])]
-    for (const t of counters) if (tags.has(t) && !punishes.includes(t)) add(atouts, `${cap(UTILITY_TAG_LABELS[t])} — ${rel.note}.`)
+    for (const t of counters) if (tags.has(t) && !punishes.includes(t) && (hits || !DAMAGE_TAGS.has(t))) add(atouts, `${cap(UTILITY_TAG_LABELS[t])} — ${rel.note}.`)
     // Mêlée / distance : pas une limite si le personnage a aussi le style qui répond à la mécanique (il s'adapte).
     const adapts = counters.some(c => tags.has(c))
     for (const t of punishes) if (tags.has(t) && !(adapts && (t === 'melee' || t === 'range'))) add(limites, `${cap(UTILITY_TAG_LABELS[t])} — ${rel.note}.`)
