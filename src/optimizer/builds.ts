@@ -333,7 +333,9 @@ function buildSlotOptions(data: GameDataStore, base: Omit<FightSpec, 'team'>, co
         })
         stuffResults.push(result)
         const member: MemberSpec = { ...o.member, build: { ...result.best.build, name: o.member.name, spellVariants: o.member.build.spellVariants?.slice() ?? result.best.build.spellVariants } }
-        const note = `stuff optimisé (proxy ${result.start.score.logJ.toFixed(3)} → ${result.best.score.logJ.toFixed(3)}${result.best === result.start ? ', aucune amélioration' : ''})`
+        // Un départ invalide (objets au-dessus du niveau…) n'est retenu que faute de candidat valide (search.ts).
+        const outcome = !result.startValid ? (result.best === result.start ? ', départ invalide, aucun candidat valide' : ', départ invalide') : result.best === result.start ? ', aucune amélioration' : ''
+        const note = `stuff optimisé (proxy ${result.start.score.logJ.toFixed(3)} → ${result.best.score.logJ.toFixed(3)}${outcome})`
         memo = { ...o, id: `${o.id}@opt`, member, origin: 'stuff-optimizer', scenarioStuff: true, note }
         stuffMemo.set(key, memo)
         say(`Stuff ${o.member.name} ${o.id} : ${note}, ${(result.ms / 1000).toFixed(1)} s.`)

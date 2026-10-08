@@ -32,7 +32,7 @@ import { evaluateCriterion, parseCriterion, type CriterionContext } from '../../
 import { EFFECT_STAT_CAP } from '../../stats/effects'
 import { copyStats } from '../../stats/fastStats'
 import type { PrimaryStat } from '../../stats/characteristicPoints'
-import { findPreset, presetPoints, STUFFS } from '../team/presets'
+import { findPreset, presetPoints, STUFFS, type StuffTemplate } from '../team/presets'
 import type { MemberSpec } from '../types'
 import { detExp, detLog } from './detmath'
 import { EXO_STATS, ForgePlanner, type ExoStat, type ForgePlan, type ForgeProfile } from './exos'
@@ -69,6 +69,12 @@ export interface StuffSearchOptions {
   fixed?: readonly number[]
   /** Objets interdits (ids) : retirés des viviers, des blocs de panoplie et des graines. */
   exclude?: readonly number[]
+  /**
+   * Stuffs méta (`STUFFS` de data/ai/presets.json) gardés comme graines (défaut : tous). `data` permet de lire les
+   * objets (niveaux, conditions). Hors Vortex : `theorySeedFilter` (stuffs de scénario `vortex_*` et objets de niveau
+   * trop élevé exclus). Le stuff de départ du membre et le stuff glouton restent toujours des graines.
+   */
+  seedFilter?: (stuffId: string, stuff: StuffTemplate, data: GameDataStore) => boolean
   /** Re-planifier la forgemagie aux poids locaux des meilleurs candidats (défaut vrai). */
   replanForge?: boolean
   /** Températures du recuit (unités de logJ). */
@@ -96,6 +102,12 @@ export interface StuffResult {
   element: ProxyElement
   /** Build de départ, noté exactement (référence d'amélioration). */
   start: StuffCandidate
+  /**
+   * Le build de départ est-il valide (`computeBuildStats`) ? Un départ invalide (ex. stuff de niveau 200 d'un preset
+   * joué au niveau 60) n'est jamais rendu comme `best` quand un candidat valide existe. À transmettre à la validation
+   * par combats (`validateStuffs`, option `startValid`) : le moteur refuse un build invalide.
+   */
+  startValid: boolean
   best: StuffCandidate
   /** Builds diversifiés (front DPT/EHP/UTIL), meilleur d'abord. */
   front: StuffCandidate[]
@@ -508,7 +520,7 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
 
   // Graines : stuff de départ, stuffs méta, glouton.
   const seeds: State[] = [stateFromItems(data, member.build.items)]
-  for (const id of Object.keys(STUFFS).sort()) seeds.push(stateFromItems(data, STUFFS[id].items))
+  for (const id of Object.keys(STUFFS).sort()) if (!opts.seedFilter || opts.seedFilter(id, STUFFS[id], data)) seeds.push(stateFromItems(data, STUFFS[id].items))
   seeds.push(greedyState(pools))
   if (locks) for (const seed of seeds) applyLocks(seed, locks, excluded)
   let best: Evaluated | undefined
@@ -604,7 +616,9 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
     pointsId: 'start',
     passiveItems: member.build.items.map(i => i.itemId).filter(id => passiveIds.has(id) || data.item(id)?.effects.some(e => e.effectId === 1175)),
   }
-  const bestCand = cands.length && cands[0].score.logJ > startExact.logJ ? cands[0] : startCand
+  // Un départ INVALIDE (objets au-dessus du niveau, conditions…) n'est jamais le meilleur build s'il existe un candidat
+  // (les candidats sont tous valides, `toCandidate`) : sa note exacte ne veut rien dire.
+  const bestCand = cands.length && (!startScore.valid || cands[0].score.logJ > startExact.logJ) ? cands[0] : startCand
   const front = paretoFront(cands.length ? cands : [startCand], opts.diversity ?? 5)
   if (!front.includes(bestCand)) front.unshift(bestCand)
   return {
@@ -612,6 +626,7 @@ export function optimizeStuff(data: GameDataStore, member: MemberSpec, opts: Stu
     role,
     element,
     start: startCand,
+    startValid: startScore.valid,
     best: bestCand,
     front: front.slice(0, opts.diversity ?? 5),
     evaluations: { surrogate: ctx.surrogateCalls, exact: ctx.exactCalls },
@@ -629,6 +644,20 @@ export function evaluateStuff(data: GameDataStore, ctx: ProxyContext, build: Cha
   const ev = new Evaluator(data, ctx, build, profile, 1)
   const e = ev.evaluate(stateFromItems(data, build.items))
   return { build: e.build ?? ev.build(e.state, null), stats: e.stats, maxHp: e.maxHp, logJ: e.logJ }
+}
+
+/**
+ * Filtre de graines pour le theorycraft (docs/design/theorycraft.md §4 bis) : écarte les stuffs de scénario (identifiant
+ * préfixé par une étiquette de `scenarioTags` suivie de « _ », défaut `vortex` : 49 stuffs `vortex_*` optimisés pour le
+ * Vortex) et ceux dont un objet dépasse `level` (les stuffs méta sont de niveau 200 : sous ce niveau, ils ne seraient
+ * que des graines invalides).
+ */
+export function theorySeedFilter(opts: { level: number; scenarioTags?: readonly string[] }): (stuffId: string, stuff: StuffTemplate, data: GameDataStore) => boolean {
+  const prefixes = (opts.scenarioTags ?? ['vortex']).map(t => `${t}_`)
+  return (stuffId, stuff, data) => {
+    if (prefixes.some(p => stuffId.startsWith(p))) return false
+    return stuff.items.every(it => (data.item(it.itemId)?.level ?? Infinity) <= opts.level)
+  }
 }
 
 /** Membre avec un autre build (variantes conservées). */
