@@ -165,6 +165,15 @@
   color: var(--muted);
   background: none;
 }
+/* index des boss indisponible : le message est aussi un bouton « Réessayer » */
+.bv-opt.empty.retry {
+  cursor: pointer;
+}
+.bv-opt.retry u {
+  justify-self: start;
+  color: var(--ink-accent);
+  font-weight: 600;
+}
 .bv-check {
   display: inline-flex;
   align-items: center;

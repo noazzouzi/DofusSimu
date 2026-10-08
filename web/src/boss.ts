@@ -10,13 +10,15 @@
  *    optimisés contre le boss à la demande) et « Stuff » (web/src/boss-stuff.ts : meilleur stuff d'un preset ou d'un
  *    lien RoxxSolver).
  *
- * Chaque requête porte un numéro de séquence par type (fiche, classes, stuff) : une réponse arrivée après une demande
- * plus récente est ignorée (comme `TeamEditor.seq`). Les résultats sont gardés par boss et réglage : revenir à un onglet
- * ne relance rien.
+ * Anti-course (comme `TeamEditor.seq`) : un numéro de séquence global ; chaque calcul retient le sien par clé (boss,
+ * réglage et mode) et une réponse arrivée après une nouvelle demande pour la même clé est ignorée. Les résultats sont
+ * gardés par clé : revenir à un onglet ne relance rien, et une réponse pour un autre boss ou réglage attend en cache.
+ * Le serveur calcule en synchrone : pendant un calcul, le bouton qui le relancerait est désactivé, et le mode « stuffs
+ * optimisés » (long) ne se relance jamais tout seul sur un autre boss ou réglage.
  */
-import { searchBosses } from '@/theorycraft/bosses'
+import { bossGradeFor, searchBosses } from '@/theorycraft/bosses'
 import { theoryApi, type BossEntry, type BossProfileDetail, type ClassRanking, type Scale, type StuffVsBossResult, type TheoryPreset } from './boss-api'
-import { renderClasses, type ClassesUi } from './boss-classes'
+import { defaultClassesSort, renderClasses, type ClassesUi } from './boss-classes'
 import { renderSheet } from './boss-sheet'
 import { renderStuffForm, renderStuffResult, SEARCH_EFFORTS, type StuffForm } from './boss-stuff'
 import { errorBox, esc, fmtNum, nextSort, sortableTable, spinner, type Column, type SortState } from './boss-ui'
@@ -30,8 +32,9 @@ const TABS: readonly { id: BossTab; label: string }[] = [
 ]
 /** Suggestions affichées sous le champ de recherche. */
 const MAX_SUGGESTIONS = 10
-/** Durée observée du classement en stuffs optimisés (Merkator, 49 presets), affichée pendant le calcul. */
-const OPTIMIZE_HINT = '≈ 20 s'
+
+/** Durée écoulée depuis `started` (chronomètre des calculs). */
+const elapsedText = (started: number) => `${Math.max(0, Math.round((Date.now() - started) / 1000))} s`
 
 /** Adresse d'un boss et d'un onglet. */
 export const bossHash = (id: number, tab: BossTab = 'fiche') => `#boss/${id}${tab === 'fiche' ? '' : `/${tab}`}`
@@ -51,6 +54,8 @@ export class BossView {
   private readonly input: HTMLInputElement
   private readonly list: HTMLElement
   private entries = new Map<boolean, BossEntry[]>()
+  /** Index en cours de chargement (un seul appel à la fois par index). */
+  private entriesLoading = new Map<boolean, Promise<void>>()
   private entriesError?: string
   private presets: TheoryPreset[] = []
   private includeExp = false
@@ -135,8 +140,10 @@ export class BossView {
       },
       true,
     )
+    // Clic hors du champ et des suggestions : suggestions fermées (chemin de l'événement : la cible a pu être
+    // remplacée entre-temps, ex. « Réessayer » dans la liste).
     document.addEventListener('click', e => {
-      if (!(e.target as HTMLElement).closest('.bv-combo')) this.closeSuggestions()
+      if (!e.composedPath().some(n => n instanceof Element && n.classList.contains('bv-combo'))) this.closeSuggestions()
     })
   }
 
@@ -156,8 +163,13 @@ export class BossView {
       }
       this.id = id
       this.tab = tab
+      this.syncClassesMode()
       this.loadProfile()
       if (tab === 'classes') this.loadClasses()
+      // Index perdu (serveur coupé puis rétabli) : rechargé avec la fiche ; boss hors de l'index chargé (Expédition
+      // ouverte par son adresse sans la case « Expéditions ») : index complet chargé pour l'en-tête et les grades.
+      if (this.entriesError) this.retryEntries()
+      else this.ensureEntry()
     }
     this.render()
   }
@@ -185,19 +197,50 @@ export class BossView {
       })
   }
 
-  private async loadEntries(all: boolean): Promise<void> {
-    if (this.entries.has(all)) return this.afterEntries()
-    try {
-      this.entries.set(all, await theoryApi.bosses(all))
-      this.entriesError = undefined
-    } catch (e) {
-      this.entriesError = (e as Error).message
+  private loadEntries(all: boolean): Promise<void> {
+    if (this.entries.has(all)) {
+      this.afterEntries()
+      return Promise.resolve()
     }
-    this.afterEntries()
+    const pending = this.entriesLoading.get(all)
+    if (pending) return pending
+    const load = theoryApi.bosses(all).then(
+      list => {
+        this.entries.set(all, list)
+        this.entriesError = undefined
+      },
+      e => {
+        this.entriesError = (e as Error).message
+      },
+    )
+    const done = load.then(() => {
+      this.entriesLoading.delete(all)
+      this.afterEntries()
+    })
+    this.entriesLoading.set(all, done)
+    return done
+  }
+
+  /**
+   * Nouvel essai après une erreur de l'index : celui de la case « Expéditions » (un index en échec n'est jamais rangé),
+   * puis, à son arrivée, l'index complet si le boss affiché en a besoin (`ensureEntry`).
+   */
+  private retryEntries(): void {
+    this.entriesError = undefined
+    void this.loadEntries(this.includeExp)
+  }
+
+  /**
+   * Boss affiché absent de l'index sans Expéditions (Expédition ouverte par son adresse) : charge l'index complet pour
+   * l'en-tête (donjon, niveau, « Expédition ») et le nombre de grades. Pas de nouvel essai automatique après une erreur.
+   */
+  private ensureEntry(): void {
+    if (this.id !== null && !this.entriesError && !this.entry && this.entries.has(false) && !this.entries.has(true)) void this.loadEntries(true)
   }
 
   private afterEntries(): void {
-    this.updateSuggestions(false)
+    this.updateSuggestions(!this.list.hidden)
+    this.ensureEntry()
     this.render()
   }
 
@@ -215,6 +258,17 @@ export class BossView {
 
   private get scaleKey(): string {
     return this.grade !== null ? `g${this.grade}` : `p${this.players}`
+  }
+
+  /**
+   * Après un changement de boss ou de réglage : le mode « stuffs optimisés » (≈ une optimisation par preset, long et
+   * bloquant pour le serveur de développement) n'est gardé que si son résultat existe déjà (ou est en cours) pour la
+   * nouvelle clé ; sinon retour aux stuffs des presets, et l'optimisation attend un clic explicite.
+   */
+  private syncClassesMode(): void {
+    if (this.classesMode !== 'optimized' || this.id === null) return
+    const have = this.classes.get(`${this.id}|${this.scaleKey}|optimized`)
+    if (!have || !(have.value || have.loading)) this.classesMode = 'preset'
   }
 
   // ───────────────────────────── chargements ─────────────────────────────
@@ -239,6 +293,8 @@ export class BossView {
     if (this.id === null) return
     const f = this.stuffForm
     const key = this.stuffKey
+    // Calcul déjà en cours pour ce boss et ce réglage (bouton désactivé ; Entrée dans un champ) : pas de second calcul.
+    if (this.stuffs.get(key)?.loading) return
     const previous = this.stuffs.get(key)?.value
     if (!f.preset && !f.roxx.trim()) {
       this.stuffs.set(key, { seq: ++this.seq, loading: false, started: Date.now(), value: previous, error: 'Choisissez un preset, ou collez un lien RoxxSolver (preset automatique).' })
@@ -251,6 +307,8 @@ export class BossView {
       theoryApi.stuff(this.id, this.scale, { preset: f.preset || undefined, roxx: f.roxx.trim() || undefined, elements: f.elements, profile: f.profile, top: f.top, iterations: f.iterations }),
       previous,
     )
+    // Carte de chargement, chronomètre, bouton désactivé et résultat précédent grisé.
+    this.renderPanel()
   }
 
   private get stuffKey(): string {
@@ -261,12 +319,11 @@ export class BossView {
    * Lance une demande pour une clé et range sa réponse. Anti-course : chaque demande prend un numéro de séquence ; une
    * réponse n'est rangée que si sa clé n'a pas été redemandée entre-temps (sinon elle est ignorée), et l'affichage
    * ne suit que la clé du boss et du réglage courants. `previous` : résultat gardé à l'écran pendant le calcul et en cas
-   * d'erreur.
+   * d'erreur. L'appelant redessine (état « en cours ») ; la réponse redessine elle-même.
    */
   private request<T>(map: Map<string, Pending<T>>, key: string, promise: Promise<T>, previous?: T): void {
     const seq = ++this.seq
     map.set(key, { seq, loading: true, started: Date.now(), value: previous })
-    this.tick()
     const done = (out: { value?: T; error?: string }) => {
       if (map.get(key)?.seq !== seq) return
       map.set(key, { seq, loading: false, started: map.get(key)!.started, value: out.value ?? previous, error: out.error })
@@ -280,9 +337,13 @@ export class BossView {
     )
   }
 
-  /** Chronomètre des calculs longs (texte « … s » mis à jour chaque seconde). */
+  /**
+   * Chronomètre des calculs longs : texte « … s » des `[data-elapsed]` (début du calcul) mis à jour chaque seconde. Lancé
+   * à chaque rendu du panneau qui en affiche un (retour sur un onglet pendant le calcul compris) ; s'arrête seul quand
+   * plus aucun n'est affiché.
+   */
   private tick(): void {
-    if (this.timer) return
+    if (this.timer || !this.root.querySelector('[data-elapsed]')) return
     this.timer = window.setInterval(() => {
       const busy = this.root.querySelectorAll<HTMLElement>('[data-elapsed]')
       if (!busy.length) {
@@ -290,7 +351,7 @@ export class BossView {
         this.timer = 0
         return
       }
-      for (const el of busy) el.textContent = `${Math.round((Date.now() - Number(el.dataset.elapsed)) / 1000)} s`
+      for (const el of busy) el.textContent = elapsedText(Number(el.dataset.elapsed))
     }, 1000)
   }
 
@@ -314,7 +375,9 @@ export class BossView {
           })
           .join('')
       : q
-        ? `<li class="bv-opt empty" role="option" aria-disabled="true">${this.entriesError ? esc(this.entriesError) : this.bossList.length ? 'Aucun boss ne correspond.' : 'Chargement de l’index des boss…'}</li>`
+        ? this.entriesError && !this.entriesLoading.size
+          ? `<li class="bv-opt empty retry" role="option" data-act="retry-index" aria-selected="false">${esc(this.entriesError)} <u>Réessayer</u></li>`
+          : `<li class="bv-opt empty" role="option" aria-disabled="true">${this.bossList.length ? 'Aucun boss ne correspond.' : 'Chargement de l’index des boss…'}</li>`
         : ''
     this.syncActive()
   }
@@ -366,6 +429,7 @@ export class BossView {
         this.players = Number(el.value)
         this.grade = null
       } else this.grade = el.value ? Number(el.value) : null
+      this.syncClassesMode()
       this.loadProfile()
       if (this.tab === 'classes') this.loadClasses()
       return this.render()
@@ -430,8 +494,7 @@ export class BossView {
         return
       case 'sort': {
         const table = t.dataset.table!
-        const th = t.closest('th')
-        this.sorts.set(table, nextSort(this.sortOf(table), t.dataset.key!, !!th?.classList.contains('num')))
+        this.sorts.set(table, nextSort(this.sortOf(table), t.dataset.key!, t.dataset.dir === '1' ? 1 : -1))
         return this.id === null ? this.renderLanding() : this.renderPanel()
       }
       case 'row': {
@@ -457,11 +520,12 @@ export class BossView {
       case 'retry-profile':
         this.profiles.delete(`${this.id}|${this.scaleKey}`)
         this.loadProfile()
+        if (this.entriesError) this.retryEntries()
         return this.render()
       case 'retry-index':
-        this.entries.delete(this.includeExp)
-        void this.loadEntries(this.includeExp)
-        return
+        this.retryEntries()
+        this.updateSuggestions(!this.list.hidden)
+        return this.render()
       case 'to-stuff':
         this.stuffForm.preset = t.dataset.preset ?? ''
         if (this.id !== null) this.navigate(this.id, 'stuff')
@@ -470,7 +534,7 @@ export class BossView {
   }
 
   private sortOf(table: string): SortState | undefined {
-    return this.sorts.get(table) ?? (table === 'classes' ? { key: 'class', dir: 1 } : undefined)
+    return this.sorts.get(table) ?? defaultClassesSort(table)
   }
 
   // ───────────────────────────── rendu ─────────────────────────────
@@ -506,8 +570,9 @@ export class BossView {
   /** En-tête du boss : donjon, niveau, grade, réglage joueurs / grade. */
   private hero(p: BossProfileDetail | undefined, e: BossEntry | undefined): string {
     const d = e?.dungeons[0]
+    // Nombre de grades inconnu tant que l'index n'est pas chargé : 5 (donjons modulaires), corrigé à son arrivée.
     const gradeCount = e?.gradeCount ?? 5
-    const autoGrade = Math.max(1, Math.min(Math.min(5, gradeCount), this.players - 3))
+    const autoGrade = bossGradeFor(this.players, gradeCount)
     const players = Array.from({ length: 8 }, (_, i) => i + 1)
       .map(n => `<option value="${n}"${n === this.players ? ' selected' : ''}>${n} joueur${n > 1 ? 's' : ''}</option>`)
       .join('')
@@ -546,6 +611,7 @@ export class BossView {
     if (this.tab === 'classes') panel.innerHTML = this.classesPanel()
     else if (this.tab === 'stuff') panel.innerHTML = this.stuffPanel()
     else panel.innerHTML = this.sheetPanel()
+    this.tick()
   }
 
   private sheetPanel(): string {
@@ -559,19 +625,25 @@ export class BossView {
     const optimized = this.classesMode === 'optimized'
     const key = `${this.id}|${this.scaleKey}|${this.classesMode}`
     const c = this.classes.get(key)
+    const n = this.presets.length ? `des ${this.presets.length} presets` : 'des presets'
+    // « Revenir » reste actif pendant l'optimisation : la réponse tardive est gardée en cache sans changer l'affichage.
     const toolbar = `<div class="bv-toolbar panel">
       <div><b>${optimized ? 'Stuffs optimisés contre ce boss' : 'Stuffs génériques des presets'}</b>
-        <span class="bv-muted">${optimized ? 'un stuff optimisé par preset (montée par coordonnées, graines sans stuffs du Vortex)' : '6 stuffs méta partagés entre classes d’un même élément'}</span></div>
+        <span class="bv-muted">${optimized ? 'un stuff optimisé par preset (montée par coordonnées, graines sans stuffs du Vortex)' : 'stuffs méta partagés entre classes d’un même élément'}</span></div>
       ${
         optimized
-          ? `<button class="btn" type="button" data-act="preset-mode"${c?.loading ? ' disabled' : ''}>Revenir aux stuffs des presets</button>`
-          : `<button class="btn primary" type="button" data-act="optimize" title="Optimise le stuff de chacun des 49 presets contre ce boss (${OPTIMIZE_HINT})">Optimiser les stuffs</button>`
+          ? `<button class="btn" type="button" data-act="preset-mode">Revenir aux stuffs des presets</button>`
+          : `<button class="btn primary" type="button" data-act="optimize" title="Optimise le stuff de chacun ${n} contre ce boss (calcul long : une optimisation par preset)">Optimiser les stuffs</button>`
       }
     </div>`
-    if (!c || c.loading)
+    if (!c || c.loading) {
+      const started = c?.started ?? Date.now()
       return `${toolbar}<div class="bv-loading-card panel">${spinner(
-        optimized ? `Optimisation des stuffs des 49 presets contre ce boss (${OPTIMIZE_HINT} ; le serveur de développement est occupé pendant le calcul)…` : 'Évaluation des 49 presets contre ce boss…',
-      )}<span class="bv-elapsed" data-elapsed="${c?.started ?? Date.now()}">0 s</span></div>`
+        optimized
+          ? `Optimisation du stuff de chacun ${n} contre ce boss (une optimisation par preset : calcul long, le serveur de développement est occupé pendant ce temps)…`
+          : `Évaluation ${n} contre ce boss…`,
+      )}<span class="bv-elapsed" data-elapsed="${started}">${elapsedText(started)}</span></div>`
+    }
     if (c.error || !c.value) return `${toolbar}${errorBox(c.error ?? 'Classement indisponible.')}<button class="btn" type="button" data-act="retry-classes">Réessayer</button>`
     return toolbar + renderClasses(c.value, this.classesUi)
   }
@@ -581,7 +653,7 @@ export class BossView {
     const busy = !!s?.loading
     let out = ''
     if (s?.loading)
-      out += `<div class="bv-loading-card panel">${spinner('Optimisation du stuff contre ce boss…')}<span class="bv-elapsed" data-elapsed="${s.started}">0 s</span></div>`
+      out += `<div class="bv-loading-card panel">${spinner('Optimisation du stuff contre ce boss…')}<span class="bv-elapsed" data-elapsed="${s.started}">${elapsedText(s.started)}</span></div>`
     if (s?.error) out += errorBox(s.error)
     if (s?.value) out += `<div class="bv-result${s.loading ? ' stale' : ''}">${renderStuffResult(s.value, this.sorts.get('stuff-cmp'))}</div>`
     else if (!s) out += '<p class="bv-hint">Choisissez un preset (ou collez le lien RoxxSolver de votre stuff), puis lancez le calcul.</p>'
@@ -591,7 +663,7 @@ export class BossView {
   /** Accueil : liste des boss (filtrée par la recherche). */
   private renderLanding(): void {
     if (this.id !== null) return
-    if (this.entriesError)
+    if (this.entriesError && !this.entriesLoading.size)
       return void (this.main.innerHTML = `${errorBox(this.entriesError)}<button class="btn" type="button" data-act="retry-index">Réessayer</button>`)
     const all = this.bossList
     if (!all.length) return void (this.main.innerHTML = spinner('Chargement de l’index des boss…'))

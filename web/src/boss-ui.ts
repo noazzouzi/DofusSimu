@@ -86,16 +86,19 @@ export interface Column<T> {
   label: string
   /** Infobulle de l'en-tête (lecture de la colonne). */
   title?: string
-  /** Colonne numérique (alignée à droite, tri décroissant au premier clic). */
+  /** Colonne numérique (alignée à droite, tri décroissant au premier clic sauf `firstDir`). */
   num?: boolean
+  /** Sens du premier clic sur l'en-tête (défaut : décroissant si numérique, sinon croissant ; ex. rang : croissant). */
+  firstDir?: 1 | -1
   /** Valeur de tri (absente : colonne non triable). */
   sort?: (row: T) => number | string
   cell: (row: T) => string
 }
 
 /**
- * Tableau triable : en-têtes boutons (`data-act="sort"`, `data-table`, `data-key`), `aria-sort` sur la colonne triée.
- * `rowAttrs` : attributs de la ligne ; `after` : ligne(s) insérée(s) après une ligne (détail déplié).
+ * Tableau triable : en-têtes boutons (`data-act="sort"`, `data-table`, `data-key`, `data-dir` = sens du premier clic),
+ * `aria-sort` et flèche sur la colonne triée. `sort` : tri courant (ou ordre initial des lignes, signalé comme tel s'il
+ * est donné). `rowAttrs` : attributs de la ligne ; `after` : ligne(s) insérée(s) après une ligne (détail déplié).
  */
 export function sortableTable<T>(
   id: string,
@@ -123,7 +126,7 @@ export function sortableTable<T>(
       const active = sort?.key === c.key
       const ariaSort = active ? (sort!.dir === 1 ? 'ascending' : 'descending') : 'none'
       const arrow = active ? (sort!.dir === 1 ? '▲' : '▼') : ''
-      return `<th scope="col"${cls} aria-sort="${ariaSort}"><button type="button" class="bv-sort${active ? ' on' : ''}" data-act="sort" data-table="${attr(id)}" data-key="${attr(c.key)}"${
+      return `<th scope="col"${cls} aria-sort="${ariaSort}"><button type="button" class="bv-sort${active ? ' on' : ''}" data-act="sort" data-table="${attr(id)}" data-key="${attr(c.key)}" data-dir="${firstDir(c)}"${
         c.title ? ` title="${attr(c.title)}"` : ''
       }>${esc(c.label)}<span class="bv-arrow" aria-hidden="true">${arrow}</span></button></th>`
     })
@@ -134,10 +137,13 @@ export function sortableTable<T>(
   return `<div class="bv-scroll"><table class="bv-table ${opts.cls ?? ''}" data-table-id="${attr(id)}">${opts.caption ? `<caption>${esc(opts.caption)}</caption>` : ''}<thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`
 }
 
-/** Clic sur un en-tête : même colonne ⇒ sens inversé ; nouvelle colonne ⇒ décroissant si numérique, sinon croissant. */
-export function nextSort(current: SortState | undefined, key: string, numeric: boolean): SortState {
+/** Sens du premier clic sur l'en-tête d'une colonne. */
+export const firstDir = (c: Pick<Column<unknown>, 'num' | 'firstDir'>): 1 | -1 => c.firstDir ?? (c.num ? -1 : 1)
+
+/** Clic sur un en-tête : même colonne ⇒ sens inversé ; nouvelle colonne ⇒ `first` (sens du premier clic, `data-dir`). */
+export function nextSort(current: SortState | undefined, key: string, first: 1 | -1): SortState {
   if (current?.key === key) return { key, dir: current.dir === 1 ? -1 : 1 }
-  return { key, dir: numeric ? -1 : 1 }
+  return { key, dir: first }
 }
 
 /** Indicateur de chargement (texte lu par les lecteurs d'écran). */

@@ -121,7 +121,7 @@ function comparison(r: StuffVsBossResult, sort: SortState | undefined): string {
     { key: 'steady', label: 'DPT soutenu', num: true, sort: e => e.damage.steady, cell: e => fmtNum(e.damage.steady) },
     { key: 'proxy', label: 'DPT proxy', num: true, title: 'Objectif de l’optimiseur (un tour, × calibration du preset)', sort: e => e.damage.proxy, cell: e => fmtNum(e.damage.proxy) },
     { key: 'hp', label: 'PV', num: true, sort: e => e.survival.hp, cell: e => fmtNum(e.survival.hp) },
-    { key: 'ehp', label: 'PVe', num: true, title: 'PV effectifs (* : plafond de 20 × PV)', sort: e => e.survival.ehp, cell: e => `${fmtNum(e.survival.ehp)}${e.survival.capped ? '*' : ''}` },
+    { key: 'ehp', label: 'PVe', num: true, title: 'PV effectifs (* : plafonnés par l’objectif, voir les avertissements)', sort: e => e.survival.ehp, cell: e => `${fmtNum(e.survival.ehp)}${e.survival.capped ? '*' : ''}` },
     { key: 'inc', label: 'Reçus/tour', num: true, sort: e => e.survival.incoming, cell: e => fmtNum(e.survival.incoming) },
     { key: 'apmp', label: 'PA/PM/PO', num: true, sort: e => e.ap * 10000 + e.mp * 100 + e.range, cell: e => `${e.ap}/${e.mp}/${e.range}` },
     { key: 'pen', label: 'Pénalité', num: true, title: 'Facteur de l’objectif pour PA/PM/PO sous les valeurs visées', sort: e => e.penalty, cell: e => (e.penalty < 1 - 1e-9 ? `×${fmtNum(e.penalty, 3)}` : '—') },
@@ -129,7 +129,7 @@ function comparison(r: StuffVsBossResult, sort: SortState | undefined): string {
   return `<section class="panel bv-card" aria-labelledby="bv-cmp-title">
     <header class="panel-head"><h2 id="bv-cmp-title">Comparaison</h2><span class="hint">${rows.length} stuffs évalués contre ce boss</span></header>
     ${sortableTable('stuff-cmp', cols, rows, sort, { rowAttrs: e => (e.id === r.best.id ? 'class="best"' : '') })}
-    <p class="bv-note bv-pad">${esc(r.ranking.reason)} DPT soutenu : rotation établie, meilleure posture, non calibré. Pénalité : 12 PA, 6 PM, ${r.options.rangeNeed} PO visés (×0,85, ×0,9, ×0,95 par point manquant).</p>
+    <p class="bv-note bv-pad">${esc(r.ranking.reason)} DPT soutenu : rotation établie, meilleure posture, non calibré. Pénalité : facteur de l’objectif pour PA/PM/PO sous les valeurs visées (${r.options.rangeNeed} PO ici ; détail dans les hypothèses), un réglage et non un effet du boss.</p>
   </section>`
 }
 

@@ -19,6 +19,16 @@ export interface ClassesUi {
 
 const AXES: readonly RankingAxis[] = ['damage', 'survival', 'control', 'heal', 'team']
 
+/**
+ * Ordre initial d'un tableau de l'onglet (avant tout clic sur un en-tête) : rangs croissants pour un axe (ordre du
+ * classement), classes par nom pour la vue « Par classe ». Signalé par la flèche et `aria-sort` de sa colonne.
+ */
+export function defaultClassesSort(table: string): SortState | undefined {
+  if (table === 'classes') return { key: 'class', dir: 1 }
+  if (table.startsWith('axis-')) return { key: 'rank', dir: 1 }
+  return undefined
+}
+
 /** Valeur d'un axe à l'affichage (unités de `AxisRanking.unit`). */
 export function axisValue(axis: RankingAxis, v: number): string {
   return axis === 'control' ? fmtNum(v, 2) : axis === 'team' ? `${fmtNum(v, 1)} %` : fmtNum(v)
@@ -111,7 +121,7 @@ function axisTable(r: ClassRanking, axis: RankingAxis, ui: ClassesUi): string {
   const id = `axis-${axis}`
   const key = (row: Row) => `${axis}:${row.e.presetId}`
   const cols: Column<Row>[] = [
-    { key: 'rank', label: '#', num: true, sort: row => row.rank, cell: row => `<span class="bv-rank${row.rank <= 3 ? ` top${row.rank}` : ''}">${row.tied ? '=' : ''}${row.rank}</span>` },
+    { key: 'rank', label: '#', num: true, firstDir: 1, title: 'Rang sur cet axe (« = » : ex æquo)', sort: row => row.rank, cell: row => `<span class="bv-rank${row.rank <= 3 ? ` top${row.rank}` : ''}">${row.tied ? '=' : ''}${row.rank}</span>` },
     {
       key: 'class',
       label: 'Classe (preset)',
@@ -131,7 +141,7 @@ function axisTable(r: ClassRanking, axis: RankingAxis, ui: ClassesUi): string {
   ]
   const span = cols.length
   return `<p class="bv-note">${esc(axisNote(axis, r))}</p>
-    ${sortableTable(id, cols, rows, ui.sorts.get(id), {
+    ${sortableTable(id, cols, rows, ui.sorts.get(id) ?? defaultClassesSort(id), {
       cls: 'bv-ranking',
       rowAttrs: row => (ui.open.has(key(row)) ? 'class="open"' : ''),
       after: row => (ui.open.has(key(row)) ? `<tr class="bv-detail-row"><td colspan="${span}">${presetDetail(row.e)}</td></tr>` : ''),
@@ -156,7 +166,7 @@ function classesTable(r: ClassRanking, ui: ClassesUi): string {
     { key: 'conf', label: 'Confiance', title: 'Confiance du modèle pour la classe (mécaniques non modélisées)', sort: c => CONF_ORDER[c.confidence] ?? 0, cell: c => confidenceChip(c.confidence) },
   ]
   return `<p class="bv-note">Meilleur preset de chaque classe sur chaque axe (axes indépendants : un tour consacré au retrait ou au soin n’est pas consacré aux dégâts).</p>
-    ${sortableTable(id, cols, r.classes, ui.sorts.get(id) ?? { key: 'class', dir: 1 }, { cls: 'bv-overview' })}`
+    ${sortableTable(id, cols, r.classes, ui.sorts.get(id) ?? defaultClassesSort(id), { cls: 'bv-overview' })}`
 }
 
 /** Composition suggérée : membres, raisons, atouts / limites / confiance dépliables, règles et notes. */
