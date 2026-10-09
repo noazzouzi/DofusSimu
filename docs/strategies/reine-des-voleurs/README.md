@@ -2,6 +2,12 @@
 
 Donjon 83 « Trône de la Cour Sombre », Reine 3726, 4 personnages. Synthèse du 2026-10-08.
 
+> **⚠ Formation invalidée (2026-10-09).** Ce document suppose que la Bonbombe apparaît en ligne au nord-est du
+> personnage. Le joueur a confirmé en jeu qu'elle apparaît **en haut** (a priori deux cases plus haut), sinon **en haut à
+> droite**. Avec cette règle, la formation ci-dessous **ne tient plus** : ne pas l'utiliser. Une nouvelle recherche est en
+> cours (`tools/reine-des-voleurs/v2-en-cours/`). Le reste du modèle (vagues, Bonbombes, Mort en Sursis, faiblesses des
+> monstres) reste valable.
+
 ## Comment lire ce document
 
 Chaque affirmation porte une étiquette qui dit d'où elle vient :

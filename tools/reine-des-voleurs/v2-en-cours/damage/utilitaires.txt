@@ -1,0 +1,39 @@
+== Balise Tactique (1 PA, relance 2) : Puissance du Crâ après la pose, selon le nombre d'ennemis sur la carte
+  1 ennemi(s) : pose OK ; Puissance 169 → 209 (+40) ; tour suivant 209 ; tour +2 169 ; invocations alliées : Balise Tactique
+  2 ennemi(s) : pose OK ; Puissance 169 → 209 (+40) ; tour suivant 209 ; tour +2 169 ; invocations alliées : Balise Tactique
+  3 ennemi(s) : pose OK ; Puissance 169 → 249 (+80) ; tour suivant 249 ; tour +2 169 ; invocations alliées : Balise Tactique
+  4 ennemi(s) : pose OK ; Puissance 169 → 249 (+80) ; tour suivant 249 ; tour +2 169 ; invocations alliées : Balise Tactique
+  5 ennemi(s) : pose OK ; Puissance 169 → 249 (+80) ; tour suivant 249 ; tour +2 169 ; invocations alliées : Balise Tactique
+
+== Sentinelle (2 PA, relance 5, 1 lancer/tour pour l'équipe selon les données)
+  pose OK : %dist 6 → 26, PO 4 → 14
+  tour suivant : %dist 26, PO 14
+  tour +2 : %dist 6, PO 4
+  Malus « −2 % dommages distance et −1 PO par PM utilisé » (effets 2805/116 déclenchés) : le moteur n'émet pas l'événement « PM utilisé » (README §3 ch. 2) → appliqué à la main.
+
+== Représailles (3 PA, PO 3-6+4, relance 3, 1 lancer/tour pour l'équipe)
+  Reine : Flèche du Jugement seule 832 / 832 / 832 / 832 ; après Représailles au tour 1 : 915 / 915 / 832 / 832 (tour 1 = Jugement + dégâts propres de Représailles)
+  Terristocrate : Flèche du Jugement seule 788 / 788 / 788 / 788 ; après Représailles au tour 1 : 866 / 866 / 788 / 788 (tour 1 = Jugement + dégâts propres de Représailles)
+  Reine : 2 tours de frappe (3 972 dégâts) puis Représailles seule : 67 dégâts (20 % des PV érodés, Neutre)
+  Pesanteur : lancer OK ; états cible [7] ; voisin à 2 cases []
+  début du tour +1 du Crâ : états cible [], buffs 1163 0
+  début du tour +2 du Crâ : états cible [], buffs 1163 0
+  début du tour +3 du Crâ : états cible [], buffs 1163 0
+
+== Retrait de PM (Crâ : Retrait PM 17 ; plancher 10 % par point, formule src/damage/apmp.ts)
+  Reine (PM 6, esquive PM 100) : Flèche Cinglante −2 PM → 0.20 ; Flèche d'Immobilisation vol 1 PM → 0.10 ; Flèche Paralysante −2 PM → 0.20 ; Flèche Ralentissante −1 PM → 0.10 ; Flèche Boomerang −2 PM → 0.20
+  Mâchassin (PM 4, esquive PM 85) : Flèche Cinglante −2 PM → 0.20 ; Flèche d'Immobilisation vol 1 PM → 0.10 ; Flèche Paralysante −2 PM → 0.20 ; Flèche Ralentissante −1 PM → 0.10 ; Flèche Boomerang −2 PM → 0.20
+  Terristocrate (PM 4, esquive PM 85) : Flèche Cinglante −2 PM → 0.20 ; Flèche d'Immobilisation vol 1 PM → 0.10 ; Flèche Paralysante −2 PM → 0.20 ; Flèche Ralentissante −1 PM → 0.10 ; Flèche Boomerang −2 PM → 0.20
+  Doublure (PM 3, esquive PM 85) : Flèche Cinglante −2 PM → 0.20 ; Flèche d'Immobilisation vol 1 PM → 0.10 ; Flèche Paralysante −2 PM → 0.20 ; Flèche Ralentissante −1 PM → 0.10 ; Flèche Boomerang −2 PM → 0.20
+  Bourôliste (PM 5, esquive PM 85) : Flèche Cinglante −2 PM → 0.20 ; Flèche d'Immobilisation vol 1 PM → 0.10 ; Flèche Paralysante −2 PM → 0.20 ; Flèche Ralentissante −1 PM → 0.10 ; Flèche Boomerang −2 PM → 0.20
+  Magouille (PM 5, esquive PM 85) : Flèche Cinglante −2 PM → 0.20 ; Flèche d'Immobilisation vol 1 PM → 0.10 ; Flèche Paralysante −2 PM → 0.20 ; Flèche Ralentissante −1 PM → 0.10 ; Flèche Boomerang −2 PM → 0.20
+
+== Vols de vie (soin du lanceur, moteur) : soin moyen par lancer contre la Reine et le Bourôliste
+  Flèche Éclatante : Reine 303 dégâts → soin 151 ; Bourôliste 627 dégâts → soin 313
+  Flèche d'Abolition : Reine 216 dégâts → soin 108 ; Bourôliste 263 dégâts → soin 131
+  Flèche Persécutrice : Reine 450 dégâts → soin 225 ; Bourôliste 467 dégâts → soin 233
+  Œil de Taupe : Reine 265 dégâts → soin 132 ; Bourôliste 228 dégâts → soin 114
+  Œil pour Œil : Reine 379 dégâts → soin 189 ; Bourôliste 462 dégâts → soin 231
+  Flèche de Rédemption : Reine 313 dégâts → soin 156 ; Bourôliste 269 dégâts → soin 134
+  Flèche Boomerang : Reine 366 dégâts → soin 0 ; Bourôliste 379 dégâts → soin 0
+  Flèche Dévorante : Reine 211 dégâts → soin 105 ; Bourôliste 438 dégâts → soin 219

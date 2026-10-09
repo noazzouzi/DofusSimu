@@ -1,0 +1,58 @@
+
+Balise Tactique (8347) grades 1:PV0 2:PV0 départ [{"spellId":32476,"grade":1},{"spellId":32476,"grade":1}]
+  sort de départ :
+  sort 32476 « Balise Tactique » g1 1 PA PO 0-0 relance 0
+    792  [32476-2 v999] zone P1 masque «C» dur 0 décl DR|P|XDR
+      sort 32476 « Balise Tactique » g2 1 PA PO 0-0 relance 0
+        1160  [32476-4 v999] zone P1 masque «a,O» dur 0 décl I
+    792  [32476-3 v999] zone P1 masque «C» dur 0 décl DM|PD|XDM|XPD
+      sort 32476 « Balise Tactique » g3 1 PA PO 0-0 relance 0
+        1160  [32476-5 v999] zone P1 masque «a,O» dur 0 décl I
+    141 Tue la cible [0-0 v0] zone P1 masque «C» dur 0 décl I délai 3
+
+Balise de Survie (8348) grades 1:PV0 2:PV0 3:PV0 départ [{"spellId":32477,"grade":1},{"spellId":32477,"grade":1},{"spellId":32477,"grade":1}]
+  sort de départ :
+  sort 32477 « Balise de Survie » g1 1 PA PO 0-0 relance 0
+    666 Pas d'effet supplémentaire [0-0 v0] zone P1 masque «a,A» dur 0 décl I
+    792  [32477-2 v0] zone P1 masque «C» dur 0 décl TB
+      sort 32477 « Balise de Survie » g2 1 PA PO 0-0 relance 0
+        1109 Soin : }% des PV max [7-0 v0] zone C63 masque «g» dur 0 décl I
+    792  [32477-3 v999] zone P1 masque «C» dur 0 décl DBA|XDBA
+      sort 32477 « Balise de Survie » g3 1 PA PO 0-0 relance 0
+        1160  [32477-4 v999] zone C63/1 masque «h,P,o,e3,e6,e7,e8,e97,*e3,*e6,*e7,*e8,*e97» dur 0 décl I
+    141 Tue la cible [0-0 v0] zone P1 masque «C» dur 0 décl I délai 2
+
+Vendetta (piège) :
+sort 32478 « Vendetta » g1 1 PA PO 0-63 relance 0
+  2822 } dommages du meilleur élément [16-18 v0] zone X3 masque «A» dur 0 décl I
+  6 Attire de case} [3-0 v0] zone Q3 masque «a,A» dur 0 décl I
+
+Balise Tactique (32476 g9) :
+sort 32476 « Balise Tactique » g9 1 PA PO 0-0 relance 0
+  138 } Puissance [40-0 v0] zone P1 masque «C» dur 2 décl I
+état 7 {"id":7,"name":"Pesanteur","preventsSpellCast":false,"preventsFight":false,"cantBeMoved":false,"cantBePushed":false,"cantDealDamage":false,"invulnerable":false,"invulnerableMelee":false,"invulnerableRange":false,"cantSwitchPosition":true,"cantTackle":false,"cantBeTackled":false,"incurable":false,"nameEn":"Gravity","displayTurnRemaining":true,"effectsIds":[18]}
+état 583 {"id":583,"name":"Sacrifice","preventsSpellCast":false,"preventsFight":false,"cantBeMoved":false,"cantBePushed":false,"cantDealDamage":false,"invulnerable":false,"invulnerableMelee":false,"invulnerableRange":false,"cantSwitchPosition":false,"cantTackle":false,"cantBeTackled":false,"incurable":false,"nameEn":"Sacrifice","isSilent":true,"effectsIds":[16]}
+état 6979 {"id":6979,"name":"Flèche Boomerang (masque)","preventsSpellCast":false,"preventsFight":false,"cantBeMoved":false,"cantBePushed":false,"cantDealDamage":false,"invulnerable":false,"invulnerableMelee":false,"invulnerableRange":false,"cantSwitchPosition":false,"cantTackle":false,"cantBeTackled":false,"incurable":false,"nameEn":"[!] Flèche Boomerang (masque)","isSilent":true,"effectsIds":[16]}
+état 3551 {"id":3551,"name":"Flèche Fulminante (cible)","preventsSpellCast":false,"preventsFight":false,"cantBeMoved":false,"cantBePushed":false,"cantDealDamage":false,"invulnerable":false,"invulnerableMelee":false,"invulnerableRange":false,"cantSwitchPosition":false,"cantTackle":false,"cantBeTackled":false,"incurable":false,"nameEn":"Fulminating Arrow Target","isSilent":true,"effectsIds":[16]}
+état 573 {"id":573,"name":"Flèche Dévorante I","preventsSpellCast":false,"preventsFight":false,"cantBeMoved":false,"cantBePushed":false,"cantDealDamage":false,"invulnerable":false,"invulnerableMelee":false,"invulnerableRange":false,"cantSwitchPosition":false,"cantTackle":false,"cantBeTackled":false,"incurable":false,"nameEn":"Devouring Arrow I","displayTurnRemaining":true}
+sort 32476 « Balise Tactique » g4
+  792  [32476-6 v999] zone P1 masque «C» dur 0 décl I
+sort 32476 « Balise Tactique » g5
+  792  [32476-7 v999] zone P1 masque «C» dur 0 décl I
+sort 32477 « Balise de Survie » g4
+  8 Échange de positions [0-0 v0] zone P1 masque «h,P» dur 0 décl I
+sort 32558 « Tirs Éloignés » g2
+  117 } Portée [3-0 v0] zone C2 masque «g,b9» dur 1 décl I
+sort 32462 « Flèche de Rédemption » g1
+  1160  [32462-2 v999] zone P1 masque «C» dur 0 décl CAPAS|CMPAS
+sort 32462 « Flèche de Rédemption » g2
+  293 : + dégâts de base [32442-0 v6] zone P1 masque «C» dur -1 décl I
+sort 32442 « Flèche de Rédemption » g1
+  91 } vol Eau [26-29 v0] zone P1 masque «a,A» dur 0 décl I
+  1406 Enlève les effets du rang du sort [0-2 v32462] zone P1 masque «C» dur 0 décl I
+sort 32476 « Balise Tactique » g6
+  6 Attire de case} [2-0 v0] zone Q3 masque «a,A» dur 0 décl I
+sort 32476 « Balise Tactique » g7
+  1103 Repousse de case} (sans dommages) [2-0 v0] zone Q1 masque «a,A» dur 0 décl I
+sort 32476 « Balise Tactique » g8
+  138 } Puissance [30-0 v0] zone P1 masque «C» dur 2 décl I
