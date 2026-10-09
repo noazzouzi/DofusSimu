@@ -1,0 +1,456 @@
+P1 base  Flèche de Recul (32426) grade 3 [grades:niv 1:1 2:66 3:132] 3 PA PO 1-6+ LdV 3/tour 2/cible relance 0 rel.init 0 cumul -1 CC 10% 
+      98 } dommages Air [25-28 v0] zone P1 masque «A» dur 0 élt 4
+      5 Repousse de case} [2-0 v0] zone P1 masque «a,A» dur 0
+      (critique : 2 effets, mêmes types)
+P1 var.  Flèche Éclatante (32449) grade 2 [grades:niv 1:95 2:162] 3 PA PO 3-7+ LdV 1/tour ∞/cible relance 0 rel.init 0 cumul -1 CC 15% 
+      94 } vol Feu [22-25 v0] zone +1 masque «A» dur 0 élt 2
+      5 Repousse de case} [2-0 v0] zone #1 masque «a,A» dur 0
+      (critique : 2 effets, mêmes types)
+P2 base  Flèche Glacée (32435) grade 3 [grades:niv 1:1 2:67 3:133] 3 PA PO 1-7+ LdV 3/tour 2/cible relance 0 rel.init 0 cumul 1 CC 10%  case occupée
+      1079 -} PA [2-0 v0] zone P1 masque «a,A» dur 1
+      96 } dommages Eau [21-24 v0] zone P1 masque «a,A» dur 0 élt 3
+      293 : + dégâts de base [32435-0 v8] zone P1 masque «C» dur 3
+      (critique : 3 effets, mêmes types)
+P2 var.  Flèche Harcelante (32708) grade 2 [grades:niv 1:100 2:167] 3 PA PO 1-10 sans LdV 3/tour 1/cible relance 0 rel.init 0 cumul 1 CC 10% 
+      1159 Soins reçus x% [70-0 v0] zone P1 masque «a,A» dur 0 décl H
+      3793  [0-0 v23122] zone P1 masque «a,A» dur 0 décl TB
+      98 } dommages Air [17-19 v0] zone P1 masque «a,A» dur 0 décl TB élt 4
+      (critique : 3 effets, mêmes types)
+P3 base  Flèche Vagabonde (32455) grade 3 [grades:niv 1:1 2:69 3:136] 3 PA PO 1-8+ en ligne en diagonale LdV 2/tour ∞/cible relance 0 rel.init 0 cumul 0 CC 10%  case occupée
+      1041 Recule de case} [3-0 v0] zone P1 masque «a,A» dur 0
+      97 } dommages Terre [27-30 v0] zone P1 masque «A» dur 0 élt 1
+      (critique : 2 effets, mêmes types)
+P3 var.  Flèche Évasive (32531) grade 2 [grades:niv 1:110 2:177] 3 PA PO 1-7+ LdV 2/tour 1/cible relance 0 rel.init 0 cumul -1 CC 10% 
+      1160  [32655-1 v999] zone P1 masque «a,A» dur 0
+        ↳ sous-sort 32655 « Flèche Évasive » grade 1
+        950 État [0-0 v6976] état 6976 « Flèche Évasive (mêlée) » zone Q1 masque «c» dur 1
+      1160  [32655-2 v999] zone P1 masque «a,A» dur 0
+        ↳ sous-sort 32655 « Flèche Évasive » grade 2
+        1041 Recule de case} [2-0 v0] zone P1 masque «a,A,*E6976» dur 0
+        1080 -} PM [1-0 v0] zone P1 masque «A,*E6976» dur 1
+        5 Repousse de case} [2-0 v0] zone P1 masque «a,A,*e6976» dur 0
+        1079 -} PA [1-0 v0] zone P1 masque «A,*e6976» dur 1
+        951 Enlève l'état [0-0 v6976] état 6976 « Flèche Évasive (mêlée) » zone P1 masque «C» dur 0
+      96 } dommages Eau [26-29 v0] zone P1 masque «A» dur 0 élt 3
+      (critique : 7 effets, mêmes types)
+P4 base  Flèche de Barrage (32443) grade 3 [grades:niv 1:1 2:68 3:134] 3 PA PO 1-7+ en ligne LdV 2/tour ∞/cible relance 0 rel.init 0 cumul -1 CC 10% 
+      99 } dommages Feu [24-27 v0] zone T2 masque «A» dur 0 élt 2
+      1160  [32463-1 v999] zone T2 masque «a,A» dur 0
+        ↳ sous-sort 32463 « Flèche de Barrage » grade 1
+        5 Repousse de case} [1-0 v0] zone P1 masque «a,A» dur 0
+      (critique : 3 effets, mêmes types)
+P4 var.  Carreaux Destructeurs (32459) grade 2 [grades:niv 1:105 2:172] 4 PA PO 1-3 en ligne LdV 2/tour ∞/cible relance 0 rel.init 0 cumul 1 CC 15% 
+      97 } dommages Terre [38-42 v0] zone F2 masque «A» dur 0 élt 1
+      145 -} Dommage}} [60-0 v0] zone F2 masque «A» dur 1
+      5 Repousse de case} [3-0 v0] zone F2 masque «a,A» dur 0
+      (critique : 3 effets, mêmes types)
+P5 base  Pas Chassé (32464) grade 3 [grades:niv 1:5 2:72 3:139] 2 PA PO 1-2 en ligne LdV ∞/tour ∞/cible relance 2 rel.init 0 cumul -1 CC 0%  case libre critère e7
+      4 Téléporte sur la case ciblée [2-0 v0] zone P1 masque «a,A» dur 0
+      3793  [0-0 v23100] zone P1 masque «C» dur 0 délai 1
+      128 } PM [1-0 v0] zone P1 masque «C» dur 1 délai 1
+      (critique : 0 effets, mêmes types)
+P5 var.  Balise Tactique (32467) grade 2 [grades:niv 1:115 2:182] 1 PA PO 1-8+ LdV ∞/tour ∞/cible relance 2 rel.init 0 cumul 5 CC 0%  case libre
+      181 Invoque : [8347-2 v0] zone P1 masque «a,A» dur 0
+      1160  [32476-9 v999] zone C63/1 masque «A» dur 0
+        ↳ sous-sort 32476 « Balise Tactique » grade 9
+        138 } Puissance [40-0 v0] zone P1 masque «C» dur 2 élt 5
+      (critique : 0 effets, mêmes types)
+P6 base  Tirs Éloignés (32465) grade 3 [grades:niv 1:10 2:77 3:144] 1 PA PO 0-0 sans LdV ∞/tour ∞/cible relance 2 rel.init 0 cumul 1 CC 0% 
+      280 : + Portée minimale [32455-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32455-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32443-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32443-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32435-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32435-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32426-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32426-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32444-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32444-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32453-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32453-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32427-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32427-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32436-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32436-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32428-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32428-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32445-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32445-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32437-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32437-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32454-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32454-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32456-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32456-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32438-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32438-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32429-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32429-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32446-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32446-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32531-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32531-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32459-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32459-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32708-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32708-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32449-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32449-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32439-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32439-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32433-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32433-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32458-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32458-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32448-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32448-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32447-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32447-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32457-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32457-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32431-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32431-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32441-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32441-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32472-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32472-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32473-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32473-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32460-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32460-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32442-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32442-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32432-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32432-0 v6] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32450-0 v3] zone P1 masque «C» dur 1
+      281 : + Portée maximale [32450-0 v6] zone P1 masque «C» dur 1
+      406 Enlève les effets du sort [0-0 v32465] zone P1 masque «C» dur 0 décl TE
+      1160  [32558-2 v0] zone a1 masque «C» dur 0
+        ↳ sous-sort 32558 « Tirs Éloignés » grade 2
+        117 } Portée [3-0 v0] zone C2/1 masque «g,b9» dur 1
+      1160  [32558-2 v0] zone a1 masque «a,P,F8348,F8347» dur 0
+      (critique : 0 effets, mêmes types)
+P6 var.  Tir Perçant (32471) grade 2 [grades:niv 1:120 2:187] 1 PA PO 1-6+ LdV 2/tour 1/cible relance 0 rel.init 0 cumul 1 CC 0% 
+      776 }% Érosion [25-0 v0] zone P1 masque «a,A» dur 2
+      1163 Dommages subis x% [115-0 v0] zone P1 masque «a,A» dur 0 décl D
+      406 Enlève les effets du sort [0-0 v32471] zone P1 masque «a,A» dur 0 décl D
+      (critique : 0 effets, mêmes types)
+P7 base  Flèche Détonante (32444) grade 3 [grades:niv 1:15 2:82 3:149] 2 PA PO 1-6+ LdV 3/tour 2/cible relance 0 rel.init 0 cumul 1 CC 5% 
+      1160  [32451-12 v999] zone P1 masque «a,A» dur 0
+        ↳ sous-sort 32451 « Flèche Détonante » grade 12
+        116 -} Portée [3-0 v0] zone P1 masque «a,A» dur 1
+      99 } dommages Feu [14-17 v0] zone P1 masque «a,A» dur 0 élt 2
+      950 État [0-0 v656] état 656 « Flèche Détonante » zone P1 masque «a,A» dur 1
+      1160  [32451-9 v999] zone P1 masque «a,A» dur 0 décl TE|PD|XPD
+        ↳ sous-sort 32451 « Flèche Détonante » grade 9
+        1160  [32451-10 v999] zone P1 masque «a,A» dur 0
+          ↳ sous-sort 32451 « Flèche Détonante » grade 10
+          406 Enlève les effets du sort [0-0 v32444] zone P1 masque «a,A» dur 0
+          1160  [32451-11 v999] zone P1 masque «A» dur 0
+          99 } dommages Feu [14-17 v0] zone C2/1 masque «A» dur 0 élt 2
+      (critique : 7 effets, mêmes types)
+P7 var.  Flèche Ralentissante (32439) grade 2 [grades:niv 1:125 2:192] 4 PA PO 1-6+ en ligne LdV 1/tour ∞/cible relance 0 rel.init 0 cumul 1 CC 20% 
+      1079 -} PA [2-0 v0] zone V2 masque «a,A» dur 1
+      1080 -} PM [1-0 v0] zone V2 masque «a,A» dur 1
+      96 } dommages Eau [32-34 v0] zone V2 masque «a,A» dur 0 élt 3
+      (critique : 3 effets, mêmes types)
+P8 base  Flèche d'Abolition (32453) grade 3 [grades:niv 1:20 2:87 3:154] 2 PA PO 3-7+ LdV 3/tour ∞/cible relance 0 rel.init 0 cumul 2 CC 5% 
+      92 } vol Terre [9-11 v0] zone P1 masque «a,A,pb,*e7120,*e7121» dur 0 élt 1
+      92 } vol Terre [9-11 v0] zone X1 masque «a,A,pb,*E7120» dur 0 élt 1
+      92 } vol Terre [9-11 v0] zone C2 masque «a,A,pb,*E7121» dur 0 élt 1
+      92 } vol Terre [18-22 v0] zone P1 masque «a,A,PB,*e7120,*e7121» dur 0 élt 1
+      92 } vol Terre [18-22 v0] zone X1 masque «a,A,PB,*E7120» dur 0 élt 1
+      92 } vol Terre [18-22 v0] zone C2 masque «a,A,PB,*E7121» dur 0 élt 1
+      950 État [0-0 v7120] état 7120 « Flèche d'Abolition I » zone P1 masque «C,*e7120,*e7121» dur 1
+      951 Enlève l'état [0-0 v7120] état 7120 « Flèche d'Abolition I » zone P1 masque «C,*E7120» dur 0
+      950 État [0-0 v7121] état 7121 « Flèche d'Abolition II » zone P1 masque «C,*E7120» dur 1
+      406 Enlève les effets du sort [0-0 v32453] zone P1 masque «C» dur 0 décl TE
+      (critique : 10 effets, mêmes types)
+P8 var.  Flèche Persécutrice (32433) grade 2 [grades:niv 1:130 2:197] 4 PA PO 3-9+ LdV 2/tour 1/cible relance 0 rel.init 0 cumul 1 CC 15% 
+      1160  [32615-1 v0] zone P1 masque «a,A» dur 0 délai 1
+        ↳ sous-sort 32615 « Flèche Persécutrice » grade 1
+        950 État [0-0 v6978] état 6978 « Flèche Persécutrice (ligne de vue) » zone P1 masque «a,A» dur 1
+        792  [32615-2 v999] zone P1 masque «C» dur 0
+          ↳ sous-sort 32615 « Flèche Persécutrice » grade 2
+          406 Enlève les effets du sort [0-0 v32433] zone C63 masque «a,A,E6978» dur 0
+        951 Enlève l'état [0-0 v6978] état 6978 « Flèche Persécutrice (ligne de vue) » zone P1 masque «a,A» dur 0
+      93 } vol Air [34-38 v0] zone P1 masque «a,A» dur 0 élt 4
+      3793  [0-0 v22955] zone P1 masque «a,A» dur 0 délai 1
+      98 } dommages Air [34-38 v0] zone P1 masque «a,A» dur 0 délai 1 élt 4
+      (critique : 4 effets, mêmes types)
+P9 base  Flèche Cinglante (32427) grade 3 [grades:niv 1:25 2:92 3:159] 2 PA PO 1-7+ LdV 3/tour 2/cible relance 0 rel.init 0 cumul 1 CC 5% 
+      1080 -} PM [2-0 v0] zone P1 masque «a,A» dur 1
+      98 } dommages Air [15-18 v0] zone P1 masque «a,A» dur 0 élt 4
+      (critique : 2 effets, mêmes types)
+P9 var.  Flèche Assaillante (32458) grade 1 [grades:niv 1:135] 3 PA PO 1-7 LdV 2/tour ∞/cible relance 0 rel.init 0 cumul 1 CC 10%  case occupée
+      1160  [32781-1 v999] zone P1 masque «a,A» dur 0
+        ↳ sous-sort 32781 « Flèche Assaillante » grade 1
+        950 État [0-0 v7119] état 7119 « Flèche Assaillante (mêlée) » zone Q1 masque «c» dur 1
+      1160  [32781-2 v999] zone P1 masque «a,A» dur 0
+        ↳ sous-sort 32781 « Flèche Assaillante » grade 2
+        5 Repousse de case} [3-0 v0] zone P1 masque «a,A,*E7119» dur 0
+        1042 Avance de case} [3-0 v0] zone P1 masque «a,A,*e7119» dur 0
+        951 Enlève l'état [0-0 v7119] état 7119 « Flèche Assaillante (mêlée) » zone P1 masque «C» dur 0
+      97 } dommages Terre [23-26 v0] zone P1 masque «A» dur 0 élt 1
+      138 } Puissance [150-0 v0] zone P1 masque «C» dur 1 élt 5
+      (critique : 6 effets, mêmes types)
+P10 base  Flèche d'Immobilisation (32436) grade 3 [grades:niv 1:30 2:97 3:164] 2 PA PO 1-7+ LdV 4/tour 2/cible relance 0 rel.init 0 cumul 4 CC 5%  case occupée
+      77 Vole } PM [1-0 v0] zone P1 masque «a,A» dur 1
+      96 } dommages Eau [11-13 v0] zone P1 masque «a,A» dur 0 élt 3
+      293 : + dégâts de base [32436-0 v2] zone P1 masque «C» dur 3
+      (critique : 3 effets, mêmes types)
+P10 var.  Flèche Tyrannique (32448) grade 1 [grades:niv 1:140] 4 PA PO 2-8+ LdV 2/tour ∞/cible relance 0 rel.init 0 cumul 1 CC 15% 
+      99 } dommages Feu [28-32 v0] zone P1 masque «a,A» dur 0 élt 2
+      1160  [32488-1 v999] zone P1 masque «a,A» dur 0
+        ↳ sous-sort 32488 « Flèche Tyrannique » grade 1
+        3793  [0-0 v22956] zone P1 masque «a,A» dur 0 décl TE
+        99 } dommages Feu [20-22 v0] zone P1 masque «a,A» dur 0 décl TE élt 2
+        1160  [32488-1 v999] zone P1 masque «a,A» dur 0 décl M|TP|PT|EOFF8
+        1160  [32488-2 v999] zone P1 masque «a,A» dur 0 décl PD
+          ↳ sous-sort 32488 « Flèche Tyrannique » grade 2
+          1160  [32488-3 v999] zone P1 masque «a,A» dur 0
+      (critique : 4 effets, mêmes types)
+P11 base  Tirs Puissants (32466) grade 3 [grades:niv 1:35 2:102 3:169] 1 PA PO 0-0 sans LdV ∞/tour ∞/cible relance 2 rel.init 0 cumul -1 CC 5% 
+      116 -} Portée [3-0 v0] zone P1 masque «C» dur 1
+      138 } Puissance [250-0 v0] zone P1 masque «C» dur 1 élt 5
+      414 } Dommage}} Poussée [150-0 v0] zone P1 masque «C» dur 1 élt 5
+      115 }% Critique [15-0 v0] zone P1 masque «C» dur 1
+      (critique : 4 effets, mêmes types)
+P11 var.  Flèches Amoureuses (32618) grade 1 [grades:niv 1:145] 3 PA PO 0-8+ en ligne en diagonale LdV 2/tour 1/cible relance 0 rel.init 0 cumul 1 CC 10%  case occupée
+      792  [32619-2 v0] zone P1 masque «C» dur 0 décl TE
+        ↳ sous-sort 32619 « Flèches Amoureuses » grade 2
+        951 Enlève l'état [0-0 v7010] état 7010 « Flèches Amoureuses » zone a1 masque «a,A,E7010» dur 0
+      1109 Soin : }% des PV max [8-0 v0] zone P1 masque «g» dur 0 élt 0
+      950 État [0-0 v7010] état 7010 « Flèches Amoureuses » zone P1 masque «c,h,m,d» dur 1
+      2160  [32619-1 v1] zone C63/1 masque «c,h,m,d,E7010» dur 0
+        ↳ sous-sort 32619 « Flèches Amoureuses » grade 1
+        1061 Partage les dommages [0-0 v0] zone a1 masque «a,A,E7010» dur 0 décl D
+        950 État [0-0 v583] état 583 « Sacrifice » zone a1 masque «a,A,E7010» dur 1
+        138 } Puissance [100-0 v0] zone a1 masque «a,A,E7010» dur 2 élt 5
+        951 Enlève l'état [0-0 v7010] état 7010 « Flèches Amoureuses » zone a1 masque «a,A,E7010» dur 0
+      (critique : 6 effets, mêmes types)
+P12 base  Flèche de Dispersion (32428) grade 3 [grades:niv 1:40 2:107 3:174] 3 PA PO 2-6+ LdV 1/tour ∞/cible relance 0 rel.init 0 cumul -1 CC 15% 
+      98 } dommages Air [21-24 v0] zone X2 masque «A» dur 0 élt 4
+      5 Repousse de case} [2-0 v0] zone Q2/2 masque «a,A» dur 0
+      5 Repousse de case} [1-0 v0] zone Q1 masque «a,A» dur 0
+      (critique : 3 effets, mêmes types)
+P12 var.  Flèches Enflammées (32447) grade 1 [grades:niv 1:150] 4 PA PO 1-7 en ligne LdV 2/tour ∞/cible relance 0 rel.init 0 cumul 0 CC 15% 
+      1041 Recule de case} [1-0 v0] zone L4 masque «a,A» dur 0
+      99 } dommages Feu [34-38 v0] zone L4 masque «A» dur 0 élt 2
+      5 Repousse de case} [2-0 v0] zone L4 masque «a,A» dur 0
+      (critique : 3 effets, mêmes types)
+P13 base  Flèche Explosive (32445) grade 3 [grades:niv 1:45 2:112 3:179] 4 PA PO 4-7+ LdV 1/tour ∞/cible relance 0 rel.init 0 cumul -1 CC 20% 
+      99 } dommages Feu [30-34 v0] zone C3 masque «a,A» dur 0 élt 2
+      (critique : 1 effets, mêmes types)
+P13 var.  Flèche Massacrante (32457) grade 1 [grades:niv 1:155] 4 PA PO 2-7+ en ligne LdV 2/tour ∞/cible relance 0 rel.init 0 cumul -1 CC 15% 
+      1160  [32461-1 v999] zone U1 masque «a,A» dur 0
+        ↳ sous-sort 32461 « Flèche Massacrante » grade 1
+        293 : + dégâts de base [32457-0 v12] zone P1 masque «C» dur 1
+      97 } dommages Terre [25-29 v0] zone U1 masque «a,A» dur 0 élt 1
+      406 Enlève les effets du sort [0-0 v32461] zone P1 masque «C» dur 0
+      (critique : 4 effets, mêmes types)
+P14 base  Œil de Taupe (32437) grade 3 [grades:niv 1:50 2:117 3:184] 3 PA PO 3-6+ LdV 1/tour ∞/cible relance 0 rel.init 0 cumul 1 CC 15% 
+      202 Dévoile les entités invisibles [0-0 v0] zone C2 masque «A» dur 0
+      116 -} Portée [3-0 v0] zone C2 masque «a,A» dur 1
+      91 } vol Eau [19-22 v0] zone C2 masque «a,A» dur 0 élt 3
+      (critique : 3 effets, mêmes types)
+P14 var.  Pluie de Flèches (32431) grade 1 [grades:niv 1:160] 3 PA PO 0-6+ LdV 1/tour ∞/cible relance 0 rel.init 0 cumul 1 CC 15% global 2/tour
+      2794  [32481-2 v0] zone P1 masque «C» dur 0
+        ↳ sous-sort 32481 « Pluie de Flèches » grade 2
+        163 -} Esquive PM [20-0 v0] zone C3 masque «g,A» dur 1
+      98 } dommages Air [21-23 v0] zone C3 masque «g,A» dur 0 élt 4
+      1091 Pose un glyphe-aura [32481-3 v3524728] zone C3 masque «a,F50000» dur 1
+      2794  [32481-1 v0] zone P1 masque «C» dur 0 délai 1
+        ↳ sous-sort 32481 « Pluie de Flèches » grade 1
+        2794  [32481-2 v0] zone P1 masque «C» dur 0
+        98 } dommages Air [21-23 v0] zone C3 masque «g,A» dur 0 élt 4
+      (critique : 5 effets, mêmes types)
+P15 base  Œil pour Œil (32454) grade 3 [grades:niv 1:55 2:122 3:189] 3 PA PO 0-5+ LdV 1/tour ∞/cible relance 0 rel.init 0 cumul 4 CC 15% 
+      92 } vol Terre [27-30 v0] zone X1 masque «g,A» dur 0 élt 1
+      (critique : 2 effets, mêmes types)
+P15 var.  Flèche Paralysante (32441) grade 1 [grades:niv 1:165] 4 PA PO 3-6+ LdV 1/tour ∞/cible relance 0 rel.init 0 cumul 1 CC 20% 
+      1079 -} PA [1-0 v0] zone G1 masque «a,A» dur 1
+      1080 -} PM [2-0 v0] zone G1 masque «a,A» dur 1
+      96 } dommages Eau [30-34 v0] zone G1 masque «a,A» dur 0 élt 3
+      (critique : 3 effets, mêmes types)
+P16 base  Balise de Survie (32474) grade 3 [grades:niv 1:60 2:127 3:194] 2 PA PO 1-4 LdV ∞/tour ∞/cible relance 3 rel.init 0 cumul -1 CC 0%  case libre
+      181 Invoque : [8348-3 v0] zone P1 masque «a,A» dur 0
+      (critique : 0 effets, mêmes types)
+P16 var.  Représailles (32472) grade 1 [grades:niv 1:170] 3 PA PO 3-6+ LdV ∞/tour ∞/cible relance 3 rel.init 0 cumul 1 CC 25% global 1/tour
+      1092 Dommages Neutre : }% PV érodés de la cible [20-0 v0] zone X1 masque «A» dur 0 élt 0
+      950 État [0-0 v7] état 7 « Pesanteur » zone X1 masque «a,A» dur 1
+      1163 Dommages subis x% [110-0 v0] zone X1 masque «A» dur 0 décl D
+      (critique : 3 effets, mêmes types)
+P17 base  Tir de Repli (32470) grade 3 [grades:niv 1:65 2:131 3:198] 1 PA PO 2-8+ en ligne en diagonale LdV 3/tour 2/cible relance 0 rel.init 0 cumul -1 CC 0%  case occupée
+      1041 Recule de case} [2-0 v0] zone P1 masque «A» dur 0
+      1042 Avance de case} [2-0 v0] zone P1 masque «a» dur 0
+      117 } Portée [2-0 v0] zone P1 masque «C» dur 1
+      (critique : 0 effets, mêmes types)
+P17 var.  Vendetta (32473) grade 1 [grades:niv 1:175] 2 PA PO 1-6+ sans LdV 1/tour ∞/cible relance 0 rel.init 0 cumul -1 CC 0%  case libre
+      400 Pose un piège [32478-1 v0] zone P1 masque «a,A» dur 0
+      (critique : 0 effets, mêmes types)
+P18 base  Flèche Punitive (32456) grade 2 [grades:niv 1:70 2:137] 4 PA PO 4-10+ LdV 1/tour ∞/cible relance 0 rel.init 0 cumul 1 CC 20% 
+      776 }% Érosion [15-0 v0] zone P1 masque «a,A» dur 2
+      97 } dommages Terre [30-34 v0] zone P1 masque «a,A» dur 0 élt 1
+      3793  [0-0 v23022] zone P1 masque «C» dur 0 délai 1
+      3793  [0-0 v23022] zone P1 masque «C» dur 0 délai 2
+      293 : + dégâts de base [32456-0 v24] zone P1 masque «C» dur 1 délai 1
+      293 : + dégâts de base [32456-0 v32] zone P1 masque «C» dur 1 délai 2
+      (critique : 6 effets, mêmes types)
+P18 var.  Flèche du Jugement (32460) grade 1 [grades:niv 1:180] 4 PA PO 3-9+ LdV 2/tour 1/cible relance 0 rel.init 0 cumul 2 CC 20% 
+      186 -} Puissance [150-0 v0] zone P1 masque «a,A» dur 2 élt 5
+      1016 } dommages Terre (% PM restants) [36-40 v0] zone P1 masque «a,A» dur 0 élt 1
+      97 } dommages Terre [25-27 v0] zone P1 masque «a,A» dur 0 élt 1
+      (critique : 3 effets, mêmes types)
+P19 base  Flèche d'Expiation (32438) grade 2 [grades:niv 1:75 2:142] 4 PA PO 6-12+ LdV ∞/tour ∞/cible relance 2 rel.init 0 cumul 0 CC 25% 
+      1159 Soins reçus x% [50-0 v0] zone P1 masque «a,A» dur 0 décl H
+      96 } dommages Eau [35-37 v0] zone P1 masque «a,A» dur 0 élt 3
+      3793  [0-0 v22656] zone P1 masque «C» dur 0 délai 2
+      3793  [0-0 v22656] zone P1 masque «C» dur 0 délai 4
+      293 : + dégâts de base [32438-0 v36] zone P1 masque «C» dur 1 délai 2
+      293 : + dégâts de base [32438-0 v36] zone P1 masque «C» dur 1 délai 4
+      (critique : 6 effets, mêmes types)
+P19 var.  Flèche de Rédemption (32442) grade 1 [grades:niv 1:185] 4 PA PO 4-9+ LdV 2/tour ∞/cible relance 0 rel.init 0 cumul 6 CC 15% 
+      91 } vol Eau [26-29 v0] zone P1 masque «a,A» dur 0 élt 3
+      1406 Enlève les effets du rang du sort [0-2 v32462] zone P1 masque «C» dur 0
+      (critique : 3 effets, mêmes types)
+P20 base  Flèche Perforante (32429) grade 2 [grades:niv 1:80 2:147] 4 PA PO 3-9+ en ligne LdV 1/tour ∞/cible relance 0 rel.init 0 cumul -1 CC 20% 
+      98 } dommages Air [38-42 v0] zone L3 masque «A,pb» dur 0 élt 4
+      98 } dommages Air [44-48 v0] zone L3 masque «A,PB» dur 0 élt 4
+      5 Repousse de case} [3-0 v0] zone L3 masque «a,A» dur 0
+      (critique : 3 effets, mêmes types)
+P20 var.  Flèche Boomerang (32432) grade 1 [grades:niv 1:190] 3 PA PO 0-7+ LdV 2/tour 1/cible relance 0 rel.init 0 cumul 1 CC 10%  case occupée
+      792  [32434-1 v0] zone P1 masque «C» dur 0
+        ↳ sous-sort 32434 « Flèche Boomerang » grade 1
+        950 État [0-0 v6979] état 6979 « Flèche Boomerang (masque) » zone a1 masque «A» dur 1
+        950 État [0-0 v6979] état 6979 « Flèche Boomerang (masque) » zone a1 masque «a,F8348,F8347» dur 1
+      2795  [32434-2 v1] zone Q63 masque «a,A,E6975» dur 0
+        ↳ sous-sort 32434 « Flèche Boomerang » grade 2
+        950 État [0-0 v7117] état 7117 « Flèche Boomerang (cibles) » zone l0/63 masque «C,a,A,E6979» dur 1
+        950 État [0-0 v7118] état 7118 « Flèche Boomerang (nouvelle cible) » zone P1 masque «a,A» dur 1
+      1160  [32434-7 v999] zone P1 masque «g,A» dur 0
+        ↳ sous-sort 32434 « Flèche Boomerang » grade 7
+        666 Pas d'effet supplémentaire [0-0 v0] zone P1 masque «a,A» dur 0
+        666 Pas d'effet supplémentaire [0-0 v0] zone P1 masque «a,A» dur 0
+        666 Pas d'effet supplémentaire [0-0 v0] zone P1 masque «a,A» dur 0
+        1080 -} PM [2-0 v0] zone P1 masque «a,A» dur 1
+      98 } dommages Air [26-29 v0] zone P1 masque «g,A» dur 0 élt 4
+      2160  [32434-3 v1] zone Q63 masque «a,A,E6975» dur 0
+        ↳ sous-sort 32434 « Flèche Boomerang » grade 3
+        666 Pas d'effet supplémentaire [0-0 v0] zone P1 masque «a,A» dur 0
+        792  [32434-8 v999] zone P1 masque «a,A» dur 0
+          ↳ sous-sort 32434 « Flèche Boomerang » grade 8
+          2160  [32434-9 v1] zone Q63 masque «a,A,E7118» dur 0
+        1160  [32434-6 v0] zone P1 masque «a,A» dur 0
+          ↳ sous-sort 32434 « Flèche Boomerang » grade 6
+          951 Enlève l'état [0-0 v6979] état 6979 « Flèche Boomerang (masque) » zone a1 masque «a,A» dur 0
+          951 Enlève l'état [0-0 v6975] état 6975 « Flèche Boomerang » zone a1 masque «a,A» dur 0
+          951 Enlève l'état [0-0 v7117] état 7117 « Flèche Boomerang (cibles) » zone a1 masque «a,A» dur 0
+          951 Enlève l'état [0-0 v7118] état 7118 « Flèche Boomerang (nouvelle cible) » zone a1 masque «a,A» dur 0
+        1080 -} PM [2-0 v0] zone X63 masque «a,A,E7117,e7118» dur 1
+        93 } vol Air [26-29 v0] zone X63 masque «a,A,E7117,e7118» dur 0 élt 4
+      792  [32434-6 v999] zone P1 masque «C» dur 0
+      950 État [0-0 v6975] état 6975 « Flèche Boomerang » zone P1 masque «a,A» dur 1
+      792  [32434-4 v999] zone P1 masque «C» dur 0 décl TE
+        ↳ sous-sort 32434 « Flèche Boomerang » grade 4
+        950 État [0-0 v6979] état 6979 « Flèche Boomerang (masque) » zone a1 masque «A» dur 1
+        950 État [0-0 v6979] état 6979 « Flèche Boomerang (masque) » zone a1 masque «a,F8348,F8347» dur 1
+        1160  [32434-5 v999] zone Q63 masque «a,A,E6975» dur 0
+          ↳ sous-sort 32434 « Flèche Boomerang » grade 5
+          666 Pas d'effet supplémentaire [0-0 v0] zone P1 masque «a,A» dur 0
+          1017  [32434-9 v999] zone P1 masque «a,A» dur 0
+          1160  [32434-6 v0] zone P1 masque «a,A» dur 0
+          1080 -} PM [2-0 v0] zone l1/63 masque «a,A,E6979» dur 1
+          93 } vol Air [26-29 v0] zone l1/63 masque «a,A,E6979» dur 0 élt 4
+      (critique : 10 effets, mêmes types)
+P21 base  Flèche Dévorante (32446) grade 2 [grades:niv 1:85 2:152] 3 PA PO 0-6+ LdV 2/tour ∞/cible relance 0 rel.init 0 cumul 3 CC 10% global 4/tour case occupée
+      406 Enlève les effets du sort [0-0 v32446] zone C63 masque «A» dur 0
+      94 } vol Feu [11-13 v0] zone P1 masque «g» dur 0 élt 2
+      94 } vol Feu [11-13 v0] zone P1 masque «A,e573,e574,e662» dur 0 élt 2
+      94 } vol Feu [23-27 v0] zone P1 masque «A,E573» dur 0 élt 2
+      94 } vol Feu [34-38 v0] zone P1 masque «A,E574» dur 0 élt 2
+      94 } vol Feu [34-38 v0] zone P1 masque «A,E662» dur 0 élt 2
+      3793  [0-0 v22705] zone P1 masque «A» dur 0 délai 3
+      99 } dommages Feu [34-38 v0] zone P1 masque «A,e573,e574,e662» dur 0 délai 3 élt 2
+      99 } dommages Feu [34-38 v0] zone C63/1 masque «A,E573» dur 0 élt 2
+      950 État [0-0 v573] état 573 « Flèche Dévorante I » zone P1 masque «A,e573,e574,e662» dur 3
+      99 } dommages Feu [52-56 v0] zone P1 masque «A,E573» dur 0 délai 3 élt 2
+      99 } dommages Feu [52-56 v0] zone C63/1 masque «A,E574» dur 0 élt 2
+      950 État [0-0 v574] état 574 « Flèche Dévorante II » zone P1 masque «A,E573» dur 3
+      99 } dommages Feu [70-74 v0] zone P1 masque «A,E574» dur 0 délai 3 élt 2
+      99 } dommages Feu [70-74 v0] zone P1 masque «A,E662» dur 0 délai 3 élt 2
+      99 } dommages Feu [70-74 v0] zone C63/1 masque «A,E662» dur 0 élt 2
+      950 État [0-0 v662] état 662 « Flèche Dévorante III » zone P1 masque «A,E574» dur 3
+      950 État [0-0 v662] état 662 « Flèche Dévorante III » zone P1 masque «A,E662» dur 3
+      (critique : 20 effets, mêmes types)
+P21 var.  Flèche Fulminante (32450) grade 1 [grades:niv 1:195] 4 PA PO 1-6+ LdV 1/tour ∞/cible relance 0 rel.init 0 cumul 4 CC 20% global 1/tour case occupée
+      99 } dommages Feu [26-29 v0] zone P1 masque «a,F50000» dur 0 élt 2
+      792  [32452-2 v999] zone P1 masque «C» dur 0
+        ↳ sous-sort 32452 « Flèche Fulminante » grade 2
+        950 État [0-0 v3551] état 3551 « Flèche Fulminante (cible) » zone a1 masque «A» dur 1
+        950 État [0-0 v3551] état 3551 « Flèche Fulminante (cible) » zone a1 masque «a,F8348,F8347» dur 1
+      1160  [32452-1 v999] zone P1 masque «a,A» dur 0
+        ↳ sous-sort 32452 « Flèche Fulminante » grade 1
+        99 } dommages Feu [26-29 v0] zone P1 masque «a,A,E3551,e570» dur 0 élt 2
+        99 } dommages Feu [26-29 v0] zone P1 masque «a,f8348,f8347» dur 0 élt 2
+        950 État [0-0 v570] état 570 « Flèche Fulminante (touché) » zone P1 masque «a,A,E3551,e570» dur 1
+        293 : + dégâts de base [32452-0 v15] zone P1 masque «C» dur 1
+        2160  [32452-1 v1] zone C2/1 masque «a,A,E3551,e570» dur 0
+      792  [32452-3 v999] zone P1 masque «C» dur 0
+        ↳ sous-sort 32452 « Flèche Fulminante » grade 3
+        951 Enlève l'état [0-0 v3551] état 3551 « Flèche Fulminante (cible) » zone A1 masque «a,A» dur 0
+        951 Enlève l'état [0-0 v570] état 570 « Flèche Fulminante (touché) » zone A1 masque «a,A» dur 0
+        406 Enlève les effets du sort [0-0 v32452] zone P1 masque «C» dur 0
+      (critique : 5 effets, mêmes types)
+P22 base  Acuité Absolue (32469) grade 2 [grades:niv 1:90 2:157] 2 PA PO 0-0 sans LdV ∞/tour ∞/cible relance 4 rel.init 1 cumul -1 CC 0% 
+      280 : + Portée minimale [32455-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32443-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32435-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32426-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32444-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32453-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32427-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32436-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32428-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32445-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32437-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32454-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32456-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32438-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32429-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32446-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32531-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32459-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32708-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32449-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32439-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32433-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32458-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32448-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32447-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32457-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32431-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32441-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32472-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32473-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32460-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32442-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32432-0 v3] zone P1 masque «C» dur 1
+      280 : + Portée minimale [32450-0 v3] zone P1 masque «C» dur 1
+      289 : ligne de vue désactivée [0-0 v1] zone P1 masque «C» dur 1
+      115 }% Critique [15-0 v0] zone P1 masque «C» dur 1
+      406 Enlève les effets du sort [0-0 v32469] zone P1 masque «C» dur 0 décl TE
+      (critique : 0 effets, mêmes types)
+P22 var.  Sentinelle (32475) grade 1 [grades:niv 1:200] 2 PA PO 0-0 sans LdV ∞/tour ∞/cible relance 5 rel.init 1 cumul 10 CC 0% global 1/tour
+      335 Change l'apparence [0-0 v2668] zone P1 masque «C» dur 2
+      335 Change l'apparence [0-0 v3436] zone P1 masque «C» dur 2
+      2804 }% Dommages distance [20-0 v0] zone P1 masque «C» dur 2
+      117 } Portée [10-0 v0] zone P1 masque «C» dur 2
+      1160  [32479-1 v999] zone C63 masque «A» dur 0
+        ↳ sous-sort 32479 « Sentinelle » grade 1
+        202 Dévoile les entités invisibles [0-0 v0] zone P1 masque «A» dur 0
+      2805 -}% Dommages distance [2-0 v0] zone P1 masque «C» dur 2 décl CCMPARR
+      116 -} Portée [1-0 v0] zone P1 masque «C» dur 2 décl CCMPARR
+      3793  [0-0 v22967] zone P1 masque «C» dur 0 délai 2
+      406 Enlève les effets du sort [0-0 v32475] zone P1 masque «C» dur 0 délai 2
+      (critique : 0 effets, mêmes types)

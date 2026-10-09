@@ -1,0 +1,96 @@
+{
+  "_fixture": {
+    "source": "data/dofusdb/monsters.json (extraction DofusDB du 2026-10-04, schéma 3.6, game.version 3.6)",
+    "licence": "Données DofusDB (LPNC-IA 1.0, usage non commercial) ; utilisation autorisée pour ce projet selon le README (« Sources et licences »).",
+    "extrait": "Grades normalisés (format de monsters.json), tels quels, des monstres des fixtures 3.7 et aux mêmes grades ; figés pour garder la référence 3.6 des tests après une ré-extraction 3.7."
+  },
+  "monsters": [
+    {
+      "id": 53,
+      "name": {
+        "fr": "Bwork Mage",
+        "en": "Bwork Magus"
+      },
+      "isBoss": false,
+      "tags": [
+        "fire",
+        "air",
+        "lifeSteal",
+        "multi",
+        "push",
+        "summon"
+      ],
+      "grades": [
+        {"grade":1,"level":42,"lifePoints":480,"actionPoints":7,"movementPoints":5,"vitality":0,"wisdom":112,"strength":0,"intelligence":144,"chance":0,"agility":144,"neutralResistance":2,"earthResistance":0,"fireResistance":5,"waterResistance":2,"airResistance":0,"paDodge":10,"pmDodge":10,"damageReflect":0,"bonusRange":0,"gradeXp":7870},
+        {"grade":3,"level":46,"lifePoints":550,"actionPoints":7,"movementPoints":5,"vitality":0,"wisdom":126,"strength":0,"intelligence":162,"chance":0,"agility":162,"neutralResistance":6,"earthResistance":0,"fireResistance":9,"waterResistance":6,"airResistance":0,"paDodge":10,"pmDodge":10,"damageReflect":0,"bonusRange":0,"gradeXp":8850},
+        {"grade":5,"level":50,"lifePoints":630,"actionPoints":7,"movementPoints":5,"vitality":0,"wisdom":140,"strength":0,"intelligence":180,"chance":0,"agility":180,"neutralResistance":10,"earthResistance":0,"fireResistance":13,"waterResistance":10,"airResistance":0,"paDodge":10,"pmDodge":10,"damageReflect":0,"bonusRange":0,"gradeXp":9840}
+      ]
+    },
+    {
+      "id": 1045,
+      "name": {
+        "fr": "Kimbo",
+        "en": "Kimbo"
+      },
+      "isBoss": true,
+      "tags": [
+        "boostAgility",
+        "summon",
+        "air",
+        "lifeSteal",
+        "push",
+        "tp"
+      ],
+      "grades": [
+        {"grade":5,"level":160,"lifePoints":10000,"actionPoints":10,"movementPoints":7,"vitality":0,"wisdom":800,"strength":800,"intelligence":800,"chance":9999,"agility":800,"neutralResistance":400,"earthResistance":400,"fireResistance":400,"waterResistance":400,"airResistance":400,"paDodge":0,"pmDodge":0,"damageReflect":0,"bonusRange":0,"gradeXp":1290240}
+      ]
+    },
+    {
+      "id": 3112,
+      "name": {
+        "fr": "Explobombe",
+        "en": "Explobomb"
+      },
+      "isBoss": false,
+      "grades": [
+        {"grade":1,"level":1,"lifePoints":0,"actionPoints":0,"movementPoints":0,"vitality":10,"wisdom":0,"strength":0,"intelligence":0,"chance":0,"agility":0,"neutralResistance":10,"earthResistance":10,"fireResistance":30,"waterResistance":10,"airResistance":10,"paDodge":0,"pmDodge":0,"damageReflect":0,"bonusRange":0,"gradeXp":0,"startingSpellId":42004,"bonusCharacteristics":{"lifePoints":90,"strength":100,"wisdom":100,"chance":100,"agility":100,"intelligence":100,"bonusEarthDamage":100,"bonusFireDamage":100,"bonusWaterDamage":100,"bonusAirDamage":100}}
+      ]
+    },
+    {
+      "id": 3534,
+      "name": {
+        "fr": "Merkator",
+        "en": "Merkator"
+      },
+      "isBoss": true,
+      "tags": [
+        "water",
+        "earth",
+        "summon"
+      ],
+      "grades": [
+        {"grade":5,"level":220,"lifePoints":19000,"actionPoints":20,"movementPoints":6,"vitality":0,"wisdom":700,"strength":700,"intelligence":700,"chance":700,"agility":700,"neutralResistance":14,"earthResistance":27,"fireResistance":16,"waterResistance":22,"airResistance":12,"paDodge":0,"pmDodge":30,"damageReflect":0,"bonusRange":0,"gradeXp":3200000,"startingSpellId":21491}
+      ]
+    },
+    {
+      "id": 3835,
+      "name": {
+        "fr": "Vortex",
+        "en": "Vortex"
+      },
+      "isBoss": true,
+      "tags": [
+        "boostAP",
+        "debuff",
+        "air",
+        "fire",
+        "multi",
+        "tp"
+      ],
+      "grades": [
+        {"grade":1,"level":220,"lifePoints":15000,"actionPoints":16,"movementPoints":5,"vitality":0,"wisdom":800,"strength":800,"intelligence":800,"chance":800,"agility":800,"neutralResistance":6,"earthResistance":33,"fireResistance":12,"waterResistance":21,"airResistance":28,"paDodge":0,"pmDodge":20,"damageReflect":0,"bonusRange":0,"gradeXp":1800000,"startingSpellId":22886},
+        {"grade":5,"level":220,"lifePoints":22000,"actionPoints":16,"movementPoints":5,"vitality":0,"wisdom":800,"strength":800,"intelligence":800,"chance":800,"agility":800,"neutralResistance":6,"earthResistance":33,"fireResistance":12,"waterResistance":21,"airResistance":28,"paDodge":0,"pmDodge":20,"damageReflect":0,"bonusRange":0,"gradeXp":3800000,"startingSpellId":22886}
+      ]
+    }
+  ]
+}

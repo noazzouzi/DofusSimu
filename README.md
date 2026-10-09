@@ -1,10 +1,10 @@
 # DofusSimu
 
 Simulateur de combats et d'équipements pour **Dofus** : données du jeu (équipements, panoplies, exos,
-classes et sorts, monstres, donjons et cartes), calcul de dégâts exact (formules DoMath), moteur de combat
-tour par tour avec **replays animés**, IA des monstres et IA de groupe (4 personnages), optimiseurs des **builds**
-(stuff, exos, points, variantes de sorts) et de la stratégie par simulation massive, pour une composition d'équipe
-**choisie par l'utilisateur**.
+classes et sorts, monstres, donjons et cartes), calcul de dégâts selon DoMath (vérifié contre DoMath, pas encore
+contre le jeu), moteur de combat tour par tour avec **replays animés**, IA des monstres et IA de groupe
+(4 personnages), optimiseurs des **builds** (stuff, exos, points, variantes de sorts) et de la stratégie par
+simulation massive, pour une composition d'équipe **choisie par l'utilisateur**.
 
 Démo cible : **Œil de Vortex** (donjon de dimension Xélorium, niveau 200, combat de vagues + boss Vortex).
 
@@ -12,12 +12,65 @@ Démo cible : **Œil de Vortex** (donjon de dimension Xélorium, niveau 200, com
 
 ```bash
 npm install
-npm run dev          # interface web sur http://localhost:5173 : combats (replays) et stuffs (#stuffs)
+npm run dev          # interface web sur http://localhost:5173 : combats (replays), stuffs (#stuffs), boss (#boss)
 npm test             # tests unitaires
 npm run fetch:data   # (re)télécharge les données du jeu depuis l'API DofusDB
 ```
 
 ## Utilisation
+
+### Theorycraft contre un boss
+
+Pour un joueur seul en PvM, deux questions sur n'importe quel boss de donjon (137 boss, 162 avec les Expéditions) :
+**quel stuff est le plus intéressant contre ce boss ?** (pour un preset, votre build ou un lien RoxxSolver) et
+**quelles classes sont les plus intéressantes contre ce boss ?** (19 classes, 49 presets, classées axe par axe :
+dégâts, survie, contrôle, soin, apport d'équipe, sans note globale, avec une composition suggérée par des règles
+écrites). Réponses **déterministes** et explicables : aucun combat d'IA, une fiche du boss calculée depuis les données
+(sort de départ, profil offensif par phase, mécaniques) contre laquelle chaque personnage est mesuré (DPT soutenu sur
+plusieurs tours, PV effectifs, retraits, soins), hypothèses et avertissements affichés. Une fiche du boss en quelques
+millisecondes, le classement des classes en moins d'une seconde, un meilleur stuff en 2,5 à 5 s.
+
+```bash
+npm run sim -- bosses [recherche] [--all] [--json]                  # liste / recherche (nom du boss ou du donjon)
+npm run sim -- boss <nom|id> [--players N | --grade G] [--details] [--no-overrides] [--all]
+                             [--bosses-dir D] [--json]                                               # fiche
+npm run sim -- boss <nom|id> classes [--players N | --grade G] [--optimize [--iterations N] [--profile P]]
+                                     [--level L] [--json] [--out fichier]                            # classes
+npm run sim -- boss <nom|id> stuff --class <classe|preset> [--roxx <lien> | --build fichier.json]
+                                   [--elements preset|all] [--profile balanced|defensive|offensive] [--top N]
+                                   [--iterations N] [--restarts N] [--seed S] [--level L] [--range N]
+                                   [--fixed ids] [--exclude ids] [--out fichier.json] [--json]       # stuff
+npm run sim -- degats --preset <preset> [--build fichier.json | --roxx <lien>] --sort <nom|id>     # UN sort
+                      [--boss <nom|id> [--players N | --grade G] [--no-overrides] [--all]] [--res n,t,f,e,a]
+                      [--melee | --distance] [--crit] [--trace] [--json]
+
+npm run sim -- boss "pere ver" classes                      # quelles classes contre le Père Ver ?
+npm run sim -- boss merkator stuff --class cra_terre_mono   # quel stuff pour ce Crâ contre Merkator ?
+```
+
+Le grade du boss se déduit du nombre de joueurs (`joueurs − 3`, borné à 1..5 ; 4 joueurs par défaut ⇒ grade 1) ; avec
+`--grade G`, la composition suggérée par `classes` compte G + 3 personnages (8 au plus), comme la page web. Un coup est
+de mêlée dès que la cible est adjacente, quelle que soit la portée du sort (règle du jeu) : contre un boss invulnérable
+à distance (Père Ver), un sort de portée 1 à N compte au contact. `--class cra` prend le premier preset de base de la
+classe et liste les autres (avec `--roxx` / `--build` : le preset de l'élément du build ; donner le preset pour imposer
+le rôle) ; `--iterations` et `--profile` de `classes` exigent `--optimize` ; `--out` écrit le meilleur stuff au format
+`build` des fichiers d'équipe (relu par `--build`, utilisable dans `data/teams/`). `degats` calcule un sort ligne par
+ligne (min-max normal et critique, chance de critique, espérance ; `--trace` : calcul étape par étape) pour vérifier en
+jeu, par exemple sur un Poutch : au contact et à distance pour un sort de portée 1 à N (`--melee` ou `--distance` pour
+n'en garder qu'un). Une option inconnue de la commande est une erreur. Une fiche manuelle `data/bosses/<id>.json`
+(mécaniques, résistances réellement subies, phases ; règles de sources dans
+[`data/bosses/README.md`](data/bosses/README.md)) complète les données quand elle existe ; toutes les commandes `boss`
+et `degats --boss` acceptent `--no-overrides` (fiche ignorée) et `--bosses-dir D` (fiches lues dans un autre dossier).
+
+**Page web** : `npm run dev`, onglet **Boss** (`http://localhost:5173/#boss`, état dans l'adresse :
+`#boss/<monsterId>[/classes|/stuff]`) — recherche, fiche du boss, onglet Classes (tableaux triables, composition,
+stuffs optimisés à la demande) et onglet Stuff (preset, lien RoxxSolver, éléments, profil) ; serveur de développement
+seulement (onglet absent de la version construite).
+
+Guide complet (lire les résultats, hypothèses et limites, écrire une fiche de boss, vérifier en jeu, passer aux
+données 3.7) : [`docs/theorycraft.md`](docs/theorycraft.md) ; conception et état du code :
+[`docs/design/theorycraft.md`](docs/design/theorycraft.md). Données de la version **3.6** du jeu (extraction du
+2026-10-04) : la 3.7, sortie le 2026-10-06, n'est pas intégrée.
 
 ### Composition de l'utilisateur
 
@@ -149,9 +202,11 @@ le point de départ d'`optimize`, sauf s'il est imposé (case « Build imposé �
 | `src/ai` | IA monstres (génériques + spécifiques boss) et IA joueurs/groupe (recherche) |
 | `src/dungeons` | Scénarios (vagues, phases de boss) |
 | `src/optimizer` | Monte-Carlo, optimiseur de stuff (exos, transcendances, points), variantes, θ, builds d'une composition donnée (`builds.ts`), recherche de composition (opt-in), rapports |
-| `src/cli` | Ligne de commande (`npm run sim -- …`) : fight, batch, optimize, stuff, report, tune, rewind, team, bench, presets |
+| `src/theorycraft` | Theorycraft déterministe contre un boss : index et fiche des boss, fiches manuelles, DPT soutenu, postures, utilités, classement des classes, meilleur stuff (`index.ts` pur, `analysis.ts`, `node.ts`) |
+| `src/cli` | Ligne de commande (`npm run sim -- …`) : fight, batch, optimize, stuff, report, tune, rewind, team, bench, presets ; theorycraft : bosses, boss, degats |
 | `data/teams/` | Composition choisie par l'utilisateur pour chaque donjon (`vortex.json`) |
-| `web/` | Interface : visualiseur de combats animés, stuffs des personnages (`web/src/stuffs.ts`), constructeur d'équipe, calculateur |
+| `data/bosses/` | Fiches manuelles des boss pour le theorycraft (`<monsterId>.json`, modèle `_template.json`, règles de sources) |
+| `web/` | Interface : visualiseur de combats animés, stuffs des personnages (`web/src/stuffs.ts`), constructeur d'équipe, theorycraft contre un boss (`#boss`), calculateur |
 
 Voir [`docs/ROADMAP.md`](docs/ROADMAP.md) pour l'avancement par checkpoint.
 

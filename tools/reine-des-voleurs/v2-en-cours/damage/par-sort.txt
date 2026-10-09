@@ -1,0 +1,285 @@
+Crâ : 12 PA 5 PM 4 PO | Fo 579 Int 728 Cha 290 Agi 519 Pui 169 | Do N/T/F/E/A 56/67/84/38/45 | CC 79 % DoCri 95 | %sorts 10 %dist 6
+Valeurs : dégâts moyens par LANCER (critique pondéré), coup à distance. calc = 1er lancer analytique ; 1er = moteur, cible neuve ; rég = moteur, régime établi au rythme max.
+
+P1 base Flèche de Recul (32426) 3 PA, PO 1-10, 3/tour 2/cible, relance 0, CC 10+79 → 89 %
+    élément(s) : Air ; mesure à d = 4 en ligne
+    Reine         calc    358 | 1er    358 | rég    358/lancer × 2.00 lancers/tour =    716/tour | ×0,9ⁿ n=1..4 : 322 / 290 / 261 / 235
+    Mâchassin     calc    526 | 1er    526 | rég    526/lancer × 2.00 lancers/tour =  1 052/tour
+    Terristocrate calc    328 | 1er    328 | rég    328/lancer × 2.00 lancers/tour =    656/tour
+    Doublure      calc    306 | 1er    306 | rég    306/lancer × 2.00 lancers/tour =    612/tour
+    Bourôliste    calc    372 | 1er    372 | rég    372/lancer × 2.00 lancers/tour =    744/tour
+    Magouille     calc    394 | 1er    394 | rég    394/lancer × 2.00 lancers/tour =    788/tour
+P1 var. Flèche Éclatante (32449) 3 PA, PO 3-11, 1/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Feu ; mesure à d = 4 en ligne
+    Reine         calc    303 | 1er    303 | rég    303/lancer × 1.00 lancers/tour =    303/tour | ×0,9ⁿ n=1..4 : 273 / 245 / 221 / 199
+    Mâchassin     calc    366 | 1er    366 | rég    366/lancer × 1.00 lancers/tour =    366/tour
+    Terristocrate calc    471 | 1er    471 | rég    471/lancer × 1.00 lancers/tour =    471/tour
+    Doublure      calc    392 | 1er    392 | rég    392/lancer × 1.00 lancers/tour =    392/tour
+    Bourôliste    calc    627 | 1er    627 | rég    627/lancer × 1.00 lancers/tour =    627/tour
+    Magouille     calc    444 | 1er    444 | rég    444/lancer × 1.00 lancers/tour =    444/tour
+P2 base Flèche Glacée (32435) 3 PA, PO 1-11, 3/tour 2/cible, relance 0, CC 10+79 → 89 %
+    élément(s) : Eau ; mesure à d = 4 en ligne
+    Reine         calc    272 | 1er    272 | rég    318/lancer × 2.00 lancers/tour =    636/tour | ×0,9ⁿ n=1..4 : 286 / 258 / 232 / 209
+    Mâchassin     calc    282 | 1er    282 | rég    329/lancer × 2.00 lancers/tour =    658/tour
+    Terristocrate calc    376 | 1er    376 | rég    439/lancer × 2.00 lancers/tour =    878/tour
+    Doublure      calc    266 | 1er    266 | rég    310/lancer × 2.00 lancers/tour =    620/tour
+    Bourôliste    calc    235 | 1er    235 | rég    274/lancer × 2.00 lancers/tour =    548/tour
+    Magouille     calc    219 | 1er    219 | rég    255/lancer × 2.00 lancers/tour =    510/tour
+P2 var. Flèche Harcelante (32708) 3 PA, PO 1-10 sans LdV, 3/tour 1/cible, relance 0, CC 10+79 → 89 %
+    élément(s) : Air ; mesure à d = 4 en ligne
+    Reine         calc      0 | 1er    176 | rég    176/lancer × 1.00 lancers/tour =    176/tour | ×0,9ⁿ n=1..4 : 158 / 143 / 128 / 115
+    Mâchassin     calc      0 | 1er    259 | rég    259/lancer × 1.00 lancers/tour =    259/tour
+    Terristocrate calc      0 | 1er    161 | rég    161/lancer × 1.00 lancers/tour =    161/tour
+    Doublure      calc      0 | 1er    150 | rég    150/lancer × 1.00 lancers/tour =    150/tour
+    Bourôliste    calc      0 | 1er    183 | rég    183/lancer × 1.00 lancers/tour =    183/tour
+    Magouille     calc      0 | 1er    194 | rég    194/lancer × 1.00 lancers/tour =    194/tour
+P3 base Flèche Vagabonde (32455) 3 PA, PO 1-12 en ligne, 2/tour ∞/cible, relance 0, CC 10+79 → 89 %
+    élément(s) : Terre ; mesure à d = 4 en ligne
+    Reine         calc    373 | 1er    373 | rég    373/lancer × 2.00 lancers/tour =    746/tour | ×0,9ⁿ n=1..4 : 336 / 302 / 272 / 245
+    Mâchassin     calc    429 | 1er    429 | rég    429/lancer × 2.00 lancers/tour =    858/tour
+    Terristocrate calc    353 | 1er    353 | rég    353/lancer × 2.00 lancers/tour =    706/tour
+    Doublure      calc    606 | 1er    606 | rég    606/lancer × 2.00 lancers/tour =  1 212/tour
+    Bourôliste    calc    454 | 1er    454 | rég    454/lancer × 2.00 lancers/tour =    908/tour
+    Magouille     calc    378 | 1er    378 | rég    378/lancer × 2.00 lancers/tour =    756/tour
+P3 var. Flèche Évasive (32531) 3 PA, PO 1-11, 2/tour 1/cible, relance 0, CC 10+79 → 89 %
+    élément(s) : Eau ; mesure à d = 4 en ligne
+    Reine         calc    306 | 1er    306 | rég    306/lancer × 1.00 lancers/tour =    306/tour | ×0,9ⁿ n=1..4 : 275 / 248 / 223 / 201
+    Mâchassin     calc    317 | 1er    317 | rég    317/lancer × 1.00 lancers/tour =    317/tour
+    Terristocrate calc    423 | 1er    423 | rég    423/lancer × 1.00 lancers/tour =    423/tour
+    Doublure      calc    299 | 1er    299 | rég    299/lancer × 1.00 lancers/tour =    299/tour
+    Bourôliste    calc    264 | 1er    264 | rég    264/lancer × 1.00 lancers/tour =    264/tour
+    Magouille     calc    246 | 1er    246 | rég    246/lancer × 1.00 lancers/tour =    246/tour
+P4 base Flèche de Barrage (32443) 3 PA, PO 1-11 en ligne, 2/tour ∞/cible, relance 0, CC 10+79 → 89 %
+    élément(s) : Feu ; mesure à d = 4 en ligne
+    Reine         calc    314 | 1er    314 | rég    314/lancer × 2.00 lancers/tour =    628/tour | ×0,9ⁿ n=1..4 : 283 / 254 / 229 / 206
+    Mâchassin     calc    380 | 1er    380 | rég    380/lancer × 2.00 lancers/tour =    760/tour
+    Terristocrate calc    489 | 1er    489 | rég    489/lancer × 2.00 lancers/tour =    978/tour
+    Doublure      calc    407 | 1er    407 | rég    407/lancer × 2.00 lancers/tour =    814/tour
+    Bourôliste    calc    652 | 1er    652 | rég    652/lancer × 2.00 lancers/tour =  1 304/tour
+    Magouille     calc    461 | 1er    461 | rég    461/lancer × 2.00 lancers/tour =    922/tour
+P4 var. Carreaux Destructeurs (32459) 4 PA, PO 1-3 en ligne, 2/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Terre ; mesure à d = 3 en ligne
+    Reine         calc    481 | 1er    481 | rég    481/lancer × 2.00 lancers/tour =    962/tour | ×0,9ⁿ n=1..4 : 433 / 390 / 351 / 316
+    Mâchassin     calc    553 | 1er    553 | rég    553/lancer × 2.00 lancers/tour =  1 106/tour
+    Terristocrate calc    455 | 1er    455 | rég    455/lancer × 2.00 lancers/tour =    910/tour
+    Doublure      calc    781 | 1er    781 | rég    781/lancer × 2.00 lancers/tour =  1 562/tour
+    Bourôliste    calc    585 | 1er    585 | rég    585/lancer × 2.00 lancers/tour =  1 170/tour
+    Magouille     calc    487 | 1er    487 | rég    487/lancer × 2.00 lancers/tour =    974/tour
+P5 base Pas Chassé (32464) 2 PA, PO 1-2 en ligne, ∞/tour ∞/cible, relance 2, CC 0+79 → 79 % — pas de dégâts directs
+P5 var. Balise Tactique (32467) 1 PA, PO 1-12, ∞/tour ∞/cible, relance 2, CC 0+79 → 79 % — pas de dégâts directs
+P6 base Tirs Éloignés (32465) 1 PA, PO 0-0 sans LdV, ∞/tour ∞/cible, relance 2, CC 0+79 → 79 % — pas de dégâts directs
+P6 var. Tir Perçant (32471) 1 PA, PO 1-10, 2/tour 1/cible, relance 0, CC 0+79 → 79 % — pas de dégâts directs
+P7 base Flèche Détonante (32444) 2 PA, PO 1-10, 3/tour 2/cible, relance 0, CC 5+79 → 84 %
+    élément(s) : Feu ; mesure à d = 4 en ligne
+    Reine         calc    236 | 1er    236 | rég    236/lancer × 2.00 lancers/tour =    472/tour | ×0,9ⁿ n=1..4 : 212 / 191 / 172 / 155
+    Mâchassin     calc    285 | 1er    285 | rég    285/lancer × 2.00 lancers/tour =    570/tour
+    Terristocrate calc    367 | 1er    367 | rég    367/lancer × 2.00 lancers/tour =    734/tour
+    Doublure      calc    306 | 1er    306 | rég    306/lancer × 2.00 lancers/tour =    612/tour
+    Bourôliste    calc    490 | 1er    490 | rég    490/lancer × 2.00 lancers/tour =    980/tour
+    Magouille     calc    347 | 1er    347 | rég    347/lancer × 2.00 lancers/tour =    694/tour
+P7 var. Flèche Ralentissante (32439) 4 PA, PO 1-10 en ligne, 1/tour ∞/cible, relance 0, CC 20+79 → 99 %
+    élément(s) : Eau ; mesure à d = 4 en ligne
+    Reine         calc    356 | 1er    356 | rég    356/lancer × 1.00 lancers/tour =    356/tour | ×0,9ⁿ n=1..4 : 320 / 288 / 260 / 234
+    Mâchassin     calc    368 | 1er    368 | rég    368/lancer × 1.00 lancers/tour =    368/tour
+    Terristocrate calc    492 | 1er    492 | rég    492/lancer × 1.00 lancers/tour =    492/tour
+    Doublure      calc    347 | 1er    347 | rég    347/lancer × 1.00 lancers/tour =    347/tour
+    Bourôliste    calc    306 | 1er    306 | rég    306/lancer × 1.00 lancers/tour =    306/tour
+    Magouille     calc    286 | 1er    286 | rég    286/lancer × 1.00 lancers/tour =    286/tour
+P8 base Flèche d'Abolition (32453) 2 PA, PO 3-11, 3/tour ∞/cible, relance 0, CC 5+79 → 84 %
+    élément(s) : Terre ; mesure à d = 4 en ligne
+    Reine         calc      0 | 1er    216 | rég    216/lancer × 3.00 lancers/tour =    648/tour | ×0,9ⁿ n=1..4 : 194 / 175 / 157 / 142
+    Mâchassin     calc      0 | 1er    249 | rég    249/lancer × 3.00 lancers/tour =    747/tour
+    Terristocrate calc      0 | 1er    205 | rég    205/lancer × 3.00 lancers/tour =    615/tour
+    Doublure      calc      0 | 1er    352 | rég    352/lancer × 3.00 lancers/tour =  1 056/tour
+    Bourôliste    calc      0 | 1er    263 | rég    263/lancer × 3.00 lancers/tour =    789/tour
+    Magouille     calc      0 | 1er    220 | rég    220/lancer × 3.00 lancers/tour =    660/tour
+P8 var. Flèche Persécutrice (32433) 4 PA, PO 3-13, 2/tour 1/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Air ; mesure à d = 4 en ligne
+    Reine         calc    450 | 1er    762 | rég    762/lancer × 1.00 lancers/tour =    762/tour | ×0,9ⁿ n=1..4 : 686 / 617 / 555 / 500
+    Mâchassin     calc    660 | 1er  1 118 | rég  1 118/lancer × 1.00 lancers/tour =  1 118/tour
+    Terristocrate calc    412 | 1er    698 | rég    698/lancer × 1.00 lancers/tour =    698/tour
+    Doublure      calc    385 | 1er    651 | rég    651/lancer × 1.00 lancers/tour =    651/tour
+    Bourôliste    calc    467 | 1er    791 | rég    791/lancer × 1.00 lancers/tour =    791/tour
+    Magouille     calc    495 | 1er    838 | rég    838/lancer × 1.00 lancers/tour =    838/tour
+P9 base Flèche Cinglante (32427) 2 PA, PO 1-11, 3/tour 2/cible, relance 0, CC 5+79 → 84 %
+    élément(s) : Air ; mesure à d = 4 en ligne
+    Reine         calc    270 | 1er    270 | rég    270/lancer × 2.00 lancers/tour =    540/tour | ×0,9ⁿ n=1..4 : 243 / 219 / 197 / 177
+    Mâchassin     calc    396 | 1er    396 | rég    396/lancer × 2.00 lancers/tour =    792/tour
+    Terristocrate calc    247 | 1er    247 | rég    247/lancer × 2.00 lancers/tour =    494/tour
+    Doublure      calc    230 | 1er    230 | rég    230/lancer × 2.00 lancers/tour =    460/tour
+    Bourôliste    calc    280 | 1er    280 | rég    280/lancer × 2.00 lancers/tour =    560/tour
+    Magouille     calc    297 | 1er    297 | rég    297/lancer × 2.00 lancers/tour =    594/tour
+P9 var. Flèche Assaillante (32458) 3 PA, PO 1-7, 2/tour ∞/cible, relance 0, CC 10+79 → 89 %
+    élément(s) : Terre ; mesure à d = 4 en ligne
+    Reine         calc    340 | 1er    322 | rég    340/lancer × 2.00 lancers/tour =    679/tour | ×0,9ⁿ n=1..4 : 306 / 275 / 247 / 223
+    Mâchassin     calc    391 | 1er    370 | rég    391/lancer × 2.00 lancers/tour =    781/tour
+    Terristocrate calc    322 | 1er    304 | rég    321/lancer × 2.00 lancers/tour =    642/tour
+    Doublure      calc    553 | 1er    522 | rég    551/lancer × 2.00 lancers/tour =  1 102/tour
+    Bourôliste    calc    415 | 1er    392 | rég    413/lancer × 2.00 lancers/tour =    826/tour
+    Magouille     calc    345 | 1er    326 | rég    344/lancer × 2.00 lancers/tour =    688/tour
+P10 base Flèche d'Immobilisation (32436) 2 PA, PO 1-11, 4/tour 2/cible, relance 0, CC 5+79 → 84 %
+    élément(s) : Eau ; mesure à d = 4 en ligne
+    Reine         calc    200 | 1er    200 | rég    245/lancer × 2.00 lancers/tour =    490/tour | ×0,9ⁿ n=1..4 : 221 / 198 / 179 / 161
+    Mâchassin     calc    206 | 1er    206 | rég    254/lancer × 2.00 lancers/tour =    508/tour
+    Terristocrate calc    276 | 1er    276 | rég    339/lancer × 2.00 lancers/tour =    678/tour
+    Doublure      calc    195 | 1er    195 | rég    239/lancer × 2.00 lancers/tour =    478/tour
+    Bourôliste    calc    172 | 1er    172 | rég    211/lancer × 2.00 lancers/tour =    422/tour
+    Magouille     calc    160 | 1er    160 | rég    197/lancer × 2.00 lancers/tour =    394/tour
+P10 var. Flèche Tyrannique (32448) 4 PA, PO 2-12, 2/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Feu ; mesure à d = 4 en ligne
+    Reine         calc    355 | 1er    551 | rég    453/lancer × 2.00 lancers/tour =    906/tour | ×0,9ⁿ n=1..4 : 408 / 367 / 330 / 297
+    Mâchassin     calc    429 | 1er    667 | rég    548/lancer × 2.00 lancers/tour =  1 096/tour
+    Terristocrate calc    553 | 1er    859 | rég    706/lancer × 2.00 lancers/tour =  1 412/tour
+    Doublure      calc    460 | 1er    714 | rég    587/lancer × 2.00 lancers/tour =  1 174/tour
+    Bourôliste    calc    737 | 1er  1 145 | rég    941/lancer × 2.00 lancers/tour =  1 882/tour
+    Magouille     calc    521 | 1er    810 | rég    666/lancer × 2.00 lancers/tour =  1 331/tour
+P11 base Tirs Puissants (32466) 1 PA, PO 0-0 sans LdV, ∞/tour ∞/cible, relance 2, CC 5+79 → 84 % — pas de dégâts directs
+P11 var. Flèches Amoureuses (32618) 3 PA, PO 0-12 en ligne, 2/tour 1/cible, relance 0, CC 10+79 → 89 % — pas de dégâts directs
+P12 base Flèche de Dispersion (32428) 3 PA, PO 2-10, 1/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Air ; mesure à d = 4 en ligne
+    Reine         calc    328 | 1er    328 | rég    328/lancer × 1.00 lancers/tour =    328/tour | ×0,9ⁿ n=1..4 : 295 / 266 / 239 / 215
+    Mâchassin     calc    481 | 1er    481 | rég    481/lancer × 1.00 lancers/tour =    481/tour
+    Terristocrate calc    300 | 1er    300 | rég    300/lancer × 1.00 lancers/tour =    300/tour
+    Doublure      calc    279 | 1er    279 | rég    279/lancer × 1.00 lancers/tour =    279/tour
+    Bourôliste    calc    340 | 1er    340 | rég    340/lancer × 1.00 lancers/tour =    340/tour
+    Magouille     calc    360 | 1er    360 | rég    360/lancer × 1.00 lancers/tour =    360/tour
+P12 var. Flèches Enflammées (32447) 4 PA, PO 1-7 en ligne, 2/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Feu ; mesure à d = 4 en ligne
+    Reine         calc    405 | 1er    405 | rég    405/lancer × 2.00 lancers/tour =    810/tour | ×0,9ⁿ n=1..4 : 365 / 328 / 295 / 266
+    Mâchassin     calc    489 | 1er    489 | rég    489/lancer × 2.00 lancers/tour =    978/tour
+    Terristocrate calc    630 | 1er    630 | rég    630/lancer × 2.00 lancers/tour =  1 260/tour
+    Doublure      calc    525 | 1er    525 | rég    525/lancer × 2.00 lancers/tour =  1 050/tour
+    Bourôliste    calc    841 | 1er    841 | rég    841/lancer × 2.00 lancers/tour =  1 682/tour
+    Magouille     calc    595 | 1er    595 | rég    595/lancer × 2.00 lancers/tour =  1 190/tour
+P13 base Flèche Explosive (32445) 4 PA, PO 4-11, 1/tour ∞/cible, relance 0, CC 20+79 → 99 %
+    élément(s) : Feu ; mesure à d = 4 en ligne
+    Reine         calc    378 | 1er    378 | rég    378/lancer × 1.00 lancers/tour =    378/tour | ×0,9ⁿ n=1..4 : 340 / 306 / 276 / 248
+    Mâchassin     calc    456 | 1er    456 | rég    456/lancer × 1.00 lancers/tour =    456/tour
+    Terristocrate calc    587 | 1er    587 | rég    587/lancer × 1.00 lancers/tour =    587/tour
+    Doublure      calc    489 | 1er    489 | rég    489/lancer × 1.00 lancers/tour =    489/tour
+    Bourôliste    calc    783 | 1er    783 | rég    783/lancer × 1.00 lancers/tour =    783/tour
+    Magouille     calc    554 | 1er    554 | rég    554/lancer × 1.00 lancers/tour =    554/tour
+P13 var. Flèche Massacrante (32457) 4 PA, PO 2-11 en ligne, 2/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Terre ; mesure à d = 4 en ligne
+    Reine         calc    368 | 1er    456 | rég    456/lancer × 2.00 lancers/tour =    912/tour | ×0,9ⁿ n=1..4 : 410 / 369 / 332 / 299
+    Mâchassin     calc    423 | 1er    524 | rég    524/lancer × 2.00 lancers/tour =  1 048/tour
+    Terristocrate calc    348 | 1er    432 | rég    432/lancer × 2.00 lancers/tour =    864/tour
+    Doublure      calc    598 | 1er    741 | rég    741/lancer × 2.00 lancers/tour =  1 482/tour
+    Bourôliste    calc    448 | 1er    555 | rég    555/lancer × 2.00 lancers/tour =  1 110/tour
+    Magouille     calc    373 | 1er    463 | rég    463/lancer × 2.00 lancers/tour =    926/tour
+P14 base Œil de Taupe (32437) 3 PA, PO 3-10, 1/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Eau ; mesure à d = 4 en ligne
+    Reine         calc    265 | 1er    265 | rég    265/lancer × 1.00 lancers/tour =    265/tour | ×0,9ⁿ n=1..4 : 239 / 215 / 193 / 174
+    Mâchassin     calc    274 | 1er    274 | rég    274/lancer × 1.00 lancers/tour =    274/tour
+    Terristocrate calc    366 | 1er    366 | rég    366/lancer × 1.00 lancers/tour =    366/tour
+    Doublure      calc    259 | 1er    259 | rég    259/lancer × 1.00 lancers/tour =    259/tour
+    Bourôliste    calc    228 | 1er    228 | rég    228/lancer × 1.00 lancers/tour =    228/tour
+    Magouille     calc    213 | 1er    213 | rég    213/lancer × 1.00 lancers/tour =    213/tour
+P14 var. Pluie de Flèches (32431) 3 PA, PO 0-10, 1/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Air ; mesure à d = 4 en ligne
+    Reine         calc    324 | 1er    531 | rég    531/lancer × 1.00 lancers/tour =    531/tour | ×0,9ⁿ n=1..4 : 478 / 430 / 387 / 348
+    Mâchassin     calc    475 | 1er    779 | rég    779/lancer × 1.00 lancers/tour =    779/tour
+    Terristocrate calc    296 | 1er    485 | rég    485/lancer × 1.00 lancers/tour =    485/tour
+    Doublure      calc    276 | 1er    453 | rég    453/lancer × 1.00 lancers/tour =    453/tour
+    Bourôliste    calc    336 | 1er    551 | rég    551/lancer × 1.00 lancers/tour =    551/tour
+    Magouille     calc    356 | 1er    583 | rég    583/lancer × 1.00 lancers/tour =    583/tour
+P15 base Œil pour Œil (32454) 3 PA, PO 0-9, 1/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Terre ; mesure à d = 4 en ligne
+    Reine         calc    379 | 1er    379 | rég    379/lancer × 1.00 lancers/tour =    379/tour | ×0,9ⁿ n=1..4 : 341 / 307 / 276 / 249
+    Mâchassin     calc    436 | 1er    436 | rég    436/lancer × 1.00 lancers/tour =    436/tour
+    Terristocrate calc    359 | 1er    359 | rég    359/lancer × 1.00 lancers/tour =    359/tour
+    Doublure      calc    616 | 1er    616 | rég    616/lancer × 1.00 lancers/tour =    616/tour
+    Bourôliste    calc    462 | 1er    462 | rég    462/lancer × 1.00 lancers/tour =    462/tour
+    Magouille     calc    385 | 1er    385 | rég    385/lancer × 1.00 lancers/tour =    385/tour
+P15 var. Flèche Paralysante (32441) 4 PA, PO 3-10, 1/tour ∞/cible, relance 0, CC 20+79 → 99 %
+    élément(s) : Eau ; mesure à d = 4 en ligne
+    Reine         calc    350 | 1er    350 | rég    350/lancer × 1.00 lancers/tour =    350/tour | ×0,9ⁿ n=1..4 : 315 / 284 / 255 / 230
+    Mâchassin     calc    362 | 1er    362 | rég    362/lancer × 1.00 lancers/tour =    362/tour
+    Terristocrate calc    483 | 1er    483 | rég    483/lancer × 1.00 lancers/tour =    483/tour
+    Doublure      calc    342 | 1er    342 | rég    342/lancer × 1.00 lancers/tour =    342/tour
+    Bourôliste    calc    302 | 1er    302 | rég    302/lancer × 1.00 lancers/tour =    302/tour
+    Magouille     calc    281 | 1er    281 | rég    281/lancer × 1.00 lancers/tour =    281/tour
+P16 base Balise de Survie (32474) 2 PA, PO 1-4, ∞/tour ∞/cible, relance 3, CC 0+79 → 79 % — pas de dégâts directs
+P16 var. Représailles (32472) 3 PA, PO 3-10, ∞/tour ∞/cible, relance 3, CC 25+79 → 100 %
+    élément(s) : — ; mesure à d = 4 en ligne
+    Reine         calc      0 | 1er      0 | rég      0/lancer × 0.38 lancers/tour =      0/tour (refus Représailles:cooldown×0.6) | ×0,9ⁿ n=1..4 : 0 / 0 / 0 / 0
+    Mâchassin     calc      0 | 1er      0 | rég      0/lancer × 0.38 lancers/tour =      0/tour (refus Représailles:cooldown×0.6)
+    Terristocrate calc      0 | 1er      0 | rég      0/lancer × 0.38 lancers/tour =      0/tour (refus Représailles:cooldown×0.6)
+    Doublure      calc      0 | 1er      0 | rég      0/lancer × 0.38 lancers/tour =      0/tour (refus Représailles:cooldown×0.6)
+    Bourôliste    calc      0 | 1er      0 | rég      0/lancer × 0.38 lancers/tour =      0/tour (refus Représailles:cooldown×0.6)
+    Magouille     calc      0 | 1er      0 | rég      0/lancer × 0.38 lancers/tour =      0/tour (refus Représailles:cooldown×0.6)
+P17 base Tir de Repli (32470) 1 PA, PO 2-12 en ligne, 3/tour 2/cible, relance 0, CC 0+79 → 79 % — pas de dégâts directs
+P17 var. Vendetta (32473) 2 PA, PO 1-10 sans LdV, 1/tour ∞/cible, relance 0, CC 0+79 → 79 %
+    élément(s) : — ; mesure à d = 4 en ligne
+    Reine         calc      0 | 1er      0 | rég      0/lancer × 0.00 lancers/tour =      0/tour (refus Vendetta:cellNotFree×1.0) | ×0,9ⁿ n=1..4 : 0 / 0 / 0 / 0
+    Mâchassin     calc      0 | 1er      0 | rég      0/lancer × 0.00 lancers/tour =      0/tour (refus Vendetta:cellNotFree×1.0)
+    Terristocrate calc      0 | 1er      0 | rég      0/lancer × 0.00 lancers/tour =      0/tour (refus Vendetta:cellNotFree×1.0)
+    Doublure      calc      0 | 1er      0 | rég      0/lancer × 0.00 lancers/tour =      0/tour (refus Vendetta:cellNotFree×1.0)
+    Bourôliste    calc      0 | 1er      0 | rég      0/lancer × 0.00 lancers/tour =      0/tour (refus Vendetta:cellNotFree×1.0)
+    Magouille     calc      0 | 1er      0 | rég      0/lancer × 0.00 lancers/tour =      0/tour (refus Vendetta:cellNotFree×1.0)
+P18 base Flèche Punitive (32456) 4 PA, PO 4-14, 1/tour ∞/cible, relance 0, CC 20+79 → 99 %
+    élément(s) : Terre ; mesure à d = 4 en ligne
+    Reine         calc    418 | 1er    418 | rég    594/lancer × 1.00 lancers/tour =    594/tour | ×0,9ⁿ n=1..4 : 535 / 481 / 433 / 390
+    Mâchassin     calc    481 | 1er    481 | rég    682/lancer × 1.00 lancers/tour =    682/tour
+    Terristocrate calc    395 | 1er    395 | rég    561/lancer × 1.00 lancers/tour =    561/tour
+    Doublure      calc    680 | 1er    680 | rég    964/lancer × 1.00 lancers/tour =    964/tour
+    Bourôliste    calc    509 | 1er    509 | rég    723/lancer × 1.00 lancers/tour =    723/tour
+    Magouille     calc    424 | 1er    424 | rég    602/lancer × 1.00 lancers/tour =    602/tour
+P18 var. Flèche du Jugement (32460) 4 PA, PO 3-13, 2/tour 1/cible, relance 0, CC 20+79 → 99 %
+    élément(s) : Terre ; mesure à d = 4 en ligne
+    Reine         calc    833 | 1er    832 | rég    832/lancer × 1.00 lancers/tour =    832/tour | ×0,9ⁿ n=1..4 : 749 / 674 / 607 / 546
+    Mâchassin     calc    957 | 1er    957 | rég    957/lancer × 1.00 lancers/tour =    957/tour
+    Terristocrate calc    788 | 1er    788 | rég    788/lancer × 1.00 lancers/tour =    788/tour
+    Doublure      calc  1 353 | 1er  1 353 | rég  1 353/lancer × 1.00 lancers/tour =  1 353/tour
+    Bourôliste    calc  1 014 | 1er  1 014 | rég  1 014/lancer × 1.00 lancers/tour =  1 014/tour
+    Magouille     calc    845 | 1er    844 | rég    844/lancer × 1.00 lancers/tour =    844/tour
+P19 base Flèche d'Expiation (32438) 4 PA, PO 6-16, ∞/tour ∞/cible, relance 2, CC 25+79 → 100 %
+    élément(s) : Eau ; mesure à d = 6 en ligne
+    Reine         calc    376 | 1er    376 | rég    785/lancer × 0.50 lancers/tour =    393/tour (refus Flèche d'Expiation:cooldown×5.5) | ×0,9ⁿ n=1..4 : 707 / 636 / 572 / 515
+    Mâchassin     calc    390 | 1er    390 | rég    812/lancer × 0.50 lancers/tour =    406/tour (refus Flèche d'Expiation:cooldown×5.5)
+    Terristocrate calc    520 | 1er    520 | rég  1 084/lancer × 0.50 lancers/tour =    542/tour (refus Flèche d'Expiation:cooldown×5.5)
+    Doublure      calc    368 | 1er    368 | rég    767/lancer × 0.50 lancers/tour =    384/tour (refus Flèche d'Expiation:cooldown×5.5)
+    Bourôliste    calc    324 | 1er    324 | rég    677/lancer × 0.50 lancers/tour =    339/tour (refus Flèche d'Expiation:cooldown×5.5)
+    Magouille     calc    303 | 1er    303 | rég    631/lancer × 0.50 lancers/tour =    316/tour (refus Flèche d'Expiation:cooldown×5.5)
+P19 var. Flèche de Rédemption (32442) 4 PA, PO 4-13, 2/tour ∞/cible, relance 0, CC 15+79 → 94 %
+    élément(s) : Eau ; mesure à d = 4 en ligne
+    Reine         calc    313 | 1er    313 | rég    313/lancer × 2.00 lancers/tour =    626/tour | ×0,9ⁿ n=1..4 : 282 / 254 / 228 / 205
+    Mâchassin     calc    323 | 1er    323 | rég    323/lancer × 2.00 lancers/tour =    646/tour
+    Terristocrate calc    432 | 1er    432 | rég    432/lancer × 2.00 lancers/tour =    864/tour
+    Doublure      calc    305 | 1er    305 | rég    305/lancer × 2.00 lancers/tour =    610/tour
+    Bourôliste    calc    269 | 1er    269 | rég    269/lancer × 2.00 lancers/tour =    538/tour
+    Magouille     calc    251 | 1er    251 | rég    251/lancer × 2.00 lancers/tour =    502/tour
+P20 base Flèche Perforante (32429) 4 PA, PO 3-13 en ligne, 1/tour ∞/cible, relance 0, CC 20+79 → 99 %
+    élément(s) : Air ; mesure à d = 4 en ligne
+    Reine         calc      0 | 1er    492 | rég    492/lancer × 1.00 lancers/tour =    492/tour | ×0,9ⁿ n=1..4 : 443 / 399 / 359 / 323
+    Mâchassin     calc      0 | 1er    721 | rég    721/lancer × 1.00 lancers/tour =    721/tour
+    Terristocrate calc      0 | 1er    450 | rég    450/lancer × 1.00 lancers/tour =    450/tour
+    Doublure      calc      0 | 1er    420 | rég    420/lancer × 1.00 lancers/tour =    420/tour
+    Bourôliste    calc      0 | 1er    510 | rég    510/lancer × 1.00 lancers/tour =    510/tour
+    Magouille     calc      0 | 1er    541 | rég    541/lancer × 1.00 lancers/tour =    541/tour
+P20 var. Flèche Boomerang (32432) 3 PA, PO 0-11, 2/tour 1/cible, relance 0, CC 10+79 → 89 %
+    élément(s) : Air ; mesure à d = 4 en ligne
+    Reine         calc    366 | 1er    614 | rég    614/lancer × 1.00 lancers/tour =    614/tour | ×0,9ⁿ n=1..4 : 553 / 497 / 448 / 403
+    Mâchassin     calc    537 | 1er    900 | rég    900/lancer × 1.00 lancers/tour =    900/tour
+    Terristocrate calc    335 | 1er    562 | rég    562/lancer × 1.00 lancers/tour =    562/tour
+    Doublure      calc    312 | 1er    524 | rég    524/lancer × 1.00 lancers/tour =    524/tour
+    Bourôliste    calc    379 | 1er    636 | rég    636/lancer × 1.00 lancers/tour =    636/tour
+    Magouille     calc    402 | 1er    675 | rég    675/lancer × 1.00 lancers/tour =    675/tour
+P21 base Flèche Dévorante (32446) 3 PA, PO 0-10, 2/tour ∞/cible, relance 0, CC 10+79 → 89 %
+    élément(s) : Feu ; mesure à d = 4 en ligne
+    Reine         calc      0 | 1er    211 | rég    400/lancer × 2.00 lancers/tour =    800/tour | ×0,9ⁿ n=1..4 : 360 / 324 / 292 / 262
+    Mâchassin     calc      0 | 1er    255 | rég    482/lancer × 2.00 lancers/tour =    964/tour
+    Terristocrate calc      0 | 1er    329 | rég    621/lancer × 2.00 lancers/tour =  1 242/tour
+    Doublure      calc      0 | 1er    273 | rég    518/lancer × 2.00 lancers/tour =  1 036/tour
+    Bourôliste    calc      0 | 1er    438 | rég    829/lancer × 2.00 lancers/tour =  1 658/tour
+    Magouille     calc      0 | 1er    310 | rég    586/lancer × 2.00 lancers/tour =  1 172/tour
+P21 var. Flèche Fulminante (32450) 4 PA, PO 1-10, 1/tour ∞/cible, relance 0, CC 20+79 → 99 %
+    élément(s) : Feu ; mesure à d = 4 en ligne
+    Reine         calc      0 | 1er    340 | rég    340/lancer × 1.00 lancers/tour =    340/tour | ×0,9ⁿ n=1..4 : 306 / 275 / 248 / 223
+    Mâchassin     calc      0 | 1er    411 | rég    411/lancer × 1.00 lancers/tour =    411/tour
+    Terristocrate calc      0 | 1er    530 | rég    530/lancer × 1.00 lancers/tour =    530/tour
+    Doublure      calc      0 | 1er    441 | rég    441/lancer × 1.00 lancers/tour =    441/tour
+    Bourôliste    calc      0 | 1er    707 | rég    707/lancer × 1.00 lancers/tour =    707/tour
+    Magouille     calc      0 | 1er    500 | rég    500/lancer × 1.00 lancers/tour =    500/tour
+P22 base Acuité Absolue (32469) 2 PA, PO 0-0 sans LdV, ∞/tour ∞/cible, relance 4, CC 0+79 → 79 % — pas de dégâts directs
+P22 var. Sentinelle (32475) 2 PA, PO 0-0 sans LdV, ∞/tour ∞/cible, relance 5, CC 0+79 → 79 % — pas de dégâts directs

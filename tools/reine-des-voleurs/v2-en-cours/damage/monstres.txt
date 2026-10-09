@@ -1,0 +1,54 @@
+
+Reine des Voleurs (3726) boss=true poussable=true échange=true tags=pull,tp,water,debuff,fire,neutral,earth,air,multi
+  g1 niv 220 PV 15000 PA 20 PM 6 Ré% N/T/F/E/A 31/26/42/13/18 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Péché Mignon (4693 g1) états []
+  g2 niv 220 PV 17000 PA 20 PM 6 Ré% N/T/F/E/A 31/26/42/13/18 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Péché Mignon (4693 g1) états []
+  g3 niv 220 PV 19000 PA 20 PM 6 Ré% N/T/F/E/A 31/26/42/13/18 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Péché Mignon (4693 g1) états []
+  g4 niv 220 PV 20000 PA 20 PM 6 Ré% N/T/F/E/A 31/26/42/13/18 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Péché Mignon (4693 g1) états []
+  g5 niv 220 PV 22000 PA 20 PM 6 Ré% N/T/F/E/A 31/26/42/13/18 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Péché Mignon (4693 g1) états []
+    stats brutes g5 : {"ap":20,"mp":6,"wisdom":800,"strength":800,"intelligence":800,"chance":800,"agility":800,"neutralResPct":31,"earthResPct":26,"fireResPct":42,"waterResPct":13,"airResPct":18,"apParry":20,"mpParry":20}
+  sorts : Mort en Sursis (4694), Brume (4697), Coup critique (4698)
+
+Mâchassin (3746) boss=false poussable=true échange=true tags=fire,trap,water,retPA
+  g1 niv 200 PV 6000 PA 12 PM 4 Ré% N/T/F/E/A 21/11/26/6/-24 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g2 niv 203 PV 6200 PA 12 PM 4 Ré% N/T/F/E/A 22/12/27/7/-23 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g3 niv 206 PV 6300 PA 12 PM 4 Ré% N/T/F/E/A 23/13/28/8/-22 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g4 niv 209 PV 6500 PA 12 PM 4 Ré% N/T/F/E/A 24/14/29/9/-21 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g5 niv 212 PV 6600 PA 12 PM 4 Ré% N/T/F/E/A 25/15/30/10/-20 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+    stats brutes g5 : {"ap":12,"mp":4,"wisdom":850,"strength":850,"intelligence":850,"chance":850,"agility":850,"neutralResPct":25,"earthResPct":15,"fireResPct":30,"waterResPct":10,"airResPct":-20}
+  sorts : Piège à Le Ours (4765), Sans se mouiller (4766)
+
+Terristocrate (3747) boss=false poussable=true échange=true tags=neutral,lifeSteal,summon,tp,air,retPO
+  g1 niv 200 PV 6000 PA 12 PM 4 Ré% N/T/F/E/A 11/26/6/-24/21 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g2 niv 203 PV 6200 PA 12 PM 4 Ré% N/T/F/E/A 12/27/7/-23/22 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g3 niv 206 PV 6300 PA 12 PM 4 Ré% N/T/F/E/A 13/28/8/-22/23 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g4 niv 209 PV 6500 PA 12 PM 4 Ré% N/T/F/E/A 14/29/9/-21/24 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g5 niv 212 PV 6600 PA 12 PM 4 Ré% N/T/F/E/A 15/30/10/-20/25 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+    stats brutes g5 : {"ap":12,"mp":4,"wisdom":850,"strength":850,"intelligence":850,"chance":850,"agility":850,"neutralResPct":15,"earthResPct":30,"fireResPct":10,"waterResPct":-20,"airResPct":25}
+  sorts : Bombe Illicale (4771), Fumérus (4774), Attentat (4775)
+
+Doublure (3748) boss=false poussable=true échange=true tags=fire,poison,retPM,retPA,tp,neutral,push
+  g1 niv 200 PV 3000 PA 12 PM 3 Ré% N/T/F/E/A 6/-24/21/11/26 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Doublage (4777 g2) états []
+  g2 niv 203 PV 3100 PA 12 PM 3 Ré% N/T/F/E/A 7/-23/22/12/27 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Doublage (4777 g2) états []
+  g3 niv 206 PV 3200 PA 12 PM 3 Ré% N/T/F/E/A 8/-22/23/13/28 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Doublage (4777 g2) états []
+  g4 niv 209 PV 3200 PA 12 PM 3 Ré% N/T/F/E/A 9/-21/24/14/29 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Doublage (4777 g2) états []
+  g5 niv 212 PV 3300 PA 12 PM 3 Ré% N/T/F/E/A 10/-20/25/15/30 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ Doublage (4777 g2) états []
+    stats brutes g5 : {"ap":12,"mp":3,"wisdom":850,"strength":850,"intelligence":850,"chance":850,"agility":850,"neutralResPct":10,"earthResPct":-20,"fireResPct":25,"waterResPct":15,"airResPct":30}
+  sorts : Doublage (4777), Coupe Circulaire (4861), Subtilité (4862)
+
+Bourôliste (3749) boss=false poussable=true échange=true tags=pull,debuff,water,retPM
+  g1 niv 200 PV 6000 PA 12 PM 5 Ré% N/T/F/E/A 26/6/-24/21/11 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g2 niv 203 PV 6200 PA 12 PM 5 Ré% N/T/F/E/A 27/7/-23/22/12 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g3 niv 206 PV 6300 PA 12 PM 5 Ré% N/T/F/E/A 28/8/-22/23/13 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g4 niv 209 PV 6500 PA 12 PM 5 Ré% N/T/F/E/A 29/9/-21/24/14 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g5 niv 212 PV 6600 PA 12 PM 5 Ré% N/T/F/E/A 30/10/-20/25/15 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+    stats brutes g5 : {"ap":12,"mp":5,"wisdom":850,"strength":850,"intelligence":850,"chance":850,"agility":850,"neutralResPct":30,"earthResPct":10,"fireResPct":-20,"waterResPct":25,"airResPct":15}
+  sorts : Vers la lumière (4778), Coupable (4779), Tournoyade (4781)
+
+Magouille (3750) boss=false poussable=true échange=true tags=earth,neutral,trap
+  g1 niv 200 PV 6000 PA 12 PM 5 Ré% N/T/F/E/A -24/21/11/26/6 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g2 niv 203 PV 6200 PA 12 PM 5 Ré% N/T/F/E/A -23/22/12/27/7 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g3 niv 206 PV 6300 PA 12 PM 5 Ré% N/T/F/E/A -22/23/13/28/8 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g4 niv 209 PV 6500 PA 12 PM 5 Ré% N/T/F/E/A -21/24/14/29/9 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+  g5 niv 212 PV 6600 PA 12 PM 5 Ré% N/T/F/E/A -20/25/15/30/10 fixes 0/0/0/0/0 rangedResPct=0 meleeResPct=0 spellResPct=0 allResPct=0 finalDamageReceivedPct=0 esqPA ? esqPM ? départ — états []
+    stats brutes g5 : {"ap":12,"mp":5,"wisdom":850,"strength":850,"intelligence":850,"chance":850,"agility":850,"neutralResPct":-20,"earthResPct":25,"fireResPct":15,"waterResPct":30,"airResPct":10}
+  sorts : Crânéantissement (4782), Avertissement (4784), Crâmes (4787)

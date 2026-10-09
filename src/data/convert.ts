@@ -469,6 +469,44 @@ export function itemSetBonusesFor(set: ItemSetData, equipped: number): readonly 
 
 // ───────────────────────────── monstres ─────────────────────────────
 
+/**
+ * Champs de grade apparus avec le schéma DofusDB 3.7 (noms normalisés par scripts/lib/dofusdb-normalize.mjs) ->
+ * caractéristique runtime. Lus seulement s'ils sont présents : les données extraites en 3.6 n'en ont aucun, leur
+ * conversion est donc inchangée. Comme `paDodge` (ajouté à Sagesse/10), tacle, fuite et initiative sont des bonus
+ * que createMonsterFighter ajoute aux dérivées. `percentDamageBonus` = Puissance, DÉDUIT (non vérifié en jeu) : même
+ * couple que `trapDamageBonus` / `trapDamageBonusPercent` (« Dommages Pièges » / « Puissance Pièges » dans
+ * characteristics.json), et l'Explobombe 3.7 hérite à la fois de `damageBonus` et de `percentDamageBonus` (100 %
+ * chacun) : dommages et puissance du Roublard. Non converti : `maxSummon` (le moteur lit `stats.summons` dans les
+ * masques de cible, targetMask.ts).
+ */
+const GRADE_STAT_FIELDS_37: readonly (readonly [keyof RawMonsterGrade, StatKey])[] = [
+  ['neutralResistanceFlat', 'neutralRes'],
+  ['earthResistanceFlat', 'earthRes'],
+  ['fireResistanceFlat', 'fireRes'],
+  ['waterResistanceFlat', 'waterRes'],
+  ['airResistanceFlat', 'airRes'],
+  ['criticalDamageReduction', 'criticalRes'],
+  ['pushDamageReduction', 'pushRes'],
+  ['tackleBlock', 'tackleBlock'],
+  ['tackleEvade', 'tackleEvade'],
+  ['initiativeBonus', 'initiative'],
+  ['damageBonus', 'damage'],
+  ['percentDamageBonus', 'power'],
+  ['bonusNeutralDamage', 'neutralDamage'],
+  ['bonusEarthDamage', 'earthDamage'],
+  ['bonusFireDamage', 'fireDamage'],
+  ['bonusWaterDamage', 'waterDamage'],
+  ['bonusAirDamage', 'airDamage'],
+  ['criticalHitBonus', 'critical'],
+  ['criticalDamageBonus', 'criticalDamage'],
+  ['pushDamageBonus', 'pushDamage'],
+  ['healBonus', 'heals'],
+  ['trapDamageBonus', 'trapDamage'],
+  ['trapDamageBonusPercent', 'trapPower'],
+  ['apAttack', 'apReduction'],
+  ['mpAttack', 'mpReduction'],
+]
+
 /** Champs de grade -> caractéristique runtime. */
 const GRADE_STAT_FIELDS: readonly (readonly [keyof RawMonsterGrade, StatKey])[] = [
   ['vitality', 'vitality'],
@@ -486,14 +524,19 @@ const GRADE_STAT_FIELDS: readonly (readonly [keyof RawMonsterGrade, StatKey])[] 
   ['pmDodge', 'mpParry'],
   ['damageReflect', 'reflect'],
   ['bonusRange', 'range'],
+  ...GRADE_STAT_FIELDS_37,
 ]
 
 /**
  * Clés de `bonusCharacteristics` -> caractéristique runtime de l'invocateur dont l'invocation reçoit un
  * pourcentage (MonsterGrade.summonerShare.stats). `lifePoints` est traité à part (`summonerShare.lifePct`).
- * Les clés inconnues sont ignorées.
+ * Les clés inconnues sont ignorées. Les clés du schéma 3.7 (mêmes noms normalisés que les grades) suivent
+ * GRADE_STAT_FIELDS_37, sauf `apAttack` / `mpAttack` : ils coexistent en 3.7 avec `aPRemoval` / `mPRemoval` dans
+ * `bonusCharacteristics`, et rien ne dit s'ils les doublent (non pris en charge : le test « toutes les clés
+ * observées sont prises en charge » le signalera s'ils apparaissent non nuls).
  */
 export const MONSTER_BONUS_STATS: Readonly<Record<string, StatKey>> = {
+  ...Object.fromEntries(GRADE_STAT_FIELDS_37.filter(([k]) => k !== 'apAttack' && k !== 'mpAttack')),
   vitality: 'vitality',
   wisdom: 'wisdom',
   strength: 'strength',

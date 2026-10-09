@@ -8,7 +8,12 @@ Chaque checkpoint est commité et poussé dans un état utilisable.
       catalogue des 212 effets, grammaires zones/masques/déclencheurs, dossier Vortex, IA des monstres,
       équipements/forgemagie, analyse des 19 classes (`docs/research/`).
 - [x] **CP2 — Calculateur** : agrégation stuff → caractéristiques (panoplies, exos, conditions), calcul de dégâts
-      DoMath exact (0 écart sur 300 000 entrées aléatoires), LdV exacte du client, zones/masques/critères complets.
+      selon DoMath (mode `domath` comparé à une transcription TypeScript de la fonction de dégâts `Rg` de DoMath sur
+      ≈ 45 000 tirages aléatoires : identique sur 40 000 ; sur 5 000 tirages d'arme à 5-9 cases du centre, identique
+      quand les résistances fixes sont ≥ 0, écart voulu sinon (facteur de zone borné à 0) ; identique aux 43 vecteurs
+      `domath-damage` produits par le vrai bundle DoMath — `tests/damage-properties.test.ts`,
+      `tests/damage-vectors.test.ts` ; validé contre DoMath, pas contre le jeu),
+      LdV exacte du client, zones/masques/critères complets.
       *(La page web « calculateur » viendra avec l'interface d'équipe.)*
 - [x] **CP3 — Moteur de combat + replays animés** : état de combat, PA/PM, ligne de vue, déplacements & tacle,
       4 familles d'effets (212 effectId), déclencheurs, invocations, glyphes/pièges ; 856 sorts testés sans
@@ -36,3 +41,29 @@ Chaque checkpoint est commité et poussé dans un état utilisable.
       l'équipe Eniripsa/Enutrof/2 Crâs Terre (`docs/reports/vortex-equipe-utilisateur.md`) et rapport final Vortex
       (`docs/reports/vortex-rapport-final.md` : stuffs, sorts, déroulé vague par vague, replay gagnant ; 49 / 768 =
       6,4 % de victoires vérifiées en IA `fast`, limite de tours retirée).
+- [x] **CP6 — Theorycraft contre un boss** (2026-10-07/08 ; usage personnel, PvM, un joueur) : réponses
+      **déterministes**, sans combat d'IA, à « quel stuff est le plus intéressant contre ce boss ? » et « quelles
+      classes sont les plus intéressantes contre ce boss ? », pour les 137 boss de donjon (162 avec les Expéditions).
+      Guide : `docs/theorycraft.md` ; conception et état du code : `docs/design/theorycraft.md`. **Livré** :
+      index et recherche des boss (grade = joueurs − 3) ; fiche du boss (sort de départ appliqué, profil offensif par
+      phase, mécaniques, avertissements et hypothèses ; 162 fiches en ≈ 0,13 s) ; fiches manuelles
+      `data/bosses/<id>.json` (schéma validé, règles de sources) ; cible explicite du proxy de stuff (plus de repli
+      silencieux sur le mix du Vortex) ; DPT soutenu en régime établi et postures de classe ; utilités chiffrées ;
+      classement des 49 presets sur 5 axes sans note globale et composition à règles écrites (≈ 0,5-0,8 s) ; meilleur
+      stuff (optimiseur sans graines `vortex_*`, top distinct, stuffs génériques, lien RoxxSolver, classement en DPT
+      soutenu pour les classes à posture, équivalences des caractéristiques ; ≈ 2,5-5 s) ; CLI `bosses`, `boss`,
+      `boss … classes|stuff`, `degats` (calculateur d'un sort pour vérifier en jeu) ; page web `#boss` (serveur de
+      dev) ; extraction DofusDB prête pour le schéma 3.7 (garde-fous, écriture tout ou rien). **Limites** : calcul et
+      non combat (ni positions, ni invocations, glyphes, pièges, rampes ; PA/PM retirés par le boss non déduits du
+      DPT ; dégâts du boss estimés : pic optimiste sur une cible, mais zones, réactions et invocations non comptées) ;
+      stuffs génériques de 12/2024 et presets écrits à la main ; aucune fiche manuelle rédigée (seulement le modèle) ;
+      `classes --optimize` aveugle aux postures (Zobal Psychopathe 1 852 → 538 de DPT soutenu contre le Père Ver) ;
+      données 3.6 du 2026-10-04 alors que la 3.7 est sortie le 2026-10-06 (ré-extraction : décision de
+      l'utilisateur, elle change les valeurs de référence du Vortex) ; aucune vérification en jeu faite.
+      **Suites possibles** : fiches manuelles des boss visés (sources citées) ; relevés en jeu avec `degats` ; passage
+      à la 3.7 ; classement soutenu (postures) dans `classes --optimize` ; étalonnage contre le boss lui-même
+      (mini-combat) ; retraits PA/PM subis déduits du DPT ; invocations, glyphes, pièges et rampes ; adds de la salle
+      depuis les cartes ; quelques combats simulés de contrôle par boss pour confronter les classements ; mise en
+      conformité de `docs/research` avec les règles de sources du guide (citations textuelles de DofusPourLesNoobs sur
+      le Vortex, copie locale mentionnée dans `.cache/vortex/guides/` : reformuler en faits avec l'URL, supprimer la
+      copie — décision de l'utilisateur).

@@ -1,0 +1,198 @@
+== 1. Départs rouges (sans 325/369) → chaîne C17a 354(17,-8) 381(17,-10) 408(17,-12) 435(17,-14) : 434 (ensemble, affectation) valides pour au moins un ordre
+  354→354  380→408  381→381  451→435 : 24/24 ordres sans mort ; PM max 3, PM total 5
+  354→354  378→435  380→408  381→381 : 24/24 ordres sans mort ; PM max 4, PM total 6
+  354→354  378→408  381→381  451→435 : 24/24 ordres sans mort ; PM max 4, PM total 7
+  354→354  378→435  381→381  451→408 : 24/24 ordres sans mort ; PM max 4, PM total 7
+  354→354  380→435  381→381  451→408 : 24/24 ordres sans mort ; PM max 4, PM total 7
+  354→354  378→408  380→435  381→381 : 24/24 ordres sans mort ; PM max 4, PM total 8
+  354→354  378→408  380→381  451→435 : 24/24 ordres sans mort ; PM max 4, PM total 9
+  354→354  378→435  380→381  451→408 : 24/24 ordres sans mort ; PM max 4, PM total 9
+  354→354  378→435  380→408  451→381 : 24/24 ordres sans mort ; PM max 5, PM total 11
+  354→354  378→381  380→408  451→435 : 24/24 ordres sans mort ; PM max 6, PM total 11
+  354→354  378→408  380→435  451→381 : 24/24 ordres sans mort ; PM max 5, PM total 13
+  354→354  378→381  380→435  451→408 : 24/24 ordres sans mort ; PM max 6, PM total 13
+  354→354  380→408  381→381  437→435 : 18/24 ordres sans mort ; PM max 4, PM total 6
+  354→354  380→435  381→381  437→408 : 18/24 ordres sans mort ; PM max 4, PM total 6
+  354→354  378→408  381→381  437→435 : 18/24 ordres sans mort ; PM max 4, PM total 8
+  départs valides pour les 24 ordres : 12
+
+== 2. Placement retenu : 354(17,-8)→354(17,-8)  381(17,-10)→381(17,-10)  395(17,-11)→408(17,-12)  451(19,-13)→435(17,-14)
+  ordre 354→381→395→451 : mort (dfs m2 / bfs m2)
+  ordre 354→381→451→395 : mort (dfs m2 / bfs m2)
+  ordre 354→395→381→451 : mort (dfs m2 / bfs m2)
+  ordre 354→395→451→381 : mort (dfs m2 / bfs m2)
+  ordre 354→451→381→395 : mort (dfs m2 / bfs m2)
+  ordre 354→451→395→381 : mort (dfs m2 / bfs m2)
+  ordre 381→354→395→451 : mort (dfs m2 / bfs m2)
+  ordre 381→354→451→395 : mort (dfs m2 / bfs m2)
+  ordre 381→395→354→451 : mort (dfs m2 / bfs m2)
+  ordre 381→395→451→354 : mort (dfs m2 / bfs m2)
+  ordre 381→451→354→395 : mort (dfs m2 / bfs m2)
+  ordre 381→451→395→354 : mort (dfs m2 / bfs m2)
+  ordre 395→354→381→451 : mort (dfs m2 / bfs m2)
+  ordre 395→354→451→381 : mort (dfs m2 / bfs m2)
+  ordre 395→381→354→451 : mort (dfs m2 / bfs m2)
+  ordre 395→381→451→354 : mort (dfs m2 / bfs m2)
+  ordre 395→451→354→381 : mort (dfs m2 / bfs m2)
+  ordre 395→451→381→354 : mort (dfs m2 / bfs m2)
+  ordre 451→354→381→395 : OK
+  ordre 451→354→395→381 : OK
+  ordre 451→381→354→395 : OK
+  ordre 451→381→395→354 : OK
+  ordre 451→395→354→381 : OK
+  ordre 451→395→381→354 : OK
+  ordres valides sur 30 manches : 6/24
+
+Trace (ordre 451→354→381→395, 6 manches) :
+  m1 tour J1 spawn   J1 424(19,-11) 
+  m1 tour J1 move    J1 435(17,-14) depuis 451
+  m1 tour J2 spawn   J2 355(18,-7) 
+  m1 tour J3 spawn   J3 382(18,-9) 
+  m1 tour J4 spawn   J4 368(17,-9) 
+  m1 tour J4 move    J4 408(17,-12) depuis 395
+  m2 tour J1 spawn   J1 436(18,-13) 
+  m2 tour J1 explode J1 424(19,-11) #0 rouge
+  m2 tour J1 blue    J4 368(17,-9) #3
+  m2 tour J2 spawn   J2 383(19,-8) 
+  m2 tour J2 explode J2 355(18,-7) #1 rouge
+  m2 tour J2 blue    J2 383(19,-8) #5
+  m2 tour J2 explode J3 382(18,-9) #2 rouge
+  m2 tour J2 explode J4 368(17,-9) #3 BLEUE
+  m2 tour J2 heal    J1 435(17,-14) 
+  m2 tour J2 heal    J2 354(17,-8) 
+  m2 tour J2 heal    J3 381(17,-10) 
+  m2 tour J2 heal    J4 408(17,-12) 
+  m2 tour J2 explode J1 436(18,-13) #4 rouge
+  m2 tour J3 spawn   J3 382(18,-9) 
+  m2 tour J4 spawn   J4 409(18,-11) 
+  m3 tour J1 spawn   J1 436(18,-13) 
+  m3 tour J2 spawn   J2 355(18,-7) 
+  m3 tour J2 explode J2 383(19,-8) #5 BLEUE
+  m3 tour J2 blue    J3 382(18,-9) #6
+  m3 tour J2 blue    J2 355(18,-7) #9
+  m3 tour J2 heal    J2 354(17,-8) 
+  m3 tour J3 spawn   J3 410(19,-10) 
+  m3 tour J3 explode J3 382(18,-9) #6 BLEUE
+  m3 tour J3 blue    J3 410(19,-10) #10
+  m3 tour J3 explode J2 355(18,-7) #9 BLEUE
+  m3 tour J3 explode J4 409(18,-11) #7 rouge
+  m3 tour J3 explode J1 436(18,-13) #8 rouge
+  m3 tour J4 spawn   J4 409(18,-11) 
+  m4 tour J1 spawn   J1 436(18,-13) 
+  m4 tour J2 spawn   J2 355(18,-7) 
+  m4 tour J3 spawn   J3 382(18,-9) 
+  m4 tour J3 explode J3 410(19,-10) #10 BLEUE
+  m4 tour J3 blue    J4 409(18,-11) #11
+  m4 tour J3 blue    J3 382(18,-9) #14
+  m4 tour J3 heal    J3 381(17,-10) 
+  m4 tour J4 spawn   J4 437(19,-12) 
+  m4 tour J4 explode J4 409(18,-11) #11 BLEUE
+  m4 tour J4 blue    J4 437(19,-12) #15
+  m4 tour J4 explode J3 382(18,-9) #14 BLEUE
+  m4 tour J4 explode J2 355(18,-7) #13 rouge
+  m4 tour J4 explode J1 436(18,-13) #12 rouge
+  m5 tour J1 spawn   J1 436(18,-13) 
+  m5 tour J2 spawn   J2 355(18,-7) 
+  m5 tour J3 spawn   J3 382(18,-9) 
+  m5 tour J4 spawn   J4 409(18,-11) 
+  m5 tour J4 explode J4 437(19,-12) #15 BLEUE
+  m5 tour J4 blue    J1 436(18,-13) #16
+  m5 tour J4 blue    J4 409(18,-11) #19
+  m5 tour J4 heal    J4 408(17,-12) 
+  m6 tour J1 spawn   J1 464(19,-14) 
+  m6 tour J1 explode J1 436(18,-13) #16 BLEUE
+  m6 tour J1 blue    J1 464(19,-14) #20
+  m6 tour J1 explode J4 409(18,-11) #19 BLEUE
+  m6 tour J1 explode J3 382(18,-9) #18 rouge
+  m6 tour J1 explode J2 355(18,-7) #17 rouge
+  m6 tour J2 spawn   J2 355(18,-7) 
+  m6 tour J3 spawn   J3 382(18,-9) 
+  m6 tour J4 spawn   J4 409(18,-11) 
+
+Soins de bombe bleue par Crâ (manches) :
+  J1 (451→435) : 2,7,12,17,22,27 ; écart max entre deux soins 5 manches
+  J2 (354→354) : 2,3,8,13,18,23,28 ; écart max entre deux soins 5 manches
+  J3 (381→381) : 2,4,9,14,19,24,29 ; écart max entre deux soins 5 manches
+  J4 (395→408) : 2,5,10,15,20,25,30 ; écart max entre deux soins 5 manches
+Bombes en jeu pendant le tour de chaque Crâ, manches 1 à 8 : 1,2,3,4 | 5,5,2,3 | 4,5,5,2 | 3,4,5,5 | 2,3,4,5 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+Multiplicateur moyen des dégâts subis par la Reine (0,9^n, manches 2 à 30) : 0.674 ; manche 1 : 0.90, 0.81, 0.73, 0.66
+
+== 3a. Un Crâ déplacé d'une case (échange de Mort en Sursis) pendant la phase monstres, puis retour sur sa case à son tour
+  cas testés 240, cas avec au moins une mort 231
+    J1 435(17,-14)→450(18,-14) avant le tour de J1 m3 (morts : J4 m3,J1 m7,J2 m7,J3 m7)
+    J1 435(17,-14)→421(16,-14) avant le tour de J1 m3 (morts : J4 m4,J1 m6,J2 m6,J3 m6)
+    J1 435(17,-14)→422(17,-13) avant le tour de J1 m3 (morts : J1 m3,J2 m3,J3 m3,J4 m3)
+    J1 435(17,-14)→449(17,-15) avant le tour de J1 m3 (morts : J1 m4,J2 m4,J3 m4,J4 m4)
+    J1 435(17,-14)→450(18,-14) avant le tour de J1 m4 (morts : J4 m4,J1 m6,J2 m6,J3 m6)
+    J1 435(17,-14)→421(16,-14) avant le tour de J1 m4 (morts : J4 m5,J1 m9,J2 m9,J3 m9)
+    J1 435(17,-14)→422(17,-13) avant le tour de J1 m4 (morts : J1 m4,J2 m4,J3 m4,J4 m4)
+    J1 435(17,-14)→449(17,-15) avant le tour de J1 m4 (morts : J1 m5,J2 m5,J3 m5,J4 m5)
+    J1 435(17,-14)→450(18,-14) avant le tour de J1 m5 (morts : J4 m5,J1 m7,J2 m7,J3 m7)
+    J1 435(17,-14)→421(16,-14) avant le tour de J1 m5 (morts : J4 m5,J1 m7,J2 m7,J3 m7)
+    J1 435(17,-14)→422(17,-13) avant le tour de J1 m5 (morts : J1 m6,J2 m6,J3 m6,J4 m6)
+    J1 435(17,-14)→449(17,-15) avant le tour de J1 m5 (morts : J1 m6,J2 m6,J3 m6,J4 m6)
+    J1 435(17,-14)→450(18,-14) avant le tour de J1 m6 (morts : J4 m6,J1 m8,J2 m8,J3 m8)
+    J1 435(17,-14)→421(16,-14) avant le tour de J1 m6 (morts : J4 m7,J1 m9,J2 m9,J3 m9)
+    J1 435(17,-14)→422(17,-13) avant le tour de J1 m6 (morts : J1 m6,J2 m6,J3 m6,J4 m6)
+    J1 435(17,-14)→449(17,-15) avant le tour de J1 m6 (morts : J1 m6,J2 m6,J3 m6,J4 m6)
+    J1 435(17,-14)→450(18,-14) avant le tour de J2 m3 (morts : J1 m3)
+    J1 435(17,-14)→421(16,-14) avant le tour de J2 m3 (morts : J4 m5,J1 m9,J2 m9,J3 m9)
+    J1 435(17,-14)→422(17,-13) avant le tour de J2 m3 (morts : J1 m3)
+    J1 435(17,-14)→449(17,-15) avant le tour de J2 m3 (morts : J1 m5,J2 m5,J3 m5,J4 m5)
+    J1 435(17,-14)→450(18,-14) avant le tour de J2 m4 (morts : J1 m4)
+    J1 435(17,-14)→421(16,-14) avant le tour de J2 m4 (morts : J4 m5,J1 m7,J2 m7,J3 m7)
+    J1 435(17,-14)→422(17,-13) avant le tour de J2 m4 (morts : J1 m4)
+    J1 435(17,-14)→449(17,-15) avant le tour de J2 m4 (morts : J1 m6,J2 m6,J3 m6,J4 m6)
+    J1 435(17,-14)→450(18,-14) avant le tour de J2 m5 (morts : J4 m6,J1 m8,J2 m8,J3 m8)
+    J1 435(17,-14)→421(16,-14) avant le tour de J2 m5 (morts : J4 m7,J1 m9,J2 m9,J3 m9)
+    J1 435(17,-14)→422(17,-13) avant le tour de J2 m5 (morts : J1 m6,J2 m6,J3 m6,J4 m6)
+    J1 435(17,-14)→449(17,-15) avant le tour de J2 m5 (morts : J1 m6,J2 m6,J3 m6,J4 m6)
+    J1 435(17,-14)→450(18,-14) avant le tour de J2 m6 (morts : J4 m7,J1 m9,J2 m9,J3 m9)
+    J1 435(17,-14)→421(16,-14) avant le tour de J2 m6 (morts : J4 m8,J1 m10,J2 m10,J3 m10)
+    J1 435(17,-14)→422(17,-13) avant le tour de J2 m6 (morts : J1 m7,J2 m7,J3 m7,J4 m7)
+    J1 435(17,-14)→449(17,-15) avant le tour de J2 m6 (morts : J1 m8,J2 m8,J3 m8,J4 m8)
+    J1 435(17,-14)→450(18,-14) avant le tour de J3 m3 (morts : J1 m3)
+    J1 435(17,-14)→421(16,-14) avant le tour de J3 m3 (morts : J4 m5,J1 m9,J2 m9,J3 m9)
+    J1 435(17,-14)→422(17,-13) avant le tour de J3 m3 (morts : J1 m3)
+    J1 435(17,-14)→449(17,-15) avant le tour de J3 m3 (morts : J1 m5,J2 m5,J3 m5,J4 m5)
+    J1 435(17,-14)→450(18,-14) avant le tour de J3 m4 (morts : J1 m4)
+    J1 435(17,-14)→421(16,-14) avant le tour de J3 m4 (morts : J4 m5,J1 m7,J2 m7,J3 m7)
+    J1 435(17,-14)→422(17,-13) avant le tour de J3 m4 (morts : J1 m4)
+    J1 435(17,-14)→449(17,-15) avant le tour de J3 m4 (morts : J1 m6,J2 m6,J3 m6,J4 m6)
+
+== 3b. Un ennemi présent sur une case pendant une seule phase monstres (une apparition), cases à ≤ 3 de la chaîne
+  53 cases testées × 4 phases × 4 manches ; cases dangereuses : 4
+    355(18,-7) : 3 cas (avant J2 m4, avant J2 m5, avant J2 m6)
+    382(18,-9) : 2 cas (avant J3 m5, avant J3 m6)
+    409(18,-11) : 2 cas (avant J4 m3, avant J4 m6)
+    436(18,-13) : 3 cas (avant J1 m3, avant J1 m4, avant J1 m5)
+
+== 3c. Mort d'un Crâ à la manche 4 (avant son tour), resserrement : chaque Crâ derrière le trou avance de 2 cases à son tour
+  victime J1 (435(17,-14)) [dfs] : aucune autre mort sur 16 manches
+  victime J1 (435(17,-14)) [bfs] : aucune autre mort sur 16 manches
+  victime J1, sans resserrement : aucune autre mort
+  victime J2 (354(17,-8)) [dfs] : morts J1 m7,J3 m7,J4 m7
+  victime J2 (354(17,-8)) [bfs] : morts J1 m7,J3 m7,J4 m7
+  victime J2, sans resserrement : morts J1 m7,J3 m7,J4 m7
+  victime J3 (381(17,-10)) [dfs] : morts J1 m7,J2 m7,J4 m7
+  victime J3 (381(17,-10)) [bfs] : morts J1 m7,J2 m7,J4 m7
+  victime J3, sans resserrement : morts J1 m7,J2 m7,J4 m7
+  victime J4 (408(17,-12)) [dfs] : morts J1 m7,J2 m7,J3 m7
+  victime J4 (408(17,-12)) [bfs] : morts J1 m7,J2 m7,J3 m7
+  victime J4, sans resserrement : morts J1 m7,J2 m7,J3 m7
+
+== 4. Ligne de vue au début de la manche 3 (bombes en 383(19,-8) 382(18,-9) 409(18,-11))
+  435(17,-14) : voit 3/114 cases de la zone d'approche (y −6..3) à ≤ 12, dont 0 à ≤ 8
+  354(17,-8) : voit 11/114 cases de la zone d'approche (y −6..3) à ≤ 12, dont 9 à ≤ 8
+  381(17,-10) : voit 14/114 cases de la zone d'approche (y −6..3) à ≤ 12, dont 4 à ≤ 8
+  408(17,-12) : voit 11/114 cases de la zone d'approche (y −6..3) à ≤ 12, dont 1 à ≤ 8
+  sorties de 435(17,-14) (case:PM/cases vues à ≤ 10) : 406(15,-14):2PM/6  407(16,-13):2PM/6  421(16,-14):1PM/3  464(19,-14):2PM/3  434(16,-15):2PM/1
+  sorties de 354(17,-8) (case:PM/cases vues à ≤ 10) : 355(18,-7):2PM/45  325(15,-8):2PM/38  369(18,-8):1PM/35  353(16,-9):2PM/24  368(17,-9):1PM/22
+  sorties de 381(17,-10) (case:PM/cases vues à ≤ 10) : 352(15,-10):2PM/26  367(16,-10):1PM/18  353(16,-9):2PM/17  380(16,-11):2PM/14  368(17,-9):1PM/11
+  sorties de 408(17,-12) (case:PM/cases vues à ≤ 10) : 379(15,-12):2PM/15  380(16,-11):2PM/13  394(16,-12):1PM/10  437(19,-12):2PM/8  407(16,-13):2PM/6
+
+== 5. Cases de lancer de Mort en Sursis (en ligne 1-5, LdV) sur chaque case de la chaîne, état manche 3
+  435(17,-14) : 392(14,-14) 406(15,-14) 421(16,-14) 422(17,-13) 449(17,-15) 450(18,-14) 462(17,-16) 464(19,-14) 476(17,-17) 479(20,-14) 493(21,-14) 508(22,-14)
+  354(17,-8) : 282(12,-8) 296(13,-8) 311(14,-8) 325(15,-8) 340(16,-8) 368(17,-9) 369(18,-8)
+  381(17,-10) : 309(12,-10) 323(13,-10) 338(14,-10) 352(15,-10) 367(16,-10) 368(17,-9) 395(17,-11) 396(18,-10) 410(19,-10) 425(20,-10) 439(21,-10) 454(22,-10)
+  408(17,-12) : 336(12,-12) 350(13,-12) 365(14,-12) 379(15,-12) 394(16,-12) 395(17,-11) 422(17,-13) 423(18,-12) 437(19,-12) 452(20,-12) 466(21,-12) 481(22,-12)

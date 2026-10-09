@@ -1,0 +1,206 @@
+
+=== Reine (3726, grade 1) — DPT d'un Crâ (dégâts moyens par tour, cycle de 2 tours, critique pondéré)
+  géométrie : L = cible EN LIGNE à d cases, H = hors ligne (décalée d'une colonne) ; PM = PM dépensés avant de tirer
+  mode     PM |     L2    L3    L4    L5    L6    L7    L8   L10    H3    H4    H5    H6    H7    H8   H10
+  libre    0  |  2 073 2 354 2 354 2 354 2 549 2 549 2 549 2 360 2 157 2 157 2 157 2 356 2 356 2 285 2 253
+  libre    2  |  2 073 2 142 2 142 2 142 2 341 2 341 2 341 2 134 1 949 1 949 1 949 2 148 2 148 2 077 2 045
+  zones    0  |  2 073 2 354 2 354 2 354 2 549 2 549 2 549 2 360 2 157 2 157 2 157 2 356 2 356 2 285 2 253
+  zones    2  |  2 073 2 142 2 142 2 142 2 341 2 341 2 341 2 134 1 949 1 949 1 949 2 148 2 148 2 077 2 045
+  strict   0  |  1 682 2 033 2 033 2 033 2 232 2 232 2 199 2 187 2 033 2 033 2 033 2 232 2 232 2 199 2 187
+  strict   2  |  1 682 1 825 1 825 1 825 2 024 2 024 1 991 1 979 1 825 1 825 1 825 2 024 2 024 1 991 1 979
+  L5 libre  PM0  2 354 : A: Tirs Puissants + Tir Perçant + Flèche du Jugement + Flèche Boomerang + Pluie de Flèches | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L5 libre  PM2  2 142 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L5 zones  PM0  2 354 : A: Tirs Puissants + Tir Perçant + Flèche du Jugement + Flèche Boomerang + Pluie de Flèches | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L5 zones  PM2  2 142 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L5 strict PM0  2 033 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Cinglante
+  L5 strict PM2  1 825 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Cinglante
+  H5 libre  PM0  2 157 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante
+  H5 libre  PM2  1 949 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante
+  H5 zones  PM0  2 157 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante
+  H5 zones  PM2  1 949 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante
+  H5 strict PM0  2 033 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Cinglante
+  H5 strict PM2  1 825 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Cinglante
+  L8 libre  PM0  2 549 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Boomerang | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L8 libre  PM2  2 341 : A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Boomerang | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L8 zones  PM0  2 549 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Boomerang | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L8 zones  PM2  2 341 : A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Boomerang | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L8 strict PM0  2 199 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Glacée | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Cinglante
+  L8 strict PM2  1 991 : A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Glacée | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Cinglante
+  H3 libre  PM0  2 157 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante
+  H3 libre  PM2  1 949 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante
+  H3 zones  PM0  2 157 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante
+  H3 zones  PM2  1 949 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante
+  H3 strict PM0  2 033 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Cinglante
+  H3 strict PM2  1 825 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Cinglante
+
+=== Mâchassin (3746, grade 5) — DPT d'un Crâ (dégâts moyens par tour, cycle de 2 tours, critique pondéré)
+  géométrie : L = cible EN LIGNE à d cases, H = hors ligne (décalée d'une colonne) ; PM = PM dépensés avant de tirer
+  mode     PM |     L2    L3    L4    L5    L6    L7    L8   L10    H3    H4    H5    H6    H7    H8   H10
+  libre    0  |  2 965 3 155 3 155 3 155 3 215 3 215 3 215 3 032 2 848 2 848 2 848 2 908 2 908 2 803 2 669
+  libre    2  |  2 965 2 995 2 999 2 999 3 030 3 030 3 034 2 856 2 609 2 609 2 609 2 727 2 727 2 622 2 489
+  zones    0  |  2 965 3 155 3 155 3 155 3 215 3 215 3 215 3 032 2 848 2 848 2 848 2 908 2 908 2 803 2 758
+  zones    2  |  2 965 2 995 2 999 2 999 3 030 3 030 3 034 2 856 2 609 2 609 2 609 2 727 2 727 2 622 2 489
+  strict   0  |  2 266 2 606 2 606 2 606 2 682 2 682 2 585 2 628 2 606 2 606 2 606 2 682 2 682 2 585 2 628
+  strict   2  |  2 266 2 367 2 367 2 367 2 485 2 485 2 368 2 389 2 367 2 367 2 367 2 485 2 485 2 368 2 389
+  L5 libre  PM0  3 155 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L5 libre  PM2  2 999 : A: Tirs Puissants + Flèche Boomerang + Pluie de Flèches + Flèche de Recul + Flèche Cinglante | B: Flèche Boomerang + Pluie de Flèches + Flèche Punitive + Flèche Cinglante
+  L5 zones  PM0  3 155 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L5 zones  PM2  2 999 : A: Tirs Puissants + Flèche Boomerang + Pluie de Flèches + Flèche de Recul + Flèche Cinglante | B: Flèche Boomerang + Pluie de Flèches + Flèche Punitive + Flèche Cinglante
+  L5 strict PM0  2 606 : A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Cinglante + Flèche Cinglante
+  L5 strict PM2  2 367 : A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Cinglante + Flèche Cinglante
+  H5 libre  PM0  2 848 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Boomerang + Flèche Cinglante
+  H5 libre  PM2  2 609 : A: Tirs Puissants + Pluie de Flèches + Flèche du Jugement + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante
+  H5 zones  PM0  2 848 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Boomerang + Flèche Cinglante
+  H5 zones  PM2  2 609 : A: Tirs Puissants + Pluie de Flèches + Flèche du Jugement + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante
+  H5 strict PM0  2 606 : A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Cinglante + Flèche Cinglante
+  H5 strict PM2  2 367 : A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Cinglante + Flèche Cinglante
+  L8 libre  PM0  3 215 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche d'Expiation | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L8 libre  PM2  3 034 : A: Tirs Puissants + Flèche Boomerang + Flèche d'Expiation + Flèche Cinglante + Flèche Cinglante | B: Flèche Boomerang + Pluie de Flèches + Flèche Punitive + Flèche Cinglante
+  L8 zones  PM0  3 215 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche d'Expiation | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante
+  L8 zones  PM2  3 034 : A: Tirs Puissants + Flèche Boomerang + Flèche d'Expiation + Flèche Cinglante + Flèche Cinglante | B: Flèche Boomerang + Pluie de Flèches + Flèche Punitive + Flèche Cinglante
+  L8 strict PM0  2 585 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Cinglante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Cinglante + Flèche Cinglante
+  L8 strict PM2  2 368 : A: Tirs Puissants + Flèche d'Expiation + Flèche Cinglante + Flèche Cinglante + Flèche Glacée | B: Flèche du Jugement + Flèche Persécutrice + Flèche Cinglante + Flèche Cinglante
+  H3 libre  PM0  2 848 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Boomerang + Flèche Cinglante
+  H3 libre  PM2  2 609 : A: Tirs Puissants + Pluie de Flèches + Flèche du Jugement + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante
+  H3 zones  PM0  2 848 : A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Pluie de Flèches + Flèche Boomerang + Flèche Cinglante
+  H3 zones  PM2  2 609 : A: Tirs Puissants + Pluie de Flèches + Flèche du Jugement + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante
+  H3 strict PM0  2 606 : A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Cinglante + Flèche Cinglante
+  H3 strict PM2  2 367 : A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Cinglante + Flèche Cinglante
+
+=== Terristocrate (3747, grade 5) — DPT d'un Crâ (dégâts moyens par tour, cycle de 2 tours, critique pondéré)
+  géométrie : L = cible EN LIGNE à d cases, H = hors ligne (décalée d'une colonne) ; PM = PM dépensés avant de tirer
+  mode     PM |     L2    L3    L4    L5    L6    L7    L8   L10    H3    H4    H5    H6    H7    H8   H10
+  libre    0  |  2 743 2 527 2 527 2 527 2 792 2 792 2 957 2 545 2 488 2 488 2 488 2 792 2 792 2 705 2 596
+  libre    2  |  2 743 2 743 2 743 2 743 2 974 2 974 2 905 2 734 2 679 2 679 2 679 2 974 2 974 2 776 2 734
+  zones    0  |  2 743 2 527 2 527 2 527 2 792 2 792 2 957 2 545 2 488 2 488 2 488 2 792 2 792 2 705 2 596
+  zones    2  |  2 743 2 743 2 743 2 743 2 974 2 974 2 903 2 734 2 679 2 679 2 679 2 974 2 974 2 776 2 734
+  strict   0  |  2 679 2 488 2 488 2 488 2 792 2 792 2 705 2 596 2 488 2 488 2 488 2 792 2 792 2 705 2 596
+  strict   2  |  2 679 2 679 2 679 2 679 2 974 2 974 2 776 2 734 2 679 2 679 2 679 2 974 2 974 2 776 2 734
+  L5 libre  PM0  2 527 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 libre  PM2  2 743 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 zones  PM0  2 527 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 zones  PM2  2 743 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 strict PM0  2 488 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 strict PM2  2 679 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Glacée + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 libre  PM0  2 488 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 libre  PM2  2 679 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Glacée + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 zones  PM0  2 488 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 zones  PM2  2 679 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Glacée + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 strict PM0  2 488 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 strict PM2  2 679 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Glacée + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 libre  PM0  2 957 : A: Tirs Puissants + Flèche d'Expiation + Flèche Tyrannique + Flèche Boomerang | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 libre  PM2  2 905 : A: Tirs Puissants + Flèche d'Expiation + Flèche Tyrannique + Flèche Boomerang | B: Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche de Barrage
+  L8 zones  PM0  2 957 : A: Tirs Puissants + Flèche d'Expiation + Flèche Tyrannique + Flèche Boomerang | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 zones  PM2  2 903 : A: Tirs Puissants + Flèche d'Expiation + Flèche Tyrannique + Flèche Boomerang | B: Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Pluie de Flèches
+  L8 strict PM0  2 705 : A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Glacée | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 strict PM2  2 776 : A: Tirs Puissants + Flèche d'Expiation + Flèche Tyrannique + Flèche Glacée | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 libre  PM0  2 488 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 libre  PM2  2 679 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Glacée + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 zones  PM0  2 488 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 zones  PM2  2 679 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Glacée + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 strict PM0  2 488 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 strict PM2  2 679 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Glacée + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+
+=== Doublure (3748, grade 5) — DPT d'un Crâ (dégâts moyens par tour, cycle de 2 tours, critique pondéré)
+  géométrie : L = cible EN LIGNE à d cases, H = hors ligne (décalée d'une colonne) ; PM = PM dépensés avant de tirer
+  mode     PM |     L2    L3    L4    L5    L6    L7    L8   L10    H3    H4    H5    H6    H7    H8   H10
+  libre    0  |  2 513 3 131 3 104 3 104 3 176 3 176 3 176 2 966 3 058 3 043 3 058 3 162 3 128 2 988 2 878
+  libre    2  |  2 513 2 793 2 766 2 766 2 837 2 837 2 837 2 610 2 720 2 704 2 720 2 824 2 789 2 650 2 539
+  zones    0  |  2 376 3 063 3 063 3 063 3 135 3 091 3 091 2 925 3 028 3 028 3 028 3 132 3 073 2 969 2 878
+  zones    2  |  2 376 2 725 2 725 2 725 2 796 2 753 2 753 2 586 2 689 2 689 2 689 2 793 2 734 2 631 2 539
+  strict   0  |  2 196 3 026 3 026 3 026 3 143 3 143 2 892 2 997 3 026 3 026 3 026 3 143 3 143 2 892 2 997
+  strict   2  |  2 196 2 687 2 687 2 687 2 804 2 804 2 553 2 585 2 687 2 687 2 687 2 804 2 804 2 553 2 585
+  L5 libre  PM0  3 104 : A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Flèche Vagabonde | B: Flèche du Jugement + Œil pour Œil + Flèche Vagabonde + Flèche d'Abolition
+  L5 libre  PM2  2 766 : A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Flèche Vagabonde | B: Flèche du Jugement + Œil pour Œil + Flèche Vagabonde + Flèche d'Abolition
+  L5 zones  PM0  3 063 : A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Boomerang + Flèche d'Abolition
+  L5 zones  PM2  2 725 : A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Boomerang + Flèche d'Abolition
+  L5 strict PM0  3 026 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 strict PM2  2 687 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 libre  PM0  3 058 : A: Tirs Puissants + Flèche du Jugement + Œil pour Œil + Flèche d'Abolition + Flèche d'Abolition | B: Flèche du Jugement + Œil pour Œil + Flèche Assaillante + Flèche d'Abolition
+  H5 libre  PM2  2 720 : A: Tirs Puissants + Flèche du Jugement + Œil pour Œil + Flèche d'Abolition + Flèche d'Abolition | B: Flèche du Jugement + Œil pour Œil + Flèche Assaillante + Flèche d'Abolition
+  H5 zones  PM0  3 028 : A: Tirs Puissants + Flèche du Jugement + Œil pour Œil + Flèche d'Abolition + Flèche d'Abolition | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche d'Abolition
+  H5 zones  PM2  2 689 : A: Tirs Puissants + Flèche du Jugement + Œil pour Œil + Flèche d'Abolition + Flèche d'Abolition | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche d'Abolition
+  H5 strict PM0  3 026 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 strict PM2  2 687 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 libre  PM0  3 176 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Vagabonde | B: Flèche du Jugement + Œil pour Œil + Flèche Vagabonde + Flèche d'Abolition
+  L8 libre  PM2  2 837 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Vagabonde | B: Flèche du Jugement + Œil pour Œil + Flèche Vagabonde + Flèche d'Abolition
+  L8 zones  PM0  3 091 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Boomerang | B: Flèche du Jugement + Œil pour Œil + Flèche Boomerang + Flèche d'Abolition
+  L8 zones  PM2  2 753 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Boomerang | B: Flèche du Jugement + Œil pour Œil + Flèche Boomerang + Flèche d'Abolition
+  L8 strict PM0  2 892 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Glacée | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 strict PM2  2 553 : A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Glacée | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 libre  PM0  3 058 : A: Tirs Puissants + Flèche du Jugement + Œil pour Œil + Flèche d'Abolition + Flèche d'Abolition | B: Flèche du Jugement + Œil pour Œil + Flèche Assaillante + Flèche d'Abolition
+  H3 libre  PM2  2 720 : A: Tirs Puissants + Flèche du Jugement + Œil pour Œil + Flèche d'Abolition + Flèche d'Abolition | B: Flèche du Jugement + Œil pour Œil + Flèche Assaillante + Flèche d'Abolition
+  H3 zones  PM0  3 028 : A: Tirs Puissants + Flèche du Jugement + Œil pour Œil + Flèche d'Abolition + Flèche d'Abolition | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche d'Abolition
+  H3 zones  PM2  2 689 : A: Tirs Puissants + Flèche du Jugement + Œil pour Œil + Flèche d'Abolition + Flèche d'Abolition | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche d'Abolition
+  H3 strict PM0  3 026 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 strict PM2  2 687 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+
+=== Bourôliste (3749, grade 5) — DPT d'un Crâ (dégâts moyens par tour, cycle de 2 tours, critique pondéré)
+  géométrie : L = cible EN LIGNE à d cases, H = hors ligne (décalée d'une colonne) ; PM = PM dépensés avant de tirer
+  mode     PM |     L2    L3    L4    L5    L6    L7    L8   L10    H3    H4    H5    H6    H7    H8   H10
+  libre    0  |  3 590 3 590 3 590 3 590 3 590 3 590 3 474 3 432 3 587 3 587 3 587 3 587 3 587 3 442 3 432
+  libre    2  |  3 590 3 590 3 590 3 590 3 590 3 590 3 332 3 332 3 557 3 557 3 557 3 557 3 557 3 317 3 317
+  zones    0  |  3 590 3 590 3 590 3 590 3 590 3 590 3 474 3 432 3 587 3 587 3 587 3 587 3 587 3 432 3 432
+  zones    2  |  3 590 3 590 3 590 3 590 3 590 3 590 3 317 3 317 3 557 3 557 3 557 3 557 3 557 3 317 3 317
+  strict   0  |  3 557 3 587 3 587 3 587 3 587 3 587 3 432 3 432 3 587 3 587 3 587 3 587 3 587 3 432 3 432
+  strict   2  |  3 557 3 557 3 557 3 557 3 557 3 557 3 322 3 322 3 557 3 557 3 557 3 557 3 557 3 322 3 322
+  L5 libre  PM0  3 590 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 libre  PM2  3 590 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 zones  PM0  3 590 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 zones  PM2  3 590 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 strict PM0  3 587 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 strict PM2  3 557 : A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 libre  PM0  3 587 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 libre  PM2  3 557 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Éclatante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 zones  PM0  3 587 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 zones  PM2  3 557 : A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 strict PM0  3 587 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 strict PM2  3 557 : A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 libre  PM0  3 474 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Boomerang | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 libre  PM2  3 332 : A: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante | B: Flèche Dévorante + Flèche Dévorante + Flèche de Barrage + Flèche de Barrage
+  L8 zones  PM0  3 474 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Boomerang | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 zones  PM2  3 317 : A: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante | B: Flèche Dévorante + Flèche Dévorante + Flèche du Jugement + Flèche Détonante
+  L8 strict PM0  3 432 : A: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 strict PM2  3 322 : A: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante | B: Flèche Dévorante + Flèche Dévorante + Flèche Punitive + Flèche Détonante
+  H3 libre  PM0  3 587 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 libre  PM2  3 557 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Éclatante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 zones  PM0  3 587 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 zones  PM2  3 557 : A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 strict PM0  3 587 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 strict PM2  3 557 : A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+
+=== Magouille (3750, grade 5) — DPT d'un Crâ (dégâts moyens par tour, cycle de 2 tours, critique pondéré)
+  géométrie : L = cible EN LIGNE à d cases, H = hors ligne (décalée d'une colonne) ; PM = PM dépensés avant de tirer
+  mode     PM |     L2    L3    L4    L5    L6    L7    L8   L10    H3    H4    H5    H6    H7    H8   H10
+  libre    0  |  2 560 2 573 2 573 2 573 2 591 2 591 2 783 2 452 2 460 2 460 2 460 2 478 2 478 2 383 2 363
+  libre    2  |  2 560 2 560 2 560 2 560 2 560 2 560 2 698 2 569 2 586 2 586 2 586 2 586 2 586 2 419 2 409
+  zones    0  |  2 699 2 573 2 573 2 573 2 591 2 591 2 783 2 452 2 460 2 460 2 460 2 478 2 478 2 374 2 363
+  zones    2  |  2 699 2 560 2 560 2 560 2 560 2 560 2 698 2 569 2 586 2 586 2 586 2 586 2 586 2 395 2 395
+  strict   0  |  2 502 2 670 2 670 2 670 2 670 2 670 2 363 2 500 2 670 2 670 2 670 2 670 2 670 2 363 2 500
+  strict   2  |  2 502 2 502 2 502 2 502 2 540 2 540 2 395 2 395 2 502 2 502 2 502 2 540 2 540 2 395 2 395
+  L5 libre  PM0  2 573 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Détonante
+  L5 libre  PM2  2 560 : A: Tirs Puissants + Flèche Boomerang + Flèche Dévorante + Flèche Dévorante + Flèche Détonante | B: Flèche Boomerang + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches
+  L5 zones  PM0  2 573 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Détonante
+  L5 zones  PM2  2 560 : A: Tirs Puissants + Flèche Boomerang + Flèche Dévorante + Flèche Dévorante + Flèche Détonante | B: Flèche Boomerang + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches
+  L5 strict PM0  2 670 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L5 strict PM2  2 502 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche de Recul + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 libre  PM0  2 460 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 libre  PM2  2 586 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 zones  PM0  2 460 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 zones  PM2  2 586 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 strict PM0  2 670 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H5 strict PM2  2 502 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche de Recul + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 libre  PM0  2 783 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Détonante
+  L8 libre  PM2  2 698 : A: Tirs Puissants + Flèche Boomerang + Flèche Tyrannique + Flèche d'Expiation | B: Flèche Boomerang + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches
+  L8 zones  PM0  2 783 : A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Détonante
+  L8 zones  PM2  2 698 : A: Tirs Puissants + Flèche Boomerang + Flèche Tyrannique + Flèche d'Expiation | B: Flèche Boomerang + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches
+  L8 strict PM0  2 363 : A: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  L8 strict PM2  2 395 : A: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 libre  PM0  2 460 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 libre  PM2  2 586 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 zones  PM0  2 460 : A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 zones  PM2  2 586 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 strict PM0  2 670 : A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+  H3 strict PM2  2 502 : A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche de Recul + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante
+
+(52 s)

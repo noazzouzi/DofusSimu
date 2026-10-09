@@ -1799,7 +1799,7 @@ body.dragging .drop-hint {
   }
 }
 
-/* ───────────────────────── sections (Combats / Stuffs) ───────────────────────── */
+/* ───────────────────────── sections (Combats / Stuffs / Boss) ───────────────────────── */
 
 .view-tabs {
   display: flex;
@@ -1829,7 +1829,7 @@ body.dragging .drop-hint {
   background: var(--accent);
   color: var(--accent-ink);
 }
-body[data-view='stuffs'] .replay-only,
+body[data-view]:not([data-view='combats']) .replay-only,
 .layout[hidden] {
   display: none;
 }
@@ -1861,5 +1861,35 @@ body[data-view='stuffs'] .replay-only,
 @media (max-width: 560px) {
   .view-tab {
     padding: 0 10px;
+  }
+  /* Combats : le menu des replays, « Ouvrir » et le thème ne tiennent pas sur la ligne des trois onglets — onglets de
+     section sur une seconde ligne, pleine largeur (les autres sections n'ont que le bouton du thème : une ligne). */
+  body:not([data-view]) .topbar,
+  body[data-view='combats'] .topbar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  body:not([data-view]) .topbar-actions,
+  body[data-view='combats'] .topbar-actions {
+    flex: 1 1 0;
+  }
+  /* boutons de la barre à leur taille (le bouton du thème était écrasé à 20 px) : seul le menu des replays rétrécit */
+  .topbar-actions > .btn {
+    flex: none;
+  }
+  body:not([data-view]) .view-tabs,
+  body[data-view='combats'] .view-tabs {
+    order: 3;
+    flex: 1 1 100%;
+  }
+  body:not([data-view]) .view-tab,
+  body[data-view='combats'] .view-tab {
+    flex: 1;
+    justify-content: center;
+  }
+}
+@media (max-width: 360px) {
+  .view-tab {
+    padding: 0 8px;
   }
 }

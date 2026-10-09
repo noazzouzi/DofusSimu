@@ -413,6 +413,9 @@ export class ViewerApp {
     document.addEventListener('keydown', e => {
       const p = this.player
       if (!p || e.ctrlKey || e.metaKey || e.altKey) return
+      // Raccourcis du lecteur : section « Combats » seulement (ailleurs, flèches et Espace gardent leur effet normal).
+      const view = document.body.dataset.view
+      if (view && view !== 'combats') return
       const target = e.target as HTMLElement
       if (target.tagName === 'SELECT' || (target.tagName === 'INPUT' && (target as HTMLInputElement).type !== 'range')) return
       let handled = true

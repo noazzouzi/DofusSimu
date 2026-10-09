@@ -1,0 +1,105 @@
+== A1 : 4 cases rouges, statiques, 12 manches, modèle jeu réel
+ensembles survivants (au moins un ordre) : 6 / 495
+  325(15,-8) 354(17,-8) 378(14,-13) 381(17,-10) : 3/24 ordres, ex. 354→378→325→381
+  325(15,-8) 354(17,-8) 381(17,-10) 437(19,-12) : 12/24 ordres, ex. 354→325→381→437
+  340(16,-8) 365(14,-12) 367(16,-10) 369(18,-8) : 6/24 ordres, ex. 340→365→367→369
+  340(16,-8) 367(16,-10) 369(18,-8) 451(19,-13) : 8/24 ordres, ex. 340→367→369→451
+  354(17,-8) 378(14,-13) 380(16,-11) 381(17,-10) : 8/24 ordres, ex. 354→378→381→380
+  354(17,-8) 378(14,-13) 381(17,-10) 437(19,-12) : 3/24 ordres, ex. 354→378→381→437
+
+Placement 340(16,-8) 367(16,-10) 378(14,-13) 451(19,-13) (statique, modèle jeu réel) :
+  ordre 340→367→378→451 : 1re mort manche 2 (joueur 1 en 340, au tour du joueur 1) ; morts 2
+  ordre 340→367→451→378 : 1re mort manche 2 (joueur 1 en 340, au tour du joueur 1) ; morts 2
+  ordre 340→378→367→451 : 1re mort manche 2 (joueur 1 en 340, au tour du joueur 1) ; morts 3
+  ordre 340→378→451→367 : 1re mort manche 2 (joueur 1 en 340, au tour du joueur 1) ; morts 3
+  ordre 340→451→367→378 : 1re mort manche 2 (joueur 1 en 340, au tour du joueur 1) ; morts 2
+  ordre 340→451→378→367 : 1re mort manche 2 (joueur 1 en 340, au tour du joueur 1) ; morts 2
+  ordre 367→340→378→451 : 1re mort manche 2 (joueur 3 en 378, au tour du joueur 3) ; morts 1
+  ordre 367→340→451→378 : 1re mort manche 2 (joueur 4 en 378, au tour du joueur 3) ; morts 1
+  ordre 367→378→340→451 : 1re mort manche 2 (joueur 2 en 378, au tour du joueur 2) ; morts 1
+  ordre 367→378→451→340 : 1re mort manche 2 (joueur 2 en 378, au tour du joueur 2) ; morts 1
+  ordre 367→451→340→378 : 1re mort manche 2 (joueur 4 en 378, au tour du joueur 2) ; morts 1
+  ordre 367→451→378→340 : 1re mort manche 2 (joueur 3 en 378, au tour du joueur 2) ; morts 1
+
+Placement 354(17,-8) 378(14,-13) 381(17,-10) 451(19,-13) (statique, modèle jeu réel) :
+  ordre 354→378→381→451 : 1re mort manche 2 (joueur 4 en 451, au tour du joueur 2) ; morts 1
+  ordre 354→378→451→381 : 1re mort manche 2 (joueur 3 en 451, au tour du joueur 2) ; morts 1
+  ordre 354→381→378→451 : 1re mort manche 2 (joueur 4 en 451, au tour du joueur 3) ; morts 1
+  ordre 354→381→451→378 : 1re mort manche 2 (joueur 3 en 451, au tour du joueur 3) ; morts 1
+  ordre 354→451→378→381 : 1re mort manche 2 (joueur 2 en 451, au tour du joueur 2) ; morts 2
+  ordre 354→451→381→378 : 1re mort manche 2 (joueur 2 en 451, au tour du joueur 2) ; morts 1
+  ordre 378→354→381→451 : 1re mort manche 2 (joueur 1 en 378, au tour du joueur 1) ; morts 2
+  ordre 378→354→451→381 : 1re mort manche 2 (joueur 1 en 378, au tour du joueur 1) ; morts 2
+  ordre 378→381→354→451 : 1re mort manche 2 (joueur 1 en 378, au tour du joueur 1) ; morts 2
+  ordre 378→381→451→354 : 1re mort manche 2 (joueur 1 en 378, au tour du joueur 1) ; morts 2
+  ordre 378→451→354→381 : 1re mort manche 2 (joueur 1 en 378, au tour du joueur 1) ; morts 2
+  ordre 378→451→381→354 : 1re mort manche 2 (joueur 1 en 378, au tour du joueur 1) ; morts 2
+
+== A2 : chaîne x=17 derrière le pilier rouge
+cases 354(17,-8) 381(17,-10) 408(17,-12) 435(17,-14)
+  ordre (354(17,-8))→(381(17,-10))→(408(17,-12))→(435(17,-14)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (354(17,-8))→(381(17,-10))→(435(17,-14))→(408(17,-12)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (354(17,-8))→(408(17,-12))→(381(17,-10))→(435(17,-14)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (354(17,-8))→(408(17,-12))→(435(17,-14))→(381(17,-10)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (354(17,-8))→(435(17,-14))→(381(17,-10))→(408(17,-12)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (354(17,-8))→(435(17,-14))→(408(17,-12))→(381(17,-10)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (381(17,-10))→(354(17,-8))→(408(17,-12))→(435(17,-14)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (381(17,-10))→(354(17,-8))→(435(17,-14))→(408(17,-12)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (381(17,-10))→(408(17,-12))→(354(17,-8))→(435(17,-14)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (381(17,-10))→(408(17,-12))→(435(17,-14))→(354(17,-8)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (381(17,-10))→(435(17,-14))→(354(17,-8))→(408(17,-12)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (381(17,-10))→(435(17,-14))→(408(17,-12))→(354(17,-8)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (408(17,-12))→(354(17,-8))→(381(17,-10))→(435(17,-14)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (408(17,-12))→(354(17,-8))→(435(17,-14))→(381(17,-10)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (408(17,-12))→(381(17,-10))→(354(17,-8))→(435(17,-14)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (408(17,-12))→(381(17,-10))→(435(17,-14))→(354(17,-8)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (408(17,-12))→(435(17,-14))→(354(17,-8))→(381(17,-10)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (408(17,-12))→(435(17,-14))→(381(17,-10))→(354(17,-8)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (435(17,-14))→(354(17,-8))→(381(17,-10))→(408(17,-12)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (435(17,-14))→(354(17,-8))→(408(17,-12))→(381(17,-10)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (435(17,-14))→(381(17,-10))→(354(17,-8))→(408(17,-12)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (435(17,-14))→(381(17,-10))→(408(17,-12))→(354(17,-8)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (435(17,-14))→(408(17,-12))→(354(17,-8))→(381(17,-10)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+  ordre (435(17,-14))→(408(17,-12))→(381(17,-10))→(354(17,-8)) : dfs OK / bfs OK ; bombes vivantes pendant chaque tour m1..m4 : 1,2,3,4 | 5,2,3,4 | 5,5,2,3 | 4,5,5,2
+ordres sans mort (20 manches, dfs et bfs) : 24/24
+
+Trace, ordre avant → arrière :
+  m1 tour J1 spawn J1 355(18,-7) 
+  m1 tour J2 spawn J2 382(18,-9) 
+  m1 tour J3 spawn J3 409(18,-11) 
+  m1 tour J4 spawn J4 436(18,-13) 
+  m2 tour J1 spawn J1 383(19,-8) 
+  m2 tour J1 explode J1 355(18,-7) #0 rouge
+  m2 tour J1 blue J1 383(19,-8) #4
+  m2 tour J1 explode J2 382(18,-9) #1 rouge
+  m2 tour J1 explode J3 409(18,-11) #2 rouge
+  m2 tour J1 explode J4 436(18,-13) #3 rouge
+  m2 tour J2 spawn J2 382(18,-9) 
+  m2 tour J3 spawn J3 409(18,-11) 
+  m2 tour J4 spawn J4 436(18,-13) 
+  m3 tour J1 spawn J1 355(18,-7) 
+  m3 tour J1 explode J1 383(19,-8) #4 BLEUE
+  m3 tour J1 blue J2 382(18,-9) #5
+  m3 tour J1 blue J1 355(18,-7) #8
+  m3 tour J1 heal J1 354(17,-8) 
+  m3 tour J2 spawn J2 410(19,-10) 
+  m3 tour J2 explode J2 382(18,-9) #5 BLEUE
+  m3 tour J2 blue J2 410(19,-10) #9
+  m3 tour J2 explode J1 355(18,-7) #8 BLEUE
+  m3 tour J2 explode J3 409(18,-11) #6 rouge
+  m3 tour J2 explode J4 436(18,-13) #7 rouge
+  m3 tour J3 spawn J3 409(18,-11) 
+  m3 tour J4 spawn J4 436(18,-13) 
+  m4 tour J1 spawn J1 355(18,-7) 
+  m4 tour J2 spawn J2 382(18,-9) 
+  m4 tour J2 explode J2 410(19,-10) #9 BLEUE
+  m4 tour J2 blue J3 409(18,-11) #10
+  m4 tour J2 blue J2 382(18,-9) #13
+  m4 tour J2 heal J2 381(17,-10) 
+  m4 tour J3 spawn J3 437(19,-12) 
+  m4 tour J3 explode J3 409(18,-11) #10 BLEUE
+  m4 tour J3 blue J3 437(19,-12) #14
+  m4 tour J3 explode J2 382(18,-9) #13 BLEUE
+  m4 tour J3 explode J1 355(18,-7) #12 rouge
+  m4 tour J3 explode J4 436(18,-13) #11 rouge
+  m4 tour J4 spawn J4 436(18,-13) 

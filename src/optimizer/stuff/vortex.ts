@@ -24,7 +24,7 @@
  * (106 + 32 − RePou) : 100 de Résistance Poussée retire 72 % de ces dégâts. Part sans défense : 0,171 des dégâts reçus
  * sans défense (itération 1 : 0,047, combats plus courts).
  *
- * Profils d'exposants (rôle → (a, b, c) de `ROLE_EXPONENTS`) :
+ * Profils d'exposants (rôle → (a, b, c) de `ROLE_EXPONENTS`, ajustés par `applyProfile`, profiles.ts) :
  *  - `balanced` : exposants du rôle ;
  *  - `defensive` : a − 0,2, b + 0,2 (les morts commencent au tour ≈ 10 : survie d'abord) ;
  *  - `offensive` : a + 0,15, b − 0,15.
@@ -33,6 +33,7 @@
  */
 import type { RoleId } from '../../ai/types'
 import { VORTEX_TARGET_MIX } from '../../dungeons/generic/dummy'
+import { applyProfile, EXPONENT_PROFILES, type ExponentProfile } from './profiles'
 import { ROLE_EXPONENTS, type ProxyOptions, type ProxyPushModel, type ProxyTarget } from './proxy'
 
 const IKARGN = 3834
@@ -75,8 +76,9 @@ export const VORTEX_MEASURED_INCOMING_SHARES: Readonly<Record<string, number>> =
   push: 0.061,
 }
 
-export type VortexProfile = 'balanced' | 'defensive' | 'offensive'
-export const VORTEX_PROFILES: readonly VortexProfile[] = ['balanced', 'defensive', 'offensive']
+/** Profils d'exposants du Vortex (= profils communs, profiles.ts). */
+export type VortexProfile = ExponentProfile
+export const VORTEX_PROFILES: readonly VortexProfile[] = EXPONENT_PROFILES
 
 /** Rôles « au contact » (pas de PO visée à 6). */
 const MELEE_ROLES: ReadonlySet<RoleId> = new Set<RoleId>(['tank'])
@@ -93,17 +95,12 @@ export interface VortexProxyOptions {
 
 /** Options du proxy pour un personnage au Vortex (voir l'en-tête). */
 export function vortexProxyOptions(role: RoleId, opts: VortexProxyOptions = {}): ProxyOptions {
-  const e = ROLE_EXPONENTS[role]
-  const profile = opts.profile ?? 'balanced'
-  const da = profile === 'defensive' ? -0.2 : profile === 'offensive' ? 0.15 : 0
-  const a = Math.max(0.05, e.a + da)
-  const b = Math.max(0.05, e.b - da)
   const melee = opts.melee ?? MELEE_ROLES.has(role)
   return {
     targets: VORTEX_TARGET_MIX,
     incoming: opts.incoming ?? VORTEX_INCOMING_MIX,
     ...(opts.noPush ? {} : { incomingPush: VORTEX_PUSH }),
-    exponents: { a, b, c: e.c },
+    exponents: applyProfile(ROLE_EXPONENTS[role], opts.profile ?? 'balanced'),
     ...(melee ? {} : { rangeNeed: 6 }),
   }
 }

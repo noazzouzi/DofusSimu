@@ -19,6 +19,12 @@
  *   bench                débit du pool (combats/s) pour 1, 2, 4 workers (banc B6 en ligne de commande)
  *   presets              liste des presets (classe, rôle, élément, stuff, PA/PM/PV calculés)
  *
+ * Theorycraft DÉTERMINISTE contre un boss, joueur seul (src/cli/theory.ts, docs/design/theorycraft.md §2) :
+ *   bosses [recherche]   index des boss (donjons, niveaux, grades ; Expéditions avec --all)
+ *   boss <nom|id>        fiche du boss ; `boss <nom|id> classes` classement des classes ; `boss <nom|id> stuff`
+ *                        meilleur stuff (--class, --roxx, --build ; --out : build réutilisable)
+ *   degats               dégâts d'UN sort contre le boss ou des résistances données (vérification sur un Poutch)
+ *
  * Scénarios : identifiant du registre (src/dungeons : `vortex`, `skirmish`, `dummy`), combat de contrôle
  * `control:<carte>:<monstre>[*n][@grade],…` ou miroir `mirror[:<carte>]` (src/optimizer/runner.ts).
  */
@@ -58,10 +64,13 @@ import {
 } from './common'
 import { cmdOptimize, cmdReport, cmdRewind, cmdStuff, cmdTeam, cmdTune } from './optimize'
 import { cmdScenario } from './scenario'
+import { cmdBoss, cmdBosses, cmdDegats, THEORY_BOOLEAN_FLAGS } from './theory'
 
 export { DEFAULT_TEAM, fighterTable, parseArgs, parseParams, REPLAY_DIR, writeReplay, type Args, type ReplayIndexEntry } from './common'
 
-const COMMANDS = ['fight', 'batch', 'bench', 'presets', 'tune', 'stuff', 'team', 'optimize', 'rewind', 'report', 'scenario'] as const
+const COMMANDS = ['fight', 'batch', 'bench', 'presets', 'tune', 'stuff', 'team', 'optimize', 'rewind', 'report', 'scenario', 'bosses', 'boss', 'degats'] as const
+/** Commandes du theorycraft : drapeaux booléens déclarés (`THEORY_BOOLEAN_FLAGS`, ils n'avalent pas le positionnel suivant). */
+const THEORY_COMMANDS: ReadonlySet<string> = new Set(['bosses', 'boss', 'degats'])
 
 export function usage(): string {
   return [
@@ -115,6 +124,41 @@ export function usage(): string {
     '    npm run sim -- stuff vortex --member 4 --out runs/cra2-build.json',
     '    npm run sim -- fight vortex --param enemyPlacement=3   (placement 3 des monstres, voir VORTEX_PLACEMENTS)',
     '    npm run sim -- scenario vortex --enemy-placement 5 --refs 8 --check 64',
+    '',
+    '  Theorycraft contre un boss (joueur seul, déterministe ; docs/design/theorycraft.md) :',
+    '  bosses [recherche]  [--all] [--json]   liste / recherche des boss (nom ou donjon, sans accents) : nom, id, donjon(s),',
+    '                      niveau du donjon, niveau du boss, grades, Expédition ; --all inclut les Expéditions (exclues par défaut)',
+    '  boss <nom|id>       [--players N | --grade G] [--details] [--no-overrides] [--all] [--json]   fiche du boss',
+    '                      (PV, PA/PM, résistances brutes et effectives, profil offensif par phase, mécaniques) ; --details :',
+    '                      tous ses sorts et l\'arbre du sort de départ (aide à rédiger data/bosses/<id>.json)',
+    '  boss <nom|id> classes [--players N | --grade G] [--optimize [--iterations N] [--profile P]] [--level L] [--json]',
+    '                      [--out fichier]   classement des classes par axe (.json : classement JSON, sinon le texte)',
+    '  boss <nom|id> stuff --class <classe|preset> [--roxx <lien> | --build fichier.json] [--elements preset|all]',
+    '                      [--profile balanced|defensive|offensive] [--top N] [--iterations N] [--restarts N] [--seed S]',
+    '                      [--level L] [--range N] [--fixed ids] [--exclude ids] [--out fichier.json] [--json]   meilleur stuff',
+    '                      (--class cra : premier preset de base de la classe, les autres en note ; avec --roxx/--build, la',
+    '                      classe vient du build) ; --out : meilleur build au format « build » des fichiers d\'équipe (data/teams),',
+    '                      relu par --build ; joué au contact (PO non exigée) ou à distance (6 PO visées) selon là où le preset',
+    '                      porte la majorité de son DPT contre ce boss (ligne « Personnage ») ; --range N : PO visée imposée',
+    '  degats              --preset <preset> [--build fichier.json | --roxx <lien>] --sort <nom|id> [--boss <nom|id>',
+    '                      [--players N | --grade G] [--no-overrides] [--all]] [--res n,t,f,e,a] [--melee | --distance]',
+    '                      [--trace] [--crit] [--json]   dégâts d\'UN sort : par ligne (élément) min-max normal et critique,',
+    '                      %CC, espérance ; lignes qui touchent la cible seulement (masques de cible, comme le DPT) ; cible :',
+    '                      résistances effectives du boss (un tableau par phase si elles en dépendent ; invulnérabilités',
+    '                      comprises) ou --res (défaut 0 partout, un Poutch) ; mêlée = cible sur une case adjacente : sort de',
+    '                      portée 1 à N calculé au contact ET à distance, sauf --melee / --distance ; --trace : calcul étape',
+    '                      par étape du jet max ; --crit : du jet max critique',
+    '  Boss : nom ou id (Expéditions cherchées si le boss est introuvable ailleurs) ; nom ambigu ⇒ candidats listés. Grade :',
+    '  joueurs − 3 (1 à 5), défaut 4 joueurs ; classes --grade G : composition de G + 3 personnages (8 au plus). Fiche',
+    '  manuelle data/bosses/<id>.json appliquée par défaut (--bosses-dir D).',
+    '  Positionnels d\'abord (boss <nom> classes …) ; --json : JSON sur la sortie standard ; aucun fichier écrit sans --out ;',
+    '  une option inconnue de la commande (ou d\'une autre sous-commande, ex. --out sur la fiche) est une erreur.',
+    '  Exemples :',
+    '    npm run sim -- bosses merk',
+    '    npm run sim -- boss merkator --details',
+    '    npm run sim -- boss "Père Ver" classes --players 4',
+    '    npm run sim -- boss merkator stuff --class cra_terre_mono --out runs/cra-merkator.json',
+    '    npm run sim -- degats --preset cra_terre_mono --sort "Flèche Punitive" --res 0,20,0,0,0 --trace',
     `  Commandes : ${COMMANDS.join(' | ')}`,
   ].join('\n')
 }
@@ -308,7 +352,7 @@ export async function main(argv: string[]): Promise<number> {
     console.error(`Commande inconnue : ${cmd}\n${usage()}`)
     return 2
   }
-  const a = parseArgs(rest)
+  const a = parseArgs(rest, THEORY_COMMANDS.has(cmd) ? THEORY_BOOLEAN_FLAGS : undefined)
   try {
     const data = loadDataStore(dataDirOf(a))
     switch (cmd) {
@@ -334,6 +378,12 @@ export async function main(argv: string[]): Promise<number> {
         return await cmdTeam(a, data)
       case 'scenario':
         return cmdScenario(a, data)
+      case 'bosses':
+        return cmdBosses(a, data)
+      case 'boss':
+        return await cmdBoss(a, data)
+      case 'degats':
+        return cmdDegats(a, data)
       default:
         console.error(`« ${cmd} » : commande inconnue`)
         return 2

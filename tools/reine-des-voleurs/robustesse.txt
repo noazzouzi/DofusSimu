@@ -1,0 +1,20 @@
+== PROPOSÉ 354,381,380,451 → 354,381,408,435
+  explosion tour suivant / apparition NE (wiki)  : 24/24 ordres sans mort (20 manches) 
+  explosion tour suivant / apparition N (JOL)    :  0/24 ordres sans mort (20 manches) ex. ordre 354→381→380→451 : mort J3 manche 2
+  explosion même tour   / apparition NE (wiki)  : 12/24 ordres sans mort (20 manches) ex. ordre 354→381→451→380 : mort J4 manche 1
+  explosion même tour   / apparition N (JOL)    :  0/24 ordres sans mort (20 manches) ex. ordre 354→381→380→451 : mort J3 manche 1
+== agent données {340,367,378,451} immobiles
+  explosion tour suivant / apparition NE (wiki)  :  0/24 ordres sans mort (20 manches) ex. ordre 340→367→378→451 : mort J1 manche 2
+  explosion tour suivant / apparition N (JOL)    :  0/24 ordres sans mort (20 manches) ex. ordre 340→367→378→451 : mort J1 manche 2
+  explosion même tour   / apparition NE (wiki)  :  0/24 ordres sans mort (20 manches) ex. ordre 340→367→378→451 : mort J1 manche 1
+  explosion même tour   / apparition N (JOL)    : 24/24 ordres sans mort (20 manches) 
+== agent données {354,378,381,451} immobiles
+  explosion tour suivant / apparition NE (wiki)  :  0/24 ordres sans mort (20 manches) ex. ordre 354→378→381→451 : mort J4 manche 2
+  explosion tour suivant / apparition N (JOL)    : 24/24 ordres sans mort (20 manches) 
+  explosion même tour   / apparition NE (wiki)  :  0/24 ordres sans mort (20 manches) ex. ordre 354→378→381→451 : mort J2 manche 1
+  explosion même tour   / apparition N (JOL)    : 24/24 ordres sans mort (20 manches) 
+== chaîne directe 354,381 + 395→408, 451→435
+  explosion tour suivant / apparition NE (wiki)  :  6/24 ordres sans mort (20 manches) ex. ordre 354→381→395→451 : mort J1 manche 2
+  explosion tour suivant / apparition N (JOL)    :  0/24 ordres sans mort (20 manches) ex. ordre 354→381→395→451 : mort J3 manche 2
+  explosion même tour   / apparition NE (wiki)  :  0/24 ordres sans mort (20 manches) ex. ordre 354→381→395→451 : mort J1 manche 1
+  explosion même tour   / apparition N (JOL)    :  0/24 ordres sans mort (20 manches) ex. ordre 354→381→395→451 : mort J2 manche 1

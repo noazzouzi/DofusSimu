@@ -1,6 +1,8 @@
 /**
- * Point d'entrée du visualiseur : sections « Combats » et « Stuffs » (`#stuffs`), choix de la source du replay, thème,
- * fichiers, API globale.
+ * Point d'entrée du visualiseur : sections « Combats », « Stuffs » (`#stuffs`) et « Boss » (`#boss/<monsterId>[/<onglet>]`,
+ * theorycraft contre un boss, serveur de développement), choix de la source du replay, thème, fichiers, API globale.
+ * La section « Boss » n'existe qu'avec le serveur de développement (`npm run dev`, API web/plugins/theory.ts) : dans la
+ * version construite, son onglet est retiré et `#boss` mène aux combats.
  *
  * Sources (par priorité) : balise <script type="application/json" id="replay-data"> embarquée,
  * paramètre `?replay=<url>`, sinon le replay de démonstration intégré. Le menu liste aussi les
@@ -13,6 +15,7 @@ import { createDemoReplay } from '@/replay/demo'
 import type { Replay } from '@/replay/types'
 import { ReplayError, parseReplay } from '@/replay/validate'
 import { ViewerApp } from './app'
+import { BossView } from './boss'
 import { StuffsView } from './stuffs'
 import { applyThemePref, loadThemePref, type ThemePref } from './theme'
 import { THEME_ICONS } from './ui/icons'
@@ -62,28 +65,53 @@ window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',
 
 // ───────────────────────────── sections ─────────────────────────────
 
-type View = 'combats' | 'stuffs'
+type View = 'combats' | 'stuffs' | 'boss'
+const VIEWS: Readonly<Record<View, string>> = { combats: 'combat-view', stuffs: 'stuffs-view', boss: 'boss-view' }
 const stuffs = new StuffsView($('stuffs-view'), stuffCatalog)
+/** Titre de la section « Boss » (suit le boss affiché ; appliqué seulement quand la section est visible). */
+let bossTitle = 'Boss · DofusSimu'
+/** Section « Boss » : serveur de développement seulement (son API n'existe pas dans la version construite). */
+const boss = import.meta.env.DEV
+  ? new BossView($('boss-view'), title => {
+      bossTitle = title
+      if (currentView() === 'boss') document.title = title
+    })
+  : undefined
+if (!boss) document.querySelector('.view-tab[data-view="boss"]')?.remove()
+/** Titre de la section « Combats » (titre du replay), gardé pendant qu'une autre section est affichée. */
 let combatTitle = document.title
 
+/** Segments de l'adresse (`#boss/3534/classes` → ['boss', '3534', 'classes']). */
+const hashParts = () => location.hash.replace(/^#\/?/, '').split('/')
+
 function currentView(): View {
-  return location.hash.replace(/^#\/?/, '').split('/')[0] === 'stuffs' ? 'stuffs' : 'combats'
+  const v = hashParts()[0]
+  return v === 'stuffs' || (v === 'boss' && boss) ? v : 'combats'
 }
+
+/** Titre du document pour une section autre que « Combats ». */
+const viewTitle = (view: Exclude<View, 'combats'>) => (view === 'stuffs' ? 'Stuffs · DofusSimu' : bossTitle)
 
 function route(): void {
   const view = currentView()
-  const wasCombats = document.body.dataset.view !== 'stuffs'
+  const prev = document.body.dataset.view
+  const wasCombats = prev === undefined || prev === 'combats'
   document.body.dataset.view = view
-  $('combat-view').hidden = view !== 'combats'
-  $('stuffs-view').hidden = view !== 'stuffs'
+  for (const [v, id] of Object.entries(VIEWS)) $(id).hidden = v !== view
   for (const a of document.querySelectorAll<HTMLAnchorElement>('.view-tab')) {
     if (a.dataset.view === view) a.setAttribute('aria-current', 'page')
     else a.removeAttribute('aria-current')
   }
-  if (view === 'stuffs') {
-    if (wasCombats) combatTitle = document.title
+  // Titre du replay gardé AVANT que la section « Boss » ne pose le sien.
+  if (view !== 'combats' && wasCombats) combatTitle = document.title
+  if (view === 'boss' && boss) {
+    boss.show(hashParts().slice(1))
+    // L'onglet « Boss » de la barre du haut ramène au dernier boss consulté (« Tous les boss » : lien de la section).
+    document.querySelector('.view-tab[data-view="boss"]')?.setAttribute('href', location.hash || '#boss')
+  }
+  if (view !== 'combats') {
     app.getPlayer()?.pause()
-    document.title = 'Stuffs · DofusSimu'
+    document.title = viewTitle(view)
   } else {
     document.title = combatTitle
   }
@@ -167,9 +195,10 @@ addSource({ key: 'demo', label: 'Démo — Œil de Vortex (intégrée)', get: ()
 function show(replay: Replay): void {
   app.load(replay)
   stuffs.setReplay(replay)
-  if (currentView() === 'stuffs') {
+  const view = currentView()
+  if (view !== 'combats') {
     combatTitle = document.title
-    document.title = 'Stuffs · DofusSimu'
+    document.title = viewTitle(view)
   }
 }
 

@@ -326,7 +326,7 @@ export async function cmdStuff(a: Args, data: GameDataStore): Promise<number> {
     fixed,
   })
   let chosen = result.best
-  let validation: { seeds: number; kinds: string[]; objectives: number[]; chosen: number } | undefined
+  let validation: { seeds: number; kinds: string[]; objectives: number[]; chosen: number; startIncluded: boolean } | undefined
   if (a.flags.has('validate')) {
     if (target.index === undefined || !target.comp) throw new Error('stuff --validate : le membre doit appartenir à l’équipe (--member <n°|classe> avec un fichier d’équipe ou --classes)')
     const choice = teamChoiceOf(a, data, scenarioId)
@@ -334,9 +334,11 @@ export async function cmdStuff(a: Args, data: GameDataStore): Promise<number> {
     const cands = result.front.filter(c => c.key !== 'start')
     const kinds = str(a, 'validate-kind') ? [str(a, 'validate-kind') as WorkerTask['kind']] : defaultValidationKinds(scenarioId)
     const cache = cacheOf(a, `stuff-${tag}`)
-    const v = await withPool(num(a, 'workers', defaultPoolSize()), pool => validateStuffs(spec, target.index!, cands, pool, { seeds: num(a, 'validate', 16), kinds, cache }), data, dataDirOf(a))
-    validation = { seeds: num(a, 'validate', 16), kinds, objectives: v.objectives, chosen: v.chosen }
-    if (v.chosen > 0) chosen = cands[v.chosen - 1]
+    // Départ invalide (objets au-dessus du niveau…) : ni joué ni retenu, la référence est le premier candidat.
+    const v = await withPool(num(a, 'workers', defaultPoolSize()), pool => validateStuffs(spec, target.index!, cands, pool, { seeds: num(a, 'validate', 16), kinds, cache, startValid: result.startValid }), data, dataDirOf(a))
+    validation = { seeds: num(a, 'validate', 16), kinds, objectives: v.objectives, chosen: v.chosen, startIncluded: v.startIncluded }
+    if (!v.startIncluded) chosen = cands[v.chosen]
+    else if (v.chosen > 0) chosen = cands[v.chosen - 1]
     else chosen = result.start
   }
   const build = { ...chosen.build, name: member.name }
@@ -353,7 +355,7 @@ export async function cmdStuff(a: Args, data: GameDataStore): Promise<number> {
     member: member.name,
     profile,
     createdAt: today(),
-    proxy: { start: result.start.score, best: result.best.score, chosen: chosen.score, ms: Math.round(result.ms) },
+    proxy: { start: result.start.score, startValid: result.startValid, best: result.best.score, chosen: chosen.score, ms: Math.round(result.ms) },
     validation,
     build: { level: build.level, items: build.items, characteristicPoints: build.characteristicPoints, scrolls: build.scrolls, spellVariants: build.spellVariants },
     front: result.front.map(c => ({ key: c.key, pointsId: c.pointsId, score: c.score })),
@@ -365,9 +367,12 @@ export async function cmdStuff(a: Args, data: GameDataStore): Promise<number> {
     console.log(JSON.stringify({ file: out, ...payload }, null, 2))
     return 0
   }
-  console.log(`Départ : ${candidateLine(data, result.start)}`)
+  console.log(`Départ : ${candidateLine(data, result.start)}${result.startValid ? '' : result.best === result.start ? ' — INVALIDE, aucun candidat valide' : ' — INVALIDE (non retenu)'}`)
   console.log(`Proxy  : ${candidateLine(data, result.best)} (${(result.ms / 1000).toFixed(1)} s, ${result.evaluations.exact} évaluations exactes)`)
-  if (validation) console.log(`Validation par combats (${validation.seeds} graines, ${validation.kinds.join('+')}) : objectifs ${validation.objectives.map(x => x.toFixed(3)).join(' / ')} → build ${validation.chosen === 0 ? 'de départ conservé' : `n° ${validation.chosen} du front`}`)
+  if (validation) {
+    const which = !validation.startIncluded ? `n° ${validation.chosen + 1} du front (départ invalide, non joué)` : validation.chosen === 0 ? 'de départ conservé' : `n° ${validation.chosen} du front`
+    console.log(`Validation par combats (${validation.seeds} graines, ${validation.kinds.join('+')}) : objectifs ${validation.objectives.map(x => x.toFixed(3)).join(' / ')} → build ${which}`)
+  }
   const desc = describeMember(data, { ...member, build })
   for (const it of desc.items) console.log(`  ${it.slot.padEnd(16)} ${it.name}${it.forgemagie.length ? ` [${it.forgemagie.join(', ')}]` : ''}${it.passiveUnsimulated ? ' (sort passif)' : ''}`)
   console.log(`  Points : ${Object.entries(desc.points).map(([k, v]) => `${k} ${v}`).join(', ')}`)
