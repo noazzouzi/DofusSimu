@@ -1,0 +1,14 @@
+--- 1 Dévorante(s) par tour
+  tour 1 : dmg 438, +Flèche Dévorante I | états cible [573]
+  tour 2 : −Flèche Dévorante I, dmg 645, +Flèche Dévorante II | états cible [574]
+  tour 3 : −Flèche Dévorante II, dmg 829, +Flèche Dévorante III | états cible [662]
+  tour 4 : −Flèche Dévorante III, dmg 829, +Flèche Dévorante III | états cible [662]
+  tour 5 : −Flèche Dévorante III, dmg 829, +Flèche Dévorante III | états cible [662]
+  tour 6 : −Flèche Dévorante III, dmg 829, +Flèche Dévorante III | états cible [662]
+--- 2 Dévorante(s) par tour
+  tour 1 : dmg 438, +Flèche Dévorante I, −Flèche Dévorante I, dmg 645, +Flèche Dévorante II | états cible [574]
+  tour 2 : −Flèche Dévorante II, dmg 829, +Flèche Dévorante III, −Flèche Dévorante III, dmg 829, +Flèche Dévorante III | états cible [662]
+  tour 3 : −Flèche Dévorante III, dmg 829, +Flèche Dévorante III, −Flèche Dévorante III, dmg 829, +Flèche Dévorante III | états cible [662]
+  tour 4 : −Flèche Dévorante III, dmg 829, +Flèche Dévorante III, −Flèche Dévorante III, dmg 829, +Flèche Dévorante III | états cible [662]
+  tour 5 : −Flèche Dévorante III, dmg 829, +Flèche Dévorante III, −Flèche Dévorante III, dmg 829, +Flèche Dévorante III | états cible [662]
+  tour 6 : −Flèche Dévorante III, dmg 829, +Flèche Dévorante III, −Flèche Dévorante III, dmg 829, +Flèche Dévorante III | états cible [662]

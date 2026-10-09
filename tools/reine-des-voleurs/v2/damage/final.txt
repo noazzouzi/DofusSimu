@@ -1,0 +1,356 @@
+Vecteur retenu [0,1,1,0,1,1,0,1,0,1,0,0,1,1,0,1,0,1,0,1,0,1]
+P1=0 Flèche de Recul ; P2=1 Flèche Harcelante ; P3=1 Flèche Évasive ; P4=0 Flèche de Barrage ; P5=1 Balise Tactique ; P6=1 Tir Perçant ; P7=0 Flèche Détonante ; P8=1 Flèche Persécutrice ; P9=0 Flèche Cinglante ; P10=1 Flèche Tyrannique ; P11=0 Tirs Puissants ; P12=0 Flèche de Dispersion ; P13=1 Flèche Massacrante ; P14=1 Pluie de Flèches ; P15=0 Œil pour Œil ; P16=1 Représailles ; P17=0 Tir de Repli ; P18=1 Flèche du Jugement ; P19=0 Flèche d'Expiation ; P20=1 Flèche Boomerang ; P21=0 Flèche Dévorante ; P22=1 Sentinelle
+
+################ MODE STRICT ################
+
+=== Reine (15 000 PV)
+  H5 PM0 : 1 Crâ 2 160/tour (6.9 tours de Crâ) | équipe moteur  9 406/tour de jeu (Crâs 2 193/2 286/2 301/2 627) → 1.59 tours de jeu ; 1er/2e/3e tour 8 381/7 194/9 373 | Reine ×0,9ⁿ, n = 0..4 : 1.6 / 1.8 / 2.0 / 2.2 / 2.4 tours de jeu ; ×0,677 (formation) : 2.4
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Dévorante + Cinglante + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 160 · Crâ2 2 160 · Crâ3 2 160 · Crâ4 2 160 ; équipe SANS limite d'équipe 9 406/tour de jeu (1.59 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 370/tour : A: Tirs Puissants + du Jugement + Persécutrice + Dévorante | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  H5 PM2 : 1 Crâ 1 952/tour (7.7 tours de Crâ) | équipe moteur  8 340/tour de jeu (Crâs 1 935/2 022/2 031/2 352) → 1.80 tours de jeu ; 1er/2e/3e tour 7 377/6 339/8 323 | Reine ×0,9ⁿ, n = 0..4 : 1.8 / 2.0 / 2.2 / 2.5 / 2.7 tours de jeu ; ×0,677 (formation) : 2.7
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Dévorante + Cinglante + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 1 952 · Crâ2 1 952 · Crâ3 1 952 · Crâ4 1 952 ; équipe SANS limite d'équipe 8 340/tour de jeu (1.80 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 162/tour : A: Tirs Puissants + Persécutrice + du Jugement + Dévorante | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  L5 PM0 : 1 Crâ 2 160/tour (6.9 tours de Crâ) | équipe moteur  9 406/tour de jeu (Crâs 2 193/2 286/2 301/2 627) → 1.59 tours de jeu ; 1er/2e/3e tour 8 381/7 194/9 373 | Reine ×0,9ⁿ, n = 0..4 : 1.6 / 1.8 / 2.0 / 2.2 / 2.4 tours de jeu ; ×0,677 (formation) : 2.4
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Dévorante + Cinglante + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 160 · Crâ2 2 160 · Crâ3 2 160 · Crâ4 2 160 ; équipe SANS limite d'équipe 9 406/tour de jeu (1.59 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 370/tour : A: Tirs Puissants + du Jugement + Persécutrice + Dévorante | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  L5 PM2 : 1 Crâ 1 952/tour (7.7 tours de Crâ) | équipe moteur  8 340/tour de jeu (Crâs 1 935/2 022/2 031/2 352) → 1.80 tours de jeu ; 1er/2e/3e tour 7 377/6 339/8 323 | Reine ×0,9ⁿ, n = 0..4 : 1.8 / 2.0 / 2.2 / 2.5 / 2.7 tours de jeu ; ×0,677 (formation) : 2.7
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Dévorante + Cinglante + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 1 952 · Crâ2 1 952 · Crâ3 1 952 · Crâ4 1 952 ; équipe SANS limite d'équipe 8 340/tour de jeu (1.80 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 162/tour : A: Tirs Puissants + Persécutrice + du Jugement + Dévorante | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  H7 PM0 : 1 Crâ 2 359/tour (6.4 tours de Crâ) | équipe moteur 10 474/tour de jeu (Crâs 2 475/2 525/2 597/2 877) → 1.43 tours de jeu ; 1er/2e/3e tour 7 746/7 182/10 033 | Reine ×0,9ⁿ, n = 0..4 : 1.4 / 1.6 / 1.8 / 2.0 / 2.2 tours de jeu ; ×0,677 (formation) : 2.1
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + d'Expiation + Dévorante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 359 · Crâ2 2 359 · Crâ3 2 359 · Crâ4 2 359 ; équipe SANS limite d'équipe 10 474/tour de jeu (1.43 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 470/tour : A: Tirs Puissants + du Jugement + d'Expiation + Dévorante | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Dévorante:ap×2, Crâ4 Flèche Cinglante:ap×4
+  H7 PM2 : 1 Crâ 2 158/tour (7.0 tours de Crâ) | équipe moteur 10 149/tour de jeu (Crâs 2 287/2 476/2 500/2 887) → 1.48 tours de jeu ; 1er/2e/3e tour 6 479/6 438/8 723 | Reine ×0,9ⁿ, n = 0..4 : 1.5 / 1.6 / 1.8 / 2.0 / 2.3 tours de jeu ; ×0,677 (formation) : 2.2
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + d'Expiation + du Jugement + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 158 · Crâ2 2 158 · Crâ3 2 158 · Crâ4 2 158 ; équipe SANS limite d'équipe 10 149/tour de jeu (1.48 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 321/tour : A: Tirs Puissants + Tir Perçant + d'Expiation + Persécutrice + Cinglante | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche du Jugement:ap×2, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche du Jugement:ap×2, Crâ4 Flèche Cinglante:ap×4
+
+=== Mâchassin (6 600 PV)
+  H5 PM0 : 1 Crâ 2 750/tour (2.4 tours de Crâ) | équipe moteur  9 329/tour de jeu (Crâs 2 242/2 293/2 242/2 552) → 0.71 tours de jeu ; 1er/2e/3e tour 10 218/7 920/10 456
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + de Recul + Cinglante + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 750 · Crâ2 2 750 · Crâ3 2 750 · Crâ4 2 750 ; équipe SANS limite d'équipe 9 329/tour de jeu (0.71 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 058/tour : A: Tirs Puissants + Persécutrice + du Jugement + de Recul | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  H5 PM2 : 1 Crâ 2 511/tour (2.6 tours de Crâ) | équipe moteur  8 373/tour de jeu (Crâs 2 003/2 054/2 003/2 313) → 0.79 tours de jeu ; 1er/2e/3e tour 9 170/7 056/9 408
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + de Recul + Cinglante + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 511 · Crâ2 2 511 · Crâ3 2 511 · Crâ4 2 511 ; équipe SANS limite d'équipe 8 373/tour de jeu (0.79 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 898/tour : A: Tirs Puissants + Persécutrice + de Recul + Cinglante + Cinglante | B: Persécutrice + Tyrannique + Cinglante + Cinglante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  L5 PM0 : 1 Crâ 2 750/tour (2.4 tours de Crâ) | équipe moteur  9 329/tour de jeu (Crâs 2 242/2 293/2 242/2 552) → 0.71 tours de jeu ; 1er/2e/3e tour 10 218/7 920/10 456
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + de Recul + Cinglante + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 750 · Crâ2 2 750 · Crâ3 2 750 · Crâ4 2 750 ; équipe SANS limite d'équipe 9 329/tour de jeu (0.71 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 058/tour : A: Tirs Puissants + Persécutrice + du Jugement + de Recul | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  L5 PM2 : 1 Crâ 2 511/tour (2.6 tours de Crâ) | équipe moteur  8 373/tour de jeu (Crâs 2 003/2 054/2 003/2 313) → 0.79 tours de jeu ; 1er/2e/3e tour 9 170/7 056/9 408
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + de Recul + Cinglante + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 511 · Crâ2 2 511 · Crâ3 2 511 · Crâ4 2 511 ; équipe SANS limite d'équipe 8 373/tour de jeu (0.79 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 898/tour : A: Tirs Puissants + Persécutrice + de Recul + Cinglante + Cinglante | B: Persécutrice + Tyrannique + Cinglante + Cinglante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  H7 PM0 : 1 Crâ 2 810/tour (2.3 tours de Crâ) | équipe moteur  9 736/tour de jeu (Crâs 2 386/2 353/2 386/2 612) → 0.68 tours de jeu ; 1er/2e/3e tour 8 585/7 920/10 051
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + d'Expiation + de Recul | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 810 · Crâ2 2 810 · Crâ3 2 810 · Crâ4 2 810 ; équipe SANS limite d'équipe 9 736/tour de jeu (0.68 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 058/tour : A: Tirs Puissants + Persécutrice + du Jugement + de Recul | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche de Recul:ap×2, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche de Recul:ap×2, Crâ4 Flèche Cinglante:ap×4
+  H7 PM2 : 1 Crâ 2 624/tour (2.5 tours de Crâ) | équipe moteur  8 825/tour de jeu (Crâs 2 116/2 167/2 116/2 426) → 0.75 tours de jeu ; 1er/2e/3e tour 7 626/7 056/9 092
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + d'Expiation + de Recul + Cinglante + Cinglante | B: du Jugement + Tyrannique + Cinglante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 624 · Crâ2 2 624 · Crâ3 2 624 · Crâ4 2 624 ; équipe SANS limite d'équipe 8 825/tour de jeu (0.75 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 958/tour : A: Tirs Puissants + Persécutrice + d'Expiation + de Recul | B: Persécutrice + Tyrannique + Cinglante + Cinglante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Cinglante:ap×4, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+
+=== Terristocrate (6 600 PV)
+  H5 PM0 : 1 Crâ 2 711/tour (2.4 tours de Crâ) | équipe moteur  8 836/tour de jeu (Crâs 2 108/2 144/2 108/2 477) → 0.75 tours de jeu ; 1er/2e/3e tour 8 889/7 566/9 744
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tyrannique + du Jugement + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 661 · Crâ2 2 661 · Crâ3 2 661 · Crâ4 2 661 ; équipe SANS limite d'équipe 9 156/tour de jeu (0.72 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H5 PM2 : 1 Crâ 2 668/tour (2.5 tours de Crâ) | équipe moteur  8 339/tour de jeu (Crâs 1 945/2 058/1 945/2 392) → 0.79 tours de jeu ; 1er/2e/3e tour 8 029/7 433/8 884
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + Évasive + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 498 · Crâ2 2 498 · Crâ3 2 498 · Crâ4 2 498 ; équipe SANS limite d'équipe 9 081/tour de jeu (0.73 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Évasive:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Évasive:ap×2
+  L5 PM0 : 1 Crâ 2 711/tour (2.4 tours de Crâ) | équipe moteur  8 836/tour de jeu (Crâs 2 108/2 144/2 108/2 477) → 0.75 tours de jeu ; 1er/2e/3e tour 8 889/7 566/9 744
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tyrannique + du Jugement + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 661 · Crâ2 2 661 · Crâ3 2 661 · Crâ4 2 661 ; équipe SANS limite d'équipe 9 156/tour de jeu (0.72 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  L5 PM2 : 1 Crâ 2 668/tour (2.5 tours de Crâ) | équipe moteur  8 339/tour de jeu (Crâs 1 945/2 058/1 945/2 392) → 0.79 tours de jeu ; 1er/2e/3e tour 8 029/7 433/8 884
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + Évasive + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 498 · Crâ2 2 498 · Crâ3 2 498 · Crâ4 2 498 ; équipe SANS limite d'équipe 9 081/tour de jeu (0.73 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Évasive:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Évasive:ap×2
+  H7 PM0 : 1 Crâ 3 024/tour (2.2 tours de Crâ) | équipe moteur 10 113/tour de jeu (Crâs 2 442/2 448/2 442/2 781) → 0.65 tours de jeu ; 1er/2e/3e tour 8 180/7 566/10 671
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + d'Expiation + Dévorante + Dévorante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 965 · Crâ2 2 965 · Crâ3 2 965 · Crâ4 2 965 ; équipe SANS limite d'équipe 10 406/tour de jeu (0.63 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Dévorante:ap×2, Crâ4 Flèche Détonante:ap×4
+  H7 PM2 : 1 Crâ 3 024/tour (2.2 tours de Crâ) | équipe moteur  9 746/tour de jeu (Crâs 2 335/2 371/2 335/2 705) → 0.68 tours de jeu ; 1er/2e/3e tour 7 785/7 226/10 276
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + d'Expiation + Dévorante + Dévorante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 888 · Crâ2 2 888 · Crâ3 2 888 · Crâ4 2 888 ; équipe SANS limite d'équipe 10 406/tour de jeu (0.63 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+
+=== Doublure (3 300 PV)
+  H5 PM0 : 1 Crâ 3 026/tour (1.1 tours de Crâ) | équipe moteur 10 512/tour de jeu (Crâs 2 532/2 586/2 532/2 863) → 0.31 tours de jeu ; 1er/2e/3e tour 10 754/9 258/11 466
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 992 · Crâ2 2 992 · Crâ3 2 992 · Crâ4 2 992 ; équipe SANS limite d'équipe 10 698/tour de jeu (0.31 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Dévorante:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Dévorante:ap×2
+  H5 PM2 : 1 Crâ 2 687/tour (1.2 tours de Crâ) | équipe moteur  9 073/tour de jeu (Crâs 2 184/2 214/2 184/2 491) → 0.36 tours de jeu ; 1er/2e/3e tour 9 274/7 860/9 986
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 644 · Crâ2 2 644 · Crâ3 2 644 · Crâ4 2 644 ; équipe SANS limite d'équipe 9 344/tour de jeu (0.35 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  L5 PM0 : 1 Crâ 3 026/tour (1.1 tours de Crâ) | équipe moteur 10 512/tour de jeu (Crâs 2 532/2 586/2 532/2 863) → 0.31 tours de jeu ; 1er/2e/3e tour 10 754/9 258/11 466
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 992 · Crâ2 2 992 · Crâ3 2 992 · Crâ4 2 992 ; équipe SANS limite d'équipe 10 698/tour de jeu (0.31 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Dévorante:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Dévorante:ap×2
+  L5 PM2 : 1 Crâ 2 687/tour (1.2 tours de Crâ) | équipe moteur  9 073/tour de jeu (Crâs 2 184/2 214/2 184/2 491) → 0.36 tours de jeu ; 1er/2e/3e tour 9 274/7 860/9 986
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 644 · Crâ2 2 644 · Crâ3 2 644 · Crâ4 2 644 ; équipe SANS limite d'équipe 9 344/tour de jeu (0.35 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H7 PM0 : 1 Crâ 3 152/tour (1.0 tours de Crâ) | équipe moteur 11 204/tour de jeu (Crâs 2 718/2 746/2 718/3 023) → 0.29 tours de jeu ; 1er/2e/3e tour 9 825/9 258/11 697
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + d'Expiation + Dévorante | B: Tir Perçant + du Jugement + Tyrannique + Dévorante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 152 · Crâ2 3 152 · Crâ3 3 152 · Crâ4 3 152 ; équipe SANS limite d'équipe 11 204/tour de jeu (0.29 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 162/tour : A: Tirs Puissants + du Jugement + d'Expiation + Dévorante | B: du Jugement + Tyrannique + Persécutrice
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Flèche Dévorante:ap×2, Crâ3 Flèche Dévorante:ap×2, Crâ4 Flèche Dévorante:ap×2
+  H7 PM2 : 1 Crâ 2 804/tour (1.2 tours de Crâ) | équipe moteur  9 765/tour de jeu (Crâs 2 370/2 374/2 370/2 651) → 0.34 tours de jeu ; 1er/2e/3e tour 8 345/7 860/10 217
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + d'Expiation + Dévorante | B: du Jugement + Tyrannique + Détonante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 804 · Crâ2 2 804 · Crâ3 2 804 · Crâ4 2 804 ; équipe SANS limite d'équipe 9 765/tour de jeu (0.34 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 824/tour : A: Tirs Puissants + du Jugement + d'Expiation + Dévorante | B: du Jugement + Tyrannique + Persécutrice
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Dévorante:ap×2, Crâ4 Flèche Détonante:ap×4
+
+=== Bourôliste (6 600 PV)
+  H5 PM0 : 1 Crâ 3 587/tour (1.8 tours de Crâ) | équipe moteur 11 627/tour de jeu (Crâs 2 772/2 820/2 772/3 265) → 0.57 tours de jeu ; 1er/2e/3e tour 11 686/9 944/12 828
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 510 · Crâ2 3 510 · Crâ3 3 510 · Crâ4 3 510 ; équipe SANS limite d'équipe 12 011/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H5 PM2 : 1 Crâ 3 557/tour (1.9 tours de Crâ) | équipe moteur 10 921/tour de jeu (Crâs 2 595/2 643/2 595/3 088) → 0.60 tours de jeu ; 1er/2e/3e tour 10 574/9 644/11 716
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + Dévorante + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 333 · Crâ2 3 333 · Crâ3 3 333 · Crâ4 3 333 ; équipe SANS limite d'équipe 11 893/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  L5 PM0 : 1 Crâ 3 587/tour (1.8 tours de Crâ) | équipe moteur 11 627/tour de jeu (Crâs 2 772/2 820/2 772/3 265) → 0.57 tours de jeu ; 1er/2e/3e tour 11 686/9 944/12 828
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 510 · Crâ2 3 510 · Crâ3 3 510 · Crâ4 3 510 ; équipe SANS limite d'équipe 12 011/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  L5 PM2 : 1 Crâ 3 557/tour (1.9 tours de Crâ) | équipe moteur 10 921/tour de jeu (Crâs 2 595/2 643/2 595/3 088) → 0.60 tours de jeu ; 1er/2e/3e tour 10 574/9 644/11 716
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + Dévorante + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 333 · Crâ2 3 333 · Crâ3 3 333 · Crâ4 3 333 ; équipe SANS limite d'équipe 11 893/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H7 PM0 : 1 Crâ 3 587/tour (1.8 tours de Crâ) | équipe moteur 11 627/tour de jeu (Crâs 2 772/2 820/2 772/3 265) → 0.57 tours de jeu ; 1er/2e/3e tour 11 686/9 944/12 828
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 510 · Crâ2 3 510 · Crâ3 3 510 · Crâ4 3 510 ; équipe SANS limite d'équipe 12 011/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H7 PM2 : 1 Crâ 3 557/tour (1.9 tours de Crâ) | équipe moteur 10 921/tour de jeu (Crâs 2 595/2 643/2 595/3 088) → 0.60 tours de jeu ; 1er/2e/3e tour 10 574/9 644/11 716
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + Dévorante + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 333 · Crâ2 3 333 · Crâ3 3 333 · Crâ4 3 333 ; équipe SANS limite d'équipe 11 893/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+
+=== Magouille (6 600 PV)
+  H5 PM0 : 1 Crâ 2 670/tour (2.5 tours de Crâ) | équipe moteur  8 785/tour de jeu (Crâs 2 101/2 135/2 101/2 450) → 0.75 tours de jeu ; 1er/2e/3e tour 8 881/7 542/9 687
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 623 · Crâ2 2 623 · Crâ3 2 623 · Crâ4 2 623 ; équipe SANS limite d'équipe 9 086/tour de jeu (0.73 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 761/tour : A: Tirs Puissants + du Jugement + Persécutrice + Dévorante | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H5 PM2 : 1 Crâ 2 502/tour (2.6 tours de Crâ) | équipe moteur  7 989/tour de jeu (Crâs 1 864/1 973/1 864/2 288) → 0.83 tours de jeu ; 1er/2e/3e tour 7 305/7 867/8 111
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + de Recul + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 387 · Crâ2 2 387 · Crâ3 2 387 · Crâ4 2 387 ; équipe SANS limite d'équipe 8 524/tour de jeu (0.77 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 641/tour : A: Tirs Puissants + Persécutrice + Tyrannique + Dévorante | B: Persécutrice + Dévorante + Dévorante + Détonante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche de Recul:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche de Recul:ap×2
+  L5 PM0 : 1 Crâ 2 670/tour (2.5 tours de Crâ) | équipe moteur  8 785/tour de jeu (Crâs 2 101/2 135/2 101/2 450) → 0.75 tours de jeu ; 1er/2e/3e tour 8 881/7 542/9 687
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 623 · Crâ2 2 623 · Crâ3 2 623 · Crâ4 2 623 ; équipe SANS limite d'équipe 9 086/tour de jeu (0.73 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 761/tour : A: Tirs Puissants + du Jugement + Persécutrice + Dévorante | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  L5 PM2 : 1 Crâ 2 502/tour (2.6 tours de Crâ) | équipe moteur  7 989/tour de jeu (Crâs 1 864/1 973/1 864/2 288) → 0.83 tours de jeu ; 1er/2e/3e tour 7 305/7 867/8 111
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + de Recul + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 387 · Crâ2 2 387 · Crâ3 2 387 · Crâ4 2 387 ; équipe SANS limite d'équipe 8 524/tour de jeu (0.77 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 641/tour : A: Tirs Puissants + Persécutrice + Tyrannique + Dévorante | B: Persécutrice + Dévorante + Dévorante + Détonante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche de Recul:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche de Recul:ap×2
+  H7 PM0 : 1 Crâ 2 670/tour (2.5 tours de Crâ) | équipe moteur  8 916/tour de jeu (Crâs 2 148/2 153/2 148/2 468) → 0.74 tours de jeu ; 1er/2e/3e tour 7 242/7 542/9 000
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 641 · Crâ2 2 641 · Crâ3 2 641 · Crâ4 2 641 ; équipe SANS limite d'équipe 9 086/tour de jeu (0.73 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 761/tour : A: Tirs Puissants + du Jugement + Persécutrice + Dévorante | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Dévorante:ap×2, Crâ4 Flèche Détonante:ap×4
+  H7 PM2 : 1 Crâ 2 540/tour (2.6 tours de Crâ) | équipe moteur  8 107/tour de jeu (Crâs 1 931/1 965/1 931/2 280) → 0.81 tours de jeu ; 1er/2e/3e tour 6 389/6 778/8 147
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + d'Expiation + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 454 · Crâ2 2 454 · Crâ3 2 454 · Crâ4 2 454 ; équipe SANS limite d'équipe 8 505/tour de jeu (0.78 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 641/tour : A: Tirs Puissants + Persécutrice + Tyrannique + Dévorante | B: Persécutrice + Dévorante + Dévorante + Détonante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+
+################ MODE ZONES ################
+
+=== Reine (15 000 PV)
+  H5 PM0 : 1 Crâ 2 249/tour (6.7 tours de Crâ) | équipe moteur  9 857/tour de jeu (Crâs 2 336/2 442/2 368/2 710) → 1.52 tours de jeu ; 1er/2e/3e tour 8 179/7 590/9 458 | Reine ×0,9ⁿ, n = 0..4 : 1.5 / 1.7 / 1.9 / 2.1 / 2.3 tours de jeu ; ×0,677 (formation) : 2.2
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Pluie de + Cinglante + Cinglante | B: Tir Perçant + du Jugement + Tyrannique + Pluie de Flèches
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 249 · Crâ2 2 249 · Crâ3 2 160 · Crâ4 2 160 ; équipe SANS limite d'équipe 10 298/tour de jeu (1.46 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 428/tour : A: Tirs Puissants + du Jugement + Persécutrice + Pluie de | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  H5 PM2 : 1 Crâ 2 035/tour (7.4 tours de Crâ) | équipe moteur  8 612/tour de jeu (Crâs 2 053/2 286/2 039/2 234) → 1.74 tours de jeu ; 1er/2e/3e tour 6 925/7 194/8 017 | Reine ×0,9ⁿ, n = 0..4 : 1.7 / 1.9 / 2.2 / 2.4 / 2.7 tours de jeu ; ×0,677 (formation) : 2.6
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Pluie de | B: du Jugement + Pluie de + Dévorante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 035 · Crâ2 2 035 · Crâ3 1 952 · Crâ4 1 952 ; équipe SANS limite d'équipe 8 877/tour de jeu (1.69 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 220/tour : A: Tirs Puissants + Persécutrice + du Jugement + Pluie de | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Pluie de Flèches:ap×2, Crâ2 Flèche Dévorante:ap×2, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  L5 PM0 : 1 Crâ 2 436/tour (6.2 tours de Crâ) | équipe moteur 11 021/tour de jeu (Crâs 2 648/2 810/2 703/2 861) → 1.36 tours de jeu ; 1er/2e/3e tour 9 752/8 724/10 415 | Reine ×0,9ⁿ, n = 0..4 : 1.4 / 1.5 / 1.7 / 1.9 / 2.1 tours de jeu ; ×0,677 (formation) : 2.0
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Boomerang + Tyrannique | B: du Jugement + Boomerang + Pluie de + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 436 · Crâ2 2 436 · Crâ3 2 376 · Crâ4 2 376 ; équipe SANS limite d'équipe 10 974/tour de jeu (1.37 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 514/tour : A: Tirs Puissants + du Jugement + Persécutrice + Boomerang | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Tyrannique:ap×2, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Tyrannique:ap×2
+  L5 PM2 : 1 Crâ 2 228/tour (6.7 tours de Crâ) | équipe moteur  9 781/tour de jeu (Crâs 2 345/2 371/2 384/2 681) → 1.53 tours de jeu ; 1er/2e/3e tour 8 188/8 096/9 024 | Reine ×0,9ⁿ, n = 0..4 : 1.5 / 1.7 / 1.9 / 2.1 / 2.3 tours de jeu ; ×0,677 (formation) : 2.3
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Boomerang + Tyrannique | B: du Jugement + Boomerang + Pluie de + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 228 · Crâ2 2 228 · Crâ3 2 162 · Crâ4 2 162 ; équipe SANS limite d'équipe 9 908/tour de jeu (1.51 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 339/tour : A: Tirs Puissants + Persécutrice + Boomerang + Tyrannique | B: Persécutrice + Boomerang + Pluie de + Cinglante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Tyrannique:ap×2, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Tyrannique:ap×2, Crâ4 Flèche Dévorante:ap×2
+  H7 PM0 : 1 Crâ 2 448/tour (6.1 tours de Crâ) | équipe moteur 10 887/tour de jeu (Crâs 2 586/2 680/2 663/2 958) → 1.38 tours de jeu ; 1er/2e/3e tour 7 645/7 348/10 116 | Reine ×0,9ⁿ, n = 0..4 : 1.4 / 1.5 / 1.7 / 1.9 / 2.1 tours de jeu ; ×0,677 (formation) : 2.0
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + d'Expiation + Pluie de | B: Tir Perçant + du Jugement + Tyrannique + Pluie de Flèches
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 448 · Crâ2 2 448 · Crâ3 2 359 · Crâ4 2 359 ; équipe SANS limite d'équipe 11 292/tour de jeu (1.33 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 528/tour : A: Tirs Puissants + du Jugement + d'Expiation + Pluie de | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Pluie de Flèches:ap×2, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Dévorante:ap×2, Crâ4 Flèche Cinglante:ap×4
+  H7 PM2 : 1 Crâ 2 187/tour (6.9 tours de Crâ) | équipe moteur  9 847/tour de jeu (Crâs 2 297/2 571/2 360/2 620) → 1.52 tours de jeu ; 1er/2e/3e tour 6 092/7 026/8 125 | Reine ×0,9ⁿ, n = 0..4 : 1.5 / 1.7 / 1.9 / 2.1 / 2.3 tours de jeu ; ×0,677 (formation) : 2.3
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + d'Expiation + Tyrannique + Pluie de | B: du Jugement + Pluie de + Dévorante + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 187 · Crâ2 2 187 · Crâ3 2 158 · Crâ4 2 158 ; équipe SANS limite d'équipe 9 578/tour de jeu (1.57 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 372/tour : A: Tirs Puissants + d'Expiation + Persécutrice + Pluie de | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Pluie de Flèches:ap×2, Crâ2 Flèche Dévorante:ap×2, Crâ3 Flèche du Jugement:ap×2, Crâ4 Flèche Cinglante:ap×4
+
+=== Mâchassin (6 600 PV)
+  H5 PM0 : 1 Crâ 2 896/tour (2.3 tours de Crâ) | équipe moteur  9 725/tour de jeu (Crâs 2 388/2 529/2 249/2 559) → 0.68 tours de jeu ; 1er/2e/3e tour 10 086/8 419/10 932
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Pluie de + Cinglante + Cinglante | B: Tir Perçant + du Jugement + Pluie de + Tyrannique
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 896 · Crâ2 2 896 · Crâ3 2 757 · Crâ4 2 757 ; équipe SANS limite d'équipe 10 094/tour de jeu (0.65 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 170/tour : A: Tirs Puissants + Persécutrice + du Jugement + Pluie de | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Tyrannique:ap×2, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  H5 PM2 : 1 Crâ 2 713/tour (2.4 tours de Crâ) | équipe moteur  8 853/tour de jeu (Crâs 2 205/2 319/2 010/2 320) → 0.75 tours de jeu ; 1er/2e/3e tour 9 038/7 669/9 884
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Pluie de + du Jugement + Cinglante + Cinglante | B: Pluie de + Tyrannique + Boomerang + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 713 · Crâ2 2 713 · Crâ3 2 518 · Crâ4 2 518 ; équipe SANS limite d'équipe 9 306/tour de jeu (0.71 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 053/tour : A: Tirs Puissants + Persécutrice + Pluie de + Cinglante + Cinglante | B: Tir Perçant + Persécutrice + Pluie de + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Boomerang:ap×2, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+  L5 PM0 : 1 Crâ 3 173/tour (2.1 tours de Crâ) | équipe moteur 11 053/tour de jeu (Crâs 2 786/2 859/2 634/2 775) → 0.60 tours de jeu ; 1er/2e/3e tour 11 634/9 996/11 692
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Boomerang + Tyrannique | B: du Jugement + Boomerang + Pluie de + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 173 · Crâ2 3 173 · Crâ3 3 082 · Crâ4 3 082 ; équipe SANS limite d'équipe 11 267/tour de jeu (0.59 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 381/tour : A: Tirs Puissants + Persécutrice + du Jugement + Boomerang | B: Persécutrice + Boomerang + Pluie de + Cinglante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Tyrannique:ap×2, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Tyrannique:ap×2
+  L5 PM2 : 1 Crâ 3 098/tour (2.1 tours de Crâ) | équipe moteur 10 552/tour de jeu (Crâs 2 674/2 731/2 385/2 762) → 0.63 tours de jeu ; 1er/2e/3e tour 11 111/9 081/11 622
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Boomerang + Pluie de + de Recul + Cinglante | B: Boomerang + Pluie de + Tyrannique + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 098 · Crâ2 3 098 · Crâ3 2 893 · Crâ4 2 893 ; équipe SANS limite d'équipe 11 070/tour de jeu (0.60 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 320/tour : A: Tirs Puissants + Persécutrice + Boomerang + Tyrannique | B: Persécutrice + Boomerang + Pluie de + Cinglante
+      refus moteur (par tour mesuré) : Crâ1 Flèche de Recul:ap×2, Crâ2 Flèche Tyrannique:ap×2, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche de Recul:ap×2
+  H7 PM0 : 1 Crâ 2 956/tour (2.2 tours de Crâ) | équipe moteur 10 073/tour de jeu (Crâs 2 476/2 589/2 389/2 619) → 0.66 tours de jeu ; 1er/2e/3e tour 8 533/8 115/10 513
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + d'Expiation + Pluie de | B: Tir Perçant + du Jugement + Pluie de + Tyrannique
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 956 · Crâ2 2 956 · Crâ3 2 817 · Crâ4 2 817 ; équipe SANS limite d'équipe 10 390/tour de jeu (0.64 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 170/tour : A: Tirs Puissants + Persécutrice + du Jugement + Pluie de | B: Persécutrice + du Jugement + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Pluie de Flèches:ap×2, Crâ2 Flèche Tyrannique:ap×2, Crâ3 Flèche Boomerang:ap×2, Crâ4 Flèche Cinglante:ap×4
+  H7 PM2 : 1 Crâ 2 826/tour (2.3 tours de Crâ) | équipe moteur  9 305/tour de jeu (Crâs 2 318/2 432/2 123/2 433) → 0.71 tours de jeu ; 1er/2e/3e tour 7 494/7 669/9 568
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + d'Expiation + Pluie de + Cinglante + Cinglante | B: Pluie de + Tyrannique + Boomerang + Cinglante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 826 · Crâ2 2 826 · Crâ3 2 631 · Crâ4 2 631 ; équipe SANS limite d'équipe 9 758/tour de jeu (0.68 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 3 113/tour : A: Tirs Puissants + Persécutrice + d'Expiation + Pluie de | B: Tir Perçant + Persécutrice + Pluie de + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Cinglante:ap×4, Crâ2 Flèche Boomerang:ap×2, Crâ3 Flèche Cinglante:ap×4, Crâ4 Flèche Cinglante:ap×4
+
+=== Terristocrate (6 600 PV)
+  H5 PM0 : 1 Crâ 2 711/tour (2.4 tours de Crâ) | équipe moteur  8 836/tour de jeu (Crâs 2 108/2 144/2 108/2 477) → 0.75 tours de jeu ; 1er/2e/3e tour 8 889/7 566/9 744
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tyrannique + du Jugement + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 661 · Crâ2 2 661 · Crâ3 2 661 · Crâ4 2 661 ; équipe SANS limite d'équipe 9 156/tour de jeu (0.72 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H5 PM2 : 1 Crâ 2 668/tour (2.5 tours de Crâ) | équipe moteur  8 280/tour de jeu (Crâs 1 969/2 035/1 938/2 338) → 0.80 tours de jeu ; 1er/2e/3e tour 7 733/7 593/8 966
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + Évasive + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 522 · Crâ2 2 522 · Crâ3 2 491 · Crâ4 2 491 ; équipe SANS limite d'équipe 9 081/tour de jeu (0.73 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×2, Crâ2 Flèche Cinglante:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×2, Crâ4 Flèche Cinglante:ap×2
+  L5 PM0 : 1 Crâ 2 743/tour (2.4 tours de Crâ) | équipe moteur  9 067/tour de jeu (Crâs 2 159/2 208/2 159/2 541) → 0.73 tours de jeu ; 1er/2e/3e tour 8 128/9 151/8 983
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + Boomerang + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 682 · Crâ2 2 682 · Crâ3 2 682 · Crâ4 2 682 ; équipe SANS limite d'équipe 9 306/tour de jeu (0.71 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Flèche Boomerang:ap×2, Crâ3 Flèche Dévorante:ap×2, Crâ4 Flèche Boomerang:ap×2
+  L5 PM2 : 1 Crâ 2 743/tour (2.4 tours de Crâ) | équipe moteur  8 896/tour de jeu (Crâs 2 141/2 140/2 141/2 474) → 0.74 tours de jeu ; 1er/2e/3e tour 8 726/7 850/9 581
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + Boomerang + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 614 · Crâ2 2 614 · Crâ3 2 614 · Crâ4 2 614 ; équipe SANS limite d'équipe 9 306/tour de jeu (0.71 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Évasive:ap×2, Crâ2 Flèche Boomerang:ap×2, Crâ3 Flèche Évasive:ap×2, Crâ4 Flèche Boomerang:ap×2
+  H7 PM0 : 1 Crâ 3 024/tour (2.2 tours de Crâ) | équipe moteur 10 113/tour de jeu (Crâs 2 442/2 448/2 442/2 781) → 0.65 tours de jeu ; 1er/2e/3e tour 8 180/7 566/10 671
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + d'Expiation + Dévorante + Dévorante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 965 · Crâ2 2 965 · Crâ3 2 965 · Crâ4 2 965 ; équipe SANS limite d'équipe 10 406/tour de jeu (0.63 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Dévorante:ap×2, Crâ4 Flèche Détonante:ap×4
+  H7 PM2 : 1 Crâ 3 024/tour (2.2 tours de Crâ) | équipe moteur  9 844/tour de jeu (Crâs 2 353/2 451/2 335/2 705) → 0.67 tours de jeu ; 1er/2e/3e tour 7 785/7 358/10 465
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + d'Expiation + Dévorante + Dévorante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 906 · Crâ2 2 906 · Crâ3 2 888 · Crâ4 2 888 ; équipe SANS limite d'équipe 10 406/tour de jeu (0.63 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+
+=== Doublure (3 300 PV)
+  H5 PM0 : 1 Crâ 3 134/tour (1.1 tours de Crâ) | équipe moteur 11 071/tour de jeu (Crâs 2 670/2 727/2 670/3 004) → 0.30 tours de jeu ; 1er/2e/3e tour 10 933/10 594/11 187
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Œil pour Œil | B: du Jugement + Œil pour Œil + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 134 · Crâ2 3 134 · Crâ3 3 134 · Crâ4 3 134 ; équipe SANS limite d'équipe 11 071/tour de jeu (0.30 tours)
+      refus moteur (par tour mesuré) : Crâ1 Œil pour Œil:ap×2, Crâ2 Flèche Dévorante:ap×2, Crâ3 Œil pour Œil:ap×2, Crâ4 Flèche Dévorante:ap×2
+  H5 PM2 : 1 Crâ 2 795/tour (1.2 tours de Crâ) | équipe moteur  9 717/tour de jeu (Crâs 2 331/2 389/2 331/2 666) → 0.34 tours de jeu ; 1er/2e/3e tour 9 453/9 366/9 707
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Œil pour Œil | B: du Jugement + Œil pour Œil + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 795 · Crâ2 2 795 · Crâ3 2 795 · Crâ4 2 795 ; équipe SANS limite d'équipe 9 717/tour de jeu (0.34 tours)
+      refus moteur (par tour mesuré) : Crâ1 Œil pour Œil:ap×2, Crâ2 Flèche Dévorante:ap×2, Crâ3 Œil pour Œil:ap×2, Crâ4 Flèche Dévorante:ap×2
+  L5 PM0 : 1 Crâ 3 195/tour (1.0 tours de Crâ) | équipe moteur 11 344/tour de jeu (Crâs 2 731/2 803/2 869/2 941) → 0.29 tours de jeu ; 1er/2e/3e tour 12 377/9 756/12 631
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Massacrante + Œil pour Œil | B: du Jugement + Massacrante + Tyrannique
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 195 · Crâ2 3 195 · Crâ3 3 195 · Crâ4 3 195 ; équipe SANS limite d'équipe 11 344/tour de jeu (0.29 tours)
+      refus moteur (par tour mesuré) : Crâ1 Œil pour Œil:ap×2, Crâ2 Flèche Tyrannique:ap×2, Crâ3 Œil pour Œil:ap×2, Crâ4 Flèche Tyrannique:ap×2
+  L5 PM2 : 1 Crâ 2 856/tour (1.2 tours de Crâ) | équipe moteur  9 990/tour de jeu (Crâs 2 392/2 464/2 531/2 603) → 0.33 tours de jeu ; 1er/2e/3e tour 10 897/8 528/11 151
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Massacrante + Œil pour Œil | B: du Jugement + Massacrante + Tyrannique
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 856 · Crâ2 2 856 · Crâ3 2 856 · Crâ4 2 856 ; équipe SANS limite d'équipe 9 990/tour de jeu (0.33 tours)
+      refus moteur (par tour mesuré) : Crâ1 Œil pour Œil:ap×2, Crâ2 Flèche Tyrannique:ap×2, Crâ3 Œil pour Œil:ap×2, Crâ4 Flèche Tyrannique:ap×2
+  H7 PM0 : 1 Crâ 3 201/tour (1.0 tours de Crâ) | équipe moteur 11 351/tour de jeu (Crâs 2 767/2 770/2 767/3 047) → 0.29 tours de jeu ; 1er/2e/3e tour 9 825/9 552/11 697
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + d'Expiation + Dévorante | B: Tir Perçant + du Jugement + Tyrannique + Œil pour Œil
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 201 · Crâ2 3 201 · Crâ3 3 201 · Crâ4 3 201 ; équipe SANS limite d'équipe 11 351/tour de jeu (0.29 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Œil pour Œil:ap×2, Crâ3 Flèche Dévorante:ap×2, Crâ4 Œil pour Œil:ap×2
+  H7 PM2 : 1 Crâ 2 841/tour (1.2 tours de Crâ) | équipe moteur  9 909/tour de jeu (Crâs 2 406/2 410/2 406/2 687) → 0.33 tours de jeu ; 1er/2e/3e tour 8 345/8 148/10 217
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + d'Expiation + Dévorante | B: Tir Perçant + du Jugement + Tyrannique + Œil pour Œil
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 841 · Crâ2 2 841 · Crâ3 2 841 · Crâ4 2 841 ; équipe SANS limite d'équipe 9 909/tour de jeu (0.33 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Œil pour Œil:ap×2, Crâ3 Flèche Dévorante:ap×2, Crâ4 Œil pour Œil:ap×2
+
+=== Bourôliste (6 600 PV)
+  H5 PM0 : 1 Crâ 3 587/tour (1.8 tours de Crâ) | équipe moteur 11 627/tour de jeu (Crâs 2 772/2 820/2 772/3 265) → 0.57 tours de jeu ; 1er/2e/3e tour 11 686/9 944/12 828
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 510 · Crâ2 3 510 · Crâ3 3 510 · Crâ4 3 510 ; équipe SANS limite d'équipe 12 011/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H5 PM2 : 1 Crâ 3 557/tour (1.9 tours de Crâ) | équipe moteur 10 854/tour de jeu (Crâs 2 563/2 815/2 594/2 883) → 0.61 tours de jeu ; 1er/2e/3e tour 10 318/10 248/11 460
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + Dévorante + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 301 · Crâ2 3 301 · Crâ3 3 332 · Crâ4 3 332 ; équipe SANS limite d'équipe 11 893/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  L5 PM0 : 1 Crâ 3 590/tour (1.8 tours de Crâ) | équipe moteur 11 627/tour de jeu (Crâs 2 772/2 820/2 772/3 265) → 0.57 tours de jeu ; 1er/2e/3e tour 11 686/9 944/12 828
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + Boomerang + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 510 · Crâ2 3 510 · Crâ3 3 510 · Crâ4 3 510 ; équipe SANS limite d'équipe 12 208/tour de jeu (0.54 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  L5 PM2 : 1 Crâ 3 590/tour (1.8 tours de Crâ) | équipe moteur 11 148/tour de jeu (Crâs 2 605/2 980/2 613/2 951) → 0.59 tours de jeu ; 1er/2e/3e tour 10 446/10 708/11 588
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + Boomerang + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 343 · Crâ2 3 343 · Crâ3 3 351 · Crâ4 3 351 ; équipe SANS limite d'équipe 12 208/tour de jeu (0.54 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Boomerang:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Boomerang:ap×2
+  H7 PM0 : 1 Crâ 3 587/tour (1.8 tours de Crâ) | équipe moteur 11 627/tour de jeu (Crâs 2 772/2 820/2 772/3 265) → 0.57 tours de jeu ; 1er/2e/3e tour 11 686/9 944/12 828
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 510 · Crâ2 3 510 · Crâ3 3 510 · Crâ4 3 510 ; équipe SANS limite d'équipe 12 011/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H7 PM2 : 1 Crâ 3 557/tour (1.9 tours de Crâ) | équipe moteur 10 793/tour de jeu (Crâs 2 563/2 611/2 563/3 056) → 0.61 tours de jeu ; 1er/2e/3e tour 10 318/10 126/11 460
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Tir Perçant + Dévorante + Dévorante + Détonante + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 3 301 · Crâ2 3 301 · Crâ3 3 301 · Crâ4 3 301 ; équipe SANS limite d'équipe 11 893/tour de jeu (0.55 tours)
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Flèche Détonante:ap×4, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+
+=== Magouille (6 600 PV)
+  H5 PM0 : 1 Crâ 2 670/tour (2.5 tours de Crâ) | équipe moteur  8 933/tour de jeu (Crâs 2 175/2 378/2 101/2 279) → 0.74 tours de jeu ; 1er/2e/3e tour 8 578/8 369/9 494
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 669 · Crâ2 2 669 · Crâ3 2 623 · Crâ4 2 623 ; équipe SANS limite d'équipe 9 086/tour de jeu (0.73 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 761/tour : A: Tirs Puissants + du Jugement + Persécutrice + Dévorante | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  H5 PM2 : 1 Crâ 2 586/tour (2.6 tours de Crâ) | équipe moteur  7 986/tour de jeu (Crâs 1 974/2 036/1 814/2 163) → 0.83 tours de jeu ; 1er/2e/3e tour 7 631/7 363/8 664
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + Pluie de + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 497 · Crâ2 2 497 · Crâ3 2 336 · Crâ4 2 336 ; équipe SANS limite d'équipe 8 776/tour de jeu (0.75 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 641/tour : A: Tirs Puissants + Persécutrice + Tyrannique + Dévorante | B: Persécutrice + Dévorante + Dévorante + Détonante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4
+  L5 PM0 : 1 Crâ 2 783/tour (2.4 tours de Crâ) | équipe moteur  9 468/tour de jeu (Crâs 2 255/2 321/2 255/2 636) → 0.70 tours de jeu ; 1er/2e/3e tour 9 083/9 157/9 372
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Boomerang | B: du Jugement + Boomerang + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 783 · Crâ2 2 783 · Crâ3 2 783 · Crâ4 2 783 ; équipe SANS limite d'équipe 9 468/tour de jeu (0.70 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 829/tour : A: Tirs Puissants + du Jugement + Persécutrice + Boomerang | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Boomerang:ap×2, Crâ2 Flèche Dévorante:ap×2, Crâ3 Flèche Boomerang:ap×2, Crâ4 Flèche Dévorante:ap×2
+  L5 PM2 : 1 Crâ 2 725/tour (2.4 tours de Crâ) | équipe moteur  9 100/tour de jeu (Crâs 2 218/2 237/2 176/2 468) → 0.73 tours de jeu ; 1er/2e/3e tour 8 811/8 157/9 558
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Boomerang + Dévorante + Dévorante + Détonante | B: Tyrannique + Boomerang + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 699 · Crâ2 2 699 · Crâ3 2 615 · Crâ4 2 615 ; équipe SANS limite d'équipe 9 304/tour de jeu (0.71 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 754/tour : A: Tirs Puissants + Persécutrice + Tyrannique + Boomerang | B: Persécutrice + Boomerang + Dévorante + Détonante
+      refus moteur (par tour mesuré) : Crâ1 Pluie de Flèches:ap×2, Crâ2 Flèche Dévorante:ap×2, Crâ3 Flèche de Recul:ap×2, Crâ4 Flèche Dévorante:ap×2
+  H7 PM0 : 1 Crâ 2 670/tour (2.5 tours de Crâ) | équipe moteur  8 998/tour de jeu (Crâs 2 175/2 378/2 148/2 297) → 0.73 tours de jeu ; 1er/2e/3e tour 7 700/8 369/9 209
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + du Jugement + Tyrannique + Dévorante | B: du Jugement + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 669 · Crâ2 2 669 · Crâ3 2 641 · Crâ4 2 641 ; équipe SANS limite d'équipe 9 086/tour de jeu (0.73 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 761/tour : A: Tirs Puissants + du Jugement + Persécutrice + Dévorante | B: du Jugement + Persécutrice + Tyrannique
+      refus moteur (par tour mesuré) : Crâ1 Flèche Dévorante:ap×2, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Dévorante:ap×2, Crâ4 Flèche Détonante:ap×4
+  H7 PM2 : 1 Crâ 2 586/tour (2.6 tours de Crâ) | équipe moteur  8 304/tour de jeu (Crâs 2 016/2 077/1 931/2 280) → 0.79 tours de jeu ; 1er/2e/3e tour 6 389/7 000/8 374
+      rotation (1 Crâ, sans limite d'équipe) : A: Tirs Puissants + Dévorante + Dévorante + Pluie de + Détonante | B: Tyrannique + Dévorante + Dévorante + Détonante
+      rotations moteur de l'équipe (Crâ 1 : Pluie + Fulminante permises ; Crâ 2 : Pluie ; tous : 1 Dévorante/tour) : Crâ1 2 538 · Crâ2 2 538 · Crâ3 2 454 · Crâ4 2 454 ; équipe SANS limite d'équipe 8 776/tour de jeu (0.75 tours)
+      si Persécutrice part cachée (2e coup) : 1 Crâ 2 641/tour : A: Tirs Puissants + Persécutrice + Tyrannique + Dévorante | B: Persécutrice + Dévorante + Dévorante + Détonante
+      refus moteur (par tour mesuré) : Crâ1 Flèche Détonante:ap×4, Crâ2 Pluie de Flèches:ap×2, Crâ3 Flèche Détonante:ap×4, Crâ4 Flèche Détonante:ap×4

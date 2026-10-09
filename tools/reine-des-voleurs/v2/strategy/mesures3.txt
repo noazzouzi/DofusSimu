@@ -1,0 +1,9 @@
+== Crâ attiré de d cases en ligne (avant le tour du joueur k), bloqué 2 tours, puis retour ; proportion de parties avec une mort par bombe
+  y+ (haut-droite écran), d=1 : 1505/4800 (31 %) — A/suivant 69% A/même 100% B/suivant 91% B/même 100% C/suivant 67% C/même 0% D/suivant 0% D/même 0% E/suivant 0% E/même 0%
+  y+ (haut-droite écran), d=2 : 3632/4704 (77 %) — A/suivant 0% A/même 0% B/suivant 51% B/même 0% C/suivant 98% C/même 100% D/suivant 91% D/même 100% E/suivant 91% E/même 100%
+  y+ (haut-droite écran), d=4 : 1974/4800 (41 %) — A/suivant 0% A/même 0% B/suivant 20% B/même 0% C/suivant 73% C/même 50% D/suivant 50% D/même 50% E/suivant 50% E/même 50%
+  y+ (haut-droite écran), d=6 : 815/2688 (30 %) — A/suivant 5% A/même 100% B/suivant 42% B/même 100% C/suivant 97% C/même 0% D/suivant 28% D/même 0% E/suivant 27% E/même 0%
+  x− (haut-gauche écran), d=1 : 1546/3924 (39 %) — A/suivant 58% A/même 100% B/suivant 65% B/même 100% C/suivant 73% C/même 33% D/suivant 18% D/même 0% E/suivant 18% E/même 33%
+  x− (haut-gauche écran), d=2 : 2617/3600 (73 %) — A/suivant 25% A/même 33% B/suivant 25% B/même 33% C/suivant 87% C/même 100% D/suivant 74% D/même 100% E/suivant 83% E/même 100%
+  x− (haut-gauche écran), d=4 : 2040/2724 (75 %) — A/suivant 4% A/même 0% B/suivant 0% B/même 0% C/suivant 99% C/même 100% D/suivant 100% D/même 100% E/suivant 94% E/même 100%
+  x− (haut-gauche écran), d=6 : 120/288 (42 %) — A/suivant —% A/même —% B/suivant —% B/même —% C/suivant 81% C/même —% D/suivant 21% D/même —% E/suivant 23% E/même —%

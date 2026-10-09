@@ -1,0 +1,48 @@
+Dégâts moyens par LANCER (moteur, régime établi, critique pondéré, à distance) — Reine ×1 (sans bombe ni Représailles)
+sort                       élt    PA cat.       Reine  Mâch. Terri. Doubl. Bourô. Magou.  lancers/tour
+P1b Flèche de Recul        Air    3  sûr          358    526    328    306    372    394  2.0
+P1v Flèche Éclatante       Feu    3  pousse       303    366    471    392    627    444  1.0
+P2b Flèche Glacée          Eau    3  sûr          318    329    439    310    274    255  2.0
+P2v Flèche Harcelante      Air    3  sûr          176    259    161    150    183    194  1.0
+P3b Flèche Vagabonde       Terre  3  INTERDIT     373    429    353    606    454    378  2.0
+P3v Flèche Évasive         Eau    3  sûr          306    317    423    299    264    246  1.0
+P4b Flèche de Barrage      Feu    3  pousse       314    380    489    407    652    461  2.0
+P4v Carreaux Destructeurs  Terre  4  pousse       481    553    455    781    585    487  2.0
+P7b Flèche Détonante       Feu    2  sûr          236    285    367    306    490    347  2.0
+P7v Flèche Ralentissante   Eau    4  zone         356    368    492    347    306    286  1.0
+P8b Flèche d'Abolition     Terre  2  zone         216    249    205    352    263    220  3.0
+P8v Flèche Persécutrice    Air    4  sûr          450    660    412    385    467    495  1.0
+P9b Flèche Cinglante       Air    2  sûr          270    396    247    230    280    297  2.0
+P9v Flèche Assaillante     Terre  3  INTERDIT     340    391    321    551    413    344  2.0
+P10b Flèche d'Immobilisation Eau    2  sûr          245    254    339    239    211    197  2.0
+P10v Flèche Tyrannique     Feu    4  sûr          453    548    706    587    941    666  2.0
+P12b Flèche de Dispersion  Air    3  pousse       328    481    300    279    340    360  1.0
+P12v Flèches Enflammées    Feu    4  INTERDIT     405    489    630    525    841    595  2.0
+P13b Flèche Explosive      Feu    4  zone         378    456    587    489    783    554  1.0
+P13v Flèche Massacrante    Terre  4  zone         456    524    432    741    555    463  2.0
+P14b Œil de Taupe          Eau    3  zone         265    274    366    259    228    213  1.0
+P14v Pluie de Flèches      Air    3  zone         531    779    485    453    551    583  1.0
+P15b Œil pour Œil          Terre  3  zone         379    436    359    616    462    385  1.0
+P15v Flèche Paralysante    Eau    4  zone         350    362    483    342    302    281  1.0
+P18b Flèche Punitive       Terre  4  sûr          594    682    561    964    723    602  1.0
+P18v Flèche du Jugement    Terre  4  sûr          832    957    788  1 353  1 014    844  1.0
+P19b Flèche d'Expiation    Eau    4  sûr          785    812  1 084    767    677    631  0.5
+P19v Flèche de Rédemption  Eau    4  sûr          313    323    432    305    269    251  2.0
+P20b Flèche Perforante     Air    4  pousse       492    721    450    420    510    541  1.0
+P20v Flèche Boomerang      Air    3  zone         614    900    562    524    636    675  1.0
+P21b Flèche Dévorante      Feu    3  sûr          400    482    621    518    829    586  2.0
+P21v Flèche Fulminante     Feu    4  sûr          340    411    530    441    707    500  1.0
+
+Meilleurs sorts par monstre (dégâts par PA au régime établi ; sûrs = cible unique) :
+  Reine : Flèche du Jugement 832 (208/PA, sûr) ; Flèche Boomerang 614 (205/PA, zone) ; Flèche d'Expiation 785 (196/PA, sûr) ; Pluie de Flèches 531 (177/PA, zone) ; Flèche Punitive 594 (149/PA, sûr) ; Flèche Cinglante 270 (135/PA, sûr) ; Flèche Dévorante 400 (133/PA, sûr) ; Œil pour Œil 379 (126/PA, zone)
+     meilleur dégât/PA par élément : Terre 208 > Air 205 > Eau 196 > Feu 133
+  Mâchassin : Flèche Boomerang 900 (300/PA, zone) ; Pluie de Flèches 779 (260/PA, zone) ; Flèche du Jugement 957 (239/PA, sûr) ; Flèche d'Expiation 812 (203/PA, sûr) ; Flèche Cinglante 396 (198/PA, sûr) ; Flèche Perforante 721 (180/PA, pousse) ; Flèche de Recul 526 (175/PA, sûr) ; Flèche Punitive 682 (171/PA, sûr)
+     meilleur dégât/PA par élément : Air 300 > Terre 239 > Eau 203 > Feu 161
+  Terristocrate : Flèche d'Expiation 1 084 (271/PA, sûr) ; Flèche Dévorante 621 (207/PA, sûr) ; Flèche du Jugement 788 (197/PA, sûr) ; Flèche Boomerang 562 (187/PA, zone) ; Flèche Détonante 367 (184/PA, sûr) ; Flèche Tyrannique 706 (177/PA, sûr) ; Flèche d'Immobilisation 339 (170/PA, sûr) ; Flèche de Barrage 489 (163/PA, pousse)
+     meilleur dégât/PA par élément : Eau 271 > Feu 207 > Terre 197 > Air 187
+  Doublure : Flèche du Jugement 1 353 (338/PA, sûr) ; Flèche Punitive 964 (241/PA, sûr) ; Œil pour Œil 616 (205/PA, zone) ; Flèche Vagabonde 606 (202/PA, INTERDIT) ; Carreaux Destructeurs 781 (195/PA, pousse) ; Flèche d'Expiation 767 (192/PA, sûr) ; Flèche Massacrante 741 (185/PA, zone) ; Flèche Assaillante 551 (184/PA, INTERDIT)
+     meilleur dégât/PA par élément : Terre 338 > Eau 192 > Air 175 > Feu 173
+  Bourôliste : Flèche Dévorante 829 (276/PA, sûr) ; Flèche du Jugement 1 014 (254/PA, sûr) ; Flèche Détonante 490 (245/PA, sûr) ; Flèche Tyrannique 941 (235/PA, sûr) ; Flèche de Barrage 652 (217/PA, pousse) ; Flèche Boomerang 636 (212/PA, zone) ; Flèches Enflammées 841 (210/PA, INTERDIT) ; Flèche Éclatante 627 (209/PA, pousse)
+     meilleur dégât/PA par élément : Feu 276 > Terre 254 > Air 212 > Eau 169
+  Magouille : Flèche Boomerang 675 (225/PA, zone) ; Flèche du Jugement 844 (211/PA, sûr) ; Flèche Dévorante 586 (195/PA, sûr) ; Pluie de Flèches 583 (194/PA, zone) ; Flèche Détonante 347 (174/PA, sûr) ; Flèche Tyrannique 666 (166/PA, sûr) ; Flèche d'Expiation 631 (158/PA, sûr) ; Flèche de Barrage 461 (154/PA, pousse)
+     meilleur dégât/PA par élément : Air 225 > Terre 211 > Feu 195 > Eau 158

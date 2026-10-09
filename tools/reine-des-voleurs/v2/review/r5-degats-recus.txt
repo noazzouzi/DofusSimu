@@ -1,0 +1,6 @@
+Reine (g1)     Mort en Sursis 0 (à 1, 0 % des PV) ; Brume 0 (à 1, 0 % des PV) ; Coup critique 1025 (à 1, 31 % des PV)
+Mâchassin      Piège à Le Ours 418 (à 1, 13 % des PV) ; Sans se mouiller 396 (à 4, 12 % des PV)
+Terristocrate  Bombe Illicale 416 (à 1, 12 % des PV) ; Fumérus 462 (à 2, 14 % des PV) ; Attentat 865 (à 1, 26 % des PV)
+Doublure       Doublage 0 (à 2, 0 % des PV) ; Coupe Circulaire 448 (à 1, 13 % des PV) ; Subtilité 0 (à 1, 0 % des PV)
+Bourôliste     Vers la lumière 0 (à 2, 0 % des PV) ; Coupable 824 (à 1, 25 % des PV) ; Tournoyade 0 (à 1, 0 % des PV)
+Magouille      Crânéantissement 456 (à 3, 14 % des PV) ; Avertissement 0 (à 1, 0 % des PV) ; Crâmes 662 (à 4, 20 % des PV)

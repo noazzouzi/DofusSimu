@@ -1,0 +1,49 @@
+départ [0,0,1,0,1,1,0,1,0,1,0,0,1,1,0,1,0,1,0,1,0,1] : temps total 13.27 tours de jeu (moyenne strict/zones)
+  P2 Flèche Glacée → Flèche Harcelante : 13.26 (MIEUX) [122 s]
+  P7 Flèche Détonante → Flèche Ralentissante : 13.56 (non) [185 s]
+  P8 Flèche Persécutrice → Flèche d'Abolition : 13.25 (MIEUX) [243 s]
+  P10 Flèche Tyrannique → Flèche d'Immobilisation : 14.40 (non) [308 s]
+  P13 Flèche Massacrante → Flèche Explosive : 13.26 (non) [337 s]
+  P14 Pluie de Flèches → Œil de Taupe : 13.33 (non) [366 s]
+  P15 Œil pour Œil → Flèche Paralysante : 13.26 (non) [394 s]
+  P18 Flèche du Jugement → Flèche Punitive : 13.84 (non) [459 s]
+  P19 Flèche d'Expiation → Flèche de Rédemption : 13.25 (non) [518 s]
+  P20 Flèche Boomerang → Flèche Perforante : 13.45 (non) [545 s]
+  P21 Flèche Dévorante → Flèche Fulminante : 13.69 (non) [576 s]
+  P2 Flèche Harcelante → Flèche Glacée : 13.26 (non) [633 s]
+  P7 Flèche Détonante → Flèche Ralentissante : 13.56 (non) [696 s]
+  P8 Flèche d'Abolition → Flèche Persécutrice : 13.26 (non) [696 s]
+  P10 Flèche Tyrannique → Flèche d'Immobilisation : 14.40 (non) [696 s]
+  P13 Flèche Massacrante → Flèche Explosive : 13.26 (non) [696 s]
+  P14 Pluie de Flèches → Œil de Taupe : 13.33 (non) [696 s]
+  P15 Œil pour Œil → Flèche Paralysante : 13.26 (non) [696 s]
+  P18 Flèche du Jugement → Flèche Punitive : 13.84 (non) [696 s]
+  P19 Flèche d'Expiation → Flèche de Rédemption : 13.25 (non) [696 s]
+  P20 Flèche Boomerang → Flèche Perforante : 13.45 (non) [696 s]
+  P21 Flèche Dévorante → Flèche Fulminante : 13.69 (non) [696 s]
+
+retenu [0,1,1,0,1,1,0,0,0,1,0,0,1,1,0,1,0,1,0,1,0,1] : 13.25
+  strict  : Reine 5 765 · Mâchassin 9 862 · Terristocrate 9 738 · Doublure 10 737 · Bourôliste 12 917 · Magouille 9 496 — temps total 13.56
+  zones   : Reine 6 165 · Mâchassin 10 885 · Terristocrate 9 879 · Doublure 11 374 · Bourôliste 12 911 · Magouille 9 919 — temps total 12.95
+  P1 0 Flèche de Recul
+  P2 1 Flèche Harcelante
+  P3 1 Flèche Évasive
+  P4 0 Flèche de Barrage
+  P5 1 Balise Tactique
+  P6 1 Tir Perçant
+  P7 0 Flèche Détonante
+  P8 0 Flèche d'Abolition
+  P9 0 Flèche Cinglante
+  P10 1 Flèche Tyrannique
+  P11 0 Tirs Puissants
+  P12 0 Flèche de Dispersion
+  P13 1 Flèche Massacrante
+  P14 1 Pluie de Flèches
+  P15 0 Œil pour Œil
+  P16 1 Représailles
+  P17 0 Tir de Repli
+  P18 1 Flèche du Jugement
+  P19 0 Flèche d'Expiation
+  P20 1 Flèche Boomerang
+  P21 0 Flèche Dévorante
+  P22 1 Sentinelle

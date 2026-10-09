@@ -1,0 +1,66 @@
+case 311 (x=14, y=-8) écran (px=6, py=22) [px en demi-largeurs, py en demi-hauteurs]
+   (Δpx=1,Δpy=-5) : 241 (dx=-2,dy=3) d=5 look8=N
+   haut écran Δpy=-4: 255 (dx=-2,dy=2) d=4 look8=N
+   (Δpx=2,Δpy=-4) : 256 (dx=-1,dy=3) d=4 look8=N
+   haut-droite écran (Δpx=4,Δpy=-4): 257 (dx=0,dy=4) d=4 look8=NE
+   (Δpx=1,Δpy=-3) : 269 (dx=-1,dy=2) d=3 look8=N
+   haut-droite écran (Δpx=3,Δpy=-3): 270 (dx=0,dy=3) d=3 look8=NE
+   haut écran Δpy=-2: 283 (dx=-1,dy=1) d=2 look8=N
+   haut-droite écran (Δpx=2,Δpy=-2): 284 (dx=0,dy=2) d=2 look8=NE
+   haut-droite écran (Δpx=1,Δpy=-1): 297 (dx=0,dy=1) d=1 look8=NE
+   droite écran Δpx=2: 312 (dx=1,dy=1) d=2 look8=E
+case 392 (x=14, y=-14) écran (px=0, py=28) [px en demi-largeurs, py en demi-hauteurs]
+   (Δpx=1,Δpy=-5) : 322 (dx=-2,dy=3) d=5 look8=N
+   haut écran Δpy=-4: 336 (dx=-2,dy=2) d=4 look8=N
+   (Δpx=2,Δpy=-4) : 337 (dx=-1,dy=3) d=4 look8=N
+   haut-droite écran (Δpx=4,Δpy=-4): 338 (dx=0,dy=4) d=4 look8=NE
+   (Δpx=1,Δpy=-3) : 350 (dx=-1,dy=2) d=3 look8=N
+   haut-droite écran (Δpx=3,Δpy=-3): 351 (dx=0,dy=3) d=3 look8=NE
+   haut écran Δpy=-2: 364 (dx=-1,dy=1) d=2 look8=N
+   haut-droite écran (Δpx=2,Δpy=-2): 365 (dx=0,dy=2) d=2 look8=NE
+   haut-droite écran (Δpx=1,Δpy=-1): 378 (dx=0,dy=1) d=1 look8=NE
+   droite écran Δpx=2: 393 (dx=1,dy=1) d=2 look8=E
+case 398 (x=20, y=-8) écran (px=12, py=28) [px en demi-largeurs, py en demi-hauteurs]
+   (Δpx=1,Δpy=-5) : 328 (dx=-2,dy=3) d=5 look8=N
+   haut écran Δpy=-4: 342 (dx=-2,dy=2) d=4 look8=N
+   (Δpx=2,Δpy=-4) : 343 (dx=-1,dy=3) d=4 look8=N
+   haut-droite écran (Δpx=4,Δpy=-4): 344 (dx=0,dy=4) d=4 look8=NE
+   (Δpx=1,Δpy=-3) : 356 (dx=-1,dy=2) d=3 look8=N
+   haut-droite écran (Δpx=3,Δpy=-3): 357 (dx=0,dy=3) d=3 look8=NE
+   haut écran Δpy=-2: 370 (dx=-1,dy=1) d=2 look8=N
+   haut-droite écran (Δpx=2,Δpy=-2): 371 (dx=0,dy=2) d=2 look8=NE
+   haut-droite écran (Δpx=1,Δpy=-1): 384 (dx=0,dy=1) d=1 look8=NE
+   droite écran Δpx=2: 399 (dx=1,dy=1) d=2 look8=E
+case 479 (x=20, y=-14) écran (px=6, py=34) [px en demi-largeurs, py en demi-hauteurs]
+   (Δpx=1,Δpy=-5) : 409 (dx=-2,dy=3) d=5 look8=N
+   haut écran Δpy=-4: 423 (dx=-2,dy=2) d=4 look8=N
+   (Δpx=2,Δpy=-4) : 424 (dx=-1,dy=3) d=4 look8=N
+   haut-droite écran (Δpx=4,Δpy=-4): 425 (dx=0,dy=4) d=4 look8=NE
+   (Δpx=1,Δpy=-3) : 437 (dx=-1,dy=2) d=3 look8=N
+   haut-droite écran (Δpx=3,Δpy=-3): 438 (dx=0,dy=3) d=3 look8=NE
+   haut écran Δpy=-2: 451 (dx=-1,dy=1) d=2 look8=N
+   haut-droite écran (Δpx=2,Δpy=-2): 452 (dx=0,dy=2) d=2 look8=NE
+   haut-droite écran (Δpx=1,Δpy=-1): 465 (dx=0,dy=1) d=1 look8=NE
+   droite écran Δpx=2: 480 (dx=1,dy=1) d=2 look8=E
+case 365 (x=14, y=-12) écran (px=2, py=26) [px en demi-largeurs, py en demi-hauteurs]
+   (Δpx=1,Δpy=-5) : 295 (dx=-2,dy=3) d=5 look8=N
+   haut écran Δpy=-4: 309 (dx=-2,dy=2) d=4 look8=N
+   (Δpx=2,Δpy=-4) : 310 (dx=-1,dy=3) d=4 look8=N
+   haut-droite écran (Δpx=4,Δpy=-4): 311 (dx=0,dy=4) d=4 look8=NE
+   (Δpx=1,Δpy=-3) : 323 (dx=-1,dy=2) d=3 look8=N
+   haut-droite écran (Δpx=3,Δpy=-3): 324 (dx=0,dy=3) d=3 look8=NE
+   haut écran Δpy=-2: 337 (dx=-1,dy=1) d=2 look8=N
+   haut-droite écran (Δpx=2,Δpy=-2): 338 (dx=0,dy=2) d=2 look8=NE
+   haut-droite écran (Δpx=1,Δpy=-1): 351 (dx=0,dy=1) d=1 look8=NE
+   droite écran Δpx=2: 366 (dx=1,dy=1) d=2 look8=E
+case 270 (x=14, y=-5) écran (px=9, py=19) [px en demi-largeurs, py en demi-hauteurs]
+   (Δpx=1,Δpy=-5) : 201 (dx=-2,dy=3) d=5 look8=N
+   haut écran Δpy=-4: 214 (dx=-2,dy=2) d=4 look8=N
+   (Δpx=2,Δpy=-4) : 215 (dx=-1,dy=3) d=4 look8=N
+   haut-droite écran (Δpx=4,Δpy=-4): 216 (dx=0,dy=4) d=4 look8=NE
+   (Δpx=1,Δpy=-3) : 229 (dx=-1,dy=2) d=3 look8=N
+   haut-droite écran (Δpx=3,Δpy=-3): 230 (dx=0,dy=3) d=3 look8=NE
+   haut écran Δpy=-2: 242 (dx=-1,dy=1) d=2 look8=N
+   haut-droite écran (Δpx=2,Δpy=-2): 243 (dx=0,dy=2) d=2 look8=NE
+   haut-droite écran (Δpx=1,Δpy=-1): 257 (dx=0,dy=1) d=1 look8=NE
+   droite écran Δpx=2: 271 (dx=1,dy=1) d=2 look8=E

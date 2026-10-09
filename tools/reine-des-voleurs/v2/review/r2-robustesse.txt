@@ -1,0 +1,51 @@
+== a. Contrôle (sans perturbation) ; ordres « frise » = A et B avant C et D
+  A N2→NE2/suivant       tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 552 ; soins 1056
+  A N2→NE2/même          tous ordres 4/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+  B N2→N2+NE1/suivant    tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 552 ; soins 0
+  B N2→N2+NE1/même       tous ordres 4/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+  C N4→NE2/suivant       tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+  C N4→NE2/même          tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+  D N4→N4+NE1/suivant    tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+  D N4→N4+NE1/même       tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+  E N4→NE4/suivant       tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+  E N4→NE4/même          tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+  F N4→N4+E1/suivant     tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+  F N4→N4+E1/même        tous ordres 24/24 ; ordres frise 4/4 ; apparitions au-delà du repli 0 ; replis 0 ; soins 0
+
+== b. N4 + tour suivant : un Crâ ne peut pas bouger pendant UN tour (0 PM, Pesanteur…), manches 2 à 12
+  C N4→NE2/suivant       reste sur sa case un tour pair : 180/576 parties avec une mort (31 %) — 365:29% 378:29% 437:33% 451:33%
+  C N4→NE2/suivant       reste sur la case jaune un tour impair : 144/480 parties avec une mort (30 %) — 365:30% 378:30% 437:30% 451:30%
+  D N4→N4+NE1/suivant    reste sur sa case un tour pair : 0/576 parties avec une mort (0 %) — 365:0% 378:0% 437:0% 451:0%
+  D N4→N4+NE1/suivant    reste sur la case jaune un tour impair : 0/480 parties avec une mort (0 %) — 365:0% 378:0% 437:0% 451:0%
+  E N4→NE4/suivant       reste sur sa case un tour pair : 0/576 parties avec une mort (0 %) — 365:0% 378:0% 437:0% 451:0%
+  E N4→NE4/suivant       reste sur la case jaune un tour impair : 0/480 parties avec une mort (0 %) — 365:0% 378:0% 437:0% 451:0%
+  F N4→N4+E1/suivant     reste sur sa case un tour pair : 0/576 parties avec une mort (0 %) — 365:0% 378:0% 437:0% 451:0%
+  F N4→N4+E1/suivant     reste sur la case jaune un tour impair : 0/480 parties avec une mort (0 %) — 365:0% 378:0% 437:0% 451:0%
+
+== c. Crâ qui finit UN tour sur une case de sortie (tacle, retrait de PM), puis rentre au tour suivant ; manches 2 à 12
+  A N2→NE2/suivant       A en 297 : 152/264 (58 %) ; A en 284 : 0/174 (0 %) ; B en 384 : 146/264 (55 %) ; B en 371 : 0/168 (0 %)
+  A N2→NE2/même          A en 297 : 44/44 (100 %) ; A en 284 : 0/44 (0 %) ; B en 384 : 44/44 (100 %) ; B en 371 : 0/44 (0 %)
+  B N2→N2+NE1/suivant    A en 297 : 214/264 (81 %) ; A en 284 : 104/264 (39 %) ; B en 384 : 206/264 (78 %) ; B en 371 : 98/264 (37 %)
+  B N2→N2+NE1/même       A en 297 : 44/44 (100 %) ; A en 284 : 0/44 (0 %) ; B en 384 : 44/44 (100 %) ; B en 371 : 0/44 (0 %)
+  C N4→NE2/suivant       A en 297 : 0/264 (0 %) ; A en 284 : 214/264 (81 %) ; B en 384 : 0/264 (0 %) ; B en 371 : 206/264 (78 %)
+  C N4→NE2/même          A en 297 : 0/264 (0 %) ; A en 284 : 264/264 (100 %) ; B en 384 : 0/264 (0 %) ; B en 371 : 264/264 (100 %)
+  D N4→N4+NE1/suivant    A en 297 : 0/264 (0 %) ; A en 284 : 214/264 (81 %) ; B en 384 : 0/264 (0 %) ; B en 371 : 206/264 (78 %)
+  D N4→N4+NE1/même       A en 297 : 0/264 (0 %) ; A en 284 : 264/264 (100 %) ; B en 384 : 0/264 (0 %) ; B en 371 : 264/264 (100 %)
+  E N4→NE4/suivant       A en 297 : 0/264 (0 %) ; A en 284 : 214/264 (81 %) ; B en 384 : 0/264 (0 %) ; B en 371 : 206/264 (78 %)
+  E N4→NE4/même          A en 297 : 0/264 (0 %) ; A en 284 : 264/264 (100 %) ; B en 384 : 0/264 (0 %) ; B en 371 : 264/264 (100 %)
+  F N4→N4+E1/suivant     A en 297 : 0/264 (0 %) ; A en 284 : 214/264 (81 %) ; B en 384 : 0/264 (0 %) ; B en 371 : 206/264 (78 %)
+  F N4→N4+E1/même        A en 297 : 0/264 (0 %) ; A en 284 : 264/264 (100 %) ; B en 384 : 0/264 (0 %) ; B en 371 : 264/264 (100 %)
+
+== d. Ennemi sur une case pendant UNE apparition (arrivé pendant le tour du monstre qui précède le Crâ, chassé ensuite) ; manches 2 à 10
+  A N2→NE2/suivant       cases mortelles (taux) : 283:12% 364:9% 370:10% 451:11%
+  A N2→NE2/même          cases mortelles (taux) : 283:25% 364:25% 370:25% 451:25%
+  B N2→N2+NE1/suivant    cases mortelles (taux) : aucune
+  B N2→N2+NE1/même       cases mortelles (taux) : aucune
+  C N4→NE2/suivant       cases mortelles (taux) : 255:8% 269:6% 336:7% 342:8% 350:6% 356:8% 423:8% 437:8%
+  C N4→NE2/même          cases mortelles (taux) : 255:25% 336:25% 342:25% 423:25%
+  D N4→N4+NE1/suivant    cases mortelles (taux) : aucune
+  D N4→N4+NE1/même       cases mortelles (taux) : aucune
+  E N4→NE4/suivant       cases mortelles (taux) : 255:14% 269:11% 336:6% 342:6% 350:5% 356:6% 423:14% 437:11%
+  E N4→NE4/même          cases mortelles (taux) : 255:25% 336:25% 342:25% 423:25%
+  F N4→N4+E1/suivant     cases mortelles (taux) : 269:6% 350:2% 356:3% 437:6%
+  F N4→N4+E1/même        cases mortelles (taux) : aucune

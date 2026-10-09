@@ -1,0 +1,204 @@
+
+######## Cible de Représailles : la case de la Reine seulement
+-- N2 / tour suivant (lecture A), début manche 3 : Crâs 311/398/392/479 ; bombes 370/364/451
+   MeS sur A (311), Reine en 297 : depuis la case — ; par sortie B(397,411,425) ⇒ 1 Crâ(s)  ⚠
+   MeS sur A (311), Reine en 296 : depuis la case C ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur A (311), Reine en 324 : depuis la case B C ; par sortie D(450,452,464) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 325 : depuis la case B C ; par sortie D(450,452,465) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 383 : depuis la case A D ; par sortie C(365,378,393,406,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 384 : depuis la case — ; par sortie — ⇒ 0 Crâ(s)  ⚠
+   MeS sur B (398), Reine en 411 : depuis la case A D ; par sortie C(365,378,393,406,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 412 : depuis la case D ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur C (392), Reine en 378 : depuis la case A D ; par sortie B(369,383,397,411,425) ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 406 : depuis la case A D ; par sortie B(369,383,397,411,425) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 464 : depuis la case C ; par sortie A(324,338) ⇒ 2 Crâ(s)
+   MeS sur D (479), Reine en 465 : depuis la case B ; par sortie A(325,340) ⇒ 2 Crâ(s)
+   MeS sur D (479), Reine en 492 : depuis la case C ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur D (479), Reine en 493 : depuis la case B ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"0":1,"1":5,"2":2,"3":6}
+-- N2 / même tour (lecture A), début manche 3 : Crâs 311/398/392/479 ; bombes 
+   MeS sur A (311), Reine en 297 : depuis la case — ; par sortie B(397,411,425) ⇒ 1 Crâ(s)  ⚠
+   MeS sur A (311), Reine en 296 : depuis la case C ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur A (311), Reine en 324 : depuis la case B C ; par sortie D(450,451,452,464,465) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 325 : depuis la case B C ; par sortie D(450,451,452,464,465) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 383 : depuis la case A D ; par sortie C(365,378,393,406,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 384 : depuis la case — ; par sortie A(310,324,325,338,339,340) ⇒ 1 Crâ(s)  ⚠
+   MeS sur B (398), Reine en 411 : depuis la case A D ; par sortie C(365,378,393,406,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 412 : depuis la case D ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur C (392), Reine en 378 : depuis la case A D ; par sortie B(369,383,397,411,425) ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 406 : depuis la case A D ; par sortie B(369,383,397,411,425) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 464 : depuis la case B C ; par sortie A(324,325,338,339,340) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 465 : depuis la case B C ; par sortie A(324,325,338,339,340) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 492 : depuis la case C ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur D (479), Reine en 493 : depuis la case B ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"1":6,"3":8}
+-- N4 / tour suivant (lecture C), début manche 3 (cases jaunes) : Crâs 325/412/406/493 ; bombes 342/336/423
+   MeS sur a (325), Reine en 312 : depuis la case — ; par sortie — ⇒ 0 Crâ(s)  ⚠
+   MeS sur a (325), Reine en 311 : depuis la case c ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur a (325), Reine en 339 : depuis la case b c ; par sortie d(466,480) ⇒ 3 Crâ(s)
+   MeS sur a (325), Reine en 340 : depuis la case b c ; par sortie d(465,466,480) ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 398 : depuis la case a d ; par sortie c(379,393,407) ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 399 : depuis la case a ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur b (412), Reine en 426 : depuis la case a d ; par sortie c(379,393) ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 427 : depuis la case d ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur c (406), Reine en 393 : depuis la case a d ; par sortie b(383,398,411,426) ⇒ 3 Crâ(s)
+   MeS sur c (406), Reine en 392 : depuis la case a ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur c (406), Reine en 420 : depuis la case d ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur c (406), Reine en 421 : depuis la case a d ; par sortie b(383) ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 479 : depuis la case b c ; par sortie a(354) ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 480 : depuis la case b c ; par sortie a(339,340,353,354) ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 507 : depuis la case c ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur d (493), Reine en 508 : depuis la case b ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"0":1,"1":7,"3":8}
+-- N4 / tour suivant (lecture C), début manche 4 (cases tenues) : Crâs 311/398/392/479 ; bombes 350/437
+   MeS sur A (311), Reine en 297 : depuis la case — ; par sortie B(397,411,425) ⇒ 1 Crâ(s)  ⚠
+   MeS sur A (311), Reine en 296 : depuis la case C ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur A (311), Reine en 324 : depuis la case B C ; par sortie D(450,451,464) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 325 : depuis la case B C ; par sortie D(450,464) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 383 : depuis la case A D ; par sortie C(365,378,393,406,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 384 : depuis la case — ; par sortie A(310,324,325,338,339,340) ⇒ 1 Crâ(s)  ⚠
+   MeS sur B (398), Reine en 411 : depuis la case A D ; par sortie C(365,378,393,406,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 412 : depuis la case D ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur C (392), Reine en 378 : depuis la case A D ; par sortie B(369,383,397,411,425) ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 406 : depuis la case A D ; par sortie B(369,383,397,411,425) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 464 : depuis la case C ; par sortie A(324,325,338,339,340) B(412,426,427) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 465 : depuis la case B C ; par sortie — ⇒ 2 Crâ(s)
+   MeS sur D (479), Reine en 492 : depuis la case C ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur D (479), Reine en 493 : depuis la case B ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"1":6,"2":1,"3":7}
+
+######## Cible de Représailles : la Reine OU une case voisine en ligne (croix X1 : elle reste dans la zone)
+-- N2 / tour suivant (lecture A), début manche 3 : Crâs 311/398/392/479 ; bombes 370/364/451
+   MeS sur A (311), Reine en 297 : depuis la case B C ; par sortie D(450,452) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 296 : depuis la case B C ; par sortie D(450,452) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 324 : depuis la case B C ; par sortie D(450,452,464,478,480) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 325 : depuis la case B C ; par sortie D(450,452,465,478,480) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 383 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 384 : depuis la case A D ; par sortie C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 411 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 412 : depuis la case A D ; par sortie C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 378 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 406 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 464 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 465 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 492 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 493 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"3":14}
+-- N2 / même tour (lecture A), début manche 3 : Crâs 311/398/392/479 ; bombes 
+   MeS sur A (311), Reine en 297 : depuis la case B C ; par sortie D(450,451,452) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 296 : depuis la case B C ; par sortie D(450,451,452) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 324 : depuis la case B C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 325 : depuis la case B C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 383 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 384 : depuis la case A D ; par sortie C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 411 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 412 : depuis la case A D ; par sortie C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 378 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 406 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 464 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 465 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 492 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 493 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"3":14}
+-- N4 / tour suivant (lecture C), début manche 3 (cases jaunes) : Crâs 325/412/406/493 ; bombes 342/336/423
+   MeS sur a (325), Reine en 312 : depuis la case b c ; par sortie d(465,466) ⇒ 3 Crâ(s)
+   MeS sur a (325), Reine en 311 : depuis la case b c ; par sortie d(464,465,466) ⇒ 3 Crâ(s)
+   MeS sur a (325), Reine en 339 : depuis la case b c d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur a (325), Reine en 340 : depuis la case b c d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 398 : depuis la case a c d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 399 : depuis la case a d ; par sortie c(379,407) ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 426 : depuis la case a c d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 427 : depuis la case a d ; par sortie c(379,407,435) ⇒ 3 Crâ(s)
+   MeS sur c (406), Reine en 393 : depuis la case a b d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur c (406), Reine en 392 : depuis la case a d ; par sortie b(383,411,439) ⇒ 3 Crâ(s)
+   MeS sur c (406), Reine en 420 : depuis la case a d ; par sortie b(383,411,439) ⇒ 3 Crâ(s)
+   MeS sur c (406), Reine en 421 : depuis la case a b d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 479 : depuis la case a b c ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 480 : depuis la case a b c ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 507 : depuis la case b c ; par sortie a(352,353,354) ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 508 : depuis la case b c ; par sortie a(352,353,354) ⇒ 3 Crâ(s)
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"3":16}
+-- N4 / tour suivant (lecture C), début manche 4 (cases tenues) : Crâs 311/398/392/479 ; bombes 350/437
+   MeS sur A (311), Reine en 297 : depuis la case B C ; par sortie D(450,451,452) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 296 : depuis la case B C ; par sortie D(450,451) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 324 : depuis la case B C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 325 : depuis la case B C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 383 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 384 : depuis la case A D ; par sortie C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 411 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 412 : depuis la case A D ; par sortie C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 378 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 406 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 464 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 465 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 492 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 493 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"3":14}
+
+######## Cible de Représailles : la Reine OU une case voisine en ligne (croix X1 : elle reste dans la zone), SANS Crâ dans la croix
+-- N2 / tour suivant (lecture A), début manche 3 : Crâs 311/398/392/479 ; bombes 370/364/451
+   MeS sur A (311), Reine en 297 : depuis la case C ; par sortie D(450,452) ⇒ 2 Crâ(s)
+   MeS sur A (311), Reine en 296 : depuis la case B C ; par sortie D(450,452) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 324 : depuis la case B C ; par sortie D(450,452,464,478,480) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 325 : depuis la case B C ; par sortie D(450,452,465,478,480) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 383 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 384 : depuis la case D ; par sortie A(310,324,338,339,340) C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 411 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 412 : depuis la case A D ; par sortie C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 378 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 406 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 464 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 465 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 492 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 493 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"2":1,"3":13}
+-- N2 / même tour (lecture A), début manche 3 : Crâs 311/398/392/479 ; bombes 
+   MeS sur A (311), Reine en 297 : depuis la case C ; par sortie D(450,451,452) ⇒ 2 Crâ(s)
+   MeS sur A (311), Reine en 296 : depuis la case B C ; par sortie D(450,451,452) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 324 : depuis la case B C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 325 : depuis la case B C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 383 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 384 : depuis la case D ; par sortie A(310,324,338,339,340) C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 411 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 412 : depuis la case A D ; par sortie C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 378 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 406 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 464 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 465 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 492 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 493 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"2":1,"3":13}
+-- N4 / tour suivant (lecture C), début manche 3 (cases jaunes) : Crâs 325/412/406/493 ; bombes 342/336/423
+   MeS sur a (325), Reine en 312 : depuis la case c ; par sortie — ⇒ 1 Crâ(s)  ⚠
+   MeS sur a (325), Reine en 311 : depuis la case b c ; par sortie d(464,466) ⇒ 3 Crâ(s)
+   MeS sur a (325), Reine en 339 : depuis la case b c d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur a (325), Reine en 340 : depuis la case b c d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 398 : depuis la case a c d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 399 : depuis la case a d ; par sortie c(379,407) ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 426 : depuis la case a c d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur b (412), Reine en 427 : depuis la case a d ; par sortie c(379,435) ⇒ 3 Crâ(s)
+   MeS sur c (406), Reine en 393 : depuis la case a b d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur c (406), Reine en 392 : depuis la case a d ; par sortie b(383,411,439) ⇒ 3 Crâ(s)
+   MeS sur c (406), Reine en 420 : depuis la case a d ; par sortie b(383,439) ⇒ 3 Crâ(s)
+   MeS sur c (406), Reine en 421 : depuis la case a b d ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 479 : depuis la case a b c ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 480 : depuis la case a b c ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 507 : depuis la case b c ; par sortie a(352,354) ⇒ 3 Crâ(s)
+   MeS sur d (493), Reine en 508 : depuis la case b c ; par sortie a(352,353,354) ⇒ 3 Crâ(s)
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"1":1,"3":15}
+-- N4 / tour suivant (lecture C), début manche 4 (cases tenues) : Crâs 311/398/392/479 ; bombes 350/437
+   MeS sur A (311), Reine en 297 : depuis la case C ; par sortie D(450,452) ⇒ 2 Crâ(s)
+   MeS sur A (311), Reine en 296 : depuis la case B C ; par sortie D(450,451) ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 324 : depuis la case B C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur A (311), Reine en 325 : depuis la case B C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 383 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 384 : depuis la case D ; par sortie A(310,324,338,339,340) C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 411 : depuis la case A C D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur B (398), Reine en 412 : depuis la case A D ; par sortie C(365,393,421) ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 378 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur C (392), Reine en 406 : depuis la case A B D ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 464 : depuis la case A C ; par sortie B(369,370,383,397) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 465 : depuis la case A B C ; par sortie — ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 492 : depuis la case B C ; par sortie A(338,339,340) ⇒ 3 Crâ(s)
+   MeS sur D (479), Reine en 493 : depuis la case B C ; par sortie A(340) ⇒ 3 Crâ(s)
+   bilan (Crâs capables, sorties « coincé = mortel » exclues) : {"2":1,"3":13}

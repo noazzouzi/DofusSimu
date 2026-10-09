@@ -1,0 +1,6 @@
+F-A A/TS, bleue ne colore pas, imm/nearcw: 18/24 ; échecs: 451→365→378→437 (m4) | 451→365→437→378 (m4) | 451→378→365→437 (m4) | 451→378→437→365 (m4) | 451→437→365→378 (m4) | 451→437→378→365 (m4)
+F-A A/TS, bleue ne colore pas, dfs/near: 18/24 ; échecs: 451→365→378→437 (m4) | 451→365→437→378 (m4) | 451→378→365→437 (m4) | 451→378→437→365 (m4) | 451→437→365→378 (m4) | 451→437→378→365 (m4)
+F-A A/TS, bleue ne colore pas, bfs/near: 18/24 ; échecs: 451→365→378→437 (m4) | 451→365→437→378 (m4) | 451→378→365→437 (m4) | 451→378→437→365 (m4) | 451→437→365→378 (m4) | 451→437→378→365 (m4)
+F-C A/TS, bleue ne colore pas, imm/nearcw: 24/24 ; échecs: 
+F-C A/TS, bleue ne colore pas, dfs/near: 24/24 ; échecs: 
+F-C A/TS, bleue ne colore pas, bfs/near: 24/24 ; échecs: 

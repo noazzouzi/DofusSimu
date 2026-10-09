@@ -1,0 +1,49 @@
+
+##### F3.txt = F-A (ordre 365→437→378→451)
+  A TS: identique (ordre des explosions compris) pour [] ; identique à l'ordre près pour []
+     ≠ chercheur m2 | J1:283 J2:370 J3:364 J4:451 | 337R 350R 283R 423b 409R | 
+       moi(dfs/near) m2 | J1:283 J2:370 J3:364 J4:451 | 337R 350R 423R 283R 409R | 
+     ≠ chercheur m3 | J1:283 J2:371' J3:364 J4:451 | 370R 451R 364b 283b | 
+       moi(dfs/near) m3 | J1:283 J2:371' J3:364 J4:451 | 370R 283R 364b 451R | 
+     ≠ chercheur m4 | J1:283 J2:370 J3:365' J4:451 | 371b 364b 283R 370b 451b | J2,J4
+       moi(dfs/near) m4 | J1:283 J2:370 J3:365' J4:451 | 371b 364b 283R 370b 451R | J2,J4
+     ≠ chercheur m5 | J1:283 J2:370 J3:364 J4:452' | 365b 451R 370b 283b 364b | J1,J3
+       moi(dfs/near) m5 | J1:283 J2:370 J3:364 J4:452' | 365b 451R 364b 283b 370b | J1,J3
+     ≠ chercheur m7 | J1:284' J2:370 J3:364 J4:451 | 283R 370R 451b 364b | 
+       moi(dfs/near) m7 | J1:284' J2:370 J3:364 J4:451 | 283R 364R 451b 370R | 
+     ≠ chercheur m8 | J1:283 J2:371' J3:364 J4:451 | 284b 370R 451R 364b 283b | J1,J3
+       moi(dfs/near) m8 | J1:283 J2:371' J3:364 J4:451 | 284b 370R 283b 364b 451R | J1,J3
+     ≠ chercheur m9 | J1:283 J2:370 J3:365' J4:451 | 371b 364b 283R 370b 451b | J2,J4
+       moi(dfs/near) m9 | J1:283 J2:370 J3:365' J4:451 | 371b 364b 283R 370b 451R | J2,J4
+     ≠ chercheur m10 | J1:283 J2:370 J3:364 J4:452' | 365b 451R 370b 283b 364b | J1,J3
+       moi(dfs/near) m10 | J1:283 J2:370 J3:364 J4:452' | 365b 451R 364b 283b 370b | J1,J3
+  A MT: identique (ordre des explosions compris) pour [dfs/near dfs/near/pend dfs/nearc dfs/nearc/pend dfs/far dfs/far/pend dfs/id dfs/id/pend dfs/idrev dfs/idrev/pend bfs/near bfs/near/pend bfs/nearc bfs/nearc/pend bfs/far bfs/far/pend bfs/id bfs/id/pend bfs/idrev bfs/idrev/pend imm/near imm/near/pend imm/nearc imm/nearc/pend imm/far imm/far/pend imm/id imm/id/pend imm/idrev imm/idrev/pend] ; identique à l'ordre près pour []
+  B TS: identique (ordre des explosions compris) pour [imm/near imm/near/pend] ; identique à l'ordre près pour []
+  C TS: identique (ordre des explosions compris) pour [] ; identique à l'ordre près pour []
+     ≠ chercheur m2 | J1:255 J2:342 J3:336 J4:423 | 309R 322R 255R 395b 381R | 
+       moi(dfs/near) m2 | J1:255 J2:342 J3:336 J4:423 | 309R 322R 395R 255R 381R | 
+     ≠ chercheur m5 | J1:269 J2:356 J3:350 J4:437 | 423R 437R 356R 269b 350b | 
+       moi(dfs/near) m5 | J1:269 J2:356 J3:350 J4:437 | 423R 437R 356R 269b 350R | 
+     ≠ chercheur m7 | J1:269 J2:356 J3:350 J4:437 | 255R 269R 342R 423b 336b | 
+       moi(dfs/near) m7 | J1:269 J2:356 J3:350 J4:437 | 255R 269R 336R 423b 342R | 
+     ≠ chercheur m8 | J1:255 J2:342 J3:336 J4:423 | 356R 342R 255R 437R 350b | 
+       moi(dfs/near) m8 | J1:255 J2:342 J3:336 J4:423 | 356R 342R 437R 350b 255R | 
+     ≠ chercheur m9 | J1:269 J2:356 J3:350 J4:437 | 336R 350R 423R 269R 356b | 
+       moi(dfs/near) m9 | J1:269 J2:356 J3:350 J4:437 | 336R 350R 269R 356b 423R | 
+     ≠ chercheur m10 | J1:255 J2:342 J3:336 J4:423 | 437R 423R 342R 255b 336b | 
+       moi(dfs/near) m10 | J1:255 J2:342 J3:336 J4:423 | 437R 423R 342R 255b 336R | 
+  C MT: identique (ordre des explosions compris) pour [dfs/near dfs/near/pend dfs/nearc dfs/nearc/pend dfs/far dfs/far/pend dfs/id dfs/id/pend dfs/idrev dfs/idrev/pend bfs/near bfs/near/pend bfs/nearc bfs/nearc/pend bfs/far bfs/far/pend bfs/id bfs/id/pend bfs/idrev bfs/idrev/pend imm/near imm/near/pend imm/nearc imm/nearc/pend imm/far imm/far/pend imm/id imm/id/pend imm/idrev imm/idrev/pend] ; identique à l'ordre près pour []
+
+##### F1.txt = F-C (ordre 365→437→378→451)
+  A TS: identique (ordre des explosions compris) pour [dfs/nearc/pend imm/near imm/near/pend imm/nearc imm/nearc/pend] ; identique à l'ordre près pour [dfs/idrev/pend bfs/nearc/pend bfs/idrev/pend imm/idrev imm/idrev/pend]
+  A MT: identique (ordre des explosions compris) pour [dfs/near dfs/near/pend dfs/nearc dfs/nearc/pend dfs/far dfs/far/pend dfs/id dfs/id/pend dfs/idrev dfs/idrev/pend bfs/near bfs/near/pend bfs/nearc bfs/nearc/pend bfs/far bfs/far/pend bfs/id bfs/id/pend bfs/idrev bfs/idrev/pend imm/near imm/near/pend imm/nearc imm/nearc/pend imm/far imm/far/pend imm/id imm/id/pend imm/idrev imm/idrev/pend] ; identique à l'ordre près pour []
+  B TS: identique (ordre des explosions compris) pour [imm/near imm/near/pend imm/nearc imm/nearc/pend] ; identique à l'ordre près pour [dfs/nearc/pend dfs/idrev/pend bfs/nearc/pend bfs/idrev/pend imm/idrev imm/idrev/pend]
+  C TS: identique (ordre des explosions compris) pour [imm/near imm/near/pend imm/nearc imm/nearc/pend] ; identique à l'ordre près pour [dfs/nearc/pend dfs/idrev/pend bfs/nearc/pend bfs/idrev/pend imm/idrev imm/idrev/pend]
+  C MT: identique (ordre des explosions compris) pour [dfs/near dfs/near/pend dfs/nearc dfs/nearc/pend dfs/far dfs/far/pend dfs/id dfs/id/pend dfs/idrev dfs/idrev/pend bfs/near bfs/near/pend bfs/nearc bfs/nearc/pend bfs/far bfs/far/pend bfs/id bfs/id/pend bfs/idrev bfs/idrev/pend imm/near imm/near/pend imm/nearc imm/nearc/pend imm/far imm/far/pend imm/id imm/id/pend imm/idrev imm/idrev/pend] ; identique à l'ordre près pour []
+  E TS: identique (ordre des explosions compris) pour [imm/near imm/near/pend imm/nearc imm/nearc/pend] ; identique à l'ordre près pour [dfs/nearc/pend dfs/idrev/pend bfs/nearc/pend bfs/idrev/pend imm/idrev imm/idrev/pend]
+
+##### F2.txt = F-B (ordre 340→367→365→437)
+  A TS: identique (ordre des explosions compris) pour [imm/near imm/near/pend imm/nearc imm/nearc/pend] ; identique à l'ordre près pour [dfs/near dfs/near/pend dfs/nearc dfs/nearc/pend dfs/far dfs/far/pend dfs/id dfs/id/pend dfs/idrev dfs/idrev/pend bfs/near bfs/near/pend bfs/nearc bfs/nearc/pend bfs/far bfs/far/pend bfs/id bfs/id/pend bfs/idrev bfs/idrev/pend imm/far imm/far/pend imm/id imm/id/pend imm/idrev imm/idrev/pend]
+  A MT: identique (ordre des explosions compris) pour [dfs/near dfs/near/pend dfs/nearc dfs/nearc/pend dfs/far dfs/far/pend dfs/id dfs/id/pend dfs/idrev dfs/idrev/pend bfs/near bfs/near/pend bfs/nearc bfs/nearc/pend bfs/far bfs/far/pend bfs/id bfs/id/pend bfs/idrev bfs/idrev/pend imm/near imm/near/pend imm/nearc imm/nearc/pend imm/far imm/far/pend imm/id imm/id/pend imm/idrev imm/idrev/pend] ; identique à l'ordre près pour []
+  B TS: identique (ordre des explosions compris) pour [imm/near imm/near/pend imm/nearc imm/nearc/pend] ; identique à l'ordre près pour [dfs/near dfs/near/pend dfs/nearc dfs/nearc/pend dfs/far dfs/far/pend dfs/id dfs/id/pend dfs/idrev dfs/idrev/pend bfs/near bfs/near/pend bfs/nearc bfs/nearc/pend bfs/far bfs/far/pend bfs/id bfs/id/pend bfs/idrev bfs/idrev/pend imm/far imm/far/pend imm/id imm/id/pend imm/idrev imm/idrev/pend]
+  B MT: identique (ordre des explosions compris) pour [dfs/near dfs/near/pend dfs/nearc dfs/nearc/pend dfs/far dfs/far/pend dfs/id dfs/id/pend dfs/idrev dfs/idrev/pend bfs/near bfs/near/pend bfs/nearc bfs/nearc/pend bfs/far bfs/far/pend bfs/id bfs/id/pend bfs/idrev bfs/idrev/pend imm/near imm/near/pend imm/nearc imm/nearc/pend imm/far imm/far/pend imm/id imm/id/pend imm/idrev imm/idrev/pend] ; identique à l'ordre près pour []

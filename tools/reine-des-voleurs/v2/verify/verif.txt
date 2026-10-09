@@ -1,0 +1,60 @@
+
+=== ancien README : départ 354/381/380/451 → 354/381/408/435
+  NEold TS: dfs=24/24 au-delà=556  bfs=24/24 au-delà=556  imm=24/24 au-delà=556
+  NEold MT: dfs=12/24  bfs=12/24  imm=12/24
+     ordres OK (dfs/near): 354→381→380→451 | 354→380→381→451 | 354→380→451→381 | 381→354→380→451 | 381→380→354→451 | 381→380→451→354 | 380→354→381→451 | 380→354→451→381 | 380→381→354→451 | 380→381→451→354 | 380→451→354→381 | 380→451→381→354
+     ordres OK (bfs/near): 354→381→380→451 | 354→380→381→451 | 354→380→451→381 | 381→354→380→451 | 381→380→354→451 | 381→380→451→354 | 380→354→381→451 | 380→354→451→381 | 380→381→354→451 | 380→381→451→354 | 380→451→354→381 | 380→451→381→354
+  A TS: dfs=0/24 au-delà=840  bfs=0/24 au-delà=840  imm=0/24 au-delà=840
+  A MT: dfs=0/24 au-delà=720  bfs=0/24 au-delà=720  imm=0/24 au-delà=720
+  C TS: dfs=0/24 au-delà=16  bfs=0/24 au-delà=16  imm=0/24 au-delà=16
+  C MT: dfs=0/24  bfs=0/24  imm=0/24
+
+=== F-A : départ 365/378/437/451 → 311/392/398/479 (alt 325/406/412/493)
+  A TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  A MT: dfs/near=4/24  dfs/far=4/24  dfs/id=4/24  dfs/idrev=4/24  bfs/near=4/24  bfs/far=4/24  bfs/id=4/24  bfs/idrev=4/24  imm/near=4/24  imm/far=4/24  imm/id=4/24  imm/idrev=4/24
+     ordres OK (dfs/near): 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+     ordres OK (bfs/near): 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+  B TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  B MT: dfs/near=4/24  dfs/far=4/24  dfs/id=4/24  dfs/idrev=4/24  bfs/near=4/24  bfs/far=4/24  bfs/id=4/24  bfs/idrev=4/24  imm/near=4/24  imm/far=4/24  imm/id=4/24  imm/idrev=4/24
+     ordres OK (dfs/near): 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+     ordres OK (bfs/near): 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+  C TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  C MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  D TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  D MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  E TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  E MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  E2 TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  E2 MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+
+=== F-C : départ 365/437/378/451 → 297/370/392/464 (alt 312/384/406/479)
+  A TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  A MT: dfs/near=4/24  dfs/far=4/24  dfs/id=4/24  dfs/idrev=4/24  bfs/near=4/24  bfs/far=4/24  bfs/id=4/24  bfs/idrev=4/24  imm/near=4/24  imm/far=4/24  imm/id=4/24  imm/idrev=4/24
+     ordres OK (dfs/near): 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+     ordres OK (bfs/near): 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+  B TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  B MT: dfs/near=4/24  dfs/far=4/24  dfs/id=4/24  dfs/idrev=4/24  bfs/near=4/24  bfs/far=4/24  bfs/id=4/24  bfs/idrev=4/24  imm/near=4/24  imm/far=4/24  imm/id=4/24  imm/idrev=4/24
+     ordres OK (dfs/near): 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+     ordres OK (bfs/near): 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+  C TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  C MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  D TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  D MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  E TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  E MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  E2 TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  E2 MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+
+=== F-B : départ 340/367/365/437 → 270/381/392/425
+  A TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  A MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  B TS: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  B MT: dfs/near=24/24  dfs/far=24/24  dfs/id=24/24  dfs/idrev=24/24  bfs/near=24/24  bfs/far=24/24  bfs/id=24/24  bfs/idrev=24/24  imm/near=24/24  imm/far=24/24  imm/id=24/24  imm/idrev=24/24
+  C TS: dfs/near=0/24 cheminKO=12  dfs/far=0/24 cheminKO=12  dfs/id=0/24 cheminKO=12  dfs/idrev=0/24 cheminKO=12  bfs/near=0/24 cheminKO=12  bfs/far=0/24 cheminKO=12  bfs/id=0/24 cheminKO=12  bfs/idrev=0/24 cheminKO=12  imm/near=0/24 cheminKO=12  imm/far=0/24 cheminKO=12  imm/id=0/24 cheminKO=12  imm/idrev=0/24 cheminKO=12
+  C MT: dfs/near=0/24  dfs/far=0/24  dfs/id=0/24  dfs/idrev=0/24  bfs/near=0/24  bfs/far=0/24  bfs/id=0/24  bfs/idrev=0/24  imm/near=0/24  imm/far=0/24  imm/id=0/24  imm/idrev=0/24
+  D TS: dfs/near=0/24 cheminKO=12  dfs/far=0/24 cheminKO=12  dfs/id=0/24 cheminKO=12  dfs/idrev=0/24 cheminKO=12  bfs/near=0/24 cheminKO=12  bfs/far=0/24 cheminKO=12  bfs/id=0/24 cheminKO=12  bfs/idrev=0/24 cheminKO=12  imm/near=0/24 cheminKO=12  imm/far=0/24 cheminKO=12  imm/id=0/24 cheminKO=12  imm/idrev=0/24 cheminKO=12
+  D MT: dfs/near=0/24  dfs/far=0/24  dfs/id=0/24  dfs/idrev=0/24  bfs/near=0/24  bfs/far=0/24  bfs/id=0/24  bfs/idrev=0/24  imm/near=0/24  imm/far=0/24  imm/id=0/24  imm/idrev=0/24
+  E TS: dfs/near=0/24 au-delà=54 cheminKO=12  dfs/far=0/24 au-delà=54 cheminKO=12  dfs/id=0/24 au-delà=54 cheminKO=12  dfs/idrev=0/24 au-delà=54 cheminKO=12  bfs/near=0/24 au-delà=54 cheminKO=12  bfs/far=0/24 au-delà=54 cheminKO=12  bfs/id=0/24 au-delà=54 cheminKO=12  bfs/idrev=0/24 au-delà=54 cheminKO=12  imm/near=0/24 au-delà=54 cheminKO=12  imm/far=0/24 au-delà=54 cheminKO=12  imm/id=0/24 au-delà=54 cheminKO=12  imm/idrev=0/24 au-delà=54 cheminKO=12
+  E MT: dfs/near=0/24  dfs/far=0/24  dfs/id=0/24  dfs/idrev=0/24  bfs/near=0/24  bfs/far=0/24  bfs/id=0/24  bfs/idrev=0/24  imm/near=0/24  imm/far=0/24  imm/id=0/24  imm/idrev=0/24
+  E2 TS: dfs/near=0/24 au-delà=54 cheminKO=12  dfs/far=0/24 au-delà=54 cheminKO=12  dfs/id=0/24 au-delà=54 cheminKO=12  dfs/idrev=0/24 au-delà=54 cheminKO=12  bfs/near=0/24 au-delà=54 cheminKO=12  bfs/far=0/24 au-delà=54 cheminKO=12  bfs/id=0/24 au-delà=54 cheminKO=12  bfs/idrev=0/24 au-delà=54 cheminKO=12  imm/near=0/24 au-delà=54 cheminKO=12  imm/far=0/24 au-delà=54 cheminKO=12  imm/id=0/24 au-delà=54 cheminKO=12  imm/idrev=0/24 au-delà=54 cheminKO=12
+  E2 MT: dfs/near=0/24  dfs/far=0/24  dfs/id=0/24  dfs/idrev=0/24  bfs/near=0/24  bfs/far=0/24  bfs/id=0/24  bfs/idrev=0/24  imm/near=0/24  imm/far=0/24  imm/id=0/24  imm/idrev=0/24

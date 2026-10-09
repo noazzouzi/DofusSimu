@@ -1,0 +1,8 @@
+N4 lecture C (repli NE2) : A commence sur 325, ennemi sur 269, bombe en 298 (en ligne avec 406,325) ; sauvetage : depuis 296 (2+1 PM) → bombe en 300 | depuis 297 (2+1 PM) → bombe en 300
+N4 lecture C (repli NE2) : B commence sur 412, ennemi sur 356, bombe en 385 (en ligne avec 493,412) ; sauvetage : depuis 371 (3+2 PM) → bombe en 400 | depuis 383 (2+1 PM) → bombe en 386 | depuis 384 (2+1 PM) → bombe en 386
+N4 lecture C (repli NE2) : C commence sur 406, ennemi sur 350, bombe en 379 (en ligne avec 325,406) ; sauvetage : depuis 365 (3+2 PM) → bombe en 408 | depuis 378 (2+1 PM) → bombe en 381 | depuis 407 (2+3 PM) → bombe en 323
+N4 lecture C (repli NE2) : D commence sur 493, ennemi sur 437, bombe en 466 (en ligne avec 412,493) ; sauvetage : depuis 452 (3+2 PM) → bombe en 481 | depuis 464 (2+1 PM) → bombe en 467 | depuis 465 (2+1 PM) → bombe en 467
+N4 lecture E (repli NE4) : A commence sur 325, ennemi sur 269, bombe en 271 (en ligne avec 406,325) ; sauvetage : depuis 298 (2+3 PM) → bombe en 244 | depuis 312 (1+2 PM) → bombe en 244 | depuis 325 (0+1 PM) → bombe en 244
+N4 lecture E (repli NE4) : B commence sur 412, ennemi sur 356, bombe en 358 (en ligne avec 493,412) ; sauvetage : depuis 385 (2+3 PM) → bombe en 331 | depuis 399 (1+2 PM) → bombe en 331 | depuis 412 (0+1 PM) → bombe en 331
+N4 lecture E (repli NE4) : C commence sur 406, ennemi sur 350, bombe en 352 (en ligne avec 325,406) ; sauvetage : AUCUN
+N4 lecture E (repli NE4) : D commence sur 493, ennemi sur 437, bombe en 439 (en ligne avec 412,493) ; sauvetage : AUCUN

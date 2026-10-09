@@ -1,0 +1,4 @@
+C N4→NE2/suivant sans alternance : 0/24
+D N4→N4+NE1/suivant sans alternance : 24/24
+E N4→NE4/suivant sans alternance : 24/24
+F N4→N4+E1/suivant sans alternance : 24/24

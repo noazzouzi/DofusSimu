@@ -1,0 +1,26 @@
+== lecture N2, fin du tour 1 (Crâs 311/398/392/479, bombes 337 409 350 423)
+  Reine en 159 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 12 PM, vue non à 17 | 392: MeS 12 PM, vue non à 17 | 479: MeS 18 PM, vue non à 23
+  Reine en 160 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 12 PM, vue oui à 17 | 392: MeS 12 PM, vue oui à 17 | 479: MeS 18 PM, vue non à 23
+  Reine en 161 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 12 PM, vue oui à 17 | 392: MeS 12 PM, vue non à 17 | 479: MeS 18 PM, vue non à 23
+  Reine en 162 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 12 PM, vue non à 17 | 392: MeS 14 PM, vue non à 17 | 479: MeS 18 PM, vue non à 23
+  Reine en 190 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 10 PM, vue non à 15 | 392: MeS 12 PM, vue non à 17 | 479: MeS 16 PM, vue non à 21
+  Reine en 205 → 311: MeS 7 PM, vue non à 12 | 398: MeS 9 PM, vue non à 14 | 392: MeS 13 PM, vue non à 18 | 479: MeS 15 PM, vue non à 20
+  Reine en 219 → 311: MeS 8 PM, vue non à 13 | 398: MeS 8 PM, vue non à 13 | 392: MeS 14 PM, vue non à 19 | 479: MeS 14 PM, vue non à 19
+  Reine en 234 → 311: MeS 9 PM, vue non à 14 | 398: MeS 7 PM, vue oui à 12 | 392: MeS 15 PM, vue non à 20 | 479: MeS 13 PM, vue oui à 18
+  Reine en 235 → 311: MeS 11 PM, vue non à 16 | 398: MeS 7 PM, vue oui à 12 | 392: MeS 17 PM, vue non à 22 | 479: MeS 13 PM, vue non à 18
+  Reine en 263 → 311: MeS 11 PM, vue oui à 16 | 398: MeS 5 PM ⚠, vue oui à 10 | 392: MeS 17 PM, vue non à 22 | 479: MeS 13 PM, vue non à 16
+  Reine en 291 → 311: MeS 11 PM, vue non à 16 | 398: MeS 5 PM ⚠, vue oui à 10 | 392: MeS 17 PM, vue non à 22 | 479: MeS 11 PM, vue non à 16
+  Reine en 319 → 311: MeS 11 PM, vue non à 16 | 398: MeS 5 PM ⚠, vue oui à 10 | 392: MeS 17 PM, vue oui à 22 | 479: MeS 11 PM, vue oui à 16
+== lecture N4, fin du tour 1 (Crâs 311/398/392/479, bombes 309 381 322 395)
+  Reine en 159 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 12 PM, vue non à 17 | 392: MeS 12 PM, vue oui à 17 | 479: MeS 18 PM, vue non à 23
+  Reine en 160 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 12 PM, vue oui à 17 | 392: MeS 12 PM, vue oui à 17 | 479: MeS 18 PM, vue non à 23
+  Reine en 161 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 12 PM, vue oui à 17 | 392: MeS 12 PM, vue non à 17 | 479: MeS 18 PM, vue non à 23
+  Reine en 162 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 12 PM, vue non à 17 | 392: MeS 14 PM, vue non à 17 | 479: MeS 18 PM, vue non à 23
+  Reine en 190 → 311: MeS 6 PM ⚠, vue oui à 11 | 398: MeS 10 PM, vue non à 15 | 392: MeS 12 PM, vue non à 17 | 479: MeS 16 PM, vue non à 21
+  Reine en 205 → 311: MeS 7 PM, vue non à 12 | 398: MeS 9 PM, vue non à 14 | 392: MeS 13 PM, vue non à 18 | 479: MeS 15 PM, vue non à 20
+  Reine en 219 → 311: MeS 8 PM, vue non à 13 | 398: MeS 8 PM, vue non à 13 | 392: MeS 14 PM, vue non à 19 | 479: MeS 14 PM, vue non à 19
+  Reine en 234 → 311: MeS 9 PM, vue non à 14 | 398: MeS 7 PM, vue oui à 12 | 392: MeS 15 PM, vue non à 20 | 479: MeS 13 PM, vue oui à 18
+  Reine en 235 → 311: MeS 11 PM, vue non à 16 | 398: MeS 7 PM, vue oui à 12 | 392: MeS 17 PM, vue non à 22 | 479: MeS 13 PM, vue non à 18
+  Reine en 263 → 311: MeS 11 PM, vue oui à 16 | 398: MeS 5 PM ⚠, vue oui à 10 | 392: MeS 17 PM, vue non à 22 | 479: MeS 13 PM, vue non à 16
+  Reine en 291 → 311: MeS 11 PM, vue non à 16 | 398: MeS 5 PM ⚠, vue oui à 10 | 392: MeS 17 PM, vue non à 22 | 479: MeS 11 PM, vue non à 16
+  Reine en 319 → 311: MeS 11 PM, vue non à 16 | 398: MeS 5 PM ⚠, vue oui à 10 | 392: MeS 17 PM, vue non à 22 | 479: MeS 11 PM, vue oui à 16

@@ -1,0 +1,12 @@
+N2 lecture A : ennemi sur 283 au tour de A → bombe en 284, en ligne avec A+C ; sauvetage par Flèche de Recul : depuis 312 (2 PM) → bombe en 228 | depuis 340 (2 PM) → bombe en 228
+N2 lecture A : ennemi sur 370 au tour de B → bombe en 371, en ligne avec B+D ; sauvetage par Flèche de Recul : depuis 399 (2 PM) → bombe en 315 | depuis 427 (2 PM) → bombe en 315
+N2 lecture A : ennemi sur 364 au tour de C → bombe en 365, en ligne avec A+C ; sauvetage par Flèche de Recul : depuis 393 (2 PM) → bombe en 309 | depuis 421 (2 PM) → bombe en 309
+N2 lecture A : ennemi sur 451 au tour de D → bombe en 452, en ligne avec B+D ; sauvetage par Flèche de Recul : depuis 480 (2 PM) → bombe en 396 | depuis 508 (2 PM) → bombe en 396
+N4 lecture C : ennemi sur 255 au tour de A → bombe en 284, en ligne avec A+C ; sauvetage par Flèche de Recul : depuis 282 (2 PM) → bombe en 286 | depuis 283 (2 PM) → bombe en 286 | depuis 312 (2 PM) → bombe en 228 | depuis 340 (2 PM) → bombe en 228
+N4 lecture C : ennemi sur 342 au tour de B → bombe en 371, en ligne avec B+D ; sauvetage par Flèche de Recul : depuis 369 (2 PM) → bombe en 373 | depuis 370 (2 PM) → bombe en 373 | depuis 399 (2 PM) → bombe en 315 | depuis 427 (2 PM) → bombe en 315
+N4 lecture C : ennemi sur 336 au tour de C → bombe en 365, en ligne avec A+C ; sauvetage par Flèche de Recul : depuis 364 (2 PM) → bombe en 367 | depuis 393 (2 PM) → bombe en 309 | depuis 421 (2 PM) → bombe en 309
+N4 lecture C : ennemi sur 423 au tour de D → bombe en 452, en ligne avec B+D ; sauvetage par Flèche de Recul : depuis 450 (2 PM) → bombe en 454 | depuis 451 (2 PM) → bombe en 454 | depuis 480 (2 PM) → bombe en 396 | depuis 508 (2 PM) → bombe en 396
+N4 lecture E : ennemi sur 255 au tour de A → bombe en 257, en ligne avec A+C ; sauvetage par Flèche de Recul : AUCUN
+N4 lecture E : ennemi sur 342 au tour de B → bombe en 344, en ligne avec B+D ; sauvetage par Flèche de Recul : AUCUN
+N4 lecture E : ennemi sur 336 au tour de C → bombe en 338, en ligne avec A+C ; sauvetage par Flèche de Recul : AUCUN
+N4 lecture E : ennemi sur 423 au tour de D → bombe en 425, en ligne avec B+D ; sauvetage par Flèche de Recul : AUCUN

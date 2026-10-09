@@ -1,0 +1,45 @@
+sort                           PA  base     PO4     +TirsPuiss.  +Sentinelle(0 PM)  +TirsÉloignés  ligne LdV
+P1b Flèche de Recul            3   1-6+     1-10    1-7          1-20               4-16                 LdV
+P1v Flèche Éclatante           3   3-7+     3-11    3-8          3-21               6-17                 LdV
+P2b Flèche Glacée              3   1-7+     1-11    1-8          1-21               4-17                 LdV
+P2v Flèche Harcelante          3   1-10     1-10    1-10         1-10               4-16                 sans LdV
+P3b Flèche Vagabonde           3   1-8+     1-12    1-9          1-22               4-18           ligne LdV
+P3v Flèche Évasive             3   1-7+     1-11    1-8          1-21               4-17                 LdV
+P4b Flèche de Barrage          3   1-7+     1-11    1-8          1-21               4-17           ligne LdV
+P4v Carreaux Destructeurs      4   1-3      1-3     1-3          1-3                4-9            ligne LdV
+P5b Pas Chassé                 2   1-2      1-2     1-2          1-2                —              ligne LdV
+P5v Balise Tactique            1   1-8+     1-12    1-9          1-22               —                    LdV
+P6b Tirs Éloignés              1   0-0      0-0     0-0          0-0                —                    sans LdV
+P6v Tir Perçant                1   1-6+     1-10    1-7          1-20               —                    LdV
+P7b Flèche Détonante           2   1-6+     1-10    1-7          1-20               4-16                 LdV
+P7v Flèche Ralentissante       4   1-6+     1-10    1-7          1-20               4-16           ligne LdV
+P8b Flèche d'Abolition         2   3-7+     3-11    3-8          3-21               6-17                 LdV
+P8v Flèche Persécutrice        4   3-9+     3-13    3-10         3-23               6-19                 LdV
+P9b Flèche Cinglante           2   1-7+     1-11    1-8          1-21               4-17                 LdV
+P9v Flèche Assaillante         3   1-7      1-7     1-7          1-7                4-13                 LdV
+P10b Flèche d'Immobilisation   2   1-7+     1-11    1-8          1-21               4-17                 LdV
+P10v Flèche Tyrannique         4   2-8+     2-12    2-9          2-22               5-18                 LdV
+P11b Tirs Puissants            1   0-0      0-0     0-0          0-0                —                    sans LdV
+P11v Flèches Amoureuses        3   0-8+     0-12    0-9          0-22               —              ligne LdV
+P12b Flèche de Dispersion      3   2-6+     2-10    2-7          2-20               5-16                 LdV
+P12v Flèches Enflammées        4   1-7      1-7     1-7          1-7                4-13           ligne LdV
+P13b Flèche Explosive          4   4-7+     4-11    4-8          4-21               7-17                 LdV
+P13v Flèche Massacrante        4   2-7+     2-11    2-8          2-21               5-17           ligne LdV
+P14b Œil de Taupe              3   3-6+     3-10    3-7          3-20               6-16                 LdV
+P14v Pluie de Flèches          3   0-6+     0-10    0-7          0-20               3-16                 LdV
+P15b Œil pour Œil              3   0-5+     0-9     0-6          0-19               3-15                 LdV
+P15v Flèche Paralysante        4   3-6+     3-10    3-7          3-20               6-16                 LdV
+P16b Balise de Survie          2   1-4      1-4     1-4          1-4                —                    LdV
+P16v Représailles              3   3-6+     3-10    3-7          3-20               6-16                 LdV
+P17b Tir de Repli              1   2-8+     2-12    2-9          2-22               —              ligne LdV
+P17v Vendetta                  2   1-6+     1-10    1-7          1-20               4-16                 sans LdV
+P18b Flèche Punitive           4   4-10+    4-14    4-11         4-24               7-20                 LdV
+P18v Flèche du Jugement        4   3-9+     3-13    3-10         3-23               6-19                 LdV
+P19b Flèche d'Expiation        4   6-12+    6-16    6-13         6-26               9-22                 LdV
+P19v Flèche de Rédemption      4   4-9+     4-13    4-10         4-23               7-19                 LdV
+P20b Flèche Perforante         4   3-9+     3-13    3-10         3-23               6-19           ligne LdV
+P20v Flèche Boomerang          3   0-7+     0-11    0-8          0-21               3-17                 LdV
+P21b Flèche Dévorante          3   0-6+     0-10    0-7          0-20               3-16                 LdV
+P21v Flèche Fulminante         4   1-6+     1-10    1-7          1-20               4-16                 LdV
+P22b Acuité Absolue            2   0-0      0-0     0-0          0-0                —                    sans LdV
+P22v Sentinelle                2   0-0      0-0     0-0          0-0                —                    sans LdV

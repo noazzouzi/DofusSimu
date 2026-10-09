@@ -1,0 +1,17 @@
+F-A A/même 365→378→437→451 : 1re mort J3@398? (case réelle: voir trace) manche 1 par rouge@350 ; chemins KO: 
+F-B C/TS 340→367→365→437 : 1re mort J1@270? (case réelle: voir trace) manche 2 par rouge@284 ; chemins KO: 
+F-B C/MT 340→367→365→437 : 1re mort J1@270? (case réelle: voir trace) manche 1 par rouge@284 ; chemins KO: 
+F-B D/TS 340→367→365→437 : 1re mort J1@270? (case réelle: voir trace) manche 2 par rouge@284 ; chemins KO: 
+F-B D/MT 340→367→365→437 : 1re mort J1@270? (case réelle: voir trace) manche 1 par rouge@284 ; chemins KO: 
+F-B E/TS 340→367→365→437 : 1re mort J1@270? (case réelle: voir trace) manche 2 par rouge@284 ; chemins KO: 
+F-B E/MT 340→367→365→437 : 1re mort J1@270? (case réelle: voir trace) manche 1 par rouge@284 ; chemins KO: 
+  décalage F-A A TS (first8, imm/nearcw) : 811/1344 = 60 %
+  décalage F-A A TS (all24, imm/nearcw) : 2377/4032 = 59 %
+  décalage F-A C TS (first8, imm/nearcw) : 345/1448 = 24 %
+  décalage F-A C TS (all24, imm/nearcw) : 935/4344 = 22 %
+  décalage F-C A TS (first8, imm/nearcw) : 914/1344 = 68 %
+  décalage F-C A TS (all24, imm/nearcw) : 2730/4032 = 68 %
+  décalage F-C C TS (first8, imm/nearcw) : 310/1416 = 22 %
+  décalage F-C C TS (all24, imm/nearcw) : 922/4188 = 22 %
+  décalage F-B A TS (first8, imm/nearcw) : 595/1344 = 44 %
+  décalage F-B A TS (all24, imm/nearcw) : 1790/4032 = 44 %

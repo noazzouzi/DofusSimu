@@ -1,0 +1,118 @@
+== PLAN 340(16,-8)→284(14,-6) (4)  378(14,-13)→392(14,-14) (1)  367(16,-10)→410(19,-10) (3)  451(19,-13)→508(22,-14) (4)
+
+== 1. Variantes : ordres sans mort sur 30 manches (dfs ET bfs) / 24 ; apparitions au-delà du repli (total sur 24 ordres)
+  A/suivant    24/24  replis  840  au-delà   0  
+  A/même       24/24  replis    0  au-delà   0  
+  B/suivant    24/24  replis  840  au-delà   0  
+  B/même       24/24  replis    0  au-delà   0  
+  C/suivant     0/24  replis   48  au-delà  12  chemin bloqué (340→378→367→451)
+  C/même        0/24  replis    0  au-delà   0  chemin bloqué (340→378→367→451)
+  D/suivant     0/24  replis  404  au-delà 336  chemin bloqué (340→378→367→451)
+  D/même        0/24  replis    0  au-delà   0  chemin bloqué (340→378→367→451)
+  E/suivant     0/24  replis  684  au-delà   0  chemin bloqué (340→378→367→451)
+  E/même        0/24  replis    0  au-delà   0  chemin bloqué (340→378→367→451)
+
+== 2. Soins par bombe bleue (retrait de Mort en Sursis) : écart max entre deux soins, pire ordre (manches 1→30)
+  A/suivant    écart max par case 284:5 392:5 410:4 508:5 ; (ordre, chaîne) où tous ≤ 5 : 48/48
+  B/suivant    écart max par case 284:jamais 392:jamais 410:jamais 508:jamais ; (ordre, chaîne) où tous ≤ 5 : 0/48
+  C/suivant    — (aucun ordre sans mort)
+  D/suivant    — (aucun ordre sans mort)
+  E/suivant    — (aucun ordre sans mort)
+
+== 3. Cases des bombes, ordre de référence 340→378→367→451 (J1..J4), manches 1 à 10
+  -- A/suivant
+    m 1 apparitions J1:312 J2:350 J3:339 J4:423        explosions                                soins 
+    m 2 apparitions J1:256 J2:364 J3:382 J4:480        explosions 312R 339R 350R 364R 256b 423b  soins 
+    m 3 apparitions J1:256 J2:364 J3:383' J4:481'      explosions 382R 480R 364R 256b            soins 
+    m 4 apparitions J1:256 J2:364 J3:382 J4:480        explosions 383b 481b                      soins J3,J4
+    m 5 apparitions J1:257' J2:364 J3:383' J4:480      explosions 256R 364R 480b 382b            soins 
+    m 6 apparitions J1:256 J2:365' J3:382 J4:480       explosions 257b 364R 256b 480b 383b       soins J1,J2,J3
+    m 7 apparitions J1:256 J2:364 J3:383' J4:481'      explosions 365b 382b 480R 364b 256b       soins J1,J2
+    m 8 apparitions J1:256 J2:364 J3:382 J4:480        explosions 383b 481b                      soins J3,J4
+    m 9 apparitions J1:257' J2:364 J3:383' J4:480      explosions 256R 364R 480b 382b            soins 
+    m10 apparitions J1:256 J2:365' J3:382 J4:480       explosions 257b 364R 256b 480b 383b       soins J1,J2,J3
+  A/suivant (24 ordres, manches 3-30) explosions rouges : 364×350 256×251 480×157 382×24 ; bleues : 480×347 383×322 382×312 256×253 481×168 257×165 365×159 364×154
+  A/même (24 ordres, manches 3-30) explosions rouges : 256×672 364×672 382×672 480×672 ; bleues : aucune
+  B/suivant (24 ordres, manches 3-30) explosions rouges : 364×344 369×336 256×334 466×168 242×168 350×168 480×157 382×140 ; bleues : 480×347 382×196 256×170 364×160
+  B/même (24 ordres, manches 3-30) explosions rouges : 256×672 364×672 382×672 480×672 ; bleues : aucune
+
+== 4. Robustesse (ordres valides de chaque variante, chaîne dfs)
+  A/suivant    décalage d'une case : 542/1248 cas mortels ; ennemi 1 apparition : 5/73 cases dangereuses [256 364 382 480 481] ; ennemi immobile : 5 [256 364 382 480 481]
+  A/même       décalage d'une case : 714/1248 cas mortels ; ennemi 1 apparition : 4/73 cases dangereuses [256 364 382 480] ; ennemi immobile : 4 [256 364 382 480]
+  B/suivant    décalage d'une case : 533/1248 cas mortels ; ennemi 1 apparition : 0/73 cases dangereuses [] ; ennemi immobile : 4 [256 364 382 480]
+  B/même       décalage d'une case : 714/1248 cas mortels ; ennemi 1 apparition : 0/73 cases dangereuses [] ; ennemi immobile : 0 []
+
+== 5. Ligne de vue (A/suivant, début manche 3, bombes en 382 480) — zone d'approche y ∈ [−6, 3] (114 cases), cases bleues (12)
+  284(14,-6)    voit  80 cases de la zone (≤ 12) et 8/12 cases bleues ; meilleure sortie à 1 PM 270 (92 cases, 8 bleues) ; à 2 PM 257 (97 cases, 8 bleues)
+  392(14,-14)   voit  13 cases de la zone (≤ 12) et 3/12 cases bleues ; meilleure sortie à 1 PM 378 (19 cases, 2 bleues) ; à 2 PM 365 (25 cases, 2 bleues)
+  410(19,-10)   voit  43 cases de la zone (≤ 12) et 5/12 cases bleues ; meilleure sortie à 1 PM 397 (49 cases, 6 bleues) ; à 2 PM 383 (56 cases, 6 bleues)
+  508(22,-14)   voit  13 cases de la zone (≤ 12) et 5/12 cases bleues ; meilleure sortie à 1 PM 494 (20 cases, 6 bleues) ; à 2 PM 481 (25 cases, 6 bleues)
+
+== 6. Trace A/suivant, ordre 340→378→367→451 (J1..J4), 6 manches
+  m1 tour J1 spawn   J1 312(15,-7) primaire
+  m1 tour J1 move    J1 284(14,-6) depuis 340
+  m1 tour J2 spawn   J2 350(13,-12) primaire
+  m1 tour J2 move    J2 392(14,-14) depuis 378
+  m1 tour J3 spawn   J3 339(15,-9) primaire
+  m1 tour J3 move    J3 410(19,-10) depuis 367
+  m1 tour J4 spawn   J4 423(18,-12) primaire
+  m1 tour J4 move    J4 508(22,-14) depuis 451
+  m2 tour J1 spawn   J1 256(13,-5) primaire
+  m2 tour J1 explode J1 312(15,-7) #0 rouge
+  m2 tour J1 blue    J1 256(13,-5) #4
+  m2 tour J1 explode J3 339(15,-9) #2 rouge
+  m2 tour J1 blue    J4 423(18,-12) #3
+  m2 tour J2 spawn   J2 364(13,-13) primaire
+  m2 tour J2 explode J2 350(13,-12) #1 rouge
+  m2 tour J2 explode J2 364(13,-13) #5 rouge
+  m2 tour J2 explode J1 256(13,-5) #4 BLEUE
+  m2 tour J2 explode J4 423(18,-12) #3 BLEUE
+  m2 tour J3 spawn   J3 382(18,-9) primaire
+  m2 tour J4 spawn   J4 480(21,-13) primaire
+  m3 tour J1 spawn   J1 256(13,-5) primaire
+  m3 tour J2 spawn   J2 364(13,-13) primaire
+  m3 tour J3 spawn   J3 383(19,-8) repli
+  m3 tour J3 explode J3 382(18,-9) #6 rouge
+  m3 tour J3 blue    J3 383(19,-8) #10
+  m3 tour J4 spawn   J4 481(22,-12) repli
+  m3 tour J4 explode J4 480(21,-13) #7 rouge
+  m3 tour J4 blue    J1 256(13,-5) #8
+  m3 tour J4 blue    J4 481(22,-12) #11
+  m3 tour J4 explode J2 364(13,-13) #9 rouge
+  m3 tour J4 explode J1 256(13,-5) #8 BLEUE
+  m4 tour J1 spawn   J1 256(13,-5) primaire
+  m4 tour J2 spawn   J2 364(13,-13) primaire
+  m4 tour J3 spawn   J3 382(18,-9) primaire
+  m4 tour J3 explode J3 383(19,-8) #10 BLEUE
+  m4 tour J3 blue    J3 382(18,-9) #14
+  m4 tour J3 heal    J3 410(19,-10) par #10
+  m4 tour J4 spawn   J4 480(21,-13) primaire
+  m4 tour J4 explode J4 481(22,-12) #11 BLEUE
+  m4 tour J4 blue    J4 480(21,-13) #15
+  m4 tour J4 heal    J4 508(22,-14) par #11
+  m5 tour J1 spawn   J1 257(14,-4) repli
+  m5 tour J1 explode J1 256(13,-5) #12 rouge
+  m5 tour J1 blue    J1 257(14,-4) #16
+  m5 tour J1 explode J2 364(13,-13) #13 rouge
+  m5 tour J1 explode J4 480(21,-13) #15 BLEUE
+  m5 tour J2 spawn   J2 364(13,-13) primaire
+  m5 tour J3 spawn   J3 383(19,-8) repli
+  m5 tour J3 explode J3 382(18,-9) #14 BLEUE
+  m5 tour J3 blue    J3 383(19,-8) #18
+  m5 tour J4 spawn   J4 480(21,-13) primaire
+  m6 tour J1 spawn   J1 256(13,-5) primaire
+  m6 tour J1 explode J1 257(14,-4) #16 BLEUE
+  m6 tour J1 blue    J1 256(13,-5) #20
+  m6 tour J1 heal    J1 284(14,-6) par #16
+  m6 tour J1 heal    J2 392(14,-14) par #16
+  m6 tour J2 spawn   J2 365(14,-12) repli
+  m6 tour J2 explode J2 364(13,-13) #17 rouge
+  m6 tour J2 blue    J2 365(14,-12) #21
+  m6 tour J2 explode J1 256(13,-5) #20 BLEUE
+  m6 tour J2 blue    J4 480(21,-13) #19
+  m6 tour J2 explode J4 480(21,-13) #19 BLEUE
+  m6 tour J3 spawn   J3 382(18,-9) primaire
+  m6 tour J3 explode J3 383(19,-8) #18 BLEUE
+  m6 tour J3 blue    J3 382(18,-9) #22
+  m6 tour J3 heal    J3 410(19,-10) par #18
+  m6 tour J4 spawn   J4 480(21,-13) primaire

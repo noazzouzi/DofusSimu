@@ -1,0 +1,33 @@
+Vecteur [0,1,1,0,1,1,0,1,0,1,0,0,1,1,0,1,0,1,0,1,0,1]
+
+=== mode strict (DPT d'un Crâ, moyenne L5/H5 ; PM dépensés 0 puis 2)
+ -- PM dépensés avant de tirer : 0
+  Reine         base 2 160 | sans Tirs Puissants -6.9 % | sans Tir Perçant +0.0 % | Sentinelle +4.2 % | Acuité -3.3 % | Balise Tactique +80 Pui +1.4 %, +160 Pui +6.6 %
+  Mâchassin     base 2 750 | sans Tirs Puissants -7.9 % | sans Tir Perçant +0.0 % | Sentinelle +3.7 % | Acuité -3.9 % | Balise Tactique +80 Pui +0.2 %, +160 Pui +5.4 %
+  Terristocrate base 2 711 | sans Tirs Puissants -4.6 % | sans Tir Perçant +0.0 % | Sentinelle +4.0 % | Acuité -3.5 % | Balise Tactique +80 Pui +2.1 %, +160 Pui +7.2 %
+  Doublure      base 3 026 | sans Tirs Puissants -6.7 % | sans Tir Perçant +0.0 % | Sentinelle +4.6 % | Acuité -3.0 % | Balise Tactique +80 Pui +3.0 %, +160 Pui +8.3 %
+  Bourôliste    base 3 587 | sans Tirs Puissants -4.3 % | sans Tir Perçant +0.0 % | Sentinelle +4.0 % | Acuité -3.5 % | Balise Tactique +80 Pui +1.8 %, +160 Pui +6.9 %
+  Magouille     base 2 670 | sans Tirs Puissants -6.4 % | sans Tir Perçant +0.0 % | Sentinelle +3.7 % | Acuité -3.8 % | Balise Tactique +80 Pui +2.3 %, +160 Pui +7.5 %
+ -- PM dépensés avant de tirer : 2
+  Reine         base 1 952 | sans Tirs Puissants -6.6 % | sans Tir Perçant +0.0 % | Sentinelle +1.0 % | Acuité -3.7 % | Balise Tactique +80 Pui +0.9 %, +160 Pui +6.0 %
+  Mâchassin     base 2 511 | sans Tirs Puissants -7.8 % | sans Tir Perçant +0.0 % | Sentinelle +0.4 % | Acuité -4.3 % | Balise Tactique +80 Pui +0.7 %, +160 Pui +5.9 %
+  Terristocrate base 2 668 | sans Tirs Puissants -6.3 % | sans Tir Perçant +0.0 % | Sentinelle +1.1 % | Acuité -3.5 % | Balise Tactique +80 Pui +1.4 %, +160 Pui +6.2 %
+  Doublure      base 2 687 | sans Tirs Puissants -6.7 % | sans Tir Perçant +0.0 % | Sentinelle +1.3 % | Acuité -3.4 % | Balise Tactique +80 Pui +2.6 %, +160 Pui +7.9 %
+  Bourôliste    base 3 557 | sans Tirs Puissants -6.8 % | sans Tir Perçant -2.1 % | Sentinelle +1.0 % | Acuité -3.5 % | Balise Tactique +80 Pui +1.3 %, +160 Pui +6.0 %
+  Magouille     base 2 502 | sans Tirs Puissants -4.3 % | sans Tir Perçant +0.0 % | Sentinelle +1.2 % | Acuité -3.4 % | Balise Tactique +80 Pui +1.6 %, +160 Pui +6.5 %
+
+=== mode zones (DPT d'un Crâ, moyenne L5/H5 ; PM dépensés 0 puis 2)
+ -- PM dépensés avant de tirer : 0
+  Reine         base 2 342 | sans Tirs Puissants -6.9 % | sans Tir Perçant -0.1 % | Sentinelle +3.9 % | Acuité -3.7 % | Balise Tactique +80 Pui +2.9 %, +160 Pui +8.6 %
+  Mâchassin     base 3 034 | sans Tirs Puissants -6.1 % | sans Tir Perçant -0.4 % | Sentinelle +3.9 % | Acuité -3.7 % | Balise Tactique +80 Pui +2.5 %, +160 Pui +8.3 %
+  Terristocrate base 2 727 | sans Tirs Puissants -5.2 % | sans Tir Perçant +0.0 % | Sentinelle +4.0 % | Acuité -3.5 % | Balise Tactique +80 Pui +1.7 %, +160 Pui +6.9 %
+  Doublure      base 3 164 | sans Tirs Puissants -7.2 % | sans Tir Perçant +0.0 % | Sentinelle +4.1 % | Acuité -3.5 % | Balise Tactique +80 Pui +2.8 %, +160 Pui +8.3 %
+  Bourôliste    base 3 588 | sans Tirs Puissants -4.4 % | sans Tir Perçant +0.0 % | Sentinelle +4.0 % | Acuité -3.5 % | Balise Tactique +80 Pui +1.8 %, +160 Pui +6.9 %
+  Magouille     base 2 726 | sans Tirs Puissants -6.8 % | sans Tir Perçant +0.0 % | Sentinelle +3.8 % | Acuité -3.8 % | Balise Tactique +80 Pui +2.5 %, +160 Pui +8.1 %
+ -- PM dépensés avant de tirer : 2
+  Reine         base 2 131 | sans Tirs Puissants -5.8 % | sans Tir Perçant +0.0 % | Sentinelle +1.1 % | Acuité -3.6 % | Balise Tactique +80 Pui +2.7 %, +160 Pui +8.4 %
+  Mâchassin     base 2 905 | sans Tirs Puissants -6.5 % | sans Tir Perçant +0.0 % | Sentinelle +1.0 % | Acuité -3.6 % | Balise Tactique +80 Pui +2.0 %, +160 Pui +7.7 %
+  Terristocrate base 2 705 | sans Tirs Puissants -7.0 % | sans Tir Perçant +0.0 % | Sentinelle +1.1 % | Acuité -3.5 % | Balise Tactique +80 Pui +1.0 %, +160 Pui +6.0 %
+  Doublure      base 2 826 | sans Tirs Puissants -7.4 % | sans Tir Perçant +0.0 % | Sentinelle +0.8 % | Acuité -3.9 % | Balise Tactique +80 Pui +2.5 %, +160 Pui +7.9 %
+  Bourôliste    base 3 573 | sans Tirs Puissants -7.2 % | sans Tir Perçant -0.8 % | Sentinelle +1.1 % | Acuité -3.5 % | Balise Tactique +80 Pui +1.1 %, +160 Pui +5.9 %
+  Magouille     base 2 655 | sans Tirs Puissants -6.5 % | sans Tir Perçant +0.0 % | Sentinelle +1.2 % | Acuité -3.4 % | Balise Tactique +80 Pui +1.3 %, +160 Pui +6.6 %

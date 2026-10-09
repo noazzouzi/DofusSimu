@@ -1,0 +1,184 @@
+### 1. Contrôle : ancienne formation, règle du README (NE2→E2→horaire)
+  NEold TS: dfs=24/24 bfs=24/24
+  NEold MT: dfs=12/24 bfs=12/24
+### 1b. Ancienne formation sous les 5 lectures du joueur
+  A TS: dfs=0/24 bfs=0/24
+  A MT: dfs=0/24 bfs=0/24
+  B TS: dfs=0/24 bfs=0/24
+  B MT: dfs=0/24 bfs=0/24
+  C TS: dfs=0/24 bfs=0/24
+  C MT: dfs=0/24 bfs=0/24
+  D TS: dfs=0/24 bfs=0/24
+  D MT: dfs=0/24 bfs=0/24
+  E TS: dfs=0/24 bfs=0/24
+  E MT: dfs=0/24 bfs=0/24
+
+### 2. Sensibilité des 3 formations aux points de modèle non tranchés
+  F-A A TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=18/24 bfs=18/24 imm=18/24]
+  F-A A MT: diag≤5pas[dfs=4/24 bfs=4/24 imm=4/24]  bleue-ne-colore-pas[dfs=4/24 bfs=4/24 imm=4/24]
+  F-A B TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-A B MT: diag≤5pas[dfs=4/24 bfs=4/24 imm=4/24]  bleue-ne-colore-pas[dfs=4/24 bfs=4/24 imm=4/24]
+  F-A C TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-A C MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-A D TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-A D MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-A E TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-A E MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-A E2 TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-A E2 MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C A TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C A MT: diag≤5pas[dfs=4/24 bfs=4/24 imm=4/24]  bleue-ne-colore-pas[dfs=4/24 bfs=4/24 imm=4/24]
+  F-C B TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C B MT: diag≤5pas[dfs=4/24 bfs=4/24 imm=4/24]  bleue-ne-colore-pas[dfs=4/24 bfs=4/24 imm=4/24]
+  F-C C TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C C MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C D TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C D MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C E TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C E MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C E2 TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-C E2 MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-B A TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-B A MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-B B TS: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-B B MT: diag≤5pas[dfs=24/24 bfs=24/24 imm=24/24]  bleue-ne-colore-pas[dfs=24/24 bfs=24/24 imm=24/24]
+  F-B C TS: diag≤5pas[dfs=0/24 bfs=0/24 imm=0/24]  bleue-ne-colore-pas[dfs=0/24 bfs=0/24 imm=0/24]
+  F-B C MT: diag≤5pas[dfs=0/24 bfs=0/24 imm=0/24]  bleue-ne-colore-pas[dfs=0/24 bfs=0/24 imm=0/24]
+  F-B D TS: diag≤5pas[dfs=0/24 bfs=0/24 imm=0/24]  bleue-ne-colore-pas[dfs=0/24 bfs=0/24 imm=0/24]
+  F-B D MT: diag≤5pas[dfs=0/24 bfs=0/24 imm=0/24]  bleue-ne-colore-pas[dfs=0/24 bfs=0/24 imm=0/24]
+  F-B E TS: diag≤5pas[dfs=0/24 bfs=0/24 imm=0/24]  bleue-ne-colore-pas[dfs=0/24 bfs=0/24 imm=0/24]
+  F-B E MT: diag≤5pas[dfs=0/24 bfs=0/24 imm=0/24]  bleue-ne-colore-pas[dfs=0/24 bfs=0/24 imm=0/24]
+  F-B E2 TS: diag≤5pas[dfs=0/24 bfs=0/24 imm=0/24]  bleue-ne-colore-pas[dfs=0/24 bfs=0/24 imm=0/24]
+  F-B E2 MT: diag≤5pas[dfs=0/24 bfs=0/24 imm=0/24]  bleue-ne-colore-pas[dfs=0/24 bfs=0/24 imm=0/24]
+
+### 3. Erreur de règle de décision (alternance appliquée à tort / oubliée)
+  F-A A TS: alternance appliquée À TORT → dfs=0/24 bfs=0/24
+  F-A A MT: alternance appliquée À TORT → dfs=0/24 bfs=0/24
+  F-A B TS: alternance appliquée À TORT → dfs=0/24 bfs=0/24
+  F-A B MT: alternance appliquée À TORT → dfs=0/24 bfs=0/24
+  F-A C TS: alternance OUBLIÉE → dfs=0/24 bfs=0/24
+  F-A C MT: alternance appliquée À TORT → dfs=24/24 bfs=24/24
+  F-A D TS: alternance OUBLIÉE → dfs=24/24 bfs=24/24
+  F-A D MT: alternance appliquée À TORT → dfs=24/24 bfs=24/24
+  F-A E TS: alternance OUBLIÉE → dfs=24/24 bfs=24/24
+  F-A E MT: alternance appliquée À TORT → dfs=24/24 bfs=24/24
+  F-A E2 TS: alternance OUBLIÉE → dfs=24/24 bfs=24/24
+  F-A E2 MT: alternance appliquée À TORT → dfs=24/24 bfs=24/24
+  F-C A TS: alternance appliquée À TORT → dfs=0/24 bfs=0/24
+  F-C A MT: alternance appliquée À TORT → dfs=0/24 bfs=0/24
+  F-C B TS: alternance appliquée À TORT → dfs=0/24 bfs=0/24
+  F-C B MT: alternance appliquée À TORT → dfs=0/24 bfs=0/24
+  F-C C TS: alternance OUBLIÉE → dfs=0/24 bfs=0/24
+  F-C C MT: alternance appliquée À TORT → dfs=24/24 bfs=24/24
+  F-C D TS: alternance OUBLIÉE → dfs=24/24 bfs=24/24
+  F-C D MT: alternance appliquée À TORT → dfs=24/24 bfs=24/24
+  F-C E TS: alternance OUBLIÉE → dfs=24/24 bfs=24/24
+  F-C E MT: alternance appliquée À TORT → dfs=24/24 bfs=24/24
+  F-C E2 TS: alternance OUBLIÉE → dfs=24/24 bfs=24/24
+  F-C E2 MT: alternance appliquée À TORT → dfs=24/24 bfs=24/24
+
+### 4. Cases de bombe (ordre J1..J4 = départs dans l'ordre du plan, chaîne dfs)
+  F-A A TS: cases d'apparition (m≥2) 283,284,364,365,370,371,451,452 ; repli 23 ; au-delà 0 ; explosions rouges {283,337,350,364,370,409,423,451} bleues {283,284,364,365,370,371,451,452}
+  F-A A MT: cases d'apparition (m≥2) 283,364,451 ; repli 0 ; au-delà 0 ; explosions rouges {283,337,350,364,423,451} bleues {}
+  F-A B TS: cases d'apparition (m≥2) 269,283,350,356,364,370,437,451 ; repli 23 ; au-delà 0 ; explosions rouges {269,283,337,350,356,364,370,409,423,437,451} bleues {283,364,370,451}
+  F-A B MT: cases d'apparition (m≥2) 283,364,451 ; repli 0 ; au-delà 0 ; explosions rouges {283,337,350,364,423,451} bleues {}
+  F-A C TS: cases d'apparition (m≥2) 255,269,336,342,350,356,423,437 ; repli 0 ; au-delà 0 ; explosions rouges {255,269,309,322,336,342,350,356,381,395,423,437} bleues {255,269,336,342,350,356,423,437}
+  F-A C MT: cases d'apparition (m≥2) 255,336,342,423 ; repli 0 ; au-delà 0 ; explosions rouges {255,309,322,336,342,381,395,423} bleues {}
+  F-A D TS: cases d'apparition (m≥2) 255,269,336,342,350,356,423,437 ; repli 0 ; au-delà 0 ; explosions rouges {255,269,309,322,336,342,350,356,381,395,423,437} bleues {255,269,336,342,350,356,423,437}
+  F-A D MT: cases d'apparition (m≥2) 255,336,342,423 ; repli 0 ; au-delà 0 ; explosions rouges {255,309,322,336,342,381,395,423} bleues {}
+  F-A E TS: cases d'apparition (m≥2) 255,269,336,342,350,356,423,437 ; repli 0 ; au-delà 0 ; explosions rouges {255,269,309,322,336,342,350,356,381,395,423,437} bleues {255,269,336,342,350,356,423,437}
+  F-A E MT: cases d'apparition (m≥2) 255,336,342,423 ; repli 0 ; au-delà 0 ; explosions rouges {255,309,322,336,342,381,395,423} bleues {}
+  F-A E2 TS: cases d'apparition (m≥2) 255,269,336,342,350,356,423,437 ; repli 0 ; au-delà 0 ; explosions rouges {255,269,309,322,336,342,350,356,381,395,423,437} bleues {255,269,336,342,350,356,423,437}
+  F-A E2 MT: cases d'apparition (m≥2) 255,336,342,423 ; repli 0 ; au-delà 0 ; explosions rouges {255,309,322,336,342,381,395,423} bleues {}
+  F-C A TS: cases d'apparition (m≥2) 269,270,342,343,364,365,436,437 ; repli 23 ; au-delà 0 ; explosions rouges {269,337,342,350,364,409,423,436} bleues {269,270,342,343,364,365,436,437}
+  F-C A MT: cases d'apparition (m≥2) 269,342,364,436 ; repli 0 ; au-delà 0 ; explosions rouges {269,337,342,350,364,409,423,436} bleues {}
+  F-C B TS: cases d'apparition (m≥2) 256,269,328,342,350,364,423,436 ; repli 23 ; au-delà 0 ; explosions rouges {256,269,328,337,342,350,364,409,423,436} bleues {}
+  F-C B MT: cases d'apparition (m≥2) 269,342,364,436 ; repli 0 ; au-delà 0 ; explosions rouges {269,337,342,350,364,409,423,436} bleues {}
+  F-C C TS: cases d'apparition (m≥2) 241,256,314,328,336,350,408,423 ; repli 0 ; au-delà 0 ; explosions rouges {241,256,309,314,322,328,336,350,381,395,408,423} bleues {}
+  F-C C MT: cases d'apparition (m≥2) 241,314,336,408 ; repli 0 ; au-delà 0 ; explosions rouges {241,309,314,322,336,381,395,408} bleues {}
+  F-C D TS: cases d'apparition (m≥2) 241,256,314,328,336,350,408,423 ; repli 0 ; au-delà 0 ; explosions rouges {241,256,309,314,322,328,336,350,381,395,408,423} bleues {}
+  F-C D MT: cases d'apparition (m≥2) 241,314,336,408 ; repli 0 ; au-delà 0 ; explosions rouges {241,309,314,322,336,381,395,408} bleues {}
+  F-C E TS: cases d'apparition (m≥2) 241,256,314,328,336,350,408,423 ; repli 0 ; au-delà 0 ; explosions rouges {241,256,309,314,322,328,336,350,381,395,408,423} bleues {}
+  F-C E MT: cases d'apparition (m≥2) 241,314,336,408 ; repli 0 ; au-delà 0 ; explosions rouges {241,309,314,322,336,381,395,408} bleues {}
+  F-C E2 TS: cases d'apparition (m≥2) 241,256,314,328,336,350,408,423 ; repli 0 ; au-delà 0 ; explosions rouges {241,256,309,314,322,328,336,350,381,395,408,423} bleues {}
+  F-C E2 MT: cases d'apparition (m≥2) 241,314,336,408 ; repli 0 ; au-delà 0 ; explosions rouges {241,309,314,322,336,381,395,408} bleues {}
+  F-B A TS: cases d'apparition (m≥2) 242,243,353,354,364,365,397,398 ; repli 37 ; au-delà 0 ; explosions rouges {242,312,339,353,364,397,409} bleues {242,243,337,353,354,364,365,397,398}
+  F-B A MT: cases d'apparition (m≥2) 242,353,364,397 ; repli 0 ; au-delà 0 ; explosions rouges {242,312,337,339,353,364,397,409} bleues {}
+  F-B B TS: cases d'apparition (m≥2) 229,242,340,350,353,364,383,397 ; repli 37 ; au-delà 0 ; explosions rouges {229,242,312,339,340,350,353,364,383,397,409} bleues {337,353,397}
+  F-B B MT: cases d'apparition (m≥2) 242,353,364,397 ; repli 0 ; au-delà 0 ; explosions rouges {242,312,337,339,353,364,397,409} bleues {}
+  F-B C TS: cases d'apparition (m≥2) 214 ; repli 1 ; au-delà 0 ; explosions rouges {214,284,309,311} bleues {410}
+  F-B C MT: cases d'apparition (m≥2)  ; repli 1 ; au-delà 0 ; explosions rouges {284,311,410} bleues {}
+  F-B D TS: cases d'apparition (m≥2) 214 ; repli 1 ; au-delà 0 ; explosions rouges {214,284,309,311} bleues {368}
+  F-B D MT: cases d'apparition (m≥2) 369 ; repli 1 ; au-delà 0 ; explosions rouges {284,311,368,369} bleues {}
+  F-B E TS: cases d'apparition (m≥2) 214 ; repli 1 ; au-delà 0 ; explosions rouges {214,284,309,311,383} bleues {}
+  F-B E MT: cases d'apparition (m≥2) 325,369 ; repli 1 ; au-delà 0 ; explosions rouges {284,311,325,369,383} bleues {}
+  F-B E2 TS: cases d'apparition (m≥2) 214 ; repli 1 ; au-delà 0 ; explosions rouges {214,284,309,311} bleues {382}
+  F-B E2 MT: cases d'apparition (m≥2) 325,369 ; repli 1 ; au-delà 0 ; explosions rouges {284,311,325,369,382} bleues {}
+
+### 5. Soins par bombe bleue (TS) : écart max entre soins / 1er soin, sur 24 ordres × {dfs,bfs}
+  F-A A TS: critère (écart ≤5, 1er ≤ m6) 48/48 ; écart max par case 311:4 392:4 398:4 479:4 ; 1er soin au plus tard 311:m6 392:m6 398:m5 479:m5
+  F-A A MT: critère (écart ≤5, 1er ≤ m6) 0/8 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A B TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A B MT: critère (écart ≤5, 1er ≤ m6) 0/8 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A C TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A C MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A D TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A D MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A E TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A E MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A E2 TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-A E2 MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 311:jamais 392:jamais 398:jamais 479:jamais ; 1er soin au plus tard 311:m0 392:m0 398:m0 479:m0
+  F-C A TS: critère (écart ≤5, 1er ≤ m6) 48/48 ; écart max par case 297:4 370:4 392:4 464:4 ; 1er soin au plus tard 297:m6 370:m6 392:m6 464:m6
+  F-C A MT: critère (écart ≤5, 1er ≤ m6) 0/8 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C B TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C B MT: critère (écart ≤5, 1er ≤ m6) 0/8 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C C TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C C MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C D TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C D MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C E TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C E MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C E2 TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-C E2 MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 297:jamais 370:jamais 392:jamais 464:jamais ; 1er soin au plus tard 297:m0 370:m0 392:m0 464:m0
+  F-B A TS: critère (écart ≤5, 1er ≤ m6) 48/48 ; écart max par case 270:2 381:3 392:3 425:3 ; 1er soin au plus tard 270:m5 381:m6 392:m6 425:m6
+  F-B A MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 270:jamais 381:jamais 392:jamais 425:jamais ; 1er soin au plus tard 270:m0 381:m0 392:m0 425:m0
+  F-B B TS: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 270:jamais 381:jamais 392:jamais 425:jamais ; 1er soin au plus tard 270:m0 381:m0 392:m0 425:m0
+  F-B B MT: critère (écart ≤5, 1er ≤ m6) 0/48 ; écart max par case 270:jamais 381:jamais 392:jamais 425:jamais ; 1er soin au plus tard 270:m0 381:m0 392:m0 425:m0
+
+### 6. Ennemi immobile sur une case (toute la durée, dès la manche 2) — cases mortelles (≥1 ordre ou chaîne casse, ou chemin bloqué)
+  F-A A TS (74 cases testées, 24 ordres sûrs) : 283,364,370,451
+  F-A A MT (74 cases testées, 4 ordres sûrs) : 283,364,370,451
+  F-A B TS (74 cases testées, 24 ordres sûrs) : 283,364,370,451
+  F-A B MT (74 cases testées, 4 ordres sûrs) : aucune
+  F-A C TS (74 cases testées, 24 ordres sûrs) : 269,350,356,437
+  F-A C MT (74 cases testées, 24 ordres sûrs) : aucune
+  F-A D TS (74 cases testées, 24 ordres sûrs) : aucune
+  F-A D MT (74 cases testées, 24 ordres sûrs) : aucune
+  F-A E TS (74 cases testées, 24 ordres sûrs) : 269,350,356,437
+  F-A E MT (74 cases testées, 24 ordres sûrs) : aucune
+  F-C A TS (73 cases testées, 24 ordres sûrs) : 269,342,364,436
+  F-C A MT (73 cases testées, 4 ordres sûrs) : 269,342,364,436
+  F-C B TS (73 cases testées, 24 ordres sûrs) : 269,342,364,436
+  F-C B MT (73 cases testées, 4 ordres sûrs) : aucune
+  F-C C TS (73 cases testées, 24 ordres sûrs) : 256,328,350,423
+  F-C C MT (73 cases testées, 24 ordres sûrs) : aucune
+  F-C D TS (73 cases testées, 24 ordres sûrs) : aucune
+  F-C D MT (73 cases testées, 24 ordres sûrs) : aucune
+  F-C E TS (73 cases testées, 24 ordres sûrs) : 256,328,350,423
+  F-C E MT (73 cases testées, 24 ordres sûrs) : aucune
+  F-B A TS (74 cases testées, 24 ordres sûrs) : 242,353,364,397
+  F-B A MT (74 cases testées, 24 ordres sûrs) : 242,353,364,397
+  F-B B TS (74 cases testées, 24 ordres sûrs) : 242,353,364,397
+  F-B B MT (74 cases testées, 24 ordres sûrs) : aucune
+
+### 7. Décalage subi d'une case (manches 3–5, avant le tour de chacun des 4 Crâs, 4 voisins libres), retour à son tour — 8 premiers ordres sûrs, dfs
+  F-A A TS: 859/1344 décalages mortels (64 %)
+  F-A A MT: 504/672 décalages mortels (75 %)
+  F-A C TS: 367/1448 décalages mortels (25 %)
+  F-A C MT: 0/1344 décalages mortels (0 %)
+  F-C A TS: 914/1344 décalages mortels (68 %)
+  F-C A MT: 504/672 décalages mortels (75 %)
+  F-C C TS: 318/1416 décalages mortels (22 %)
+  F-C C MT: 96/1344 décalages mortels (7 %)
+  F-B A TS: 595/1344 décalages mortels (44 %)
+  F-B A MT: 813/1344 décalages mortels (60 %)

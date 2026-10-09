@@ -1,0 +1,14 @@
+Tours pour tuer en focus à 4 (moteur, 4 Crâs simultanés, limites d'équipe, Représailles à tour de rôle)
+réf. = formation stricte (cible unique), cible à 5 cases hors ligne, 2 PM dépensés avant de tirer ; max = zones permises, cible à 5 en ligne, 0 PM
+Reine         réf.  1 Crâ  1952 (+10 % Représailles) | équipe   8340/tour de jeu | n=0..4 bombes : n=0: 1.80 tours de jeu = 8 tours de Crâ ; n=1: 2.00 tours de jeu = 8 tours de Crâ ; n=2: 2.22 tours de jeu = 9 tours de Crâ ; n=3: 2.47 tours de jeu = 10 tours de Crâ ; n=4: 2.74 tours de jeu = 11 tours de Crâ ; moyenne formation ×0,677 : 2.66 tours de jeu = 11 tours de Crâ
+Reine         max   1 Crâ  2436 (+10 % Représailles) | équipe  11021/tour de jeu | n=0..4 bombes : n=0: 1.36 tours de jeu = 6 tours de Crâ ; n=1: 1.51 tours de jeu = 7 tours de Crâ ; n=2: 1.68 tours de jeu = 7 tours de Crâ ; n=3: 1.87 tours de jeu = 8 tours de Crâ ; n=4: 2.07 tours de jeu = 9 tours de Crâ ; moyenne formation ×0,677 : 2.01 tours de jeu = 9 tours de Crâ
+Mâchassin     réf.  1 Crâ  2511 | équipe   8372/tour de jeu | 0.79 tours de jeu = 4 tours de Crâ
+Mâchassin     max   1 Crâ  3172 | équipe  11052/tour de jeu | 0.60 tours de jeu = 3 tours de Crâ
+Terristocrate réf.  1 Crâ  2668 | équipe   8339/tour de jeu | 0.79 tours de jeu = 4 tours de Crâ
+Terristocrate max   1 Crâ  2742 | équipe   9067/tour de jeu | 0.73 tours de jeu = 3 tours de Crâ
+Doublure      réf.  1 Crâ  2687 | équipe   9073/tour de jeu | 0.36 tours de jeu = 2 tours de Crâ
+Doublure      max   1 Crâ  3194 | équipe  11344/tour de jeu | 0.29 tours de jeu = 2 tours de Crâ
+Bourôliste    réf.  1 Crâ  3557 | équipe  10921/tour de jeu | 0.60 tours de jeu = 3 tours de Crâ
+Bourôliste    max   1 Crâ  3590 | équipe  11627/tour de jeu | 0.57 tours de jeu = 3 tours de Crâ
+Magouille     réf.  1 Crâ  2502 | équipe   7989/tour de jeu | 0.83 tours de jeu = 4 tours de Crâ
+Magouille     max   1 Crâ  2782 | équipe   9468/tour de jeu | 0.70 tours de jeu = 3 tours de Crâ

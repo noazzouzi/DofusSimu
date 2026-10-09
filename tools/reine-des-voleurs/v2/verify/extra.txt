@@ -1,0 +1,75 @@
+### A. Tableau « section 1 » du chercheur, avec SA sémantique reconstituée (imm/nearcw) et les autres
+  F-A
+    A/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 552  au-delà 0
+    A/même  imm/nearcw=4/24  dfs/near=4/24  bfs/near=4/24  bfs/nearcw=4/24  replis 0  au-delà 0
+    B/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 552  au-delà 0
+    B/même  imm/nearcw=4/24  dfs/near=4/24  bfs/near=4/24  bfs/nearcw=4/24  replis 0  au-delà 0
+    C/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    C/même  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    D/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    D/même  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    E/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    E/même  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+  F-C
+    A/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 552  au-delà 0
+    A/même  imm/nearcw=4/24  dfs/near=4/24  bfs/near=4/24  bfs/nearcw=4/24  replis 0  au-delà 0
+    B/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 552  au-delà 0
+    B/même  imm/nearcw=4/24  dfs/near=4/24  bfs/near=4/24  bfs/nearcw=4/24  replis 0  au-delà 0
+    C/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    C/même  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    D/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    D/même  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    E/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    E/même  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+  F-B
+    A/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 904  au-delà 0
+    A/même  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    B/suivant  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 904  au-delà 0
+    B/même  imm/nearcw=24/24  dfs/near=24/24  bfs/near=24/24  bfs/nearcw=24/24  replis 0  au-delà 0
+    C/suivant  imm/nearcw=0/24  dfs/near=0/24  bfs/near=0/24  bfs/nearcw=0/24  replis 12  au-delà 0
+    C/même  imm/nearcw=0/24  dfs/near=0/24  bfs/near=0/24  bfs/nearcw=0/24  replis 9  au-delà 0
+    D/suivant  imm/nearcw=0/24  dfs/near=0/24  bfs/near=0/24  bfs/nearcw=0/24  replis 126  au-delà 0
+    D/même  imm/nearcw=0/24  dfs/near=0/24  bfs/near=0/24  bfs/nearcw=0/24  replis 9  au-delà 0
+    E/suivant  imm/nearcw=0/24  dfs/near=0/24  bfs/near=0/24  bfs/nearcw=0/24  replis 72  au-delà 54
+    E/même  imm/nearcw=0/24  dfs/near=0/24  bfs/near=0/24  bfs/nearcw=0/24  replis 9  au-delà 0
+
+### B. Ordre de chaîne ALÉATOIRE (cibles de chaque explosion mélangées), 40 graines × 24 ordres × {dfs,bfs,imm} × {gelé,pending}
+  F-A A TS: 0/5760 runs avec mort 
+  F-A A MT: 0/960 runs avec mort 
+  F-A B TS: 0/5760 runs avec mort 
+  F-A B MT: 0/960 runs avec mort 
+  F-A C TS: 0/5760 runs avec mort 
+  F-A C MT: 0/5760 runs avec mort 
+  F-A D TS: 0/5760 runs avec mort 
+  F-A D MT: 0/5760 runs avec mort 
+  F-A E TS: 0/5760 runs avec mort 
+  F-A E MT: 0/5760 runs avec mort 
+  F-C A TS: 0/5760 runs avec mort 
+  F-C A MT: 0/960 runs avec mort 
+  F-C B TS: 0/5760 runs avec mort 
+  F-C B MT: 0/960 runs avec mort 
+  F-C C TS: 0/5760 runs avec mort 
+  F-C C MT: 0/5760 runs avec mort 
+  F-C D TS: 0/5760 runs avec mort 
+  F-C D MT: 0/5760 runs avec mort 
+  F-C E TS: 0/5760 runs avec mort 
+  F-C E MT: 0/5760 runs avec mort 
+  F-B A TS: 0/5760 runs avec mort 
+  F-B A MT: 0/5760 runs avec mort 
+  F-B B TS: 0/5760 runs avec mort 
+  F-B B MT: 0/5760 runs avec mort 
+
+### C. Départs rouges, explosion « même tour » : la 1re bombe (posée depuis la case rouge du 1er joueur, les 3 autres encore sur leurs cases rouges) est-elle en ligne avec un autre Crâ ?
+  495 départs : sûrs {A,B} = 3 ; sûrs {C,D,E} = 21 ; sûrs pour les deux = 0 
+
+### D. Ordre d'initiative de F-A / F-C en N2 + même tour : quels ordres passent ?
+  F-A A/même: 4/24 : 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+  F-A B/même: 4/24 : 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+  F-C A/même: 4/24 : 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+  F-C B/même: 4/24 : 365→437→378→451 | 365→437→451→378 | 437→365→378→451 | 437→365→451→378
+
+### E. « Variante plus robuste » 339/406/426/493 depuis 365/378/437/451 : toutes les affectations, statique et avec alternance SE
+  365→339 378→406 437→426 451→493 : 7/10 à 24/24 — As:24 Am:4 Bs:24 Bm:4 Cs:0 Cm:24 Ds:24 Dm:24 Es:24 Em:24
+  365→339 378→406 437→426 451→493 +alt : 8/10 à 24/24 — As:24 Am:4 Bs:24 Bm:4 Cs:24 Cm:24 Ds:24 Dm:24 Es:24 Em:24
+  365→406 378→339 437→426 451→493 : 7/10 à 24/24 — As:24 Am:4 Bs:24 Bm:4 Cs:0 Cm:24 Ds:24 Dm:24 Es:24 Em:24
+  365→406 378→339 437→426 451→493 +alt : 8/10 à 24/24 — As:24 Am:4 Bs:24 Bm:4 Cs:24 Cm:24 Ds:24 Dm:24 Es:24 Em:24

@@ -1,0 +1,2234 @@
+[
+ {
+  "mode": "strict",
+  "target": "Reine",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 9406.375,
+  "hidden": 2369.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Flèche Dévorante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2159.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 9406.375,
+  "byCra": [
+   2192.5,
+   2285.625,
+   2301,
+   2627.25
+  ],
+  "rounds": 1.5946631938446,
+  "craTurns": 6.946052326927529,
+  "first": [
+   8381,
+   7194,
+   9373
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Reine",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 8340,
+  "hidden": 2161.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche du Jugement + Flèche Dévorante | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 1951.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 8340,
+  "byCra": [
+   1935,
+   2022,
+   2031.375,
+   2351.625
+  ],
+  "rounds": 1.7985611510791366,
+  "craTurns": 7.686395080707149,
+  "first": [
+   7377,
+   6339,
+   8323
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Reine",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 9406.375,
+  "hidden": 2369.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Flèche Dévorante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2159.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 9406.375,
+  "byCra": [
+   2192.5,
+   2285.625,
+   2301,
+   2627.25
+  ],
+  "rounds": 1.5946631938446,
+  "craTurns": 6.946052326927529,
+  "first": [
+   8381,
+   7194,
+   9373
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Reine",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 8340,
+  "hidden": 2161.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche du Jugement + Flèche Dévorante | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 1951.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 8340,
+  "byCra": [
+   1935,
+   2022,
+   2031.375,
+   2351.625
+  ],
+  "rounds": 1.7985611510791366,
+  "craTurns": 7.686395080707149,
+  "first": [
+   7377,
+   6339,
+   8323
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Reine",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 10473.5,
+  "hidden": 2469.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2358.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 10473.5,
+  "byCra": [
+   2474.5,
+   2525,
+   2597.25,
+   2876.75
+  ],
+  "rounds": 1.4321859932209864,
+  "craTurns": 6.35997456010176,
+  "first": [
+   7746,
+   7182,
+   10033
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Reine",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 10149.25,
+  "hidden": 2321,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche Persécutrice + Flèche Cinglante | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 2158,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche du Jugement + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 10149.25,
+  "byCra": [
+   2287,
+   2475.625,
+   2499.625,
+   2887
+  ],
+  "rounds": 1.4779417198315146,
+  "craTurns": 6.950880444856349,
+  "first": [
+   6479,
+   6438,
+   8723
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche du Jugement + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche du Jugement + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche du Jugement + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche du Jugement + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Mâchassin",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 9328.5,
+  "hidden": 3058,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche du Jugement + Flèche de Recul | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 2750,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 9328.5,
+  "byCra": [
+   2242,
+   2292.5,
+   2242,
+   2552
+  ],
+  "rounds": 0.707509245859463,
+  "craTurns": 2.4,
+  "first": [
+   10218,
+   7920,
+   10456
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Mâchassin",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 8372.5,
+  "hidden": 2897.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche Persécutrice + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "one": 2511,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 8372.5,
+  "byCra": [
+   2003,
+   2053.5,
+   2003,
+   2313
+  ],
+  "rounds": 0.7882950134368468,
+  "craTurns": 2.6284348864994027,
+  "first": [
+   9170,
+   7056,
+   9408
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Mâchassin",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 9328.5,
+  "hidden": 3058,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche du Jugement + Flèche de Recul | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 2750,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 9328.5,
+  "byCra": [
+   2242,
+   2292.5,
+   2242,
+   2552
+  ],
+  "rounds": 0.707509245859463,
+  "craTurns": 2.4,
+  "first": [
+   10218,
+   7920,
+   10456
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Mâchassin",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 8372.5,
+  "hidden": 2897.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche Persécutrice + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "one": 2511,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 8372.5,
+  "byCra": [
+   2003,
+   2053.5,
+   2003,
+   2313
+  ],
+  "rounds": 0.7882950134368468,
+  "craTurns": 2.6284348864994027,
+  "first": [
+   9170,
+   7056,
+   9408
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Mâchassin",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 9736,
+  "hidden": 3058,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche du Jugement + Flèche de Recul | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 2810,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche de Recul | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 9736,
+  "byCra": [
+   2385.75,
+   2352.5,
+   2385.75,
+   2612
+  ],
+  "rounds": 0.6778964667214462,
+  "craTurns": 2.3487544483985765,
+  "first": [
+   8585,
+   7920,
+   10051
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche de Recul | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche de Recul | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche de Recul | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche de Recul | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Mâchassin",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 8824.5,
+  "hidden": 2957.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche d'Expiation + Flèche de Recul | B: Flèche Persécutrice + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "one": 2624,
+  "oneLabel": "A: Tirs Puissants + Flèche d'Expiation + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+  "team": 8824.5,
+  "byCra": [
+   2116,
+   2166.5,
+   2116,
+   2426
+  ],
+  "rounds": 0.7479177290498045,
+  "craTurns": 2.5152439024390243,
+  "first": [
+   7626,
+   7056,
+   9092
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche de Recul + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Terristocrate",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 9155.5,
+  "hidden": 2711,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2711,
+  "oneLabel": "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8835.5,
+  "byCra": [
+   2107.5,
+   2143.5,
+   2107.5,
+   2477
+  ],
+  "rounds": 0.7469865881953484,
+  "craTurns": 2.434526005164146,
+  "first": [
+   8889,
+   7566,
+   9744
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Terristocrate",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 9080.5,
+  "hidden": 2667.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2667.5,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8339,
+  "byCra": [
+   1944.5,
+   2058.25,
+   1944.5,
+   2391.75
+  ],
+  "rounds": 0.791461805971939,
+  "craTurns": 2.4742268041237114,
+  "first": [
+   8029,
+   7433,
+   8884
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Évasive + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Évasive + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Évasive + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Évasive + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Terristocrate",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 9155.5,
+  "hidden": 2711,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2711,
+  "oneLabel": "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8835.5,
+  "byCra": [
+   2107.5,
+   2143.5,
+   2107.5,
+   2477
+  ],
+  "rounds": 0.7469865881953484,
+  "craTurns": 2.434526005164146,
+  "first": [
+   8889,
+   7566,
+   9744
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Terristocrate",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 9080.5,
+  "hidden": 2667.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2667.5,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8339,
+  "byCra": [
+   1944.5,
+   2058.25,
+   1944.5,
+   2391.75
+  ],
+  "rounds": 0.791461805971939,
+  "craTurns": 2.4742268041237114,
+  "first": [
+   8029,
+   7433,
+   8884
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Évasive + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Évasive + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Évasive + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Évasive + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Terristocrate",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 10405.5,
+  "hidden": 3023.5,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche Dévorante + Flèche Dévorante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3023.5,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche Dévorante + Flèche Dévorante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 10113,
+  "byCra": [
+   2442.25,
+   2447.5,
+   2442.25,
+   2781
+  ],
+  "rounds": 0.6526253337288639,
+  "craTurns": 2.1829006118736562,
+  "first": [
+   8180,
+   7566,
+   10671
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Dévorante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Dévorante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Dévorante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Dévorante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Terristocrate",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 10405.5,
+  "hidden": 3023.5,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche Dévorante + Flèche Dévorante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3023.5,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche Dévorante + Flèche Dévorante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 9745.5,
+  "byCra": [
+   2335,
+   2371,
+   2335,
+   2704.5
+  ],
+  "rounds": 0.6772356472217946,
+  "craTurns": 2.1829006118736562,
+  "first": [
+   7785,
+   7226,
+   10276
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Doublure",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 10697.5,
+  "hidden": 3025.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3025.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 10512,
+  "byCra": [
+   2532,
+   2585.5,
+   2532,
+   2862.5
+  ],
+  "rounds": 0.3139269406392694,
+  "craTurns": 1.0907288051561725,
+  "first": [
+   10754,
+   9258,
+   11466
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Doublure",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 9343.5,
+  "hidden": 2687,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2687,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 9073,
+  "byCra": [
+   2184,
+   2214,
+   2184,
+   2491
+  ],
+  "rounds": 0.3637165215474485,
+  "craTurns": 1.2281354670636397,
+  "first": [
+   9274,
+   7860,
+   9986
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Doublure",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 10697.5,
+  "hidden": 3025.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3025.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 10512,
+  "byCra": [
+   2532,
+   2585.5,
+   2532,
+   2862.5
+  ],
+  "rounds": 0.3139269406392694,
+  "craTurns": 1.0907288051561725,
+  "first": [
+   10754,
+   9258,
+   11466
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Doublure",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 9343.5,
+  "hidden": 2687,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2687,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 9073,
+  "byCra": [
+   2184,
+   2214,
+   2184,
+   2491
+  ],
+  "rounds": 0.3637165215474485,
+  "craTurns": 1.2281354670636397,
+  "first": [
+   9274,
+   7860,
+   9986
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Doublure",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 11203.5,
+  "hidden": 3162,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Persécutrice",
+  "one": 3152,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+  "team": 11203.5,
+  "byCra": [
+   2717.75,
+   2745.5,
+   2717.75,
+   3022.5
+  ],
+  "rounds": 0.29455081001472755,
+  "craTurns": 1.0469543147208122,
+  "first": [
+   9825,
+   9258,
+   11697
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Doublure",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 9764.5,
+  "hidden": 2823.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Persécutrice",
+  "one": 2804,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+  "team": 9764.5,
+  "byCra": [
+   2369.75,
+   2374,
+   2369.75,
+   2651
+  ],
+  "rounds": 0.33795893286906653,
+  "craTurns": 1.1768901569186876,
+  "first": [
+   8345,
+   7860,
+   10217
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Bourôliste",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 12010.5,
+  "hidden": 3586.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3586.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 11627,
+  "byCra": [
+   2771.5,
+   2819.5,
+   2771.5,
+   3264.5
+  ],
+  "rounds": 0.5676442762535477,
+  "craTurns": 1.8402342116269343,
+  "first": [
+   11686,
+   9944,
+   12828
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Bourôliste",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 11892.5,
+  "hidden": 3557,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3557,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 10921,
+  "byCra": [
+   2595,
+   2643,
+   2595,
+   3088
+  ],
+  "rounds": 0.6043402618807802,
+  "craTurns": 1.8554962046668542,
+  "first": [
+   10574,
+   9644,
+   11716
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Bourôliste",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 12010.5,
+  "hidden": 3586.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3586.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 11627,
+  "byCra": [
+   2771.5,
+   2819.5,
+   2771.5,
+   3264.5
+  ],
+  "rounds": 0.5676442762535477,
+  "craTurns": 1.8402342116269343,
+  "first": [
+   11686,
+   9944,
+   12828
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Bourôliste",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 11892.5,
+  "hidden": 3557,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3557,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 10921,
+  "byCra": [
+   2595,
+   2643,
+   2595,
+   3088
+  ],
+  "rounds": 0.6043402618807802,
+  "craTurns": 1.8554962046668542,
+  "first": [
+   10574,
+   9644,
+   11716
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Bourôliste",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 12010.5,
+  "hidden": 3586.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3586.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 11627,
+  "byCra": [
+   2771.5,
+   2819.5,
+   2771.5,
+   3264.5
+  ],
+  "rounds": 0.5676442762535477,
+  "craTurns": 1.8402342116269343,
+  "first": [
+   11686,
+   9944,
+   12828
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Bourôliste",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 11892.5,
+  "hidden": 3557,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3557,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 10921,
+  "byCra": [
+   2595,
+   2643,
+   2595,
+   3088
+  ],
+  "rounds": 0.6043402618807802,
+  "craTurns": 1.8554962046668542,
+  "first": [
+   10574,
+   9644,
+   11716
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Magouille",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 9085.5,
+  "hidden": 2761,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Flèche Dévorante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2670,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8785,
+  "byCra": [
+   2100.5,
+   2134.5,
+   2100.5,
+   2449.5
+  ],
+  "rounds": 0.7512805919180421,
+  "craTurns": 2.4719101123595504,
+  "first": [
+   8881,
+   7542,
+   9687
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Magouille",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 8523.5,
+  "hidden": 2641,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche Tyrannique + Flèche Dévorante | B: Flèche Persécutrice + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2502,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche de Recul + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 7989,
+  "byCra": [
+   1864,
+   1973,
+   1864,
+   2288
+  ],
+  "rounds": 0.8261359369132557,
+  "craTurns": 2.6378896882494005,
+  "first": [
+   7305,
+   7867,
+   8111
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche de Recul + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche de Recul + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche de Recul + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche de Recul + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Magouille",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 9085.5,
+  "hidden": 2761,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Flèche Dévorante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2670,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8785,
+  "byCra": [
+   2100.5,
+   2134.5,
+   2100.5,
+   2449.5
+  ],
+  "rounds": 0.7512805919180421,
+  "craTurns": 2.4719101123595504,
+  "first": [
+   8881,
+   7542,
+   9687
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Magouille",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 8523.5,
+  "hidden": 2641,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche Tyrannique + Flèche Dévorante | B: Flèche Persécutrice + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2502,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche de Recul + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 7989,
+  "byCra": [
+   1864,
+   1973,
+   1864,
+   2288
+  ],
+  "rounds": 0.8261359369132557,
+  "craTurns": 2.6378896882494005,
+  "first": [
+   7305,
+   7867,
+   8111
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche de Recul + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche de Recul + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche de Recul + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Dévorante + Flèche de Recul + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Magouille",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 9085.5,
+  "hidden": 2761,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Flèche Dévorante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2670,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8915.5,
+  "byCra": [
+   2147.75,
+   2152.5,
+   2147.75,
+   2467.5
+  ],
+  "rounds": 0.7402837754472548,
+  "craTurns": 2.4719101123595504,
+  "first": [
+   7242,
+   7542,
+   9000
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "strict",
+  "target": "Magouille",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 8505,
+  "hidden": 2641,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche Tyrannique + Flèche Dévorante | B: Flèche Persécutrice + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2539.5,
+  "oneLabel": "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8107,
+  "byCra": [
+   1931,
+   1965,
+   1931,
+   2280
+  ],
+  "rounds": 0.8141112618724559,
+  "craTurns": 2.598936798582398,
+  "first": [
+   6389,
+   6778,
+   8147
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Reine",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 10298.125,
+  "hidden": 2427.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Pluie de Flèches | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2248.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Pluie de Flèches",
+  "team": 9856.625,
+  "byCra": [
+   2336.375,
+   2442,
+   2368.125,
+   2710.125
+  ],
+  "rounds": 1.5218190810749115,
+  "craTurns": 6.6711140760507,
+  "first": [
+   8179,
+   7590,
+   9458
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Pluie de Flèches",
+   "A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Pluie de Flèches",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Reine",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 8876.5,
+  "hidden": 2219.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche du Jugement + Pluie de Flèches | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 2034.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Pluie de Flèches | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante",
+  "team": 8612.125,
+  "byCra": [
+   2053,
+   2286.375,
+   2038.5,
+   2234.25
+  ],
+  "rounds": 1.741730409161502,
+  "craTurns": 7.372818874416319,
+  "first": [
+   6925,
+   7194,
+   8017
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Pluie de Flèches | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Pluie de Flèches | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Reine",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 10973.75,
+  "hidden": 2513.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Flèche Boomerang | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2435.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+  "team": 11020.875,
+  "byCra": [
+   2647.5,
+   2810,
+   2702.75,
+   2860.625
+  ],
+  "rounds": 1.3610534553744598,
+  "craTurns": 6.158899609936358,
+  "first": [
+   9752,
+   8724,
+   10415
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Reine",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 9908,
+  "hidden": 2338.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche Boomerang + Flèche Tyrannique | B: Flèche Persécutrice + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+  "one": 2227.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+  "team": 9780.625,
+  "byCra": [
+   2345.375,
+   2370.625,
+   2384,
+   2680.625
+  ],
+  "rounds": 1.533644322320915,
+  "craTurns": 6.734006734006734,
+  "first": [
+   8188,
+   8096,
+   9024
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Reine",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 11291.875,
+  "hidden": 2527.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Pluie de Flèches | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2447.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Pluie de Flèches | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Pluie de Flèches",
+  "team": 10886.5,
+  "byCra": [
+   2586,
+   2679.75,
+   2662.625,
+   2958.125
+  ],
+  "rounds": 1.3778533045515087,
+  "craTurns": 6.128702757916241,
+  "first": [
+   7645,
+   7348,
+   10116
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Pluie de Flèches | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Pluie de Flèches",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Pluie de Flèches | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Pluie de Flèches",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Reine",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 9577.75,
+  "hidden": 2371.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche d'Expiation + Flèche Persécutrice + Pluie de Flèches | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 2186.5,
+  "oneLabel": "A: Tirs Puissants + Flèche d'Expiation + Flèche Tyrannique + Pluie de Flèches | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante",
+  "team": 9847.125,
+  "byCra": [
+   2296.75,
+   2570.875,
+   2359.625,
+   2619.875
+  ],
+  "rounds": 1.523287253893903,
+  "craTurns": 6.86027898467871,
+  "first": [
+   6092,
+   7026,
+   8125
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Tyrannique + Pluie de Flèches | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Tyrannique + Pluie de Flèches | B: Flèche du Jugement + Pluie de Flèches + Flèche Dévorante + Flèche Cinglante",
+   "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche du Jugement + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche du Jugement + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Mâchassin",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 10094,
+  "hidden": 3170,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche du Jugement + Pluie de Flèches | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 2896,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Pluie de Flèches + Flèche Tyrannique",
+  "team": 9725.25,
+  "byCra": [
+   2388,
+   2529.25,
+   2249,
+   2559
+  ],
+  "rounds": 0.6786457931672708,
+  "craTurns": 2.2790055248618786,
+  "first": [
+   10086,
+   8419,
+   10932
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Pluie de Flèches + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Pluie de Flèches + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Mâchassin",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 9306,
+  "hidden": 3052.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche Persécutrice + Pluie de Flèches + Flèche Tyrannique",
+  "one": 2712.5,
+  "oneLabel": "A: Tirs Puissants + Pluie de Flèches + Flèche du Jugement + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche Tyrannique + Flèche Boomerang + Flèche Cinglante",
+  "team": 8853.25,
+  "byCra": [
+   2204.5,
+   2318.75,
+   2010,
+   2320
+  ],
+  "rounds": 0.7454889447378081,
+  "craTurns": 2.4331797235023043,
+  "first": [
+   9038,
+   7669,
+   9884
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Pluie de Flèches + Flèche du Jugement + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche Tyrannique + Flèche Boomerang + Flèche Cinglante",
+   "A: Tirs Puissants + Pluie de Flèches + Flèche du Jugement + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche Tyrannique + Flèche Boomerang + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Mâchassin",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 11267,
+  "hidden": 3380.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche du Jugement + Flèche Boomerang | B: Flèche Persécutrice + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+  "one": 3172.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+  "team": 11052.5,
+  "byCra": [
+   2785.5,
+   2858.75,
+   2633.5,
+   2774.75
+  ],
+  "rounds": 0.5971499660710247,
+  "craTurns": 2.0803782505910164,
+  "first": [
+   11634,
+   9996,
+   11692
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique | B: Flèche du Jugement + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Tir Perçant + Flèche du Jugement + Flèche Boomerang + Flèche Tyrannique"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Mâchassin",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 11069.5,
+  "hidden": 3320,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche Boomerang + Flèche Tyrannique | B: Flèche Persécutrice + Flèche Boomerang + Pluie de Flèches + Flèche Cinglante",
+  "one": 3098,
+  "oneLabel": "A: Tirs Puissants + Flèche Boomerang + Pluie de Flèches + Flèche de Recul + Flèche Cinglante | B: Flèche Boomerang + Pluie de Flèches + Flèche Tyrannique + Flèche Cinglante",
+  "team": 10551.5,
+  "byCra": [
+   2673.75,
+   2731.25,
+   2385,
+   2761.5
+  ],
+  "rounds": 0.6255034829171208,
+  "craTurns": 2.130406714009038,
+  "first": [
+   11111,
+   9081,
+   11622
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Boomerang + Pluie de Flèches + Flèche de Recul + Flèche Cinglante | B: Flèche Boomerang + Pluie de Flèches + Flèche Tyrannique + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche Boomerang + Pluie de Flèches + Flèche de Recul + Flèche Cinglante | B: Flèche Boomerang + Pluie de Flèches + Flèche Tyrannique + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche Boomerang + Flèche du Jugement + Flèche Cinglante + Flèche Cinglante | B: Flèche Boomerang + Flèche Tyrannique + Flèche de Recul + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche Boomerang + Flèche du Jugement + Flèche Cinglante + Flèche Cinglante | B: Flèche Boomerang + Flèche Tyrannique + Flèche de Recul + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Mâchassin",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 10389.5,
+  "hidden": 3170,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche du Jugement + Pluie de Flèches | B: Flèche Persécutrice + Flèche du Jugement + Flèche Tyrannique",
+  "one": 2956,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Pluie de Flèches | B: Tir Perçant + Flèche du Jugement + Pluie de Flèches + Flèche Tyrannique",
+  "team": 10073.25,
+  "byCra": [
+   2475.75,
+   2589.25,
+   2389.25,
+   2619
+  ],
+  "rounds": 0.6552006552006552,
+  "craTurns": 2.232746955345061,
+  "first": [
+   8533,
+   8115,
+   10513
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Pluie de Flèches | B: Tir Perçant + Flèche du Jugement + Pluie de Flèches + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Pluie de Flèches | B: Tir Perçant + Flèche du Jugement + Pluie de Flèches + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Boomerang | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Boomerang | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Mâchassin",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 9758,
+  "hidden": 3112.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche d'Expiation + Pluie de Flèches | B: Tir Perçant + Flèche Persécutrice + Pluie de Flèches + Flèche Tyrannique",
+  "one": 2825.5,
+  "oneLabel": "A: Tirs Puissants + Flèche d'Expiation + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche Tyrannique + Flèche Boomerang + Flèche Cinglante",
+  "team": 9305.25,
+  "byCra": [
+   2317.5,
+   2431.75,
+   2123,
+   2433
+  ],
+  "rounds": 0.7092770210365117,
+  "craTurns": 2.3358697575650327,
+  "first": [
+   7494,
+   7669,
+   9568
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche d'Expiation + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche Tyrannique + Flèche Boomerang + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche d'Expiation + Pluie de Flèches + Flèche Cinglante + Flèche Cinglante | B: Pluie de Flèches + Flèche Tyrannique + Flèche Boomerang + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Boomerang + Flèche Cinglante + Flèche Cinglante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Cinglante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Terristocrate",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 9155.5,
+  "hidden": 2711,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2711,
+  "oneLabel": "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8835.5,
+  "byCra": [
+   2107.5,
+   2143.5,
+   2107.5,
+   2477
+  ],
+  "rounds": 0.7469865881953484,
+  "craTurns": 2.434526005164146,
+  "first": [
+   8889,
+   7566,
+   9744
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Terristocrate",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 9080.5,
+  "hidden": 2667.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2667.5,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8279.5,
+  "byCra": [
+   1969,
+   2035,
+   1938,
+   2337.5
+  ],
+  "rounds": 0.7971495863276767,
+  "craTurns": 2.4742268041237114,
+  "first": [
+   7733,
+   7593,
+   8966
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Dévorante + Pluie de Flèches + Flèche Détonante + Flèche Détonante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Dévorante + Pluie de Flèches + Flèche Détonante + Flèche Détonante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Dévorante + Flèche Évasive + Flèche Détonante + Flèche Détonante + Flèche Cinglante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Dévorante + Flèche Évasive + Flèche Détonante + Flèche Détonante + Flèche Cinglante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Terristocrate",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 9305.5,
+  "hidden": 2742.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2742.5,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 9067,
+  "byCra": [
+   2159.25,
+   2207.5,
+   2159.25,
+   2541
+  ],
+  "rounds": 0.7279144149112164,
+  "craTurns": 2.406563354603464,
+  "first": [
+   8128,
+   9151,
+   8983
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Boomerang + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Boomerang + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Boomerang + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche du Jugement + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Boomerang + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Terristocrate",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 9305.5,
+  "hidden": 2742.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2742.5,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8896,
+  "byCra": [
+   2141.25,
+   2140,
+   2141.25,
+   2473.5
+  ],
+  "rounds": 0.7419064748201439,
+  "craTurns": 2.406563354603464,
+  "first": [
+   8726,
+   7850,
+   9581
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Dévorante + Flèche Boomerang + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Boomerang + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche Boomerang + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Boomerang + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche Boomerang + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Boomerang + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche Boomerang + Flèche Évasive + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Boomerang + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Terristocrate",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 10405.5,
+  "hidden": 3023.5,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche Dévorante + Flèche Dévorante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3023.5,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche Dévorante + Flèche Dévorante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 10113,
+  "byCra": [
+   2442.25,
+   2447.5,
+   2442.25,
+   2781
+  ],
+  "rounds": 0.6526253337288639,
+  "craTurns": 2.1829006118736562,
+  "first": [
+   8180,
+   7566,
+   10671
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Dévorante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Dévorante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Dévorante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche du Jugement + Flèche Dévorante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Terristocrate",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 10405.5,
+  "hidden": 3023.5,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche Dévorante + Flèche Dévorante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3023.5,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche d'Expiation + Flèche Dévorante + Flèche Dévorante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 9843.75,
+  "byCra": [
+   2353,
+   2451.25,
+   2335,
+   2704.5
+  ],
+  "rounds": 0.6704761904761904,
+  "craTurns": 2.1829006118736562,
+  "first": [
+   7785,
+   7358,
+   10465
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Doublure",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 11070.5,
+  "hidden": 3133.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+  "one": 3133.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+  "team": 11070.5,
+  "byCra": [
+   2669.75,
+   2727,
+   2669.75,
+   3004
+  ],
+  "rounds": 0.2980895171853123,
+  "craTurns": 1.0531354715174726,
+  "first": [
+   10933,
+   10594,
+   11187
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Doublure",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 9716.5,
+  "hidden": 2795,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+  "one": 2795,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+  "team": 9716.5,
+  "byCra": [
+   2331.25,
+   2388.5,
+   2331.25,
+   2665.5
+  ],
+  "rounds": 0.339628467040601,
+  "craTurns": 1.180679785330948,
+  "first": [
+   9453,
+   9366,
+   9707
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil | B: Flèche du Jugement + Œil pour Œil + Flèche Dévorante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Doublure",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 11343.5,
+  "hidden": 3194.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+  "one": 3194.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+  "team": 11343.5,
+  "byCra": [
+   2730.75,
+   2802.5,
+   2869.25,
+   2941
+  ],
+  "rounds": 0.2909155022700225,
+  "craTurns": 1.033025512599781,
+  "first": [
+   12377,
+   9756,
+   12631
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Doublure",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 9989.5,
+  "hidden": 2856,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+  "one": 2856,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+  "team": 9989.5,
+  "byCra": [
+   2392.25,
+   2464,
+   2530.75,
+   2602.5
+  ],
+  "rounds": 0.33034686420741777,
+  "craTurns": 1.1554621848739495,
+  "first": [
+   10897,
+   8528,
+   11151
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Massacrante + Œil pour Œil | B: Flèche du Jugement + Flèche Massacrante + Flèche Tyrannique"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Doublure",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 11350.5,
+  "hidden": 3201,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+  "one": 3201,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+  "team": 11350.5,
+  "byCra": [
+   2766.75,
+   2770,
+   2766.75,
+   3047
+  ],
+  "rounds": 0.2907360909211048,
+  "craTurns": 1.0309278350515463,
+  "first": [
+   9825,
+   9552,
+   11697
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Doublure",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 9908.5,
+  "hidden": 2840.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+  "one": 2840.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+  "team": 9908.5,
+  "byCra": [
+   2406.25,
+   2409.5,
+   2406.25,
+   2686.5
+  ],
+  "rounds": 0.3330473835595701,
+  "craTurns": 1.1617672944904067,
+  "first": [
+   8345,
+   8148,
+   10217
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Tir Perçant + Flèche du Jugement + Flèche Tyrannique + Œil pour Œil"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Bourôliste",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 12010.5,
+  "hidden": 3586.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3586.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 11627,
+  "byCra": [
+   2771.5,
+   2819.5,
+   2771.5,
+   3264.5
+  ],
+  "rounds": 0.5676442762535477,
+  "craTurns": 1.8402342116269343,
+  "first": [
+   11686,
+   9944,
+   12828
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Bourôliste",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 11892.5,
+  "hidden": 3557,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3557,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 10854,
+  "byCra": [
+   2563,
+   2815,
+   2593.5,
+   2882.5
+  ],
+  "rounds": 0.6080707573244887,
+  "craTurns": 1.8554962046668542,
+  "first": [
+   10318,
+   10248,
+   11460
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Bourôliste",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 12207.5,
+  "hidden": 3589.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3589.5,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 11627,
+  "byCra": [
+   2771.5,
+   2819.5,
+   2771.5,
+   3264.5
+  ],
+  "rounds": 0.5676442762535477,
+  "craTurns": 1.8386961972419558,
+  "first": [
+   11686,
+   9944,
+   12828
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Bourôliste",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 12207.5,
+  "hidden": 3589.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3589.5,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Flèche Boomerang + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 11148,
+  "byCra": [
+   2604.5,
+   2979.5,
+   2613,
+   2951
+  ],
+  "rounds": 0.5920344456404736,
+  "craTurns": 1.8386961972419558,
+  "first": [
+   10446,
+   10708,
+   11588
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Dévorante + Flèche du Jugement + Flèche Boomerang + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Dévorante + Flèche du Jugement + Flèche Boomerang + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Boomerang + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Dévorante + Flèche du Jugement + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Boomerang + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Bourôliste",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 12010.5,
+  "hidden": 3586.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3586.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 11627,
+  "byCra": [
+   2771.5,
+   2819.5,
+   2771.5,
+   3264.5
+  ],
+  "rounds": 0.5676442762535477,
+  "craTurns": 1.8402342116269343,
+  "first": [
+   11686,
+   9944,
+   12828
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Bourôliste",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 11892.5,
+  "hidden": 3557,
+  "hiddenLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 3557,
+  "oneLabel": "A: Tirs Puissants + Tir Perçant + Flèche Dévorante + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 10793,
+  "byCra": [
+   2563,
+   2611,
+   2563,
+   3056
+  ],
+  "rounds": 0.6115074585379413,
+  "craTurns": 1.8554962046668542,
+  "first": [
+   10318,
+   10126,
+   11460
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Magouille",
+  "geom": "H5",
+  "mp": 0,
+  "teamFree": 9085.5,
+  "hidden": 2761,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Flèche Dévorante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2670,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8933,
+  "byCra": [
+   2175.25,
+   2378.25,
+   2100.5,
+   2279
+  ],
+  "rounds": 0.7388335385648718,
+  "craTurns": 2.4719101123595504,
+  "first": [
+   8578,
+   8369,
+   9494
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Magouille",
+  "geom": "H5",
+  "mp": 2,
+  "teamFree": 8775.5,
+  "hidden": 2641,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche Tyrannique + Flèche Dévorante | B: Flèche Persécutrice + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2586,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 7985.75,
+  "byCra": [
+   1974,
+   2035.75,
+   1813.5,
+   2162.5
+  ],
+  "rounds": 0.8264721535234637,
+  "craTurns": 2.5522041763341066,
+  "first": [
+   7631,
+   7363,
+   8664
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Tir Perçant + Flèche Tyrannique + Flèche Dévorante + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Magouille",
+  "geom": "L5",
+  "mp": 0,
+  "teamFree": 9467.5,
+  "hidden": 2829,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Flèche Boomerang | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2782.5,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Boomerang | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Détonante",
+  "team": 9467.5,
+  "byCra": [
+   2255.25,
+   2321,
+   2255.25,
+   2636
+  ],
+  "rounds": 0.6971217322418801,
+  "craTurns": 2.371967654986523,
+  "first": [
+   9083,
+   9157,
+   9372
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Boomerang | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Boomerang | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Boomerang | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Boomerang | B: Flèche du Jugement + Flèche Boomerang + Flèche Dévorante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Magouille",
+  "geom": "L5",
+  "mp": 2,
+  "teamFree": 9303.5,
+  "hidden": 2753.5,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche Tyrannique + Flèche Boomerang | B: Flèche Persécutrice + Flèche Boomerang + Flèche Dévorante + Flèche Détonante",
+  "one": 2724.5,
+  "oneLabel": "A: Tirs Puissants + Flèche Boomerang + Flèche Dévorante + Flèche Dévorante + Flèche Détonante | B: Flèche Tyrannique + Flèche Boomerang + Flèche Dévorante + Flèche Détonante",
+  "team": 9099.5,
+  "byCra": [
+   2218.25,
+   2237,
+   2176.25,
+   2468
+  ],
+  "rounds": 0.7253145777240507,
+  "craTurns": 2.422462837217838,
+  "first": [
+   8811,
+   8157,
+   9558
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche Boomerang + Flèche Dévorante + Pluie de Flèches + Flèche Détonante | B: Flèche Tyrannique + Flèche Boomerang + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Boomerang + Flèche Dévorante + Pluie de Flèches + Flèche Détonante | B: Flèche Tyrannique + Flèche Boomerang + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Boomerang + Flèche Dévorante + Flèche de Recul + Flèche Détonante | B: Flèche Tyrannique + Flèche Boomerang + Flèche Dévorante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche Boomerang + Flèche Dévorante + Flèche de Recul + Flèche Détonante | B: Flèche Tyrannique + Flèche Boomerang + Flèche Dévorante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Magouille",
+  "geom": "H7",
+  "mp": 0,
+  "teamFree": 9085.5,
+  "hidden": 2761,
+  "hiddenLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Persécutrice + Flèche Dévorante | B: Flèche du Jugement + Flèche Persécutrice + Flèche Tyrannique",
+  "one": 2670,
+  "oneLabel": "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8998.25,
+  "byCra": [
+   2175.25,
+   2378.25,
+   2147.75,
+   2297
+  ],
+  "rounds": 0.7334759536576556,
+  "craTurns": 2.4719101123595504,
+  "first": [
+   7700,
+   8369,
+   9209
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche Tyrannique + Flèche Dévorante | B: Flèche du Jugement + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche du Jugement + Flèche d'Expiation + Flèche Dévorante | B: Flèche du Jugement + Flèche Tyrannique + Flèche Détonante + Flèche Détonante"
+  ]
+ },
+ {
+  "mode": "zones",
+  "target": "Magouille",
+  "geom": "H7",
+  "mp": 2,
+  "teamFree": 8775.5,
+  "hidden": 2641,
+  "hiddenLabel": "A: Tirs Puissants + Flèche Persécutrice + Flèche Tyrannique + Flèche Dévorante | B: Flèche Persécutrice + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "one": 2586,
+  "oneLabel": "A: Tirs Puissants + Flèche Dévorante + Flèche Dévorante + Pluie de Flèches + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Flèche Dévorante + Flèche Détonante",
+  "team": 8303.75,
+  "byCra": [
+   2015.5,
+   2077.25,
+   1931,
+   2280
+  ],
+  "rounds": 0.794821616739425,
+  "craTurns": 2.5522041763341066,
+  "first": [
+   6389,
+   7000,
+   8374
+  ],
+  "cycles": [
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche Dévorante + Pluie de Flèches + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante",
+   "A: Tirs Puissants + Flèche d'Expiation + Flèche Dévorante + Flèche Détonante + Flèche Détonante | B: Flèche Tyrannique + Flèche du Jugement + Flèche Détonante + Flèche Détonante"
+  ]
+ }
+]

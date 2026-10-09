@@ -1,0 +1,17 @@
+au-delà compté non sûr : {"C":31,"E":45,"C∨D∨E":45,"D":21,"C∧D∧E":21,"A":11,"A∨B":11,"B":3,"A∧B":3}
+au-delà compté sûr : {"C":31,"E":49,"C∨D∨E":49,"D":23,"C∧D∧E":21,"A":40,"B":35,"A∧B":35,"A∨B":40,"A∧C":1,"(A∨B)∧(C∨D∨E)":1}
+sans 325/369 (210 départs) : A∧B 3, C∧D∧E 3
+  325 (15,-8) : N2=297 NE2=298 N2+NE=284 | N4=269 ; rouges en ligne avec N2: 365,378 ; avec N4: 
+  340 (16,-8) : N2=312 NE2=313# N2+NE=298 | N4=284 ; rouges en ligne avec N2: 325 ; avec N4: 365,378
+  354 (17,-8) : N2=326# NE2=327# N2+NE=313# | N4=298 ; rouges en ligne avec N2: 340,367,380 ; avec N4: 325
+  365 (14,-12) : N2=337 NE2=338 N2+NE=323 | N4=309 ; rouges en ligne avec N2: 380,395 ; avec N4: 367,381
+  367 (16,-10) : N2=339 NE2=340 N2+NE=325 | N4=311 ; rouges en ligne avec N2: 325 ; avec N4: 325,340,354,365,369,378
+  369 (18,-8) : N2=341# NE2=342 N2+NE=327# | N4=313# ; rouges en ligne avec N2: 354,381,395 ; avec N4: 340,367,380
+  378 (14,-13) : N2=350 NE2=351 N2+NE=337 | N4=322 ; rouges en ligne avec N2: 365,437 ; avec N4: 380,395
+  380 (16,-11) : N2=352 NE2=353 N2+NE=339 | N4=324 ; rouges en ligne avec N2: 325,367,381 ; avec N4: 365,378
+  381 (17,-10) : N2=353 NE2=354 N2+NE=340 | N4=325 ; rouges en ligne avec N2: 340,367,380 ; avec N4: 340,354,369
+  395 (17,-11) : N2=367 NE2=368 N2+NE=353 | N4=339 ; rouges en ligne avec N2: 340,380,381 ; avec N4: 325
+  437 (19,-12) : N2=409 NE2=410 N2+NE=396 | N4=381 ; rouges en ligne avec N2: 369,380,395 ; avec N4: 354,367,395
+  451 (19,-13) : N2=423 NE2=424 N2+NE=409 | N4=395 ; rouges en ligne avec N2: 365,369,437 ; avec N4: 354,380,381
+au-delà = mon sens horaire (depuis le haut, distance 2 puis plus) : A∧B 23 ; C∧D∧E 21 ; les deux 0
+  A∧B sans recours à l'au-delà : 340/365/367/437  340/367/378/451  340/378/380/451

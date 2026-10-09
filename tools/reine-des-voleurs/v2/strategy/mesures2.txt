@@ -1,0 +1,35 @@
+== a. Deux Crâs tués par des monstres (manches 2 à 8, avant le tour du joueur 0 ou 2), les 2 survivants gardent leur plan
+  A/suivant   0/16128 cas avec une mort de plus (0 %) 
+  A/même      0/2688 cas avec une mort de plus (0 %) 
+  B/suivant   0/16128 cas avec une mort de plus (0 %) 
+  B/même      0/2688 cas avec une mort de plus (0 %) 
+  C/suivant   0/16128 cas avec une mort de plus (0 %) 
+  C/même      0/16128 cas avec une mort de plus (0 %) 
+  D/suivant   0/16128 cas avec une mort de plus (0 %) 
+  D/même      0/16128 cas avec une mort de plus (0 %) 
+  E/suivant   0/16128 cas avec une mort de plus (0 %) 
+  E/même      0/16128 cas avec une mort de plus (0 %) 
+
+== b. Une bombe vivante tuée par un tiers (explose aussitôt) avant le tour du joueur k, manches 2 à 8 ; toutes les bombes testées
+  A/suivant   0/3576 cas mortels (0 %) ; cases en cause : aucune
+  A/même      0/0 cas mortels (NaN %) ; cases en cause : aucune
+  B/suivant   0/2688 cas mortels (0 %) ; cases en cause : aucune
+  B/même      0/0 cas mortels (NaN %) ; cases en cause : aucune
+  C/suivant   0/2688 cas mortels (0 %) ; cases en cause : aucune
+  C/même      0/0 cas mortels (NaN %) ; cases en cause : aucune
+  D/suivant   0/2688 cas mortels (0 %) ; cases en cause : aucune
+  D/même      0/0 cas mortels (NaN %) ; cases en cause : aucune
+  E/suivant   0/2688 cas mortels (0 %) ; cases en cause : aucune
+  E/même      0/0 cas mortels (NaN %) ; cases en cause : aucune
+
+== c. Un Crâ tué + toutes les bombes à ≤ 3 cases de lui tuées au même moment (≈ Bombe Illicale), manches 2 à 8, avant le tour du joueur k
+  A/suivant   0/5376 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%
+  A/même      0/896 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%
+  B/suivant   0/5376 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%
+  B/même      0/896 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%
+  C/suivant   0/5376 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%
+  C/même      0/5376 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%
+  D/suivant   0/5376 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%
+  D/même      0/5376 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%
+  E/suivant   0/5376 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%
+  E/même      0/5376 (0 %) — 365→311 0% ; 378→392 0% ; 437→398 0% ; 451→479 0%

@@ -1,0 +1,4 @@
+N2 régime: depuis les cases 160 161 162 190 234 235 263 291 319 ; avec sorties ≤ 2 PM 159 160 161 162 190 234 235 263 291 319 ; jamais vues : 205 219
+N2 fin tour 1: depuis les cases 159 160 161 162 190 234 235 263 291 319 ; avec sorties ≤ 2 PM 159 160 161 162 190 234 235 263 291 319 ; jamais vues : 205 219
+N4 régime (cases tenues): depuis les cases 159 160 161 162 190 234 235 263 291 319 ; avec sorties ≤ 2 PM 159 160 161 162 190 234 235 263 291 319 ; jamais vues : 205 219
+N4 régime (cases jaunes): depuis les cases 159 160 161 162 190 234 235 263 291 319 ; avec sorties ≤ 2 PM 159 160 161 162 190 234 235 263 291 319 ; jamais vues : 205 219
