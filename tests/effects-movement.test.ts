@@ -44,6 +44,7 @@ const ZOBAL = 14
 const STEAMER = 15
 const ELIOTROPE = 16
 const OUGINAK = 18
+const CRA = 9
 
 const MOT_DE_FRAYEUR = 13175 // repousse de 1 (P1, a,A), PO 1-7 en ligne
 const VIOLENCE = 13137 // repousse de 4 en cercle C2,1 autour du lanceur
@@ -60,6 +61,7 @@ const GELURE = 13245 // 1100
 const KARCHAM = 12787 // 50 / 51
 const PROPULSION = 12788 // 51 + effets sur le porté
 const PORTAIL = 14574 // 1181
+const FLECHE_DE_BARRAGE = 32443 // repousse de 1 en zone T2 (ligne perpendiculaire au lancer), PO en ligne
 
 const STATE_PESANTEUR = 7
 const STATE_INVULNERABLE = 56
@@ -220,6 +222,23 @@ describe('5 — poussée et collisions', () => {
     expect(dragFighter(engine, fs, iop, t, 5, Direction.SE, { collision: true })).toBe(true)
     expect(t.cell).toBe(cellAt(13, 0))
     expect(pushDamageTaken(fs, t)).toEqual([])
+  })
+})
+
+describe('zone en ligne perpendiculaire (T) : poussée dans le sens du lancer', () => {
+  it('poussée de Flèche de Barrage (T2) : la cible du centre ET les cibles latérales vers l’avant (journaux de la Reine des Voleurs)', () => {
+    const engine = newEngine()
+    const cra = player({ name: 'Crâ', breedId: CRA, cell: cellAt(10, 0) })
+    const center = player({ name: 'Centre', breedId: IOP, team: 1, cell: cellAt(13, 0) })
+    const side = player({ name: 'Côté', breedId: IOP, team: 1, cell: cellAt(13, 1) })
+    const fs = fight(engine, [cra, center, side])
+    // Effet des données 3.7 (planificateur de la Reine) : « repousse de 1 » en zone T2, lancé sur la case centrale.
+    const zone = { ...data().spellLevel(FLECHE_DE_BARRAGE, { playerLevel: 200 })!.effects.find(e => e.effectId === 5)!.zone }
+    expect(zone.shape).toBe('T')
+    applyEffects(engine, fs, cra, null, FLECHE_DE_BARRAGE, [effect(5, { diceNum: 1, zone })], center.cell, cra.cell, false, false, 0)
+    // Sens du lancer (+x) pour les deux ; calculée depuis le centre de la zone, la cible latérale partait en (13, 2).
+    expect(center.cell).toBe(cellAt(14, 0))
+    expect(side.cell).toBe(cellAt(14, 1))
   })
 })
 

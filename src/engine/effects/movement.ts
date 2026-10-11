@@ -30,6 +30,7 @@
  * les cases de début de combat / de tour (784, 1099) et réinitialise les marqueurs T / W.
  */
 import { cellInDirection, directionBetween, distance, neighborsOf } from '../../map/geometry'
+import { shapeChar, zoneDirection } from '../../map/zones'
 import type { Engine } from '../engine'
 import { casterPassesMask, matchesTargetMask } from '../targetMask'
 import type { Fighter, FightState } from '../types'
@@ -154,13 +155,27 @@ function orderedTargets(ctx: EffectContext, push: boolean): Fighter[] {
   return t
 }
 
+/**
+ * Zones en ligne perpendiculaire au lancer (« T », « - ») : toutes les cibles sont poussées dans le sens du lancer
+ * (lanceur → case ciblée), pas à l'écart du centre de la zone. Mesuré sur Flèche de Barrage (Crâ, zone T de 2) :
+ * 35 poussées réelles sur 35 dans le sens du lancer (journaux de la Reine des Voleurs, 2026-10-10 et 2026-10-11) ; le
+ * calcul depuis le centre envoyait les cibles latérales sur le côté (bombes alignées avec un Crâ : 3 morts).
+ */
+function castLinePush(ctx: EffectContext): number {
+  const shape = shapeChar(ctx.effect.zone.shape)
+  if (shape !== 'T' && shape !== '-') return -1
+  const from = pushSource(ctx)
+  return from === ctx.targetCell ? -1 : zoneDirection(ctx.effect.zone, ctx.targetCell, from)
+}
+
 function push(ctx: EffectContext): void {
   beginMovementEffect(ctx)
   const id = ctx.effect.effectId
   const opts = { forced: id === 1021, collision: id === 5 }
+  const lineDir = castLinePush(ctx)
   for (const t of orderedTargets(ctx, true)) {
     if (!t.alive || ctx.fight.ended) continue
-    const dir = pushDirection(pushSource(ctx), ctx.targetCell, t.cell)
+    const dir = lineDir >= 0 ? lineDir : pushDirection(pushSource(ctx), ctx.targetCell, t.cell)
     dragFighter(ctx.engine, ctx.fight, ctx.caster, t, ctx.effect.diceNum, dir, opts)
   }
 }

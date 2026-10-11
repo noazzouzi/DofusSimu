@@ -6,3 +6,7 @@ dist-single/
 .DS_Store
 out/
 runs/
+
+# Journaux de combat (AnkaBot et serveur de plans) : volumineux, non versionnés (tests sautés en leur absence)
+data/fightlogs/
+tools/ankabot/journal-combats_*.jsonl

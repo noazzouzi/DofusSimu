@@ -3,6 +3,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 import { fileURLToPath } from 'node:url'
 import { stuffsPlugin } from './web/plugins/stuffs'
 import { theoryPlugin } from './web/plugins/theory'
+import { reinePlugin } from './web/plugins/reine'
 
 // `vite build --mode single` produit un unique fichier HTML autonome (publiable tel quel).
 export default defineConfig(({ mode }) => ({
@@ -14,8 +15,9 @@ export default defineConfig(({ mode }) => ({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   // stuffsPlugin : module virtuel des fiches de stuff des équipes (section « Stuffs », web/plugins/stuffs.ts) ;
   // theoryPlugin : API de la section « Boss » (serveur de développement seulement, web/plugins/theory.ts). Les deux
-  // partagent les données du jeu (web/plugins/store.ts).
-  plugins: mode === 'single' ? [stuffsPlugin(), theoryPlugin(), viteSingleFile()] : [stuffsPlugin(), theoryPlugin()],
+  // partagent les données du jeu (web/plugins/store.ts). reinePlugin : API de la section « Reine » (planificateur de tour,
+  // serveur de développement seulement, web/plugins/reine.ts).
+  plugins: mode === 'single' ? [stuffsPlugin(), theoryPlugin(), reinePlugin(), viteSingleFile()] : [stuffsPlugin(), theoryPlugin(), reinePlugin()],
   build: {
     outDir: mode === 'single' ? '../dist-single' : '../dist',
     emptyOutDir: true,

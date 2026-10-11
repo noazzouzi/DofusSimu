@@ -359,6 +359,11 @@ export interface FightOptions {
    * décision différente à un tour ne décale pas les dés des tours suivants (nombres aléatoires communs, rembobinage).
    */
   rngRekey?: 'none' | 'perTurn'
+  /**
+   * Coup critique imposé aux lancers (absent : tiré selon `rollMode`). Sert à rejouer un combat réel, dont le journal
+   * dit si chaque lancer était critique ; le jet des dés suit toujours `rollMode`.
+   */
+  forcedCrit?: boolean
 }
 
 /** Hooks de scénario (donjons à vagues, phases de boss, invulnérabilités...). */
