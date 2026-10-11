@@ -18,6 +18,8 @@
 //                             automatiquement sur "vortex".
 //   --max-depth=N             profondeur max. de la fermeture transitive sorts/invocations (défaut 20,
 //                             simple garde-fou : la fermeture s'arrête dès qu'elle est stable)
+//   --out=DIR                 dossier de sortie (défaut data/dofusdb) ; ex. .cache/data-3.7/dofusdb pour garder une
+//                             extraction d'une autre version du jeu à côté de celle du dépôt
 //   --game-version=X.Y        version du jeu inscrite dans manifest.json (game.version) ; sans cette option,
 //                             elle est déduite du schéma des grades de monstres (3.6 ou 3.7, l'API ne la publie pas)
 //
@@ -50,7 +52,6 @@ import { assertBossResistances, gameVersionInfo, normGrade, summarizeGradeSchema
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const API = (process.env.DOFUSDB_API ?? 'https://api.dofusdb.fr').replace(/\/$/, '');
 const CACHE_DIR = path.join(ROOT, '.cache', 'dofusdb');
-const OUT_DIR = path.join(ROOT, 'data', 'dofusdb');
 // Fichiers de sortie préparés ici, puis déplacés dans OUT_DIR en fin d'extraction réussie (publishOutputs).
 const STAGING_DIR = path.join(ROOT, '.cache', 'dofusdb-out');
 const PAGE_SIZE = 50; // maximum accepté par l'API
@@ -63,6 +64,7 @@ const opt = (name, def) => {
   return eq === -1 ? true : a.slice(eq + 1);
 };
 const REFRESH = Boolean(opt('refresh', false));
+const OUT_DIR = path.resolve(ROOT, String(opt('out', path.join('data', 'dofusdb'))));
 const CONCURRENCY = Math.max(1, Number(opt('concurrency', 4)));
 const MIN_DELAY_MS = Math.max(0, Number(opt('delay', 60)));
 const MONSTER_SPELLS_SCOPE = String(opt('monster-spells', 'all'));

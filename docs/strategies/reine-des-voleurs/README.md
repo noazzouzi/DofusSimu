@@ -2,11 +2,17 @@
 
 Donjon 83 « Trône de la Cour Sombre », Reine 3726, 4 personnages. Synthèse du 2026-10-08.
 
-> **⚠ Formation invalidée (2026-10-09).** Ce document suppose que la Bonbombe apparaît en ligne au nord-est du
-> personnage. Le joueur a confirmé en jeu qu'elle apparaît **en haut** (a priori deux cases plus haut), sinon **en haut à
-> droite**. Avec cette règle, la formation ci-dessous **ne tient plus** : ne pas l'utiliser. Une nouvelle recherche est en
-> cours (`tools/reine-des-voleurs/v2-en-cours/`). Le reste du modèle (vagues, Bonbombes, Mort en Sursis, faiblesses des
-> monstres) reste valable.
+> **⚠ Formation à refaire : mauvaise carte (constat du 2026-10-09, journal AnkaBot d'un combat réel).**
+> - Le combat se joue sur la carte **137101316**, pas sur 137101312 (carte d'entrée de la salle) : autre géométrie,
+>   autres piliers. Toutes les cases de ce document (placement, colonne, cases de bombe) ont été calculées sur
+>   137101312 : **ne pas les utiliser**.
+> - La règle d'apparition des Bonbombes de ce document est **confirmée** par 5 apparitions réelles : 2 cases au
+>   nord-est en ligne (en haut à droite à l'écran), sinon 2 cases à l'est (à droite), puis sens horaire. La note
+>   précédente (« en haut, sinon en haut à droite », qui avait invalidé la formation) décrivait la même chose vue à l'écran.
+> - L'explosion à la fin du tour **suivant** du poseur et la réaction en chaîne sont confirmées (5 bombes en chaîne,
+>   passage au bleu d'une bombe en diagonale).
+> - Le planificateur de tour `tools/reine-des-voleurs/planificateur/` (README) cherche le meilleur tour sûr d'un Crâ
+>   à partir de l'état réel du combat. Le reste du modèle (vagues, Mort en Sursis, faiblesses des monstres) reste valable.
 
 ## Comment lire ce document
 

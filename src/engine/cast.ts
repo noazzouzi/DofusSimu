@@ -100,18 +100,32 @@ export function canCast(
     if ((caster.castsOnTarget[`${spell.spellId}:${occupant.id}`] ?? 0) >= lvl.maxCastPerTarget) return 'maxPerTarget'
   }
   if (lvl.castTestLos && d > 1) {
-    const blocks = (c: number) => {
-      if (c === from) return false
-      const mc = fight.map.cells[c]
-      if (!mc || !mc.los) return true
-      const o = engine.fighterAt(fight, c)
-      return !!o && o.id !== caster.id
-    }
-    // La case cible doit elle-même être transparente (son occupant ne bloque pas).
-    const targetBlocks = (c: number) => !fight.map.cells[c]?.los
-    if (!hasLineOfSight(from, cell, blocks, targetBlocks)) return 'los'
+    // (prédicats communs, contexte posé avant l'appel : pas deux fonctions créées à chaque vérification — un planificateur
+    // en fait des centaines de milliers par tour)
+    LOS_CTX.engine = engine
+    LOS_CTX.fight = fight
+    LOS_CTX.from = from
+    LOS_CTX.casterId = caster.id
+    const ok = hasLineOfSight(from, cell, losBlocks, losTargetBlocks)
+    LOS_CTX.engine = null
+    LOS_CTX.fight = null
+    if (!ok) return 'los'
   }
   return null
+}
+
+/** Contexte des prédicats de ligne de vue de canCast (hasLineOfSight est synchrone : pas d'appel imbriqué). */
+const LOS_CTX: { engine: Engine | null; fight: FightState | null; from: number; casterId: number } = { engine: null, fight: null, from: -1, casterId: -1 }
+function losBlocks(c: number): boolean {
+  if (c === LOS_CTX.from) return false
+  const mc = LOS_CTX.fight!.map.cells[c]
+  if (!mc || !mc.los) return true
+  const o = LOS_CTX.engine!.fighterAt(LOS_CTX.fight!, c)
+  return !!o && o.id !== LOS_CTX.casterId
+}
+// La case cible doit elle-même être transparente (son occupant ne bloque pas).
+function losTargetBlocks(c: number): boolean {
+  return !LOS_CTX.fight!.map.cells[c]?.los
 }
 
 /** Probabilité de coup critique d'un sort pour un lanceur (0..1). */
@@ -144,7 +158,8 @@ export function castSpell(engine: Engine, fight: FightState, caster: Fighter, sp
   const lvl = modifiedSpellLevel(caster, spell.level)
   caster.ap -= lvl.apCost
   const pCrit = critProbability(caster, lvl)
-  const crit = fight.options.rollMode === 'random' ? nextRandom(fight) < pCrit : false
+  const forcedCrit = fight.options.forcedCrit
+  const crit = forcedCrit ?? (fight.options.rollMode === 'random' ? nextRandom(fight) < pCrit : false)
   const effects = crit && lvl.criticalEffects.length ? lvl.criticalEffects : lvl.effects
   const occupant = engine.fighterAt(fight, cell)
 
@@ -182,7 +197,7 @@ export function castSpell(engine: Engine, fight: FightState, caster: Fighter, sp
     engine.emit(fight, { t: 'apmp', target: caster.id, ap: caster.ap, mp: caster.mp, reason: 'cast' })
   }
 
-  if (fight.options.rollMode === 'average' && pCrit > 0 && lvl.criticalEffects.length) {
+  if (fight.options.rollMode === 'average' && forcedCrit === undefined && pCrit > 0 && lvl.criticalEffects.length) {
     // Évaluation en espérance : on applique les effets normaux avec un poids (1 - p) et critiques avec p
     // uniquement pour les effets de dommages/soins ; les autres effets sont appliqués une fois (normaux).
     caster.tags.critWeight = pCrit

@@ -23,6 +23,29 @@ import {
   type Pt,
 } from './view'
 
+/** Cases mises en évidence par une section (planificateur de la section « Reine ») : remplissage, contour, étiquette. */
+export interface CellMark {
+  cells: number[]
+  fill?: string
+  stroke?: string
+  dashed?: boolean
+  /** Retrait du losange (unités carte, défaut 1,5). */
+  inset?: number
+  /** Épaisseur du contour (px CSS, défaut 1,6). */
+  width?: number
+  /** Texte court au centre de chaque case. */
+  label?: string
+}
+
+/** Trait fléché d'une case à une autre (cible d'un sort…). */
+export interface CellLink {
+  from: number
+  to: number
+  color: string
+  dashed?: boolean
+  width?: number
+}
+
 interface FighterVisual {
   hp: number
   ghost: number
@@ -48,6 +71,9 @@ export class StageRenderer {
   hover: number | null = null
   selected: number | null = null
   showPlacement = false
+  /** Couches posées par une section (dessinées au sol, sous les combattants). */
+  marks: CellMark[] = []
+  links: CellLink[] = []
   private floor: HTMLCanvasElement | null = null
   private pillars: number[] = []
   private vis = new Map<number, FighterVisual>()
@@ -187,6 +213,68 @@ export class StageRenderer {
     for (const a of this.anims) if (a.layer === 'text' && a.draw && now >= a.t0) a.draw(r, clamp01((now - a.t0) / a.dur))
     // Le marqueur du combattant actif pulse : on continue d'animer tant qu'un tour est en cours.
     this.settled = !moving && this.anims.length === 0 && !state.turnActive
+  }
+
+  /** Couches `marks` et `links` (voir CellMark, CellLink). */
+  private drawMarks(): void {
+    const { ctx, view, pal } = this
+    for (const m of this.marks) {
+      ctx.save()
+      if (m.dashed) ctx.setLineDash([view.px(4), view.px(3)])
+      ctx.beginPath()
+      for (const c of m.cells) diamondPath(ctx, c, m.inset ?? 1.5)
+      if (m.fill) {
+        ctx.fillStyle = m.fill
+        ctx.fill()
+      }
+      if (m.stroke) {
+        ctx.strokeStyle = m.stroke
+        ctx.lineWidth = view.px(m.width ?? 1.6)
+        ctx.stroke()
+      }
+      ctx.restore()
+    }
+    for (const l of this.links) {
+      const a = cellCenter(l.from)
+      const b = cellCenter(l.to)
+      const len = Math.hypot(b.x - a.x, b.y - a.y)
+      if (len < 1) continue
+      const ux = (b.x - a.x) / len
+      const uy = (b.y - a.y) / len
+      ctx.save()
+      ctx.strokeStyle = l.color
+      ctx.fillStyle = l.color
+      ctx.lineWidth = view.px(l.width ?? 2)
+      if (l.dashed) ctx.setLineDash([view.px(5), view.px(4)])
+      ctx.beginPath()
+      ctx.moveTo(a.x, a.y)
+      ctx.lineTo(b.x - ux * 6, b.y - uy * 6)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.beginPath()
+      ctx.moveTo(b.x, b.y)
+      ctx.lineTo(b.x - ux * 11 - uy * 5, b.y - uy * 11 + ux * 5)
+      ctx.lineTo(b.x - ux * 11 + uy * 5, b.y - uy * 11 - ux * 5)
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
+    }
+    ctx.save()
+    ctx.font = `700 11px ${pal.font}`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    for (const m of this.marks) {
+      if (!m.label) continue
+      for (const c of m.cells) {
+        const p = cellCenter(c)
+        ctx.lineWidth = 3
+        ctx.strokeStyle = pal.labelBg
+        ctx.strokeText(m.label, p.x, p.y)
+        ctx.fillStyle = pal.labelInk
+        ctx.fillText(m.label, p.x, p.y)
+      }
+    }
+    ctx.restore()
   }
 
   private renderCtx(): RenderCtx {
@@ -438,6 +526,7 @@ export class StageRenderer {
       ctx.stroke()
       ctx.restore()
     }
+    this.drawMarks()
     // Cellule du combattant actif.
     const cur = state.current !== null && state.turnActive ? state.fighters.find(f => f.id === state.current && f.alive) : undefined
     if (cur) {

@@ -42,14 +42,20 @@ export interface Reachable {
 export function reachableCells(fight: FightState, f: Fighter, engine: Engine, mp = f.mp): Reachable {
   const cost = new Map<number, number>([[f.cell, 0]])
   const prev = new Map<number, number>()
+  // Cases occupées relevées une fois (rien ne bouge pendant la recherche) : même test que `engine.isCellFree`, sans
+  // parcourir tous les combattants à chaque voisin (appelé des milliers de fois par plan dans les planificateurs).
+  const occupied = new Set<number>()
+  for (const o of fight.fighters) if (o.alive && o.carriedBy === undefined) occupied.add(o.cell)
+  const cells = fight.map.cells
   const queue = [f.cell]
-  while (queue.length) {
-    const c = queue.shift()!
+  for (let qi = 0; qi < queue.length; qi++) {
+    const c = queue[qi]
     const d = cost.get(c)!
     if (d >= mp) continue
     for (const n of neighborsOf(c)) {
       if (cost.has(n)) continue
-      if (!engine.isCellFree(fight, n)) continue
+      const mc = cells[n]
+      if (!mc || !mc.walkable || occupied.has(n)) continue
       cost.set(n, d + 1)
       prev.set(n, c)
       queue.push(n)

@@ -1,6 +1,11 @@
 {
   "replays": [
     {
+      "file": "combat-reel-2026-10-10-08-29-54.json",
+      "title": "Combat réel du 2026-10-10 (journal AnkaBot, 13 manches, 237 tours) — reconstitué paquet par paquet",
+      "createdAt": "2026-10-10T10:28:52.507Z"
+    },
+    {
       "file": "vortex-scenario-placement-10.json",
       "title": "Œil de Vortex — scénario du placement 10 (référence, graine 3) : victoire en 46 tours",
       "scenario": "vortex",

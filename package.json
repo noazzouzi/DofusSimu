@@ -16,7 +16,10 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "fetch:data": "NODE_USE_ENV_PROXY=1 node scripts/fetch-dofusdb.mjs",
-    "sim": "tsx src/cli/simulate.ts"
+    "sim": "tsx src/cli/simulate.ts",
+    "reine:serveur": "tsx tools/reine-des-voleurs/planificateur/serveur.ts",
+    "reine:ia": "tsx tools/fightlog/ia.ts",
+    "reine:combat": "tsx tools/fightlog/combat.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

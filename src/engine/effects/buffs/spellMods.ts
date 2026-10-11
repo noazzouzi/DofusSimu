@@ -7,8 +7,11 @@
  *
  * `diceNum` = sort modifié ; `diceNum = 0` = « tous les sorts du porteur » (*Acuité Absolue* : 289 sur le sort 0,
  * effet réel, « désactive la ligne de vue sur tous ses sorts »). Les 280/281 sur le sort 0 de *Tirs Éloignés* /
- * *Acuité Absolue* sont `forClientOnly` (affichage) : seuls les modificateurs par sort comptent. Par prudence, une clé
- * posée pour un sort précis REMPLACE la valeur générique (sort 0) de la même clé (jamais de double compte).
+ * *Acuité Absolue* sont `forClientOnly` (affichage) : ignorés à la pose du buff (buffs/common.ts), ils ne comptent pas.
+ * Les valeurs ADDITIVES (portée, PA, critique, lancers, relance, dégâts) d'un sort précis et du sort 0 s'additionnent :
+ * *Tirs Puissants* pose « tous les sorts : −3 Portée minimale » (295, réel) et « Flèche Perforante : +1 Portée
+ * minimale » (280) — Flèche Perforante lancée à 3 cases au tour suivant (combat réel du 2026-10-10 : 3 − 3 + 1 = 1).
+ * Les valeurs fixées (`set…`) et les drapeaux : la valeur du sort précis prime sur celle du sort 0.
  */
 import type { SpellLevelData } from '../../../data/model'
 import type { Fighter, SpellModEntry, SpellModifiers, SpellModKey } from '../../types'
@@ -32,13 +35,25 @@ export function accumulateSpellMod(
   return table
 }
 
-/** Valeur d'un modificateur pour un sort (spécifique, sinon générique), `undefined` si aucun buff ne le fixe. */
+/** Clés dont les valeurs d'un sort précis et du sort 0 s'additionnent (les autres : le sort précis prime). */
+const ADDITIVE: ReadonlySet<SpellModKey> = new Set<SpellModKey>([
+  'rangeMin', 'rangeMax', 'apCost', 'critChance', 'castsPerTurn', 'castsPerTarget', 'cooldown', 'damage', 'baseDamage',
+  'heal', 'baseHeal',
+])
+
+/** Valeur combinée d'une clé : somme (clé additive) ou valeur du sort précis, sinon du sort 0. */
+function combined(specific: SpellModifiers | undefined, generic: SpellModifiers | undefined, key: SpellModKey): number | undefined {
+  const a = specific?.[key]
+  const b = generic?.[key]
+  if (ADDITIVE.has(key) && a !== undefined && b !== undefined) return a + b
+  return a ?? b
+}
+
+/** Valeur d'un modificateur pour un sort (sort précis et sort 0 combinés), `undefined` si aucun buff ne le fixe. */
 export function spellModifierValue(f: Fighter, spellId: number, key: SpellModKey): number | undefined {
   const mods = f.spellMods
   if (!mods) return undefined
-  const v = mods[spellId]?.[key]
-  if (v !== undefined) return v
-  return mods[ALL_SPELLS]?.[key]
+  return combined(mods[spellId], spellId === ALL_SPELLS ? undefined : mods[ALL_SPELLS], key)
 }
 
 /** Valeur d'un modificateur pour un sort (0 si absent). */
@@ -106,7 +121,7 @@ export function modifiedSpellLevel(caster: Fighter, lvl: SpellLevelData): SpellL
 }
 
 function buildModifiedLevel(lvl: SpellLevelData, specific?: SpellModifiers, generic?: SpellModifiers): SpellLevelData {
-  const get = (k: SpellModKey): number | undefined => specific?.[k] ?? generic?.[k]
+  const get = (k: SpellModKey): number | undefined => combined(specific, generic, k)
   let relevant = false
   for (const k of CAST_KEYS) if (get(k) !== undefined) relevant = true
   if (!relevant) return lvl

@@ -16,6 +16,7 @@ import type { Replay } from '@/replay/types'
 import { ReplayError, parseReplay } from '@/replay/validate'
 import { ViewerApp } from './app'
 import { BossView } from './boss'
+import { ReineSection } from './reine'
 import { StuffsView } from './stuffs'
 import { applyThemePref, loadThemePref, type ThemePref } from './theme'
 import { THEME_ICONS } from './ui/icons'
@@ -65,8 +66,8 @@ window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener?.('change',
 
 // ───────────────────────────── sections ─────────────────────────────
 
-type View = 'combats' | 'stuffs' | 'boss'
-const VIEWS: Readonly<Record<View, string>> = { combats: 'combat-view', stuffs: 'stuffs-view', boss: 'boss-view' }
+type View = 'combats' | 'stuffs' | 'boss' | 'reine'
+const VIEWS: Readonly<Record<View, string>> = { combats: 'combat-view', stuffs: 'stuffs-view', boss: 'boss-view', reine: 'reine-view' }
 const stuffs = new StuffsView($('stuffs-view'), stuffCatalog)
 /** Titre de la section « Boss » (suit le boss affiché ; appliqué seulement quand la section est visible). */
 let bossTitle = 'Boss · DofusSimu'
@@ -78,6 +79,17 @@ const boss = import.meta.env.DEV
     })
   : undefined
 if (!boss) document.querySelector('.view-tab[data-view="boss"]')?.remove()
+/**
+ * Section « Reine » (planificateur de tour contre la Reine des Voleurs) : serveur de développement seulement (API
+ * web/plugins/reine.ts). « Animer » charge le tour dans la section « Combats ».
+ */
+const reine = import.meta.env.DEV
+  ? new ReineSection($('reine-view'), (replay, label) => {
+      window.loadReplay(replay, label)
+      location.hash = '#combats'
+    })
+  : undefined
+if (!reine) document.querySelector('.view-tab[data-view="reine"]')?.remove()
 /** Titre de la section « Combats » (titre du replay), gardé pendant qu'une autre section est affichée. */
 let combatTitle = document.title
 
@@ -86,11 +98,11 @@ const hashParts = () => location.hash.replace(/^#\/?/, '').split('/')
 
 function currentView(): View {
   const v = hashParts()[0]
-  return v === 'stuffs' || (v === 'boss' && boss) ? v : 'combats'
+  return v === 'stuffs' || (v === 'boss' && boss) || (v === 'reine' && reine) ? v : 'combats'
 }
 
 /** Titre du document pour une section autre que « Combats ». */
-const viewTitle = (view: Exclude<View, 'combats'>) => (view === 'stuffs' ? 'Stuffs · DofusSimu' : bossTitle)
+const viewTitle = (view: Exclude<View, 'combats'>) => (view === 'stuffs' ? 'Stuffs · DofusSimu' : view === 'reine' ? 'Reine des Voleurs · DofusSimu' : bossTitle)
 
 function route(): void {
   const view = currentView()
@@ -109,6 +121,7 @@ function route(): void {
     // L'onglet « Boss » de la barre du haut ramène au dernier boss consulté (« Tous les boss » : lien de la section).
     document.querySelector('.view-tab[data-view="boss"]')?.setAttribute('href', location.hash || '#boss')
   }
+  if (view === 'reine') reine?.show()
   if (view !== 'combats') {
     app.getPlayer()?.pause()
     document.title = viewTitle(view)
