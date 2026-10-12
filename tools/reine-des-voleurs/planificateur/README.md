@@ -166,7 +166,7 @@ modificateur « tous les sorts » (−3 Portée minimale de Tirs Puissants) et u
 Flèche Perforante) s'additionnent désormais (`src/engine/effects/buffs/spellMods.ts`). Une menace pèse ×0,4 par Crâ
 qui joue encore entre ce Crâ et le monstre (les suivants peuvent l'écarter).
 
-## En combat : `ReineCombat.lua` (rejeu jusqu'à la mort de la Reine, puis mode avancé)
+## En combat : `ReineCombat.lua` (scénarios des placements, serveur pour les situations inconnues)
 
 Sur le modèle du rejeu de Fraktale : `tools/ankabot/ReineCombat.lua` (généré par `npm run reine:combat`,
 `tools/fightlog/combat.ts`) réunit trois parties :
@@ -174,21 +174,27 @@ Sur le modèle du rejeu de Fraktale : `tools/ankabot/ReineCombat.lua` (généré
 1. le journal AnkaBot, réglé pour un script qui joue : il n'écoute que les 17 messages dont le serveur a besoin
    (`ONLY_NAMES`, au lieu des 17 588 noms possibles), se tait autour du tour de son personnage, ne relit dans
    l'historique que la liste des sorts (variantes équipées) et borne les listes à 200 éléments ;
-2. le rejeu (`modele-rejeu.lua`) : placement selon le scénario reconnu (signature des monstres), puis, à chaque tour,
-   le tour enregistré du Crâ (branche la plus proche du plateau) — tant que la Reine vit ;
-3. le mode avancé (`modele-ia.lua`) : dès que la Reine est morte (absente des combattants vivants ; sous Brume elle y
-   reste, case −1), au-delà du combat enregistré ou sans scénario reconnu, l'IA du serveur de plans joue le tour
-   (`IA_tour`), avec la colonne de la formation reconnue au placement (`IA_formation`). Une fois engagé, le mode avancé
-   le reste jusqu'à la fin du combat.
+2. les scénarios des placements (`modele-rejeu.lua`, depuis le 2026-10-12) : placement selon le registre
+   (`data/reine/placements.json`, signature des monstres), puis, à chaque tour, la situation du scénario appris qui
+   correspond au plateau (`data/reine/scenarios`, combats appris des journaux) jouée tout de suite, sans serveur —
+   voir [`../scenarios/README.md`](../scenarios/README.md) ;
+3. le mode avancé (`modele-ia.lua`) : situation inconnue, placement inconnu, ou écart pendant un tour du scénario :
+   l'IA du serveur de plans joue ce tour (ou sa suite : `IA_tour(case de début, repli)`), avec la colonne du
+   placement (`IA_formation`) ; le tour suivant, le scénario est de nouveau cherché.
 
 Pourquoi : avec `ReineRejeu.lua` seul (sans journal), `fightManagement` a été lancé à chaque tour des 4 Crâs (combat
 du 2026-10-10 à 12:46, manches 1 à 9) ; avec `ReineIA.lua` (journal abonné à tous les noms), des tours ont été passés.
 
-Ajouter un placement, ou une branche à un placement connu : le jouer à la main avec le journal, puis
-`npm run reine:combat -- --source "Placement 2=<combat 1>.jsonl" --source "Placement 3=<combat>.jsonl" …` (même nom :
-branches du même placement ; `--colonne "Placement 3=Crâ:case,…"` pour sa colonne du mode avancé, sinon les cases de
-départ). Avant le combat : `lancer_serveur_reine.cmd` (journal et mode avancé), puis charger `ReineCombat.lua` sur le
-chef. Serveur absent : le rejeu joue quand même, le mode avancé passe les tours.
+Ajouter un placement : le déclarer dans `data/reine/placements.json` (ou le laisser créer par l'apprentissage), jouer
+des combats avec `ReineCombat.lua`, puis `npm run reine:scenarios -- apprendre data/fightlogs` et `npm run
+reine:combat`. Avant le combat : `lancer_serveur_reine.cmd` (journal et mode avancé), puis charger `ReineCombat.lua`
+sur le chef. Serveur absent : les situations connues sont jouées quand même, les autres tours sont passés
+(`SI_SERVEUR_ABSENT`).
+
+Fusion des journaux (`tools/fightlog/fusion.ts`, aussi pour le serveur de plans) : un début de manche ou une fin de
+combat reçus par un journal juste après son silence (tour de son personnage et celui d'avant) sont remis à leur place,
+une manche manquée pendant un silence est déduite (un combattant ne joue qu'une fois par manche), et chaque tour est pris
+de préférence dans un journal qui a aussi vu le tour suivant ; `fightsOf` donne chaque combat d'une session.
 
 ## Mode avancé seul : serveur de plans et `ReineIA.lua`
 

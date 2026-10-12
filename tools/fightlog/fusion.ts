@@ -13,7 +13,7 @@ import type { Row } from '../reine-des-voleurs/planificateur/journal'
 
 export interface Stream { name: string; rows: Row[] }
 
-interface Segment { key: string; fighter: number; rows: Row[] }
+interface Segment { key: string; fighter: number; rows: Row[]; round: number; next?: string }
 
 /** Joueurs du combat (identifiant de jeu → nom), d'après la première synchronisation complète (juo). */
 export function playerNames(rows: Row[]): Map<number, string> {
@@ -29,28 +29,82 @@ export function playerNames(rows: Row[]): Map<number, string> {
   return out
 }
 
-function segments(rows: Row[]): { prologue: Row[]; segs: Segment[] } {
+interface Cut { prologue: Row[]; segs: Segment[]; rounds: Map<number, Row[]>; end?: Row }
+
+/**
+ * Découpage d'un journal en tours. Les débuts de manche (jvi, avec les messages qui le suivent jusqu'au premier tour :
+ * arrivée d'une vague…) et la fin du combat (jwh) sont mis à part : un journal qui se tait pendant le tour de son
+ * personnage et celui d'avant (QUIET_AROUND_MY_TURN) les reçoit après un silence et les accrocherait au mauvais tour ;
+ * la fusion les remet à leur place. Manche manquée pendant un silence (le personnage joue le premier de la manche) :
+ * déduite, un combattant ne jouant qu'une fois par manche.
+ */
+function segments(rows: Row[]): Cut {
   const prologue: Row[] = []
   const segs: Segment[] = []
+  const rounds = new Map<number, Row[]>()
+  let end: Row | undefined
   let round = 0
+  let block: Row[] | null = null
   const seen = new Map<string, number>()
+  const played = new Set<number>()
   for (const r of rows) {
-    if (r.k === 'm' && r.n === MSG.round && typeof r.d?.fxjj === 'number') round = r.d.fxjj
+    if (r.k === 'm' && r.n === MSG.round && typeof r.d?.fxjj === 'number') {
+      round = r.d.fxjj
+      played.clear()
+      if (segs.length) {
+        block = [r]
+        if (!rounds.has(round)) rounds.set(round, block)
+        continue
+      }
+    }
+    if (r.k === 'm' && r.n === MSG.end) {
+      end ??= r
+      continue
+    }
     if (r.k === 'm' && r.n === MSG.turnStart && typeof r.d?.fxjr === 'number') {
+      block = null
+      // Même combattant que le tour précédent : début de tour en double (deux instances du script), pas un nouveau tour
+      // (entre deux tours d'un combattant, d'autres jouent toujours, hors du silence de ce journal).
+      if (segs.length && segs[segs.length - 1].fighter === r.d.fxjr) {
+        segs[segs.length - 1].rows.push(r)
+        continue
+      }
+      if (played.has(r.d.fxjr)) {
+        round++
+        played.clear()
+      }
+      played.add(r.d.fxjr)
       const base = `${round}:${r.d.fxjr}`
       const occ = (seen.get(base) ?? 0) + 1
       seen.set(base, occ)
-      segs.push({ key: `${base}:${occ}`, fighter: r.d.fxjr, rows: [r] })
+      if (segs.length) segs[segs.length - 1].next = `${base}:${occ}`
+      segs.push({ key: `${base}:${occ}`, fighter: r.d.fxjr, rows: [r], round })
       continue
     }
-    if (segs.length) segs[segs.length - 1].rows.push(r)
+    if (block) block.push(r)
+    else if (segs.length) segs[segs.length - 1].rows.push(r)
     else prologue.push(r)
   }
-  return { prologue, segs }
+  return { prologue, segs, rounds, end }
 }
 
 /** Écart toléré entre les débuts (manche 1) d'un même combat vus par deux journaux, en ms d'horloge des scripts. */
 const SAME_FIGHT_MS = 60000
+/**
+ * Débuts de manche 1 de plusieurs journaux séparés de moins de cet écart (ms) : le même combat (les scripts d'un groupe
+ * ont la même horloge et reçoivent ce message presque ensemble ; deux combats se suivent à plus d'une minute).
+ */
+const CLUSTER_MS = 20000
+
+export interface MergeOptions {
+  /** Combat à fusionner : heure (ms d'horloge des scripts) de son début ; défaut : le dernier combat. */
+  at?: number
+  /**
+   * Combat à fusionner par son rang (journaux sans heures) : seuls les journaux qui ont vu le plus de débuts de combat
+   * sont pris, alignés rang pour rang.
+   */
+  index?: number
+}
 
 /** Débuts de combat (manche 1) d'un journal : rang (pour fightRange) et heure (ms de l'horloge du script, si notée). */
 function round1Starts(rows: Row[]): { k: number; ms: number | undefined }[] {
@@ -62,8 +116,9 @@ function round1Starts(rows: Row[]): { k: number; ms: number | undefined }[] {
 }
 
 /**
- * Lignes du dernier combat, chaque tour pris dans le journal d'un personnage qui ne joue pas ce tour-là (le plus
- * complet ; à égalité, dans l'ordre de `prefer`) ; à défaut, le journal de référence.
+ * Lignes du dernier combat (ou de celui que désigne `opts` : `fightsOf`), chaque tour pris dans le journal d'un
+ * personnage qui ne joue pas ce tour-là (de préférence un journal qui a aussi vu le tour suivant, puis le plus complet ;
+ * à égalité, dans l'ordre de `prefer`) ; à défaut, le journal de référence.
  *
  * Dernier combat : le début (manche 1) le plus récent, tous journaux confondus (les scripts d'un groupe tournent dans le
  * même AnkaBot : même horloge). Un journal qui n'a pas ce début (script occupé à ce moment-là) est laissé de côté au
@@ -71,15 +126,18 @@ function round1Starts(rows: Row[]): { k: number; ms: number | undefined }[] {
  * son combat précédent, plus long, pris comme référence ; plans faits sur un état périmé, combat perdu. Sans heures, ou
  * si un seul journal a ce début : le dernier combat de chaque journal (comme avant).
  */
-export function mergeStreams(streams: Stream[], prefer: string[] = []): { rows: Row[]; sources: Record<string, number> } {
+export function mergeStreams(streams: Stream[], prefer: string[] = [], opts: MergeOptions = {}): { rows: Row[]; sources: Record<string, number> } {
   const names = new Map<number, string>()
   const starts = streams.map(s => round1Starts(s.rows))
   const lastMs = starts.map(l => l.at(-1)?.ms).filter((x): x is number => x !== undefined)
-  const latest = lastMs.length ? Math.max(...lastMs) : undefined
+  const latest = opts.at ?? (lastMs.length ? Math.max(...lastMs) : undefined)
   const near = (x: { ms: number | undefined }) => latest !== undefined && x.ms !== undefined && Math.abs(x.ms - latest) <= SAME_FIGHT_MS
-  const aligned = starts.filter(l => l.some(near)).length >= 2
+  const aligned = opts.at !== undefined || starts.filter(l => l.some(near)).length >= 2
+  const most = Math.max(0, ...starts.map(l => l.length))
   /** Rang du combat en cours dans ce journal (-1 : son dernier), ou null s'il ne l'a pas. */
   const which = (i: number): number | null => {
+    // (combat donné par son rang : seulement les journaux qui ont vu tous les combats, alignés rang pour rang)
+    if (opts.index !== undefined) return starts[i].length === most ? opts.index : null
     if (!aligned) return -1
     let best: { k: number; d: number } | null = null
     for (const x of starts[i]) if (near(x) && (!best || Math.abs(x.ms! - latest!) < best.d)) best = { k: x.k, d: Math.abs(x.ms! - latest!) }
@@ -98,7 +156,7 @@ export function mergeStreams(streams: Stream[], prefer: string[] = []): { rows: 
         return null
       }
     })
-    .filter((x): x is { name: string; prologue: Row[]; segs: Segment[] } => x !== null)
+    .filter((x): x is { name: string } & Cut => x !== null)
   if (!cut.length) return { rows: [], sources: {} }
   const rank = (n: string) => {
     const i = prefer.indexOf(n)
@@ -153,27 +211,71 @@ export function mergeStreams(streams: Stream[], prefer: string[] = []): { rows: 
   }
   const rows: Row[] = [...ref.prologue]
   const sources: Record<string, number> = {}
-  for (const g of order) {
+  let round = Math.max(1, ...ref.prologue.filter(r => r.k === 'm' && r.n === MSG.round).map(r => r.d?.fxjj ?? 1))
+  order.forEach((g, k) => {
     const player = names.get(g.fighter)
-    // Le plus complet des journaux des autres personnages (un journal en retard, ou qui a perdu des messages, est plus
-    // court) ; à égalité, l'ordre de préférence.
+    // Tour suivant dans l'ordre fusionné : le découpage d'un journal qui l'a aussi vu juste après celui-ci est fiable
+    // (un journal qui l'a manqué peut avoir accroché à ce tour des messages arrivés après son silence).
+    const after = order[k + 1]?.key
     let pick: Segment | undefined
     let from = ''
+    let pickOk = false
     for (const own of [false, true]) {
       // Aucun autre journal n'a ce tour : celui du joueur lui-même.
       if (pick) break
-      for (let k = 0; k < cut.length; k++) {
-        if (!own && cut[k].name === player) continue
-        const x = index[k].get(g.key)
-        if (x && (!pick || x.rows.length > pick.rows.length)) {
+      for (let i = 0; i < cut.length; i++) {
+        if (!own && cut[i].name === player) continue
+        const x = index[i].get(g.key)
+        if (!x) continue
+        const ok = x.next === after
+        // Le plus complet des journaux fiables (un journal en retard, ou qui a perdu des messages, est plus court) ; à
+        // égalité, l'ordre de préférence.
+        if (!pick || (ok && !pickOk) || (ok === pickOk && x.rows.length > pick.rows.length)) {
           pick = x
-          from = cut[k].name
+          from = cut[i].name
+          pickOk = ok
         }
       }
     }
-    if (!pick) continue
+    if (!pick) return
+    // Débuts de manche remis à leur place, avant le premier tour de chaque manche : le plus complet des journaux.
+    while (round < g.round) {
+      round++
+      const blocks = cut.map(c => c.rounds.get(round)).filter((b): b is Row[] => !!b)
+      const best = blocks.reduce<Row[] | undefined>((a, b) => (!a || b.length > a.length ? b : a), undefined)
+      rows.push(...(best ?? [{ k: 'm', n: MSG.round, d: { fxjj: round }, at: pick.rows[0]?.at ?? '' }]))
+    }
     sources[from] = (sources[from] ?? 0) + 1
     rows.push(...pick.rows)
-  }
+  })
+  const end = cut.map(c => c.end).find(r => r)
+  if (end) rows.push(end)
   return { rows, sources }
+}
+
+/**
+ * Combats d'un groupe de journaux (une session), dans l'ordre : de quoi fusionner chacun (`mergeStreams(…, { at })` ou
+ * `{ index }` pour des journaux sans heures). Les débuts de manche 1 vus par les journaux sont regroupés quand ils sont
+ * à moins de CLUSTER_MS les uns des autres.
+ */
+export function fightsOf(streams: Stream[]): MergeOptions[] {
+  const starts = streams.map(s => round1Starts(s.rows))
+  const all = starts.flat()
+  if (!all.length) return []
+  if (all.some(x => x.ms === undefined)) {
+    const most = Math.max(...starts.map(l => l.length))
+    return Array.from({ length: most }, (_, index) => ({ index }))
+  }
+  const times = all.map(x => x.ms!).sort((a, b) => a - b)
+  const out: MergeOptions[] = []
+  let group: number[] = []
+  for (const t of times) {
+    if (group.length && t - group[group.length - 1] > CLUSTER_MS) {
+      out.push({ at: group[group.length - 1] })
+      group = []
+    }
+    group.push(t)
+  }
+  out.push({ at: group[group.length - 1] })
+  return out
 }

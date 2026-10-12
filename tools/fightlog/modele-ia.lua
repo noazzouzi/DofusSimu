@@ -679,7 +679,9 @@ CHALLENGE_DELAI_CHEF = { 1000, 2000 }
     end
   end
 
-  local function jouerMonTour()
+  -- `debut` : case du début du tour (le tour a déjà commencé : suite d'un tour du scénario, ReineCombat.lua) ; `repli` :
+  -- appelé au lieu de SANS_PLAN quand le serveur ne donne aucun plan pour le début de ce tour.
+  local function jouerMonTour(debut, repli)
     -- Chaque appel est noté, avec l'heure du script : un tour passé sans cette ligne est un tour où AnkaBot n'a pas
     -- lancé fightManagement (combat du 2026-10-10 à 13:10 : 14 tours sur 52).
     local t0 = maintenant()
@@ -714,7 +716,7 @@ CHALLENGE_DELAI_CHEF = { 1000, 2000 }
       end
     else
       mancheTour = m
-      debutTour = maCase()
+      debutTour = debut or maCase()
       refusTour = {}
     end
     enCours = nil
@@ -733,7 +735,12 @@ CHALLENGE_DELAI_CHEF = { 1000, 2000 }
           attendu, math.floor((maintenant() - t0) * 1000), sondes, math.floor(((dernierVrai or t0) - t0) * 1000)), "erreur")
         return
       end
-      if plan == nil then return sansPlan(raison) end
+      if plan == nil then
+        if essai == 0 and repli then return repli(raison) end
+        -- (pas de return : le retour sur la colonne, plus bas, se fait quand même)
+        sansPlan(raison)
+        break
+      end
       local e = plan.entete
       local resume = {}
       for _, a in ipairs(plan.actions) do resume[#resume + 1] = decrire(a) end
@@ -787,8 +794,8 @@ CHALLENGE_DELAI_CHEF = { 1000, 2000 }
       string.format(" — fightManagement : %d ms", math.floor((maintenant() - t0) * 1000)))
   end
 
-  local function tourIA()
-    local ok, err = pcall(jouerMonTour)
+  local function tourIA(debut, repli)
+    local ok, err = pcall(jouerMonTour, debut, repli)
     if not ok then dire("⛔ [IA] erreur : " .. tostring(err), "erreur") end
     journalEcrire()
   end
@@ -796,8 +803,9 @@ CHALLENGE_DELAI_CHEF = { 1000, 2000 }
   function fightManagement() tourIA() end
 
   -- Pour le script de combat (ReineCombat.lua, tools/fightlog/combat.ts) : le rejeu y garde fightManagement et appelle
-  -- ce tour en mode avancé (Reine morte, ou au-delà du combat enregistré) ; il donne aussi la formation reconnue au
-  -- placement (colonne de chaque Crâ), que l'IA ne peut plus reconnaître en plein combat.
+  -- ce tour quand le scénario ne connaît pas la situation, ou pour finir un tour du scénario après un écart
+  -- (IA_tour(case du début du tour, repli)) ; il donne aussi la formation reconnue au placement (colonne de chaque Crâ),
+  -- que l'IA ne peut plus reconnaître en plein combat.
   IA_tour = tourIA
   IA_formation = function(nom)
     for _, f in ipairs(FORMATIONS) do

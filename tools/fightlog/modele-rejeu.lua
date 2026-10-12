@@ -1,33 +1,35 @@
 --[[
-  ReineRejeu.lua — REJEU D'UN COMBAT ENREGISTRÉ, donjon de la Reine des Voleurs, POUR TOUT LE GROUPE.
-  AnkaBot PC, Dofus 3. FICHIER GÉNÉRÉ par tools/fightlog/scenario.ts (modèle : tools/fightlog/modele-rejeu.lua) :
-  les scénarios ci-dessous viennent de combats joués à la main et enregistrés par tools/ankabot/journal-combats.lua,
-  reconstitués paquet par paquet et vérifiés contre les synchronisations du serveur. Pour en ajouter un, régénérer
-  plutôt qu'éditer à la main.
+  ReineRejeu.lua — SCÉNARIOS DES PLACEMENTS, donjon de la Reine des Voleurs, POUR TOUT LE GROUPE.
+  AnkaBot PC, Dofus 3. FICHIER GÉNÉRÉ (modèle : tools/fightlog/modele-rejeu.lua) : par tools/fightlog/combat.ts
+  (ReineCombat.lua) à partir de la bibliothèque des scénarios (data/reine/scenarios, apprise des combats joués :
+  tools/reine-des-voleurs/scenarios), ou par tools/fightlog/scenario.ts (ReineRejeu.lua) à partir de combats joués à la
+  main. Régénérer plutôt qu'éditer à la main.
 
   Ce qu'il fait :
     1. PLACEMENT (fightManagementPosition) : reconnaît le placement des monstres (cases de départ = signature du
-       scénario), puis met CHAQUE Crâ sur SA case enregistrée — d'abord par le paquet de placement (PLACEMENT.paquet,
-       le procédé éprouvé dans IA_Rejeu6), sinon par fightAction:chooseCell. Vérifie la case obtenue et réessaie (un
-       coéquipier peut occuper la case un instant ; deux Crâs qui veulent la case l'un de l'autre se débloquent en
-       passant par une case libre).
-    2. COMBAT (fightManagement, à chaque tour) : rejoue le n-ième tour enregistré du Crâ — déplacements et sorts dans
-       l'ordre, par les méthodes d'AnkaBot (fightAction:moveToWardCell, canCastSpellOnCell, castSpellOnCell) — en
-       comparant à chaque étape avec le combat enregistré (case de départ, case d'arrivée, refus de sort), et écrit
-       tout dans un journal par personnage.
-    3. BRANCHES : un même tour peut avoir plusieurs branches, une par combat enregistré où le plateau différait au
-       début du tour (les monstres ne jouent pas toujours pareil : dégâts aléatoires, choix de l'IA). Au début de chaque
-       tour, le script relève le plateau (monstres, bombes, coéquipiers ; un monstre invisible n'est pas comparé), le
-       compare à celui de chaque branche, joue la branche qui correspond et note les écarts dans le journal.
-       Aucune ne correspond : SI_AUCUNE_BRANCHE. Pour ajouter une branche : rejouer ce placement à la main avec le
-       journal AnkaBot (tools/ankabot/journal-combats.lua), puis régénérer avec les deux combats sous le même nom :
-         npx tsx tools/fightlog/scenario.ts --source "Placement 2=<combat 1>.jsonl" --source "Placement 2=<combat 2>.jsonl"
-    4. Au-delà du plan (le combat enregistré s'arrête là), ou sans scénario reconnu : APRES_LE_PLAN / SANS_SCENARIO.
-    5. MODE AVANCÉ (script de combat ReineCombat.lua, tools/fightlog/combat.ts, qui inclut aussi le journal et l'IA du
-       serveur de plans) : le rejeu ne sert qu'à tuer la Reine. Dès qu'elle est morte (APRES_LA_REINE), au-delà du
-       combat enregistré ou sans scénario reconnu, le tour est joué par l'IA du serveur (notre stratégie), plus par un
-       rejeu. Dans ReineRejeu.lua seul (pas d'IA incluse), le rejeu continue après la mort de la Reine et « avance »
-       revient à passer le tour.
+       scénario), puis met CHAQUE Crâ sur SA case — d'abord par le paquet de placement (PLACEMENT.paquet, le procédé
+       éprouvé dans IA_Rejeu6), sinon par fightAction:chooseCell. Vérifie la case obtenue et réessaie (un coéquipier
+       peut occuper la case un instant ; deux Crâs qui veulent la case l'un de l'autre se débloquent en passant par une
+       case libre).
+    2. COMBAT (fightManagement, à chaque tour) : le scénario du placement connaît, pour le n-ième tour de chaque Crâ,
+       des SITUATIONS (plateau au moment où il commence à jouer : coéquipiers, Bonbombes, monstres) et le meilleur tour
+       joué depuis chacune dans les combats appris (déplacements et sorts exacts). Le script relève le plateau du jeu,
+       cherche la situation qui correspond (règles plus bas, « correspondance ») et joue ce tour TOUT DE SUITE, sans
+       serveur, par les méthodes d'AnkaBot (fightAction:moveToWardCell, canCastSpellOnCell, castSpellOnCell).
+    3. Situation inconnue (SI_AUCUNE_BRANCHE), au-delà du scénario (APRES_LE_PLAN) ou placement inconnu (SANS_SCENARIO) :
+       dans ReineCombat.lua, l'IA du serveur de plans joue CE tour (« avance ») ; le tour suivant, le scénario est de
+       nouveau cherché. Le journal du combat (inclus dans ReineCombat.lua) l'enregistre : appris ensuite, ce tour
+       devient une situation connue. Plus il y a de combats appris, moins le serveur est sollicité.
+    4. Écart pendant un tour du scénario (sort refusé, déplacement arrêté, PM qui manquent pour rentrer) :
+       SUITE_SI_ECART (par défaut le serveur joue la suite du tour) ; à la fin, retour sur la case de fin du tour.
+
+  Correspondance plateau du jeu ↔ situation (identique à tools/reine-des-voleurs/scenarios/compilation.ts, matchPlan) :
+  même case de départ ; au moins les PA et PM que le tour dépense ; mêmes coéquipiers sur les mêmes cases ; mêmes
+  Bonbombes (celle du tour, qui apparaît au début du tour, peut ne pas être encore là) ; autant de monstres de chaque
+  espèce, chacun sur sa case (un monstre invisible dans la situation n'est pas comparé) — sauf un monstre LOIN de tous
+  les Crâs dans la situation (hors de portée de son prochain tour, pas visé par le tour), qui peut être ailleurs s'il y
+  est loin aussi (TOLERANCE_LOIN au plus) ; sorts du tour disponibles (pas en relance). Plusieurs situations
+  correspondent : la plus exacte, puis la meilleure.
 
   Installation (groupe AnkaBot : un chef, des mules) :
     - charger CE script sur le chef (Lowkey-Jealous) : AnkaBot le charge aussi sur les mules, chaque personnage
@@ -37,13 +39,14 @@
     - lancer le script dans la salle de la Reine ; engager le combat à la main (ou LANCER_LE_COMBAT = true).
 
   Identification : character:name() (le nom), avec repli sur l'identifiant de personnage (fightCharacter:getId()).
-  Tour : compté par le script (n-ième appel de fightManagement depuis le placement) — fightAction:getCurrentTurn()
-  prend parfois un tour d'avance (relevé le 2026-10-10 : manche 10 lue « 11 ») et ne sert que de contrôle.
+  Tour : compté par le script (n-ième appel de fightManagement depuis le placement) ; la manche d'AnkaBot
+  (fightAction:getCurrentTurn(), qui prend parfois un tour d'avance) sert de second essai.
 
   Garde-fous repris d'IA_Rejeu6 : jamais de tostring sur un message Protobuf ; tout appel d'AnkaBot sous pcall ; un
-  sort n'est demandé que s'il figure au plan du personnage (il l'a lancé, il le possède : un sort non possédé fait
-  lever dans canCastSpellOnCell une exception .NET que pcall ne rattrape pas) ; « code 0 » = LANÇABLE ; sous Acuité
-  Absolue, canCastSpellOnCell répond LIGNE_DE_VUE à tort : on tente quand même.
+  sort n'est demandé que s'il figure au scénario du personnage (il l'a lancé, il le possède : un sort non possédé fait
+  lever dans canCastSpellOnCell une exception .NET que pcall ne rattrape pas — après un changement de variantes,
+  recompiler avec --depuis) ; « code 0 » = LANÇABLE ; sous Acuité Absolue, canCastSpellOnCell répond LIGNE_DE_VUE à
+  tort : on tente quand même.
 --]]
 
 -- ───────────────────────────── réglages ─────────────────────────────
@@ -58,15 +61,21 @@ IS_WAVE_FIGHT = true
 --           enregistrée ; allié par son id. Un sort lancé sur une case VIDE (zone, poussée…) garde sa case.
 -- "case"  : toujours la case enregistrée.
 VISER = "cible"
--- Premier écart (sort refusé, déplacement raté) : true = le reste du tour est abandonné ; false = on continue.
-STRICT = false
--- Tour au-delà du combat enregistré, ou combat sans scénario reconnu : "avance" (mode avancé : IA du serveur de plans,
--- si le script l'inclut — ReineCombat.lua —, sinon le tour est passé), "passer" (ne rien faire) ou "ia" (IA basique
--- d'AnkaBot avec la configuration de sorts du compte, fightBasic:playTurn).
+-- Écart pendant un tour du scénario (sort refusé, déplacement arrêté, PM qui manquent pour les déplacements restants) :
+-- "avance" (l'IA du serveur de plans joue la suite du tour, si le script l'inclut — ReineCombat.lua —, sinon comme
+-- "continuer"), "continuer" (le reste du tour enregistré) ou "arreter" (plus rien, sauf le retour sur la case de fin).
+SUITE_SI_ECART = "avance"
+-- Tour au-delà du scénario, ou combat sans scénario reconnu : "avance" (IA du serveur de plans pour ce tour, si le
+-- script l'inclut — ReineCombat.lua —, sinon le tour est passé), "passer" (ne rien faire) ou "ia" (IA basique d'AnkaBot
+-- avec la configuration de sorts du compte, fightBasic:playTurn).
 APRES_LE_PLAN = "avance"
 SANS_SCENARIO = "avance"
--- Reine morte : "avance" (mode avancé pour le reste du combat) ou "rejeu" (continuer le combat enregistré).
-APRES_LA_REINE = "avance"
+-- Reine morte : "rejeu" (le scénario continue tant qu'il connaît la situation) ou "avance" (IA du serveur de plans pour
+-- tout le reste du combat).
+APRES_LA_REINE = "rejeu"
+-- true : une fois l'IA du serveur engagée, elle joue tout le reste du combat (comportement d'avant les scénarios
+-- appris) ; false : le scénario est de nouveau cherché à chaque tour.
+AVANCE_COLLANT = false
 -- Abandon du combat, au début du tour de chaque Crâ (consigne du joueur, 2026-10-11) : UNIQUEMENT quand un Crâ est mort.
 -- La Reine au contact ne suffit plus (combat de 15:56 gagné après ses Mort en Sursis dans la colonne en manche 5).
 ABANDON_SI_CRA_MORT = true
@@ -110,15 +119,24 @@ JOURNAL_FICHIER = true    -- journal par personnage et par combat, à côté du 
 -- Cartes où le script attend (move) : la salle de la Reine et la carte du combat, en plus de la carte courante — un script
 -- chargé pendant un changement de carte (map:currentMapId() = 0) n'a pas de carte courante.
 CARTES = { "137101312", "137101316" }
--- BRANCHES. Un même tour peut avoir plusieurs branches : une par combat enregistré où le plateau (monstres, bombes,
--- coéquipiers) différait au début du tour — les monstres ne jouent pas toujours pareil (dégâts aléatoires, IA). Au
--- début de chaque tour, le script compare le plateau du jeu à celui de chaque branche et joue la plus proche.
-TOLERANCE_PLATEAU = 0     -- écarts admis (combattant absent de sa case enregistrée) pour qu'une branche corresponde
--- Aucune branche ne correspond : "meilleure" (jouer la plus proche quand même), "main" (arrêter le script : le joueur
--- finit le combat à la main), "ia" (IA basique d'AnkaBot) ou "passer".
-SI_AUCUNE_BRANCHE = "meilleure"
+-- SITUATIONS (branches). Monstres lointains admis ailleurs que sur leur case enregistrée (voir « correspondance » en
+-- tête) ; 0 : plateau exact seulement.
+TOLERANCE_LOIN = 2
+-- Sorts du tour en relance (lancés à un autre moment que dans le combat appris) : la situation est écartée.
+VERIFIER_RELANCES = true
+-- Aucune situation connue ne correspond : "avance" (IA du serveur de plans pour ce tour ; serveur absent ou sans plan :
+-- SI_SERVEUR_ABSENT), "proche" (la plus proche quand même, si elle n'a pas plus de TOLERANCE_PROCHE combattants
+-- ailleurs : RISQUÉ, les bombes ne pardonnent pas), "main" (arrêter le script : le joueur finit le combat à la main),
+-- "ia" (IA basique d'AnkaBot) ou "passer".
+SI_AUCUNE_BRANCHE = "avance"
+-- Serveur de plans absent (ou sans plan) pour une situation inconnue : "passer" (rester sur sa case), "proche" ou "ia".
+SI_SERVEUR_ABSENT = "passer"
+TOLERANCE_PROCHE = 2
 
 -- <<SCENARIOS>>
+-- Distance à partir de laquelle un monstre est loin d'un Crâ, par espèce (écrite avec les scénarios ; absente : aucune
+-- tolérance).
+LOIN = LOIN or {}
 
 -- ───────────────────────────── état ─────────────────────────────
 
@@ -129,9 +147,10 @@ local placeDemandee = nil      -- case demandée au placement
 local journal, journalChemin = {}, nil
 local acuiteManche = nil       -- manche où Acuité Absolue a été lancée
 local debutTour = -1           -- case au début de mon tour : le combat y pose une marque (on s'arrête si on y passe)
-local ligne = nil              -- source de la dernière branche jouée (à égalité, on reste sur la même ligne)
-local enAvance, modeAnnonce = false, false   -- mode avancé engagé pour ce combat ; déjà annoncé dans la console
+local enAvance, modeAnnonce = false, false   -- IA du serveur engagée pour tout le combat (AVANCE_COLLANT) ; annoncée
 local ACUITE_ABSOLUE = 32469
+local BOMBE = 3725
+local stats = { scenario = 0, serveur = 0, autre = 0 }   -- tours de ce combat : joués par le scénario, par le serveur
 
 local CODES = {
   [0] = "LANÇABLE", [1] = "TROP_DE_LANCERS", [2] = "RELANCE", [3] = "PAS_ASSEZ_DE_PA",
@@ -370,8 +389,9 @@ end
 
 function fightManagementPosition(challengers, defenders)
   local ok, err = pcall(function()
-    journal, journalChemin, monTour, acuiteManche, ligne = {}, nil, 0, nil, nil
+    journal, journalChemin, monTour, acuiteManche = {}, nil, 0, nil
     enAvance, modeAnnonce, crasVus = false, false, 0
+    stats = { scenario = 0, serveur = 0, autre = 0 }
     placementParDefaut = nil
     actif = reconnaitre(defenders)
     local nom = moi()
@@ -404,7 +424,7 @@ end
 
 -- ───────────────────────────── combat : actions ─────────────────────────────
 
-local NOMS_ESPECES = { [3725] = "Bonbombe", [3726] = "Reine", [3746] = "Mâchassin", [3747] = "Terristocrate",
+local NOMS_ESPECES = { [3725] = "Bonbombe", [3726] = "Reine", [3745] = "Bombe Illicale", [3746] = "Mâchassin", [3747] = "Terristocrate",
   [3748] = "Doublure", [3749] = "Bourôliste", [3750] = "Magouille" }
 local function nomEspece(e) return NOMS_ESPECES[e] or ("espèce " .. tostring(e)) end
 
@@ -564,7 +584,7 @@ local function deplacer(a)
   return maCase() == a.cellule, nil
 end
 
--- Joue une action ; rend false si le tour doit s'arrêter (STRICT).
+-- Joue une action ; rend true si elle a réussi (sinon : écart, voir SUITE_SI_ECART).
 local function jouerAction(a, n)
   if a.type == "deplacer" then
     local avant = maCase()
@@ -579,12 +599,12 @@ local function jouerAction(a, n)
     dire("  ⚠ " .. n .. ". déplacement vers " .. a.cellule .. " : parti de " .. avant .. ", arrivé en " .. apres ..
       " (PM restants " .. pm .. ", chemin enregistré " .. table.concat(a.chemin or {}, "→") ..
       (note and ("; " .. note) or "") .. ")", "erreur")
-    return not STRICT
+    return false
   end
   local cell, pourquoi = caseVisee(a)
   if cell == nil then
     dire("  ⚠ " .. n .. ". sort " .. a.sort .. " sauté : " .. pourquoi, "erreur")
-    return not STRICT
+    return false
   end
   local ok, code, force = lancer(a, cell)
   if ok then
@@ -594,75 +614,199 @@ local function jouerAction(a, n)
   end
   local raison = code == 0 and "autorisé mais non exécuté (désynchro ?)" or nomCode(code)
   dire("  ⚠ " .. n .. ". sort " .. a.sort .. " sur " .. cell .. " : " .. raison, "erreur")
-  return not STRICT
+  return false
 end
 
--- ───────────────────────────── branches ─────────────────────────────
+local function mesPA()
+  local x = -1
+  pcall(function() x = fightCharacter:getAP() end)
+  return x or -1
+end
+local function mesPM()
+  local x = -1
+  pcall(function() x = fightCharacter:getMP() end)
+  return x or -1
+end
 
--- Combattants vivants autres que moi : { e = espèce (0 pour un joueur), id, c = case }.
+-- ───────────────────────────── situations ─────────────────────────────
+
+-- Coordonnées logiques des cases (boucle de MapPoint.init du client, comme src/map/geometry.ts) : distance de jeu =
+-- Manhattan dans ce repère, la même que celle de la compilation des scénarios.
+local CASE_X, CASE_Y = {}, {}
+do
+  local x0, y0, c = 0, 0, 0
+  for _ = 1, 20 do
+    for b = 0, 13 do CASE_X[c], CASE_Y[c], c = x0 + b, y0 + b, c + 1 end
+    x0 = x0 + 1
+    for b = 0, 13 do CASE_X[c], CASE_Y[c], c = x0 + b, y0 + b, c + 1 end
+    y0 = y0 - 1
+  end
+end
+local function distance(a, b)
+  if CASE_X[a] == nil or CASE_X[b] == nil then return 0 end
+  return math.abs(CASE_X[a] - CASE_X[b]) + math.abs(CASE_Y[a] - CASE_Y[b])
+end
+
+-- Combattants vivants autres que moi : { e = espèce (0 pour un joueur), id, c = case (-1 : invisible) }.
 local function plateauDuJeu()
   local moiId = monId()
   local out = {}
   for _, x in ipairs(entites()) do
     if vivant(x) and x.Id ~= moiId then
-      out[#out + 1] = { e = x.CreatureGenericId or 0, id = x.Id, c = x.CellId }
+      out[#out + 1] = { e = x.CreatureGenericId or 0, id = x.Id, c = x.CellId or -1 }
     end
   end
   return out
 end
 
+local function nomCra(id)
+  for nom, x in pairs(actif and actif.ids or {}) do if x == id then return nom end end
+  return "joueur " .. tostring(id)
+end
+
 local function decrirePlateau(p)
   local parts = {}
   for _, x in ipairs(p) do
-    local qui = (x.e == 0) and (function()
-      for nom, id in pairs(actif and actif.ids or {}) do if id == x.id then return nom end end
-      return "joueur " .. tostring(x.id)
-    end)() or nomEspece(x.e)
+    local qui = (x.e == 0) and nomCra(x.id) or nomEspece(x.e)
     parts[#parts + 1] = qui .. "@" .. ((x.c or -1) >= 0 and tostring(x.c) or "invisible")
   end
   table.sort(parts)
   return table.concat(parts, " · ")
 end
 
--- Écarts entre le plateau enregistré d'une branche et celui du jeu : chaque combattant enregistré (sauf invisible) doit
--- être sur sa case (un Crâ par son identifiant, un monstre par son espèce).
-local function ecarts(branche, jeu)
-  local out = {}
-  local attendues = {}   -- espèce -> cases enregistrées (pour dire où est le monstre qui manque)
-  for _, b in ipairs(branche.plateau or {}) do
-    if b.e ~= 0 then
-      attendues[b.e] = attendues[b.e] or {}
-      attendues[b.e][b.c] = true
+local function indexDe(liste, v)
+  for i, x in ipairs(liste) do if x == v then return i end end
+  return nil
+end
+
+-- La situation `b` correspond-elle au plateau du jeu ? Rend (oui, monstres lointains déplacés, raison du refus).
+-- Mêmes règles que matchPlan (tools/reine-des-voleurs/scenarios/compilation.ts).
+local function correspond(b, jeu, ici, pa, pm)
+  if ici ~= b.depart then return false, 0, "départ " .. tostring(ici) .. " au lieu de " .. tostring(b.depart) end
+  if b.pa and pa >= 0 and pa < b.pa then return false, 0, pa .. " PA pour " .. b.pa end
+  if b.pm and pm >= 0 and pm < b.pm then return false, 0, pm .. " PM pour " .. b.pm end
+  -- Coéquipiers : les mêmes, sur les mêmes cases.
+  local nRec, nJeu = 0, 0
+  for _, r in ipairs(b.plateau or {}) do
+    if r.e == 0 then
+      nRec = nRec + 1
+      local ok = false
+      for _, x in ipairs(jeu) do if x.e == 0 and x.id == r.id and x.c == r.c then ok = true break end end
+      if not ok then return false, 0, nomCra(r.id) .. " attendu en " .. r.c end
     end
   end
-  for _, b in ipairs(branche.plateau or {}) do
-    if not b.inv then
-      local trouve, ailleurs = false, {}
-      for _, x in ipairs(jeu) do
-        local meme = (b.e == 0) and (x.id == b.id) or (b.e ~= 0 and x.e == b.e)
-        if meme then
-          if x.c == b.c then trouve = true break end
-          -- Case inexpliquée : aucun monstre de cette espèce n'y était attendu.
-          if b.e == 0 or not attendues[b.e][x.c] then ailleurs[#ailleurs + 1] = ((x.c or -1) >= 0 and tostring(x.c) or "invisible") end
+  for _, x in ipairs(jeu) do if x.e == 0 then nJeu = nJeu + 1 end end
+  if nRec ~= nJeu then return false, 0, nJeu .. " Crâs pour " .. nRec end
+  -- Bonbombes : les mêmes cases ; celle du tour (n) peut ne pas être encore apparue.
+  local recB, vues = {}, {}
+  for _, r in ipairs(b.plateau or {}) do if r.e == BOMBE then recB[r.c] = r end end
+  for _, x in ipairs(jeu) do
+    if x.e == BOMBE then
+      if recB[x.c] == nil then return false, 0, "Bonbombe en " .. tostring(x.c) .. " inattendue" end
+      vues[x.c] = true
+    end
+  end
+  for c, r in pairs(recB) do
+    if not r.n and not vues[c] then return false, 0, "Bonbombe attendue en " .. c end
+  end
+  -- Monstres : autant de chaque espèce ; chacun sur sa case, ou loin s'il était loin (l).
+  local especes = {}
+  for _, r in ipairs(b.plateau or {}) do if r.e ~= 0 and r.e ~= BOMBE then especes[r.e] = true end end
+  for _, x in ipairs(jeu) do if x.e ~= 0 and x.e ~= BOMBE then especes[x.e] = true end end
+  local cras = { ici, b.fin }
+  for _, x in ipairs(jeu) do if x.e == 0 and (x.c or -1) >= 0 then cras[#cras + 1] = x.c end end
+  local toleres = 0
+  for e in pairs(especes) do
+    local rec, reste = {}, {}
+    for _, r in ipairs(b.plateau or {}) do if r.e == e then rec[#rec + 1] = r end end
+    for _, x in ipairs(jeu) do if x.e == e then reste[#reste + 1] = x.c or -1 end end
+    if #rec ~= #reste then return false, 0, #reste .. " " .. nomEspece(e) .. " pour " .. #rec end
+    local manquants = {}
+    for _, r in ipairs(rec) do
+      if not r.inv then
+        local k = indexDe(reste, r.c)
+        if k then table.remove(reste, k) else manquants[#manquants + 1] = r end
+      end
+    end
+    -- Invisible dans la situation : sa case n'est pas comparée (de préférence un monstre invisible en jeu, case -1).
+    for _, r in ipairs(rec) do
+      if r.inv then table.remove(reste, indexDe(reste, -1) or 1) end
+    end
+    for _, r in ipairs(manquants) do
+      if not r.l or LOIN[e] == nil then return false, 0, nomEspece(e) .. " attendu en " .. (r.inv and "invisible" or tostring(r.c)) end
+      local k = nil
+      for i, c in ipairs(reste) do
+        if c >= 0 then
+          local loin = true
+          for _, x in ipairs(cras) do if x >= 0 and distance(x, c) < LOIN[e] then loin = false break end end
+          if loin then k = i break end
         end
       end
-      if not trouve then
-        local qui = b.e == 0 and "coéquipier " .. tostring(b.id) or nomEspece(b.e)
-        for nom, id in pairs(actif and actif.ids or {}) do if b.e == 0 and id == b.id then qui = nom end end
-        out[#out + 1] = qui .. " attendu en " .. b.c .. (#ailleurs > 0 and (", vu en " .. table.concat(ailleurs, "/")) or ", absent")
+      if k == nil then return false, 0, nomEspece(e) .. " attendu loin (en " .. r.c .. ")" end
+      table.remove(reste, k)
+      toleres = toleres + 1
+    end
+  end
+  if toleres > TOLERANCE_LOIN then return false, toleres, toleres .. " monstres lointains déplacés" end
+  return true, toleres, nil
+end
+
+-- Sorts du tour disponibles ? (un sort en relance ou déjà lancé assez de fois : le tour ne se jouerait pas comme appris)
+local function sortsDisponibles(b)
+  if not VERIFIER_RELANCES then return true end
+  local vus = {}
+  for _, a in ipairs(b.actions or {}) do
+    if a.type == "sort" and not vus[a.sort] then
+      vus[a.sort] = true
+      local code = -1
+      pcall(function() code = fightAction:canCastSpellOnCell(a.depuis, a.sort, a.cellule) end)
+      if code == 1 or code == 2 then return false, "sort " .. a.sort .. " : " .. nomCode(code) end
+    end
+  end
+  return true
+end
+
+-- Situation à jouer parmi les candidates (la meilleure d'abord) : celle qui correspond avec le moins de monstres
+-- lointains déplacés, à égalité la première. Rend (situation, déplacés, raisons des refus).
+local function choisirBranche(candidates, jeu, ici, pa, pm)
+  local meilleure, toleres = nil, nil
+  local refus = {}
+  for _, b in ipairs(candidates) do
+    local ok, tol, pourquoi = correspond(b, jeu, ici, pa, pm)
+    if ok and (meilleure == nil or tol < toleres) then
+      local libre, quoi = sortsDisponibles(b)
+      if libre then meilleure, toleres = b, tol
+      elseif #refus < 3 then refus[#refus + 1] = quoi end
+    elseif not ok and #refus < 3 then
+      refus[#refus + 1] = pourquoi
+    end
+    if meilleure ~= nil and toleres == 0 then break end
+  end
+  return meilleure, toleres or 0, refus
+end
+
+-- Écarts « grossiers » d'une situation (combattants absents de leur case enregistrée) : repli "proche" et journal.
+local function ecarts(branche, jeu)
+  local out = {}
+  for _, b in ipairs(branche.plateau or {}) do
+    if not b.inv and not b.n then
+      local trouve = false
+      for _, x in ipairs(jeu) do
+        local meme = (b.e == 0) and (x.id == b.id) or (b.e ~= 0 and x.e == b.e)
+        if meme and x.c == b.c then trouve = true break end
       end
+      if not trouve then out[#out + 1] = ((b.e == 0) and nomCra(b.id) or nomEspece(b.e)) .. " attendu en " .. b.c end
     end
   end
   return out
 end
 
--- Branche à jouer : la moins éloignée du plateau du jeu (à égalité, celle de la même ligne que le tour précédent).
-local function choisirBranche(branches, jeu)
+local function plusProche(candidates, jeu, ici)
   local meilleure, ecs = nil, nil
-  for _, b in ipairs(branches) do
-    local e = ecarts(b, jeu)
-    if meilleure == nil or #e < #ecs or (#e == #ecs and b.source == ligne and meilleure.source ~= ligne) then
-      meilleure, ecs = b, e
+  for _, b in ipairs(candidates) do
+    if b.depart == ici then
+      local e = ecarts(b, jeu)
+      if meilleure == nil or #e < #ecs then meilleure, ecs = b, e end
     end
   end
   return meilleure, ecs or {}
@@ -688,16 +832,126 @@ local function reineEnVie()
   return false
 end
 
--- Tour joué par l'IA du serveur de plans (IA_tour, incluse dans ReineCombat.lua seulement). Une fois engagé, le mode
--- avancé le reste jusqu'à la fin du combat.
-local function modeAvance(pourquoi)
-  enAvance = true
-  if not modeAnnonce then
+-- Retour sur la case de fin du tour (la colonne), si des PM le permettent.
+local function retour(fin)
+  if fin == nil or fin < 0 or maCase() == fin then return end
+  if mesPM() <= 0 or not encoreMonTour() then
+    dire("  ⚠ fin du tour hors de sa case " .. fin .. " (en " .. maCase() .. ", " .. mesPM() .. " PM)", "erreur")
+    return
+  end
+  dire("  retour sur la case de fin " .. fin)
+  allerEnEvitant(fin)
+end
+
+-- Tour joué par l'IA du serveur de plans (IA_tour, incluse dans ReineCombat.lua seulement). `repli` : appelé si le
+-- serveur ne donne aucun plan (absent, ou rien trouvé).
+local function modeAvance(pourquoi, repli, collant)
+  if collant then enAvance = true end
+  if collant and not modeAnnonce then
     modeAnnonce = true
     dire("[COMBAT] " .. pourquoi .. " — MODE AVANCÉ : l'IA du serveur de plans joue désormais les tours", "succes")
+  else
+    dire("[COMBAT] " .. pourquoi .. " — l'IA du serveur de plans joue ce tour")
   end
+  stats.serveur = stats.serveur + 1
   journalEcrire()
-  IA_tour()
+  IA_tour(debutTour, repli)
+end
+
+-- Situation inconnue (ou scénario absent) : la consigne `mode` ("avance", "proche", "ia", "passer", "main").
+local function sansSituation(mode, pourquoi, candidates, jeu, ici)
+  local function proche()
+    local b, ecs = plusProche(candidates or {}, jeu or {}, ici)
+    if b and #ecs <= TOLERANCE_PROCHE then
+      dire("  → situation la plus proche quand même (" .. #ecs .. " écart(s) : " .. table.concat(ecs, " ; ") .. ")", "erreur")
+      return b
+    end
+    dire("[REJEU] aucune situation assez proche — tour passé")
+    return nil
+  end
+  local function autre(m)
+    if m == "proche" then return proche() end
+    if m == "ia" then jouerIA(pourquoi) elseif m == "main" then
+      dire("[REJEU] le script s'arrête : à vous de jouer", "erreur")
+      journalEcrire()
+      pcall(function() global:finishScript() end)
+    else dire("[REJEU] " .. pourquoi .. " — tour passé") end
+    stats.autre = stats.autre + 1
+    return nil
+  end
+  if mode == "avance" then
+    if IA_tour then
+      local choix = nil
+      modeAvance(pourquoi, function(raison)
+        dire("⚠ [REJEU] pas de plan du serveur (" .. tostring(raison) .. ") : " .. SI_SERVEUR_ABSENT, "erreur")
+        stats.serveur = stats.serveur - 1
+        choix = autre(SI_SERVEUR_ABSENT)
+      end, AVANCE_COLLANT)
+      return choix
+    end
+    return autre(SI_SERVEUR_ABSENT)
+  end
+  return autre(mode)
+end
+
+-- Joue une situation du scénario ; un écart → SUITE_SI_ECART ; à la fin, retour sur la case de fin.
+local function jouerBranche(tour, t0, nom)
+  local ici = maCase()
+  stats.scenario = stats.scenario + 1
+  local appris = tour.combats and (", jouée dans " .. tour.combats .. " combat(s) appris dont " .. (tour.victoires or 0) .. " gagné(s)") or ""
+  dire("== [" .. nom .. "] tour " .. monTour .. " (manche " .. tour.manche .. ") : " .. #tour.actions .. " action(s), situation de la source " ..
+    tostring(tour.source) .. appris .. string.format(" — choisie en %.2f s", horloge() - t0) .. " ==")
+  -- PM des déplacements à partir de l'action i (garde-fou : sortir sans pouvoir rentrer, c'est la mort par les bombes).
+  local function pmRestants(i)
+    local n = 0
+    for k = i, #tour.actions do
+      local a = tour.actions[k]
+      if a.type == "deplacer" then n = n + math.max(0, #(a.chemin or {}) - 1) end
+    end
+    return n
+  end
+  for i, a in ipairs(tour.actions) do
+    local pv = 1
+    pcall(function() pv = fightCharacter:getLifePoints() end)
+    if (pv or 0) <= 0 then
+      dire("  ⛔ personnage mort — fin du tour", "erreur")
+      return
+    end
+    -- Tour fini côté jeu (combat du 2026-10-10 à 21:23 : tours terminés 0,1 s après leur début, avant toute action) :
+    -- continuer bloquait le script 20 à 28 s sur des actions vouées à l'échec, et le combat attendait ce personnage.
+    if not encoreMonTour() then
+      dire(string.format("  ⛔ tour terminé par le jeu avant l'action %d (%.2f s après le lancement de fightManagement) : on s'arrête",
+        i, horloge() - t0), "erreur")
+      return
+    end
+    local ok
+    if a.type == "deplacer" and mesPM() >= 0 and mesPM() < pmRestants(i) then
+      dire("  ⚠ " .. i .. ". " .. mesPM() .. " PM pour " .. pmRestants(i) .. " de déplacements restants : on ne sort pas", "erreur")
+      ok = false
+    else
+      ok = jouerAction(a, i)
+    end
+    if not ok then
+      local mode = SUITE_SI_ECART
+      if mode == "avance" and not IA_tour then mode = "continuer" end
+      if mode == "avance" then
+        dire("  ↻ écart : l'IA du serveur de plans joue la suite du tour")
+        stats.serveur = stats.serveur + 1
+        journalEcrire()
+        IA_tour(debutTour, function(raison)
+          dire("  ⚠ pas de plan du serveur pour la suite (" .. tostring(raison) .. ")", "erreur")
+          retour(tour.fin)
+        end)
+        return
+      end
+      if mode == "arreter" or a.type == "deplacer" then break end
+    end
+    if DELAI_ENTRE_ACTIONS > 0 then pcall(function() global:delay(DELAI_ENTRE_ACTIONS) end) end
+  end
+  retour(tour.fin)
+  local fin = maCase()
+  noter("  fin du tour en " .. fin .. (fin ~= tour.fin and (" (enregistré : " .. tour.fin .. ")") or " (comme enregistré)") ..
+    string.format(" — %.1f s", horloge() - t0))
 end
 
 local function jouerMonTour()
@@ -713,80 +967,44 @@ local function jouerMonTour()
   -- Script chargé en plein combat : on se cale sur la manche d'AnkaBot (au mieux).
   if monTour == 1 and type(m) == "number" and m > 1 then monTour = m end
   if actif == nil and monTour == 1 then actif = reconnaitreEnCombat() end
+  debutTour = maCase()
 
   noter("")
   -- Horloge : comparable aux « ms » du journal (début de tour jvj) pour savoir quand fightManagement a été lancé.
-  noter("════ " .. tostring(nom) .. " — mon tour " .. monTour .. " (manche AnkaBot " .. tostring(m) .. "), case " .. maCase() ..
-    string.format(" ════ [horloge %.3f]", t0))
-  if IA_tour and enAvance then return modeAvance("mode avancé") end
-  if IA_tour and APRES_LA_REINE == "avance" and reineEnVie() == false then return modeAvance("la Reine est morte") end
-  if actif == nil then
-    if SANS_SCENARIO == "avance" and IA_tour then return modeAvance("aucun scénario reconnu") end
-    if SANS_SCENARIO == "ia" then jouerIA("aucun scénario") else dire("[REJEU] aucun scénario reconnu — tour passé") end
-    return
+  noter("════ " .. tostring(nom) .. " — mon tour " .. monTour .. " (manche AnkaBot " .. tostring(m) .. "), case " .. debutTour ..
+    ", " .. mesPA() .. " PA, " .. mesPM() .. " PM — jusqu'ici : " .. stats.scenario .. " tour(s) du scénario, " .. stats.serveur ..
+    " du serveur" .. string.format(" ════ [horloge %.3f]", t0))
+  if IA_tour and enAvance then return modeAvance("mode avancé", nil, true) end
+  if IA_tour and APRES_LA_REINE == "avance" and reineEnVie() == false then return modeAvance("la Reine est morte", nil, true) end
+  if actif == nil then return sansSituation(SANS_SCENARIO, "aucun scénario reconnu") end
+  -- Situations du n-ième tour (compte du script), puis de la manche d'AnkaBot si elle diffère.
+  local tours = actif.plans[nom or ""] or {}
+  local candidates = {}
+  for _, b in ipairs(tours[monTour] or {}) do candidates[#candidates + 1] = b end
+  if type(m) == "number" and m ~= monTour then
+    for _, b in ipairs(tours[m] or {}) do candidates[#candidates + 1] = b end
   end
-  local plan = actif.plans[nom or ""]
-  local branches = plan and plan[monTour]
-  if branches == nil or #branches == 0 then
-    if APRES_LE_PLAN == "avance" and IA_tour then return modeAvance("tour " .. monTour .. " au-delà du combat enregistré") end
-    if APRES_LE_PLAN == "ia" then jouerIA("au-delà du combat enregistré")
-    else dire("[REJEU] " .. tostring(nom) .. " : tour " .. monTour .. " au-delà du combat enregistré — tour passé") end
+  if #candidates == 0 then
+    local tour = sansSituation(APRES_LE_PLAN, "tour " .. monTour .. " au-delà du scénario")
+    if tour then return jouerBranche(tour, t0, nom) end
     return
   end
   local jeu = plateauDuJeu()
   noter("  plateau du jeu : " .. decrirePlateau(jeu))
-  local tour, ecs = choisirBranche(branches, jeu)
-  if #ecs > TOLERANCE_PLATEAU then
-    dire("⚠ [" .. tostring(nom) .. "] tour " .. monTour .. " : aucune des " .. #branches .. " branche(s) ne correspond au plateau — " ..
-      table.concat(ecs, " ; "), "erreur")
-    if SI_AUCUNE_BRANCHE == "main" then
-      dire("[REJEU] le script s'arrête : à vous de jouer (combat à enregistrer pour en faire une branche de plus)", "erreur")
-      journalEcrire()
-      pcall(function() global:finishScript() end)
-      return
-    elseif SI_AUCUNE_BRANCHE == "ia" then
-      jouerIA("aucune branche ne correspond")
-      return
-    elseif SI_AUCUNE_BRANCHE == "passer" then
-      dire("[REJEU] tour passé")
-      return
-    end
-    dire("  → on joue quand même la branche la plus proche (source " .. tour.source .. ", " .. #ecs .. " écart(s))")
-  elseif #branches > 1 then
-    dire("  branche de la source " .. tour.source .. " (" .. #branches .. " connues pour ce tour)" ..
-      (#ecs > 0 and (" — écarts tolérés : " .. table.concat(ecs, " ; ")) or ""))
+  local tour, toleres, refus = choisirBranche(candidates, jeu, debutTour, mesPA(), mesPM())
+  if tour == nil then
+    dire("⚠ [" .. tostring(nom) .. "] tour " .. monTour .. " : situation inconnue (" .. #candidates .. " connues pour ce tour" ..
+      (#refus > 0 and (" ; " .. table.concat(refus, " ; ")) or "") .. ")")
+    tour = sansSituation(SI_AUCUNE_BRANCHE, "situation inconnue", candidates, jeu, debutTour)
+    if tour == nil then return end
+  elseif toleres > 0 then
+    noter("  " .. toleres .. " monstre(s) lointain(s) ailleurs que dans la situation apprise (toléré)")
   end
-  ligne = tour.source
   if type(m) == "number" and tour.manche ~= m then
-    noter("  (manche enregistrée " .. tour.manche .. ", AnkaBot dit " .. m .. " : on suit le compte des tours)")
+    noter("  (manche apprise " .. tour.manche .. ", AnkaBot dit " .. m .. ")")
   end
-  local ici = maCase()
-  debutTour = ici
-  dire("== [" .. nom .. "] tour " .. monTour .. " (manche " .. tour.manche .. ") : " .. #tour.actions .. " action(s)" ..
-    (ici ~= tour.depart and (" — ⚠ départ en " .. ici .. " au lieu de " .. tour.depart) or "") .. " ==")
-  for i, a in ipairs(tour.actions) do
-    local pv = 1
-    pcall(function() pv = fightCharacter:getLifePoints() end)
-    if (pv or 0) <= 0 then
-      dire("  ⛔ personnage mort — fin du tour", "erreur")
-      break
-    end
-    -- Tour fini côté jeu (combat du 2026-10-10 à 21:23 : tours terminés 0,1 s après leur début, avant toute action) :
-    -- continuer bloquait le script 20 à 28 s sur des actions vouées à l'échec, et le combat attendait ce personnage.
-    if not encoreMonTour() then
-      dire(string.format("  ⛔ tour terminé par le jeu avant l'action %d (%.2f s après le lancement de fightManagement) : on s'arrête",
-        i, horloge() - t0), "erreur")
-      break
-    end
-    if not jouerAction(a, i) then
-      dire("  ⛔ (STRICT) tour interrompu au premier écart", "erreur")
-      break
-    end
-    if DELAI_ENTRE_ACTIONS > 0 then pcall(function() global:delay(DELAI_ENTRE_ACTIONS) end) end
-  end
-  local fin = maCase()
-  noter("  fin du tour en " .. fin .. (fin ~= tour.fin and (" (enregistré : " .. tour.fin .. ")") or " (comme enregistré)") ..
-    string.format(" — %.1f s", horloge() - t0))
+  if debutTour ~= tour.depart then dire("  ⚠ départ en " .. debutTour .. " au lieu de " .. tour.depart, "erreur") end
+  jouerBranche(tour, t0, nom)
 end
 
 function fightManagement()
@@ -822,4 +1040,11 @@ end
 
 local noms = {}
 for _, s in ipairs(SCENARIOS) do noms[#noms + 1] = s.nom end
-dire("[REJEU] chargé : " .. #SCENARIOS .. " scénario(s) (" .. table.concat(noms, ", ") .. "), visée « " .. VISER .. " »")
+local situations = 0
+for _, s in ipairs(SCENARIOS) do
+  for _, tours in pairs(s.plans or {}) do
+    for _, liste in pairs(tours) do situations = situations + #liste end
+  end
+end
+dire("[REJEU] chargé : " .. #SCENARIOS .. " scénario(s) (" .. table.concat(noms, ", ") .. "), " .. situations ..
+  " situation(s) connue(s), visée « " .. VISER .. " »")

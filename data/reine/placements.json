@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "carte": 137101316,
+  "defaut": "Placement 3",
+  "notes": [
+    "Placements de la Reine des Voleurs (carte 137101316) : monstres au début du combat (signature reconnue par le script pendant la phase de placement), case de placement et case de la colonne de chaque Crâ.",
+    "Ajouter un placement : un objet de plus dans « placements » (nom, monstres ; cases et colonne facultatives : sinon celles du placement par défaut). Un combat appris sur un placement inconnu en crée un « Auto … » : le renommer.",
+    "Placement 2 et Placement 3 : relevés dans les combats du 2026-10-10 à 21:27 et du 2026-10-11 à 00:27 (ReineCombat.lua du 2026-10-11)."
+  ],
+  "personnages": {"Java-Springboot":900265148709,"Lamouit":900264624421,"Lowkey-Jealous":900264689957,"Kemist-Skyler":900266590501},
+  "placements": [
+    {
+      "nom": "Placement 2",
+      "monstres": [
+        {"espece":3726,"cellule":133,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":135,"nom":"Mâchassin"},
+        {"espece":3747,"cellule":178,"nom":"Terristocrate"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"}
+      ],
+      "cases": {"Java-Springboot":327,"Lamouit":354,"Lowkey-Jealous":353,"Kemist-Skyler":351},
+      "colonne": {"Java-Springboot":327,"Lamouit":354,"Lowkey-Jealous":381,"Kemist-Skyler":408}
+    },
+    {
+      "nom": "Placement 3",
+      "monstres": [
+        {"espece":3747,"cellule":132,"nom":"Terristocrate"},
+        {"espece":3726,"cellule":134,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":178,"nom":"Mâchassin"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"}
+      ],
+      "cases": {"Java-Springboot":327,"Lamouit":354,"Lowkey-Jealous":353,"Kemist-Skyler":351},
+      "colonne": {"Java-Springboot":327,"Lamouit":354,"Lowkey-Jealous":381,"Kemist-Skyler":408}
+    }
+  ]
+}

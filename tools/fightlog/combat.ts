@@ -1,43 +1,44 @@
 // Génère tools/ankabot/ReineCombat.lua, le script de combat de la Reine des Voleurs, sur le modèle du rejeu de Fraktale
 // (FraktaleRejeu6 / IA_Rejeu6) :
-//   - jusqu'à la mort de la Reine : rejeu du scénario du placement reconnu (combats joués à la main et enregistrés,
-//     scenario.ts ; une branche par plateau connu au début du tour) — modele-rejeu.lua ;
-//   - ensuite, ou au-delà du combat enregistré, ou sans scénario reconnu : MODE AVANCÉ, l'IA du serveur de plans
-//     (modele-ia.lua, tools/reine-des-voleurs/planificateur/serveur.ts) joue nos tours.
+//   - SCÉNARIOS DES PLACEMENTS (modele-rejeu.lua) : pour chaque placement du registre (data/reine/placements.json), le
+//     scénario optimal compilé de sa bibliothèque (data/reine/scenarios, combats appris : tools/reine-des-voleurs/
+//     scenarios) ; chaque tour d'une situation connue est joué tout de suite, sans serveur ;
+//   - situation inconnue (ou écart pendant un tour) : l'IA du serveur de plans (modele-ia.lua,
+//     tools/reine-des-voleurs/planificateur/serveur.ts) joue ce tour, et le journal l'enregistre pour la suite.
 // Le journal AnkaBot est inclus, réglé pour un script qui joue (ia.ts, loggerForPlay) : le serveur reconstitue le combat
-// depuis son début pour le mode avancé.
+// depuis son début, et les combats joués s'apprennent ensuite (npm run reine:scenarios -- apprendre).
 //
-//   npx tsx tools/fightlog/combat.ts [--source "Placement 2=data/fightlogs/2026-10-10/session-21-27-31.jsonl"]…
-//                                    [--colonne "Placement 2=Java-Springboot:327,…"] [--sortie tools/ankabot/ReineCombat.lua]
+//   npx tsx tools/fightlog/combat.ts [--depuis 2026-10-12] [--morts-max 0.5] [--sortie tools/ankabot/ReineCombat.lua]
 //
-// Chaque combat source s'arrête à la mort de la Reine (mode avancé ensuite). Plusieurs --source de même nom : branches
-// du même placement (scenario.ts). Colonne de chaque Crâ en mode avancé (il y
-// revient en fin de tour) : --colonne, sinon FORMATION_PLACEMENT_2 pour « Placement 2 », sinon la case où il finit le plus
-// souvent ses tours enregistrés. Sans --source : Placement 2 et Placement 3 enregistrés.
+// --depuis : combats appris avant cette date ignorés (sorts ou stuff changés depuis) ; --morts-max : taux de morts de Crâs
+// dans la manche qui suit à partir duquel un tour appris est écarté (compilation.ts).
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import { colonnesFromArgs, iaPart, loggerForPlay, writeServerLauncher, type FormationDef } from './ia'
-import { colonneOf, describeScenarios, extractScenario, mergeScenarios, rejeuPart, type Merged, type Step } from './scenario'
+import { loadLibrary } from '../reine-des-voleurs/scenarios/bibliotheque'
+import { compilePlacement, LOIN, type CompiledPlacement, type CompileOptions } from '../reine-des-voleurs/scenarios/compilation'
+import { loadRegistry, type Registry } from '../reine-des-voleurs/scenarios/placements'
+import { formationsOfRegistry, iaPart, loggerForPlay, writeServerLauncher, type FormationDef } from './ia'
+import { rejeuPart, type Merged, type Step } from './scenario'
 
 const BY = 'tools/fightlog/combat.ts'
 
-export function buildCombatScript(scenarios: Merged[], formations: FormationDef[], root = process.cwd()): string {
+export function buildCombatScript(scenarios: Merged[], formations: FormationDef[], root = process.cwd(), opts: { defaut?: string; loin?: Record<number, number> } = {}): string {
   const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ')
   const head = `-- ReineCombat.lua — généré le ${stamp} par ${BY}. Ne pas éditer : régénérer.\n` +
     `-- Script de combat de la Reine des Voleurs, à charger sur le chef (AnkaBot le charge sur les mules) :\n` +
     `--   1. journal AnkaBot (journal-combats.lua), réglé pour un script qui joue ;\n` +
-    `--   2. IA du serveur de plans (modele-ia.lua) : le MODE AVANCÉ ;\n` +
-    `--   3. rejeu des scénarios (modele-rejeu.lua) : placement, puis tours enregistrés jusqu'à la mort de la Reine, mode\n` +
-    `--      avancé ensuite (ou au-delà du combat enregistré, ou sans scénario reconnu).\n` +
+    `--   2. IA du serveur de plans (modele-ia.lua) : le MODE AVANCÉ, pour les situations que le scénario ne connaît pas ;\n` +
+    `--   3. scénarios des placements (modele-rejeu.lua) : placement, puis chaque tour d'une situation connue joué tout de\n` +
+    `--      suite, sans serveur ; situation inconnue : l'IA du serveur joue ce tour.\n` +
     `-- Avant de le charger : lancer le serveur (lancer_serveur_reine.cmd, à côté) pour le journal et le mode avancé.\n` +
     `-- PAS de DEVELOPER_MULTI_THREADING : essayé le 2026-10-10, il fait tourner deux fils dans la même machine Lua.\n\n`
   return head + loggerForPlay(root, BY) +
     '-- ═════════════════════════════ MODE AVANCÉ : IA DU SERVEUR DE PLANS ═════════════════════════════\n' +
-    iaPart(formations, root).trimEnd() + '\n\n' +
-    '-- ═════════════════════════════ REJEU (jusqu\'à la mort de la Reine) ═════════════════════════════\n' +
+    iaPart(formations, root, opts.defaut).trimEnd() + '\n\n' +
+    '-- ═════════════════════════════ SCÉNARIOS DES PLACEMENTS ═════════════════════════════\n' +
     '-- Dans une fonction : ses variables locales restent les siennes (limite de 200 par fonction pour le fichier). Le « ; »\n' +
     '-- de tête : sans lui, Lua lirait « end)() (function() … » comme un seul appel.\n' +
-    ';(function()\n' + rejeuPart(scenarios, root, BY).trimEnd() + '\nend)()\n'
+    ';(function()\n' + rejeuPart(scenarios, root, BY, { loin: opts.loin }).trimEnd() + '\nend)()\n'
 }
 
 /**
@@ -71,29 +72,34 @@ export function retoucher(scenarios: Merged[], retouches: Retouche[] = RETOUCHES
   return notes
 }
 
+/** Scénarios compilés de tous les placements du registre, et leurs formations. */
+export function compileAll(root = process.cwd(), opts: CompileOptions = {}): { reg: Registry; scenarios: CompiledPlacement[]; formations: FormationDef[] } {
+  const reg = loadRegistry(root)
+  const scenarios = reg.placements.map(p => compilePlacement(reg, p, loadLibrary(p.nom, root), opts))
+  return { reg, scenarios, formations: formationsOfRegistry(reg) }
+}
+
+/** Résumé d'un scénario compilé (console). */
+export function describeCompiled(s: CompiledPlacement): string {
+  const st = s.stats
+  const ec = Object.entries(st.ecartees).map(([k, v]) => `${v} ${k}`).join(', ')
+  return `${s.nom} : ${st.combats} combat(s) appris (${st.victoires} gagné(s)), ${st.branches} situation(s) dans le scénario` +
+    (ec ? ` ; tours écartés : ${ec}` : '')
+}
+
 if (process.argv[1]?.replace(/\\/g, '/').endsWith('fightlog/combat.ts')) {
-  const all = (k: string) => process.argv.flatMap((a, i) => (a === k ? [process.argv[i + 1]] : []))
-  const sources = all('--source')
-  // Placement 2 réenregistré le 2026-10-10 à 23:27 (Reine morte en manche 4) ; avant : session-21-01-52, session-08-29-54.
-  // Placement 3 réenregistré le 2026-10-11 à 02:27 (Reine morte en manche 6) ; avant : session-00-05-05, session-23-33-44,
-  // session-22-39-34, session-22-13-16.
-  if (!sources.length) {
-    sources.push('Placement 2=data/fightlogs/2026-10-10/session-21-27-31.jsonl')
-    sources.push('Placement 3=data/fightlogs/2026-10-11/session-00-27-27.jsonl')
+  const arg = (k: string) => {
+    const i = process.argv.indexOf(k)
+    return i > 0 ? process.argv[i + 1] : undefined
   }
-  const colonnes = colonnesFromArgs(all('--colonne'))
-  const scenarios = mergeScenarios(sources.map(s => {
-    const [nom, ...file] = s.split('=')
-    return extractScenario(nom, file.join('='), undefined, { untilQueenDeath: true })
-  }))
-  const formations: FormationDef[] = scenarios.map(s => ({ nom: s.nom, monstres: s.monstres, placement: s.cases, colonne: colonnes.get(s.nom) ?? colonneOf(s) }))
+  const { reg, scenarios, formations } = compileAll(process.cwd(), { depuis: arg('--depuis'), mortsMax: arg('--morts-max') ? Number(arg('--morts-max')) : undefined })
   const retouches = retoucher(scenarios)
-  const outIdx = process.argv.indexOf('--sortie')
-  const out = outIdx > 0 ? process.argv[outIdx + 1] : join(process.cwd(), 'tools', 'ankabot', 'ReineCombat.lua')
-  writeFileSync(out, buildCombatScript(scenarios, formations), 'utf8')
-  for (const l of describeScenarios(scenarios)) console.log(l)
+  const out = arg('--sortie') ?? join(process.cwd(), 'tools', 'ankabot', 'ReineCombat.lua')
+  writeFileSync(out, buildCombatScript(scenarios, formations, process.cwd(), { defaut: reg.defaut, loin: LOIN }), 'utf8')
+  for (const s of scenarios) console.log(describeCompiled(s))
   for (const l of retouches) console.log(l)
-  for (const f of formations) console.log(`${f.nom} : colonne du mode avancé ${JSON.stringify(f.colonne)}${colonnes.has(f.nom) ? '' : ' (cases de fin de tour enregistrées)'}`)
+  for (const f of formations) console.log(`${f.nom} : placement ${JSON.stringify(f.placement)}, colonne ${JSON.stringify(f.colonne)}`)
+  console.log(`Placement des monstres inconnu : formation « ${reg.defaut ?? '(aucune)'} », tours joués par le serveur, combat à apprendre ensuite.`)
   console.log(`Écrit : ${writeServerLauncher(dirname(out), 'ReineCombat.lua', BY)}`)
   console.log(`Écrit : ${out}`)
 }

@@ -1,4 +1,4 @@
--- ReineIA.lua — généré le 2026-10-11 21:57 par tools/fightlog/ia.ts : journal AnkaBot (journal-combats.lua) + IA de la Reine des
+-- ReineIA.lua — généré le 2026-10-12 07:47 par tools/fightlog/ia.ts : journal AnkaBot (journal-combats.lua) + IA de la Reine des
 -- Voleurs (modele-ia.lua, plus bas). Ne pas éditer : régénérer.
 -- PAS de DEVELOPER_MULTI_THREADING : essayé le 2026-10-10, il fait tourner deux fils dans la même machine Lua
 -- (erreurs « attempt to index a function value » sur des variables locales, 3 journaux sur 4 arrêtés).
@@ -1434,10 +1434,10 @@ FORMATIONS = {
     },
     -- Case de placement de chaque Crâ (phase de placement).
     placement = {
-      ["Kemist-Skyler"] = 351,
-      ["Lowkey-Jealous"] = 353,
-      ["Lamouit"] = 354,
       ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
     },
     -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
     colonne = {
@@ -1451,27 +1451,29 @@ FORMATIONS = {
     nom = "Placement 3",
     -- Monstres au début du combat (espèce, case) : la signature du placement.
     monstres = {
+      { espece = 3747, cellule = 132 },  -- Terristocrate
       { espece = 3726, cellule = 134 },  -- Reine des Voleurs
       { espece = 3746, cellule = 178 },  -- Mâchassin
-      { espece = 3747, cellule = 132 },  -- Terristocrate
       { espece = 3748, cellule = 208 },  -- Doublure
     },
     -- Case de placement de chaque Crâ (phase de placement).
     placement = {
-      ["Kemist-Skyler"] = 351,
-      ["Lowkey-Jealous"] = 353,
-      ["Lamouit"] = 354,
       ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
     },
     -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
     colonne = {
-      ["Kemist-Skyler"] = 408,
-      ["Lowkey-Jealous"] = 381,
-      ["Lamouit"] = 354,
       ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
     },
   },
 }
+-- Placement par défaut du registre (data/reine/placements.json).
+FORMATION_PAR_DEFAUT = "Placement 3"
 
 (function()
   local actif = nil              -- formation reconnue pour le combat en cours
@@ -2036,7 +2038,9 @@ FORMATIONS = {
     end
   end
 
-  local function jouerMonTour()
+  -- `debut` : case du début du tour (le tour a déjà commencé : suite d'un tour du scénario, ReineCombat.lua) ; `repli` :
+  -- appelé au lieu de SANS_PLAN quand le serveur ne donne aucun plan pour le début de ce tour.
+  local function jouerMonTour(debut, repli)
     -- Chaque appel est noté, avec l'heure du script : un tour passé sans cette ligne est un tour où AnkaBot n'a pas
     -- lancé fightManagement (combat du 2026-10-10 à 13:10 : 14 tours sur 52).
     local t0 = maintenant()
@@ -2071,7 +2075,7 @@ FORMATIONS = {
       end
     else
       mancheTour = m
-      debutTour = maCase()
+      debutTour = debut or maCase()
       refusTour = {}
     end
     enCours = nil
@@ -2090,7 +2094,12 @@ FORMATIONS = {
           attendu, math.floor((maintenant() - t0) * 1000), sondes, math.floor(((dernierVrai or t0) - t0) * 1000)), "erreur")
         return
       end
-      if plan == nil then return sansPlan(raison) end
+      if plan == nil then
+        if essai == 0 and repli then return repli(raison) end
+        -- (pas de return : le retour sur la colonne, plus bas, se fait quand même)
+        sansPlan(raison)
+        break
+      end
       local e = plan.entete
       local resume = {}
       for _, a in ipairs(plan.actions) do resume[#resume + 1] = decrire(a) end
@@ -2144,8 +2153,8 @@ FORMATIONS = {
       string.format(" — fightManagement : %d ms", math.floor((maintenant() - t0) * 1000)))
   end
 
-  local function tourIA()
-    local ok, err = pcall(jouerMonTour)
+  local function tourIA(debut, repli)
+    local ok, err = pcall(jouerMonTour, debut, repli)
     if not ok then dire("⛔ [IA] erreur : " .. tostring(err), "erreur") end
     journalEcrire()
   end
@@ -2153,8 +2162,9 @@ FORMATIONS = {
   function fightManagement() tourIA() end
 
   -- Pour le script de combat (ReineCombat.lua, tools/fightlog/combat.ts) : le rejeu y garde fightManagement et appelle
-  -- ce tour en mode avancé (Reine morte, ou au-delà du combat enregistré) ; il donne aussi la formation reconnue au
-  -- placement (colonne de chaque Crâ), que l'IA ne peut plus reconnaître en plein combat.
+  -- ce tour quand le scénario ne connaît pas la situation, ou pour finir un tour du scénario après un écart
+  -- (IA_tour(case du début du tour, repli)) ; il donne aussi la formation reconnue au placement (colonne de chaque Crâ),
+  -- que l'IA ne peut plus reconnaître en plein combat.
   IA_tour = tourIA
   IA_formation = function(nom)
     for _, f in ipairs(FORMATIONS) do
