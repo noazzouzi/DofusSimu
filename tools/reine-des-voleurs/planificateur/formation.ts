@@ -120,7 +120,7 @@ const AWAY_CAP = 12
  * (Fumérus + 4 PM + Bombe Illicale à 6), Magouille 13 (5 PM + Crâmes à 8), Mâchassin 12 (4 PM + Piège à Le Ours à 8 ;
  * Sans se mouiller jusqu'à 14 en ligne), Bourôliste 11 (5 PM + Vers la lumière à 7, puis Coupable), Doublure aucune.
  */
-const SAFE: Record<number, number> = { 3726: 16, 3747: 15, 3750: 14, 3746: 13, 3749: 13 }
+export const SAFE: Record<number, number> = { 3726: 16, 3747: 15, 3750: 14, 3746: 13, 3749: 13 }
 const TERRISTOCRATE = 3747
 const BOMBE_ILLICALE = 3745
 /** Un Crâ à cette distance (ou moins) d'une Bombe Illicale meurt quand le Terristocrate meurt (illicitDeaths). */

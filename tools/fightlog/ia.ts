@@ -5,15 +5,16 @@
 //   npx tsx tools/fightlog/ia.ts [--formation "Placement 2=data/fightlogs/2026-10-10/session-21-27-31.jsonl"]…
 //                                [--colonne "Placement 2=Java-Springboot:327,Lamouit:354,…"] [--sortie tools/ankabot/ReineIA.lua]
 //
-// Une formation : la signature du placement (cases de départ des monstres) et la case de placement de chaque Crâ, lues
-// dans un combat enregistré, plus la case de la colonne de chaque Crâ (défaut pour « Placement 2 » :
-// FORMATION_PLACEMENT_2 de formation.ts).
+// Une formation : la signature du placement (cases de départ des monstres), la case de placement et la case de la
+// colonne de chaque Crâ. Défaut : les placements du registre (data/reine/placements.json) ; --formation : lues dans un
+// combat enregistré (colonne : --colonne, sinon FORMATION_PLACEMENT_2 de formation.ts pour « Placement 2 »).
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { FORMATION_PLACEMENT_2 } from '../reine-des-voleurs/planificateur/formation'
 import { PROTO } from '../reine-des-voleurs/planificateur/journal'
 import { MSG } from './rejeu'
-import { colonneOf, extractScenario, mergeScenarios } from './scenario'
+import { casesOf, colonneOf, loadRegistry, type Registry } from '../reine-des-voleurs/scenarios/placements'
+import { colonneOf as colonneOfMerged, extractScenario, mergeScenarios } from './scenario'
 
 const q = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
 
@@ -74,19 +75,33 @@ export function loggerForPlay(root = process.cwd(), by = 'tools/fightlog/ia.ts')
   return logger.trimEnd() + '\n\n' + tuning
 }
 
-/** L'IA du serveur de plans (modele-ia.lua), formations écrites. */
-export function iaPart(formations: FormationDef[], root = process.cwd()): string {
+/**
+ * L'IA du serveur de plans (modele-ia.lua), formations écrites. `defaut` : formation des placements de monstres
+ * inconnus (FORMATION_PAR_DEFAUT ; défaut du modèle sinon).
+ */
+export function iaPart(formations: FormationDef[], root = process.cwd(), defaut?: string): string {
   const model = readFileSync(join(root, 'tools', 'fightlog', 'modele-ia.lua'), 'utf8')
   const mark = '-- <<FORMATIONS>>'
   if (!model.includes(mark)) throw new Error(`repère ${mark} absent du modèle`)
-  return model.replace(mark, luaFormations(formations))
+  const block = luaFormations(formations) + (defaut ? `\n-- Placement par défaut du registre (data/reine/placements.json).\nFORMATION_PAR_DEFAUT = ${q(defaut)}` : '')
+  return model.replace(mark, block)
 }
 
-export function buildIaScript(formations: FormationDef[], root = process.cwd()): string {
+export function buildIaScript(formations: FormationDef[], root = process.cwd(), defaut?: string): string {
   const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ')
   const head = `-- ReineIA.lua — généré le ${stamp} par tools/fightlog/ia.ts : journal AnkaBot (journal-combats.lua) + IA de la Reine des\n` +
     `-- Voleurs (modele-ia.lua, plus bas). Ne pas éditer : régénérer.\n` + HEAD_NOTE
-  return head + loggerForPlay(root) + iaPart(formations, root)
+  return head + loggerForPlay(root) + iaPart(formations, root, defaut)
+}
+
+/** Formations de tous les placements du registre (data/reine/placements.json). */
+export function formationsOfRegistry(reg: Registry): FormationDef[] {
+  return reg.placements.map(p => ({
+    nom: p.nom,
+    monstres: p.monstres.map(m => ({ espece: m.espece, cellule: m.cellule, nom: m.nom ?? `espèce ${m.espece}` })),
+    placement: casesOf(reg, p),
+    colonne: colonneOf(reg, p),
+  }))
 }
 
 /** Colonnes connues par nom de formation ; --colonne "Nom=Crâ:case,…" en ajoute. */
@@ -118,22 +133,21 @@ export function writeServerLauncher(dir: string, script: string, by: string): st
 if (process.argv[1]?.replace(/\\/g, '/').endsWith('fightlog/ia.ts')) {
   const all = (k: string) => process.argv.flatMap((a, i) => (a === k ? [process.argv[i + 1]] : []))
   const sources = all('--formation')
-  // Mêmes combats que ReineCombat.lua (combat.ts) : placements des monstres et des Crâs.
-  if (!sources.length) {
-    sources.push('Placement 2=data/fightlogs/2026-10-10/session-21-27-31.jsonl')
-    sources.push('Placement 3=data/fightlogs/2026-10-11/session-00-27-27.jsonl')
-  }
+  // Sans --formation : les placements du registre (data/reine/placements.json), comme ReineCombat.lua (combat.ts).
+  const reg = loadRegistry()
   const colonnes = colonnesFromArgs(all('--colonne'))
-  const formations: FormationDef[] = sources.map(s => {
-    const [nom, ...file] = s.split('=')
-    const sc = extractScenario(nom, file.join('='))
-    // Colonne : --colonne, sinon celle de Placement 2 (connue), sinon la case où chaque Crâ finit le plus souvent ses tours.
-    const colonne = colonnes.get(nom) ?? colonneOf(mergeScenarios([sc])[0])
-    return { nom, monstres: sc.monstres, placement: sc.cases, colonne }
-  })
+  const formations: FormationDef[] = sources.length
+    ? sources.map(s => {
+        const [nom, ...file] = s.split('=')
+        const sc = extractScenario(nom, file.join('='))
+        // Colonne : --colonne, sinon celle de Placement 2 (connue), sinon la case où chaque Crâ finit le plus souvent ses tours.
+        const colonne = colonnes.get(nom) ?? colonneOfMerged(mergeScenarios([sc])[0])
+        return { nom, monstres: sc.monstres, placement: sc.cases, colonne }
+      })
+    : formationsOfRegistry(reg)
   const outIdx = process.argv.indexOf('--sortie')
   const out = outIdx > 0 ? process.argv[outIdx + 1] : join(process.cwd(), 'tools', 'ankabot', 'ReineIA.lua')
-  writeFileSync(out, buildIaScript(formations), 'utf8')
+  writeFileSync(out, buildIaScript(formations, process.cwd(), sources.length ? undefined : reg.defaut), 'utf8')
   console.log(`Écrit : ${writeServerLauncher(dirname(out), 'ReineIA.lua', 'tools/fightlog/ia.ts')}`)
   for (const f of formations) console.log(`${f.nom} : ${f.monstres.length} monstres, placement ${JSON.stringify(f.placement)}, colonne ${JSON.stringify(f.colonne)}`)
   console.log(`Écrit : ${out}`)

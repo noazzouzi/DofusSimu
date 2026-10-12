@@ -35,10 +35,55 @@ export function corners(path: number[]): number[] {
   return out
 }
 
-/** Un combattant au début d'un tour : espèce (0 pour un Crâ, repéré alors par son identifiant), case, invisible. */
-export interface BoardEntry { espece: number; id?: number; cellule: number; invisible?: boolean; nom: string }
+/**
+ * Un combattant au début d'un tour : espèce (0 pour un Crâ, repéré alors par son identifiant), case, invisible.
+ * `nouvelle` : Bonbombe du Crâ qui joue, apparue au début de ce tour (le script peut commencer son tour avant de la voir).
+ */
+export interface BoardEntry {
+  espece: number
+  id?: number
+  cellule: number
+  invisible?: boolean
+  nouvelle?: boolean
+  nom: string
+  /**
+   * Monstre loin de tous les Crâs (hors de portée de son prochain tour, et pas visé par le tour) : le script tolère qu'il
+   * soit ailleurs, s'il y est loin aussi (compilation des scénarios, tools/reine-des-voleurs/scenarios).
+   */
+  loin?: boolean
+}
 
-export interface TurnPlan { manche: number; depart: number; fin: number; plateau: BoardEntry[]; actions: Step[] }
+export interface TurnPlan {
+  manche: number
+  depart: number
+  fin: number
+  /**
+   * Plateau (tous les autres combattants vivants) au moment où le Crâ commence à jouer : juste avant sa première action
+   * (sa bombe du tour apparue, effets de début de tour passés), ou à la fin du tour s'il n'a rien fait.
+   */
+  plateau: BoardEntry[]
+  actions: Step[]
+  /** PA et PM dépensés pendant le tour (PA utilisés d'après le serveur, PM des déplacements). */
+  pa?: number
+  pm?: number
+  /** Dégâts infligés aux monstres pendant le tour (sorts et effets déclenchés). */
+  degats?: number
+  /** Crâs morts entre le début de ce tour et le début du tour suivant de ce Crâ (ou la fin du combat). */
+  morts?: string[]
+}
+
+/** Issue d'un combat d'après le journal. */
+export interface Issue {
+  /**
+   * victoire : fin de combat, plus aucun monstre en vie ; abandon : fin de combat, des monstres et un Crâ en vie ;
+   * defaite : fin de combat, aucun Crâ en vie ; interrompu : le journal s'arrête avant la fin du combat.
+   */
+  fin: 'victoire' | 'defaite' | 'abandon' | 'interrompu'
+  manches: number
+  /** Vagues vues (1 à 5). */
+  vagues: number
+  morts: { nom: string; manche: number }[]
+}
 
 export interface Scenario {
   nom: string
@@ -52,6 +97,9 @@ export interface Scenario {
   plans: Record<string, TurnPlan[]>
   manches: number
   verification: string
+  issue?: Issue
+  /** Heure du début du combat (lot du journal qui porte la manche 1), si connue. */
+  debut?: string
 }
 
 const BOMB = 3725
@@ -65,61 +113,115 @@ const spellName = (id: number) => data.spell(id)?.name ?? `sort ${id}`
  */
 export function extractScenario(name: string, file: string, perso?: string, opts: { untilQueenDeath?: boolean } = {}): Scenario {
   const { rows, character } = loadStream(file, perso)
-  const res = rebuild(rows)
-  if (res.checks.sync.bad > 0) throw new Error(`${file} : reconstitution fausse (${res.checks.sync.bad} écarts avec le serveur) — scénario refusé`)
-  const { from, to } = fightRange(rows)
+  return scenarioFromRows(name, rows, `${basename(join(file, '..'))}/${basename(file)} (flux de ${character})`, opts)
+}
+
+/**
+ * Scénario d'un combat d'après les lignes du journal (un flux, ou les journaux des 4 Crâs fusionnés : fusion.ts) : le
+ * dernier combat de ces lignes, ou le `which`-ième. Le combat est d'abord reconstitué et vérifié (rejeu.ts) : refusé si
+ * la reconstitution ne colle pas aux synchronisations du serveur.
+ */
+export function scenarioFromRows(name: string, rows: Row[], source: string, opts: { untilQueenDeath?: boolean; which?: number } = {}): Scenario {
+  const which = opts.which ?? -1
+  const res = rebuild(rows, { which })
+  if (res.checks.sync.bad > 0) throw new Error(`${source} : reconstitution fausse (${res.checks.sync.bad} écarts avec le serveur) — scénario refusé`)
+  const { from, to } = fightRange(rows, which)
   const fight: Row[] = rows.slice(from, to).filter(r => r.k === 'm')
   const byGame = new Map(res.fighters.map(f => [f.gameId, f]))
-  const start = (res.replay.events[0] as { t: 'fightStart'; fighters: { id: number; cell: number }[] }).fighters
+  const ev = res.replay.events
+  const start = (ev[0] as { t: 'fightStart'; fighters: { id: number; cell: number }[] }).fighters
   const players = res.fighters.filter(f => f.kind === 'player')
   const playerIds = new Set(players.map(f => f.gameId))
+  const gid = (id: number) => res.fighters[id]?.gameId
 
-  // Cases des combattants au début et à la fin de chacun de leurs tours, et plateau (tous les autres combattants
-  // vivants) au début de chaque tour de Crâ, d'après le replay reconstitué.
-  const cell = new Map<number, number>(start.map(f => [res.fighters[f.id].gameId, f.cell]))
-  const alive = new Set<number>(start.map(f => res.fighters[f.id].gameId))
+  // Plateau de chaque tour de Crâ (au moment où il commence à jouer), PA/PM dépensés, dégâts, d'après le replay
+  // reconstitué ; morts des Crâs et des monstres, vagues.
+  const cell = new Map<number, number>(start.map(f => [gid(f.id), f.cell]))
+  const alive = new Set<number>(start.map(f => gid(f.id)))
   const invisible = new Set<number>()
-  const turnCells = new Map<number, { depart: number; fin: number; plateau: BoardEntry[] }[]>()
-  for (const e of res.replay.events) {
-    const gid = (id: number) => res.fighters[id]?.gameId
-    if (e.t === 'move') cell.set(gid(e.fighter), e.path[e.path.length - 1])
-    else if (e.t === 'push' || e.t === 'teleport') cell.set(gid(e.target), e.to)
+  /** Bombes : poseur (identifiant de jeu) et manche d'apparition. */
+  const bombs = new Map<number, { owner: number; born: number }>()
+  interface TurnInfo { depart: number; fin: number; plateau: BoardEntry[]; pa: number; pm: number; degats: number; ev: number; captured: boolean }
+  const turnCells = new Map<number, TurnInfo[]>()
+  const deaths: { gid: number; ev: number; round: number }[] = []
+  let round = 0
+  let waves = 1
+  let current: number | undefined
+  let ended = false
+  const capture = (me: number, t: TurnInfo) => {
+    const plateau: BoardEntry[] = []
+    for (const g of alive) {
+      if (g === me) continue
+      const f = byGame.get(g)!
+      const entry: BoardEntry = { espece: f.kind === 'player' ? 0 : f.monsterId ?? 0, cellule: cell.get(g)!, nom: f.name.replace(/ -?\d+$/, '') }
+      if (f.kind === 'player') entry.id = g
+      if (invisible.has(g)) entry.invisible = true
+      const b = bombs.get(g)
+      if (b && b.owner === me && b.born === round) entry.nouvelle = true
+      plateau.push(entry)
+    }
+    plateau.sort((a, b) => a.espece - b.espece || a.cellule - b.cellule)
+    Object.assign(t, { plateau, depart: cell.get(me)!, captured: true })
+  }
+  ev.forEach((e, idx) => {
+    const turn = current !== undefined ? turnCells.get(current)?.at(-1) : undefined
+    const mine = (id: number) => current !== undefined && gid(id) === current
+    // Première action volontaire du Crâ : le plateau est relevé juste avant.
+    if (turn && !turn.captured && ((e.t === 'move' && mine(e.fighter)) || (e.t === 'cast' && mine(e.fighter) && res.voluntary.has(idx)))) capture(current!, turn)
+    if (e.t === 'roundStart') round = e.round
+    else if (e.t === 'move') {
+      cell.set(gid(e.fighter), e.path[e.path.length - 1])
+      if (turn && mine(e.fighter)) turn.pm += e.mpUsed
+    } else if (e.t === 'push' || e.t === 'teleport') cell.set(gid(e.target), e.to)
     else if (e.t === 'summon') {
-      cell.set(gid(e.fighter.id), e.fighter.cell)
-      alive.add(gid(e.fighter.id))
+      const g = gid(e.fighter.id)
+      cell.set(g, e.fighter.cell)
+      alive.add(g)
+      if (byGame.get(g)?.monsterId === BOMB) bombs.set(g, { owner: gid(e.summoner), born: round })
     } else if (e.t === 'wave') {
+      waves = Math.max(waves, e.index)
       for (const f of e.fighters) {
         cell.set(gid(f.id), f.cell)
         alive.add(gid(f.id))
       }
-    } else if (e.t === 'death') alive.delete(gid(e.target))
-    else if (e.t === 'state' && e.name === 'Invisible') {
+    } else if (e.t === 'death') {
+      const g = gid(e.target)
+      if (alive.has(g) && playerIds.has(g)) deaths.push({ gid: g, ev: idx, round })
+      alive.delete(g)
+    } else if (e.t === 'state' && e.name === 'Invisible') {
       if (e.added) invisible.add(gid(e.target))
       else invisible.delete(gid(e.target))
-    } else if (e.t === 'turnStart' && playerIds.has(gid(e.fighter))) {
-      const me = gid(e.fighter)
-      const plateau: BoardEntry[] = []
-      for (const g of alive) {
-        if (g === me) continue
-        const f = byGame.get(g)!
-        const entry: BoardEntry = { espece: f.kind === 'player' ? 0 : f.monsterId ?? 0, cellule: cell.get(g)!, nom: f.name.replace(/ -?\d+$/, '') }
-        if (f.kind === 'player') entry.id = g
-        if (invisible.has(g)) entry.invisible = true
-        plateau.push(entry)
+    } else if (e.t === 'apmp' && turn && mine(e.target) && e.reason === 'utilisés' && e.ap < 0) turn.pa -= e.ap
+    else if (e.t === 'damage' && turn && e.amount > 0) {
+      const t = res.fighters[e.target]
+      if (t && t.team === 1 && t.monsterId !== BOMB) turn.degats += e.amount
+    } else if (e.t === 'turnStart') {
+      current = playerIds.has(gid(e.fighter)) ? gid(e.fighter) : undefined
+      if (current !== undefined) {
+        const list = turnCells.get(current) ?? []
+        list.push({ depart: cell.get(current)!, fin: -1, plateau: [], pa: 0, pm: 0, degats: 0, ev: idx, captured: false })
+        turnCells.set(current, list)
       }
-      plateau.sort((a, b) => a.espece - b.espece || a.cellule - b.cellule)
-      const list = turnCells.get(me) ?? []
-      list.push({ depart: cell.get(me)!, fin: -1, plateau })
-      turnCells.set(me, list)
     } else if (e.t === 'turnEnd' && playerIds.has(gid(e.fighter))) {
       const t = turnCells.get(gid(e.fighter))?.at(-1)
-      if (t) t.fin = cell.get(gid(e.fighter))!
-    }
+      if (t) {
+        if (!t.captured) capture(gid(e.fighter), t)
+        t.fin = cell.get(gid(e.fighter))!
+      }
+      current = undefined
+    } else if (e.t === 'fightEnd') ended = e.reason === 'fin de combat (journal)'
+  })
+  // Morts de Crâs entre le début de chaque tour de Crâ et le début de son tour suivant.
+  for (const list of turnCells.values()) {
+    list.forEach((t, k) => {
+      const next = list[k + 1]?.ev ?? Infinity
+      ;(t as TurnInfo & { morts?: string[] }).morts = deaths.filter(d => d.ev >= t.ev && d.ev < next).map(d => byGame.get(d.gid)!.name)
+    })
   }
 
   const plans: Record<string, TurnPlan[]> = {}
   for (const p of players) plans[p.name] = []
-  let round = 0
+  round = 0
   let turnOf: number | undefined
   const stack: { type: number; author: number; casts: number }[] = []
   const turnIndex = new Map<number, number>()
@@ -137,9 +239,11 @@ export function extractScenario(name: string, file: string, perso?: string, opts
       if (f?.kind === 'player') {
         const k = (turnIndex.get(f.gameId) ?? 0) + 1
         turnIndex.set(f.gameId, k)
-        const cells = turnCells.get(f.gameId)?.[k - 1]
-        plans[f.name].push({ manche: round, depart: cells?.depart ?? -1, fin: cells?.fin ?? -1, plateau: cells?.plateau ?? [], actions: [] })
-        here = cells?.depart ?? -1
+        const t = turnCells.get(f.gameId)?.[k - 1] as (TurnInfo & { morts?: string[] }) | undefined
+        const plan: TurnPlan = { manche: round, depart: t?.depart ?? -1, fin: t?.fin ?? -1, plateau: t?.plateau ?? [], actions: [] }
+        if (t) Object.assign(plan, { pa: t.pa, pm: t.pm, degats: t.degats, morts: t.morts ?? [] })
+        plans[f.name].push(plan)
+        here = plan.depart
       }
     } else if (r.n === MSG.turnEnd) turnOf = undefined
     else if (r.n === 'jqh') stack.push({ type: d.fwji, author: d.fwjj, casts: 0 })
@@ -167,12 +271,24 @@ export function extractScenario(name: string, file: string, perso?: string, opts
     }
   }
 
+  // Issue : fin de combat du journal ; plus aucun monstre (hors invocations) en vie : victoire.
+  const monstersLeft = [...alive].some(g => {
+    const f = byGame.get(g)
+    return f?.team === 1 && f.kind === 'monster'
+  })
+  const crasLeft = [...alive].some(g => playerIds.has(g))
+  const issue: Issue = {
+    fin: !ended ? 'interrompu' : !monstersLeft ? 'victoire' : crasLeft ? 'abandon' : 'defaite',
+    manches: res.rounds,
+    vagues: waves,
+    morts: deaths.map(d => ({ nom: byGame.get(d.gid)!.name, manche: d.round })),
+  }
+  const firstRow = rows[from]
   // Combattants au début du combat : la case vient de l'instantané de départ (l'objet combattant porte l'état final).
   const s = start.map(f => ({ ...res.fighters[f.id], cell: f.cell }))
   return {
     nom: name,
-    source: `${basename(join(file, '..'))}/${basename(file)} (flux de ${character})` +
-      (opts.untilQueenDeath && queenDeath !== undefined ? `, jusqu'à la mort de la Reine` : ''),
+    source: source + (opts.untilQueenDeath && queenDeath !== undefined ? `, jusqu'à la mort de la Reine` : ''),
     carte: 137101316,
     monstres: s.filter(f => f.team === 1).map(f => ({ espece: f.monsterId ?? 0, nom: f.name.replace(/ -?\d+$/, ''), cellule: f.cell })),
     cases: Object.fromEntries(s.filter(f => f.kind === 'player').map(f => [f.name, f.cell])),
@@ -180,6 +296,8 @@ export function extractScenario(name: string, file: string, perso?: string, opts
     plans,
     manches: opts.untilQueenDeath && queenDeath !== undefined ? queenDeath : res.rounds,
     verification: `${res.checks.sync.ok}/${res.checks.sync.ok + res.checks.sync.bad} vérifications justes contre les synchronisations du serveur`,
+    issue,
+    debut: firstRow?.at || undefined,
   }
 }
 
@@ -195,6 +313,18 @@ function luaStep(a: Step): string {
   return `{ ${parts.join(', ')} },  -- ${a.nom}${a.nomCible ? ` → ${a.nomCible}` : ''}`
 }
 
+/** Une branche d'un tour : le tour enregistré, son combat source (n°), et ce qu'en dit la bibliothèque. */
+export interface MergedBranch {
+  source: number
+  plan: TurnPlan
+  /** Combats où ce tour a été joué depuis ce plateau, dont gagnés ; taux de Crâs morts dans la manche qui a suivi. */
+  combats?: number
+  victoires?: number
+  morts?: number
+  /** Dégâts moyens du tour. */
+  degats?: number
+}
+
 /** Plusieurs combats d'un même placement : leurs tours deviennent des branches (variantes) du même tour. */
 export interface Merged {
   nom: string
@@ -203,7 +333,10 @@ export interface Merged {
   cases: Record<string, number>
   ids: Record<string, number>
   sources: string[]
-  plans: Record<string, { source: number; plan: TurnPlan }[][]>
+  /** Branches de chaque tour de chaque Crâ, la meilleure d'abord (le script prend la première qui correspond). */
+  plans: Record<string, MergedBranch[][]>
+  /** Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour). */
+  colonne?: Record<string, number>
 }
 
 /** Colonne par défaut d'un placement : la case où chaque Crâ finit le plus souvent ses tours enregistrés. */
@@ -245,12 +378,24 @@ export function mergeScenarios(list: Scenario[]): Merged[] {
   return out
 }
 
-export function luaScenarios(list: Merged[]): string {
-  const out: string[] = ['local SCENARIOS = {']
+/**
+ * Les scénarios en Lua (table SCENARIOS du modèle de rejeu). `loin` : distance à partir de laquelle un monstre est loin
+ * d'un Crâ, par espèce (table LOIN du script, compilation des scénarios). Chaque scénario et chaque tour de Crâ est écrit
+ * dans un bloc à part (tables de taille raisonnable pour l'interpréteur d'AnkaBot).
+ */
+export function luaScenarios(list: Merged[], opts: { loin?: Record<number, number> } = {}): string {
+  const out: string[] = []
+  if (opts.loin) {
+    out.push('-- Distance (en cases) à partir de laquelle un monstre est loin d\'un Crâ, par espèce : hors de portée de son prochain')
+    out.push('-- tour (tools/reine-des-voleurs/scenarios/compilation.ts, LOIN).')
+    out.push(`LOIN = { ${Object.entries(opts.loin).map(([e, d]) => `[${e}] = ${d}`).join(', ')} }`)
+  }
+  out.push('local SCENARIOS = {}')
   for (const s of list) {
-    out.push('  {')
+    out.push('do')
+    out.push('  local S = {')
     out.push(`    nom = ${q(s.nom)},`)
-    out.push('    -- Combats enregistrés dont viennent les branches (n° de source).')
+    out.push('    -- Combats appris dont viennent les situations (n° de source).')
     out.push('    sources = {')
     s.sources.forEach((x, i) => out.push(`      [${i + 1}] = ${q(x)},`))
     out.push('    },')
@@ -259,51 +404,65 @@ export function luaScenarios(list: Merged[]): string {
     out.push('    monstres = {')
     for (const m of s.monstres) out.push(`      { espece = ${m.espece}, cellule = ${m.cellule} },  -- ${m.nom}`)
     out.push('    },')
-    out.push('    -- Case de départ de chaque Crâ (placement imposé), et son identifiant de personnage.')
+    out.push('    -- Case de placement de chaque Crâ, et son identifiant de personnage.')
     out.push('    cases = {')
     for (const [n, c] of Object.entries(s.cases)) out.push(`      [${q(n)}] = ${c},`)
     out.push('    },')
+    if (s.colonne) {
+      out.push('    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).')
+      out.push('    colonne = {')
+      for (const [n, c] of Object.entries(s.colonne)) out.push(`      [${q(n)}] = ${c},`)
+      out.push('    },')
+    }
     out.push('    ids = {')
     for (const [n, id] of Object.entries(s.ids)) out.push(`      [${q(n)}] = ${id},`)
     out.push('    },')
-    out.push('    -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : une ou plusieurs branches, chacune avec le plateau')
-    out.push('    -- relevé au début du tour dans son combat (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible alors, case')
-    out.push('    -- non comparée). Le script joue la branche dont le plateau correspond à celui du jeu.')
-    out.push('    plans = {')
+    out.push('    plans = {},')
+    out.push('  }')
+    out.push('  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d\'abord, chacune avec')
+    out.push('  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =')
+    out.push('  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s\'il y est loin aussi), les PA')
+    out.push('  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.')
     for (const [n, turns] of Object.entries(s.plans)) {
-      out.push(`      [${q(n)}] = {`)
+      out.push(`  S.plans[${q(n)}] = {}`)
       turns.forEach((variants, i) => {
-        out.push(`        [${i + 1}] = {`)
-        for (const { source, plan: t } of variants) {
-          out.push(`          { source = ${source}, manche = ${t.manche}, depart = ${t.depart}, fin = ${t.fin},`)
-          const board = t.plateau.map(b => `{ e = ${b.espece}${b.id !== undefined ? `, id = ${b.id}` : ''}, c = ${b.cellule}${b.invisible ? ', inv = true' : ''} }`)
-          out.push(`            plateau = { ${board.join(', ')} },`)
-          out.push(`            -- ${t.plateau.map(b => `${b.nom}@${b.cellule}${b.invisible ? '(invisible)' : ''}`).join(' · ')}`)
-          out.push('            actions = {')
-          for (const a of t.actions) out.push(`              ${luaStep(a)}${a.type === 'deplacer' ? ',' : ''}`)
-          out.push('            } },')
+        if (!variants.length) return
+        out.push(`  S.plans[${q(n)}][${i + 1}] = {`)
+        for (const v of variants) {
+          const t = v.plan
+          const head = [`source = ${v.source}`, `manche = ${t.manche}`, `depart = ${t.depart}`, `fin = ${t.fin}`]
+          if (t.pa !== undefined) head.push(`pa = ${t.pa}`)
+          if (t.pm !== undefined) head.push(`pm = ${t.pm}`)
+          if (v.combats !== undefined) head.push(`combats = ${v.combats}`, `victoires = ${v.victoires ?? 0}`)
+          out.push(`    { ${head.join(', ')},`)
+          const board = t.plateau.map(b => `{ e = ${b.espece}${b.id !== undefined ? `, id = ${b.id}` : ''}, c = ${b.cellule}` +
+            `${b.invisible ? ', inv = true' : ''}${b.nouvelle ? ', n = true' : ''}${b.loin ? ', l = true' : ''} }`)
+          out.push(`      plateau = { ${board.join(', ')} },`)
+          out.push(`      -- ${t.plateau.map(b => `${b.nom}@${b.cellule}${b.invisible ? '(invisible)' : ''}${b.nouvelle ? '(du tour)' : ''}${b.loin ? '(loin)' : ''}`).join(' · ')}` +
+            (v.combats !== undefined ? ` — ${v.combats} combat(s), ${v.victoires ?? 0} gagné(s), ${v.degats ?? 0} dégâts en moyenne` : ''))
+          out.push('      actions = {')
+          for (const a of t.actions) out.push(`        ${luaStep(a)}${a.type === 'deplacer' ? ',' : ''}`)
+          out.push('      } },')
         }
-        out.push('        },')
+        out.push('  }')
       })
-      out.push('      },')
     }
-    out.push('    },')
-    out.push('  },')
+    out.push('  SCENARIOS[#SCENARIOS + 1] = S')
+    out.push('end')
   }
-  out.push('}')
   return out.join('\n')
 }
 
 const MARK = '-- <<SCENARIOS>>'
 
 /** Le script de rejeu (modele-rejeu.lua), scénarios écrits. */
-export function rejeuPart(scenarios: Merged[], root = process.cwd(), by = 'tools/fightlog/scenario.ts'): string {
+export function rejeuPart(scenarios: Merged[], root = process.cwd(), by = 'tools/fightlog/scenario.ts', opts: { loin?: Record<number, number> } = {}): string {
   const template = readFileSync(join(root, 'tools', 'fightlog', 'modele-rejeu.lua'), 'utf8')
   const k = template.indexOf(MARK)
   if (k < 0 || template.indexOf(MARK, k + 1) >= 0) throw new Error(`Le modèle doit contenir la ligne ${MARK} une seule fois`)
   const stamp = new Date().toISOString().slice(0, 19).replace('T', ' ')
   const header = `-- Scénarios générés le ${stamp} par ${by} (${scenarios.map(s => `${s.nom} : ${s.sources.length} combat(s)`).join(' ; ')}).`
-  return template.slice(0, k) + header + '\n' + luaScenarios(scenarios) + template.slice(k + MARK.length)
+  return template.slice(0, k) + header + '\n' + luaScenarios(scenarios, opts) + template.slice(k + MARK.length)
 }
 
 /** Résumé des scénarios (console). */

@@ -19,7 +19,8 @@
     "sim": "tsx src/cli/simulate.ts",
     "reine:serveur": "tsx tools/reine-des-voleurs/planificateur/serveur.ts",
     "reine:ia": "tsx tools/fightlog/ia.ts",
-    "reine:combat": "tsx tools/fightlog/combat.ts"
+    "reine:combat": "tsx tools/fightlog/combat.ts",
+    "reine:scenarios": "tsx tools/reine-des-voleurs/scenarios/index.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
