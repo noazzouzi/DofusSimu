@@ -8,7 +8,7 @@ import type { FightEvent } from '../../../src/engine/types'
 import type { Replay } from '../../../src/replay/types'
 import { simulateHorizon, spawnCell } from './bombes'
 import { BOMB, DEFAULT_SPELLS, MAP_ID, ROOT, buildFight, data, type EntitySnap, type Snapshot } from './etat'
-import { characters, lastBatchAt, lastFight, readStream, snapshotAt, type TurnRecord } from './journal'
+import { characters, chainsReader, lastBatchAt, lastFight, readStream, snapshotAt, type TurnRecord } from './journal'
 import { threatsOn } from './menaces'
 import { bombWorld, planTurn, type PlannedTurn, type PlanStep } from './recherche'
 import { planRound, type Placed, type TeamPlan, type TeamScore } from './equipe'
@@ -44,7 +44,8 @@ export interface Loaded { files: string[]; names: Record<number, string>; rows: 
 export function loadJournal(): Loaded | null {
   const files = journalFiles()
   if (!files.length) return null
-  const chars = characters(files)
+  const read = chainsReader()
+  const chars = characters(files, read)
   if (!chars.size) return null
   const names: Record<number, string> = {}
   let k = 1
@@ -53,7 +54,7 @@ export function loadJournal(): Loaded | null {
   // commencé en plein combat (script chargé en retard) ne permet pas de reconstituer les positions.
   let best: ReturnType<typeof lastFight> | null = null
   for (const id of chars.keys()) {
-    const lf = lastFight(readStream(files, id))
+    const lf = lastFight(readStream(files, id, read))
     if (!lf.turns.length) continue
     try {
       snapshotAt(lf.rows, lf.turns[0].round, lf.turns[0].player, names)

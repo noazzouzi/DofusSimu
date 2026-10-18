@@ -3,7 +3,7 @@
 //
 // Les noms des messages et des champs sont obfusqués et changent quand Ankama les renouvelle : ils sont tous réunis
 // dans PROTO ci-dessous (relevés le 2026-10-09). Après une rotation, il faut les relever à nouveau dans un journal.
-import { readFileSync } from 'node:fs'
+import { closeSync, fstatSync, openSync, readSync } from 'node:fs'
 import { CELL_COUNT, distance } from '../../../src/map/geometry'
 import { comparePositions } from '../../../src/engine/effects/summons'
 import { BOMB, DEFAULT_SPELLS, MAP_ID, data, monsterCooldowns, type EntitySnap, type Snapshot } from './etat'
@@ -39,7 +39,7 @@ export function spellListOf(rows: Row[]): { spellId: number; grade: number }[] |
 export const BLUE_LOOK = 2866
 const PECHE_MIGNON = new Set([4693, 4692, 4691])
 
-export interface Row { k: string; i?: number; n?: string; d?: any; at: string; c?: string; e?: any[]; turn?: number; ms?: number; in?: string; of?: number }
+export interface Row { k: string; i?: number; n?: string; d?: any; at: string; c?: string; e?: any[]; turn?: number; ms?: number; in?: string; of?: number; map?: number }
 
 /**
  * Lignes d'un fichier, avec l'heure de leur lot et le personnage (lots nommés) ou une chaîne de numéros. Depuis le
@@ -47,8 +47,57 @@ export interface Row { k: string; i?: number; n?: string; d?: any; at: string; c
  * instance du script), et les lignes de plusieurs instances d'un même personnage sont remises dans l'ordre de leur
  * horloge « ms ».
  */
+/**
+ * Lignes JSON d'un fichier, lues par morceaux : une session dépasse 512 Mo (2026-10-13 : 560 Mo), trop pour une seule
+ * chaîne. Dernière ligne incomplète (session en cours d'écriture) : ignorée.
+ */
+export function readJsonLines(file: string): any[] {
+  const out: any[] = []
+  const fd = openSync(file, 'r')
+  try {
+    const buf = Buffer.alloc(16 * 1024 * 1024)
+    let rest = Buffer.alloc(0)
+    for (;;) {
+      const n = readSync(fd, buf, 0, buf.length, null)
+      if (n <= 0) break
+      const chunk = rest.length ? Buffer.concat([rest, buf.subarray(0, n)]) : buf.subarray(0, n)
+      let start = 0
+      for (let i = chunk.indexOf(10); i >= 0; i = chunk.indexOf(10, start)) {
+        const line = chunk.toString('utf8', start, i).trim()
+        if (line) out.push(JSON.parse(line))
+        start = i + 1
+      }
+      rest = Buffer.from(chunk.subarray(start))
+    }
+    const last = rest.toString('utf8').trim()
+    if (last) {
+      try {
+        out.push(JSON.parse(last))
+      } catch {
+        // (ligne en cours d'écriture)
+      }
+    }
+  } finally {
+    closeSync(fd)
+  }
+  return out
+}
+
 function chains(file: string) {
-  return chainsOf(readFileSync(file, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)))
+  return chainsOf(readJsonLines(file))
+}
+
+/** Chaîne d'un journal (une instance de script) : ses lignes, son personnage. */
+export type Chain = ReturnType<typeof chainsOf>[number]
+
+/** Lecture des chaînes d'un fichier, une seule fois par fichier (plusieurs passes sur une session de 500 Mo). */
+export function chainsReader(): (file: string) => Chain[] {
+  const cache = new Map<string, Chain[]>()
+  return file => {
+    let c = cache.get(file)
+    if (!c) cache.set(file, (c = chains(file)))
+    return c
+  }
 }
 
 /** Comme `chains`, sur les lignes déjà lues (lignes de lot « b » comprises) : journal gardé en mémoire (serveur). */
@@ -96,11 +145,12 @@ export function chainsOf(lines: any[]) {
 }
 
 /** Flux complet d'un personnage (identifiant de jeu), sessions mises bout à bout dans l'ordre des fichiers. */
-export function readStream(files: string[], owner: number): Row[] {
+export function readStream(files: string[], owner: number, read: (file: string) => Chain[] = chains): Row[] {
   const rows: Row[] = []
   for (const f of files) {
-    const x = chains(f).find(c => c.owner === owner)
-    if (x) rows.push(...x.rows)
+    const x = read(f).find(c => c.owner === owner)
+    // (boucle : plusieurs millions de lignes dans une session de 500 Mo, trop d'arguments pour push(...))
+    if (x) for (const r of x.rows) rows.push(r)
   }
   return rows
 }
@@ -109,9 +159,9 @@ export function readStream(files: string[], owner: number): Row[] {
  * Personnages des journaux : identifiant de jeu → nom (lots nommés, depuis le 2026-10-09 12:35), et identifiants des
  * flux sans nom (journaux plus anciens).
  */
-export function characters(files: string[]): Map<number, string | undefined> {
+export function characters(files: string[], read: (file: string) => Chain[] = chains): Map<number, string | undefined> {
   const out = new Map<number, string | undefined>()
-  for (const f of files) for (const x of chains(f)) if (x.owner !== undefined && (x.c || !out.has(x.owner))) out.set(x.owner, x.c ?? out.get(x.owner))
+  for (const f of files) for (const x of read(f)) if (x.owner !== undefined && (x.c || !out.has(x.owner))) out.set(x.owner, x.c ?? out.get(x.owner))
   return out
 }
 
@@ -119,16 +169,36 @@ export function characters(files: string[]): Map<number, string | undefined> {
 export function lastBatchAt(files: string[]): string | null {
   let last: string | null = null
   for (const f of files) {
-    const lines = readFileSync(f, 'utf8').trimEnd().split('\n')
-    for (let i = lines.length - 1; i >= 0; i--) {
-      if (!lines[i].startsWith('{"k":"b"')) continue
-      const at = JSON.parse(lines[i]).at as string | null
-      if (!at) continue
-      if (!last || at > last) last = at
-      break
-    }
+    const at = lastBatchOf(f)
+    if (at && (!last || at > last)) last = at
   }
   return last
+}
+
+/** Heure du dernier lot d'un fichier, lu par la fin (morceaux de 4 Mo, de plus en plus loin) : une session dépasse 512 Mo. */
+function lastBatchOf(file: string): string | null {
+  const fd = openSync(file, 'r')
+  try {
+    const size = fstatSync(fd).size
+    for (let span = 4 * 1024 * 1024; ; span *= 4) {
+      const from = Math.max(0, size - span)
+      const buf = Buffer.alloc(size - from)
+      readSync(fd, buf, 0, buf.length, from)
+      const lines = buf.toString('utf8').trimEnd().split('\n')
+      for (let i = lines.length - 1; i >= (from > 0 ? 1 : 0); i--) {
+        if (!lines[i].startsWith('{"k":"b"')) continue
+        try {
+          const at = JSON.parse(lines[i]).at as string | null
+          if (at) return at
+        } catch {
+          // (ligne en cours d'écriture)
+        }
+      }
+      if (from === 0) return null
+    }
+  } finally {
+    closeSync(fd)
+  }
 }
 
 /** Un tour de Crâ dans le journal : manche, identifiant de jeu, heure du lot. */
@@ -356,4 +426,49 @@ function replay(rows: Row[], round: number, player: number, names: Record<number
   }
   if (!snap && started) take()
   return { snap, actual, order }
+}
+
+/**
+ * Oubli des combats passés (mémoire et durée de chaque reconstitution, qui relit tout le journal gardé) : à chaque
+ * nouveau combat, chaque personnage ne garde que ses KEEP_BEFORE_ROUND1 lignes d'avant sa dernière manche 1
+ * (placement, noms des joueurs) et la suite, plus ses lignes d'identité et de sorts. Session de 2 h du 2026-10-11 :
+ * 408 632 lignes, environ 300 Mo par fil.
+ */
+const KEEP_BEFORE_ROUND1 = 3000
+const IDENTITY = new Set(['hkk', 'hkg', 'hkh'])
+/** Lignes à garder (voir KEEP_BEFORE_ROUND1) ; `lines` n'est pas modifié. */
+export function keepCurrentFights(lines: readonly any[]): any[] {
+  // Personnage de chaque ligne (celui du dernier en-tête qui la précède) et dernière manche 1 de chacun.
+  const owner: (string | undefined)[] = new Array(lines.length)
+  const lastR1 = new Map<string, number>()
+  let c: string | undefined
+  for (let i = 0; i < lines.length; i++) {
+    const o = lines[i]
+    if (o.k === 'b') c = o.c
+    owner[i] = c
+    if (c && o.k === 'm' && o.n === 'jvi' && o.d?.fxjj === 1) lastR1.set(c, i)
+  }
+  // Première ligne gardée de chacun : KEEP_BEFORE_ROUND1 de ses lignes avant sa dernière manche 1.
+  const from = new Map<string, number>()
+  for (const [name, r1] of lastR1) {
+    let n = 0
+    let first = r1
+    for (let j = r1 - 1; j >= 0 && n < KEEP_BEFORE_ROUND1; j--) {
+      if (owner[j] !== name || lines[j].k === 'b') continue
+      n++
+      first = j
+    }
+    from.set(name, first)
+  }
+  const kept: any[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const o = lines[i]
+    const f = o.k === 'b' || owner[i] === undefined ? undefined : from.get(owner[i]!)
+    if (f !== undefined && i < f && o.k === 'm' && !IDENTITY.has(o.n)) continue
+    // (en-tête dont toutes les lignes sont parties : retiré)
+    if (o.k === 'b' && kept.at(-1)?.k === 'b') kept.pop()
+    kept.push(o)
+  }
+  if (kept.at(-1)?.k === 'b') kept.pop()
+  return kept
 }

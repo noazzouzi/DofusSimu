@@ -11,6 +11,8 @@ export const ALPHA = 900000000001
 export const BETA = 900000000002
 export const QUEEN_ID = -1
 export const MACHASSIN_ID = -2
+/** Mule (mode « 4 Crâs + mule ») : 5e personnage qui passe ses tours. */
+export const MULE_ID = 900000000003
 
 const carac = (id: number, v: number) => ({ gboz: id, gbpc: { gcuv: 0, gcuw: v } })
 const fighter = (id: number, cell: number, team: 0 | 1, extra: { hp: number; name?: string; monster?: number }) => ({
@@ -32,6 +34,10 @@ export interface FightSpec {
   queenCell: number
   machCell: number
   rounds: { cras: CraTurn[]; queenMove?: number[]; machMove?: number[]; deaths?: number[] }[]
+  /** Sorts lancés au début du combat, avant le premier tour (passifs, modificateur de dimension). */
+  debut?: { who: number; spell: number }[]
+  /** Case d'une mule (« Mule ») qui passe ses tours, jusqu'à sa mort (`deaths` d'une manche). */
+  mule?: number
   /** Fin de combat (jwh) ; sans elle, le journal s'arrête en plein combat. */
   end?: boolean
 }
@@ -46,8 +52,11 @@ export function fightRows(spec: FightSpec): Omit<Row, 'at'>[] {
     fxgj: [
       fighter(ALPHA, 354, 0, { hp: 4000, name: 'Alpha' }), fighter(BETA, 381, 0, { hp: 4000, name: 'Beta' }),
       fighter(QUEEN_ID, spec.queenCell, 1, { hp: 15000, monster: 3726 }), fighter(MACHASSIN_ID, spec.machCell, 1, { hp: 6600, monster: 3746 }),
+      ...(spec.mule !== undefined ? [fighter(MULE_ID, spec.mule, 0, { hp: 3000, name: 'Mule' })] : []),
     ],
   })
+  let muleDead = false
+  for (const c of spec.debut ?? []) act(300, c.who, { fwuy: { fwqq: 0, fwqr: c.who, fwqt: 0, fwqu: { fwpu: c.spell, fwpt: 1 } } })
   spec.rounds.forEach((r, k) => {
     if (k > 0) m('jvi', { fxjj: k + 1 })
     for (const t of r.cras) {
@@ -65,7 +74,14 @@ export function fightRows(spec: FightSpec): Omit<Row, 'at'>[] {
       act(129, t.who, { fwvj: { fwpj: t.who, fwpi: -1 } })
       m('jup', { fxgo: t.who })
     }
-    for (const id of r.deaths ?? []) act(103, QUEEN_ID, { fwuz: { fwrl: id } })
+    if (spec.mule !== undefined && !muleDead) {
+      m('jvj', { fxjr: MULE_ID })
+      m('jup', { fxgo: MULE_ID })
+    }
+    for (const id of r.deaths ?? []) {
+      act(103, QUEEN_ID, { fwuz: { fwrl: id } })
+      if (id === MULE_ID) muleDead = true
+    }
     if (r.queenMove) {
       m('jvj', { fxjr: QUEEN_ID })
       m('jnz', { fwab: r.queenMove, fwaf: QUEEN_ID })

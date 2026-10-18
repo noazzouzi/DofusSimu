@@ -160,15 +160,20 @@ export class NodeDataStore extends BaseDataStore {
     return this.sets().get(id)
   }
 
+  /**
+   * Carte `<dataDir>/maps/<id>.json`, sinon celle du dépôt (`data/maps`) : un autre dossier de données (les données 3.7
+   * de .cache/data-3.7, par exemple) n'a pas besoin de recopier les cartes.
+   */
   map(id: number): MapData | undefined {
     let m = this.mapCache.get(id)
     if (m === undefined) {
       m = null
       if (Number.isSafeInteger(id) && id >= 0) {
-        const path = join(this.mapsDir, `${id}.json`)
-        if (existsSync(path)) m = convertMap(JSON.parse(readFileSync(path, 'utf8')) as RawMapFile)
+        const path = [join(this.mapsDir, `${id}.json`), join(REPO_ROOT, 'data', 'maps', `${id}.json`)].find(p => existsSync(p))
+        if (path) m = convertMap(JSON.parse(readFileSync(path, 'utf8')) as RawMapFile)
       }
-      this.mapCache.set(id, m)
+      // (carte absente : pas gardée, elle peut être téléchargée pendant que le programme tourne)
+      if (m) this.mapCache.set(id, m)
     }
     return m ?? undefined
   }

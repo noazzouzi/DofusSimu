@@ -8,35 +8,49 @@ l'ajoute au scénario quand il est appris. Plus il y a de combats appris par pla
 
 ## Le cycle
 
-1. **Déclarer les placements** dans `data/reine/placements.json` (voir plus bas). Un placement de monstres inconnu est
-   aussi ajouté tout seul au premier combat appris (« Auto 132-134-178-208 ») : il suffit de le renommer.
-2. **Jouer** quelques combats par placement avec `ReineCombat.lua` et le serveur lancé (`lancer_serveur_reine.cmd`) :
-   au début, le serveur joue presque tout ; le journal enregistre chaque combat (`data/fightlogs/<jour>/session-….jsonl`).
+1. **Placements** : les 12 placements du donjon sont déclarés dans `data/reine/placements.json` (voir plus bas). Un
+   placement de monstres absent du registre serait ajouté tout seul au premier combat appris (« Auto 132-134-178-208 »,
+   monstres seulement : les Crâs s'y placent comme au placement par défaut). Après une correction du registre
+   (placement renommé, monstres corrigés), `npm run reine:scenarios -- reclasser` range chaque combat appris dans la
+   bibliothèque de son placement (`--essai` : rien n'est écrit).
+2. **Jouer** avec `ReineCombat.lua` et le serveur lancé (`lancer_serveur_reine.cmd`) ; le journal enregistre chaque
+   combat (`data/fightlogs/<jour>/session-….jsonl`).
 3. **Apprendre** les combats joués, puis régénérer le script :
 
    ```
    npm run reine:scenarios -- apprendre data/fightlogs            # toutes les sessions (une session relue ne double rien)
+   npm run reine:scenarios -- tableau                             # combats gagnés/joués par placement et modificateur
    npm run reine:scenarios -- resume                              # ce qui est appris, couverture
    npm run reine:combat                                           # ReineCombat.lua avec les scénarios compilés
+   npm run reine:algorithme                                       # ReineCombat.lua sans scénarios (l'IA joue tout)
    ```
 
-4. Recommencer : la couverture monte, le serveur est de moins en moins sollicité.
+**Nouveau départ (2026-10-12)** : les bibliothèques d'avant sont archivées dans `data/reine/archives/2026-10-12/`, et
+seuls les combats commencés depuis le `"depuis"` du registre des placements sont appris (une session close avant n'est
+pas relue). Campagne : beaucoup de combats joués par l'algorithme seul (`npm run reine:algorithme`, à régénérer ainsi
+tant que la campagne dure), chacun appris avec son placement et son **modificateur de dimension**, jusqu'à couvrir les
+combinaisons placement × modificateur (`tableau`). Les scénarios seront ensuite compilés par placement et modificateur.
 
-Première fois : `apprendre data/fightlogs` sur tous les journaux déjà enregistrés (combats joués à la main et par l'IA
-depuis le 2026-10-10) donne d'emblée des scénarios aux Placements 2 et 3. Les deux combats joués à la main de
-l'ancien `ReineCombat.lua` (session-21-27-31 et session-00-27-27, jusqu'à la mort de la Reine) ont été repris dans la
-bibliothèque ; une fois leurs sessions apprises depuis les journaux, on peut retirer la copie :
-`npm run reine:scenarios -- oublier "2026-10-10/session-21-27-31.jsonl (ReineCombat"` (de même pour l'autre).
+## Modificateurs de dimension (`data/reine/modificateurs.json`)
+
+Chaque combat a un modificateur, reconnu aux sorts lancés au début de la manche 1, avant le premier tour, par les Crâs
+et/ou les monstres (Crâs +25 % dommages finaux et monstres +50 % vitalité ; monstres soignés de 50 % des dommages
+infligés…). Les sorts lancés à chaque combat (`"communs"` : passifs des Crâs, Péché Mignon, Doublage) ne comptent pas.
+Dix modificateurs relevés le 2026-10-12, nommés par leurs sorts (noms du jeu inconnus) ; un ensemble de sorts inconnu
+en crée un « Auto <sorts> » à l'apprentissage : le renommer, ou, si c'est un nouveau passif des Crâs (équipement
+changé), ajouter son sort aux `"communs"`. Une deuxième couche (sorts 23441, 23450, 23442), vue le 2026-10-11 de 14:37
+à 16:11 en plus d'un autre modificateur, en crée un « Auto » combiné si elle revient. Le modificateur n'est connu
+qu'après la phase de placement : il ne change que les tours, pas le placement des Crâs.
 
 ## Placements (`data/reine/placements.json`)
 
 ```json
 {
-  "nom": "Placement 4",
+  "nom": "Placement 3",
   "monstres": [
-    { "espece": 3726, "cellule": 133, "nom": "Reine des Voleurs" },
-    { "espece": 3746, "cellule": 135, "nom": "Mâchassin" },
-    { "espece": 3747, "cellule": 178, "nom": "Terristocrate" },
+    { "espece": 3747, "cellule": 132, "nom": "Terristocrate" },
+    { "espece": 3726, "cellule": 134, "nom": "Reine des Voleurs" },
+    { "espece": 3746, "cellule": 178, "nom": "Mâchassin" },
     { "espece": 3748, "cellule": 208, "nom": "Doublure" }
   ],
   "cases": { "Java-Springboot": 327, "Lamouit": 354, "Lowkey-Jealous": 353, "Kemist-Skyler": 351 },
@@ -44,10 +58,14 @@ bibliothèque ; une fois leurs sessions apprises depuis les journaux, on peut re
 }
 ```
 
-- `monstres` : cases des monstres au début du combat — la signature que le script reconnaît pendant la phase de
-  placement (seules les cases comptent, comme en jeu ; deux placements ne peuvent pas avoir les mêmes cases) ;
-- `cases` : case de placement de chaque Crâ ; `colonne` : sa case de fin de tour. Facultatives : sans elles, celles du
-  placement par défaut (`"defaut"`, Placement 3), qui sert aussi aux placements de monstres inconnus.
+- `monstres` : espèce et case de chaque monstre au début du combat — la signature que le script reconnaît pendant la
+  phase de placement. L'espèce compte autant que la case : plusieurs placements occupent les mêmes cases avec des
+  monstres permutés (1, 3 et 6 ; 2 et 4 ; 5, 8 et 11 ; 7 et 9). Si AnkaBot ne donne pas encore l'espèce des monstres
+  pendant le placement, le script le signale et retombe sur les cases seules (premier placement de ces cases) ;
+- `cases` : case de placement de chaque Crâ ; `colonne` : sa case de fin de tour. Facultatives : un Crâ absent garde sa
+  case du placement par défaut (`"defaut"`, Placement 3), qui sert aussi aux placements de monstres inconnus. Les Crâs
+  se placent partout de la même façon : seul le Placement 3 les déclare, et l'apprentissage n'en écrit jamais (les cases
+  de départ d'un combat appris sont celles où le jeu a mis les Crâs quand le placement a échoué).
 
 ## Bibliothèque (`data/reine/scenarios/<placement>.json`)
 
@@ -105,8 +123,11 @@ nouveau combat jouera sans serveur, et les « manches jouées d'affilée » comb
 
 ## Fichiers
 
-- `placements.ts` : registre des placements (lecture, vérification, reconnaissance, placements « Auto »).
-- `bibliotheque.ts` : bibliothèque d'un placement (format compact, une branche par ligne), ajout d'un combat.
+- `placements.ts` : registre des placements (lecture, vérification, reconnaissance par espèce et case, placements
+  « Auto »).
+- `modificateurs.ts` : registre des modificateurs de dimension (reconnaissance aux sorts du début du combat).
+- `bibliotheque.ts` : bibliothèque d'un placement (format compact, une branche par ligne), ajout d'un combat avec son
+  placement (monstres) et son modificateur.
 - `apprendre.ts` : sessions → combats fusionnés → scénarios → bibliothèques.
 - `compilation.ts` : scénario optimal, correspondance (`matchPlan`), couverture.
 - `index.ts` : commande `npm run reine:scenarios`.

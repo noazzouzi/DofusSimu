@@ -8,21 +8,22 @@
 // Le journal AnkaBot est inclus, réglé pour un script qui joue (ia.ts, loggerForPlay) : le serveur reconstitue le combat
 // depuis son début, et les combats joués s'apprennent ensuite (npm run reine:scenarios -- apprendre).
 //
-//   npx tsx tools/fightlog/combat.ts [--depuis 2026-10-12] [--morts-max 0.5] [--sortie tools/ankabot/ReineCombat.lua]
+//   npx tsx tools/fightlog/combat.ts [--depuis 2026-10-12] [--morts-max 0.5] [--sans-scenarios] [--sortie tools/ankabot/ReineCombat.lua]
 //
 // --depuis : combats appris avant cette date ignorés (sorts ou stuff changés depuis) ; --morts-max : taux de morts de Crâs
-// dans la manche qui suit à partir duquel un tour appris est écarté (compilation.ts).
+// dans la manche qui suit à partir duquel un tour appris est écarté (compilation.ts) ; --sans-scenarios : aucun tour
+// appris, l'IA du serveur joue tout (placements toujours reconnus : combats à apprendre ensuite).
 import { writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { loadLibrary } from '../reine-des-voleurs/scenarios/bibliotheque'
 import { compilePlacement, LOIN, type CompiledPlacement, type CompileOptions } from '../reine-des-voleurs/scenarios/compilation'
-import { loadRegistry, type Registry } from '../reine-des-voleurs/scenarios/placements'
+import { crasOf, loadRegistry, type Registry } from '../reine-des-voleurs/scenarios/placements'
 import { formationsOfRegistry, iaPart, loggerForPlay, writeServerLauncher, type FormationDef } from './ia'
 import { rejeuPart, type Merged, type Step } from './scenario'
 
 const BY = 'tools/fightlog/combat.ts'
 
-export function buildCombatScript(scenarios: Merged[], formations: FormationDef[], root = process.cwd(), opts: { defaut?: string; loin?: Record<number, number> } = {}): string {
+export function buildCombatScript(scenarios: Merged[], formations: FormationDef[], root = process.cwd(), opts: { defaut?: string; loin?: Record<number, number>; cras?: Record<string, number | undefined> } = {}): string {
   const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ')
   const head = `-- ReineCombat.lua — généré le ${stamp} par ${BY}. Ne pas éditer : régénérer.\n` +
     `-- Script de combat de la Reine des Voleurs, à charger sur le chef (AnkaBot le charge sur les mules) :\n` +
@@ -32,7 +33,11 @@ export function buildCombatScript(scenarios: Merged[], formations: FormationDef[
     `--      suite, sans serveur ; situation inconnue : l'IA du serveur joue ce tour.\n` +
     `-- Avant de le charger : lancer le serveur (lancer_serveur_reine.cmd, à côté) pour le journal et le mode avancé.\n` +
     `-- PAS de DEVELOPER_MULTI_THREADING : essayé le 2026-10-10, il fait tourner deux fils dans la même machine Lua.\n\n`
-  return head + loggerForPlay(root, BY) +
+  const cras = Object.entries(opts.cras ?? {})
+  const crasLua = `-- Les Crâs (data/reine/placements.json : cases du placement par défaut) et leur identifiant de jeu : tout autre\n` +
+    `-- personnage du groupe est une mule (mode « 4 Crâs + mule » : placée en MULE_CASE, passe ses tours).\n` +
+    `CRAS = { ${cras.map(([n, id]) => `["${n}"] = ${id ?? 0}`).join(', ')} }\n\n`
+  return head + loggerForPlay(root, BY) + crasLua +
     '-- ═════════════════════════════ MODE AVANCÉ : IA DU SERVEUR DE PLANS ═════════════════════════════\n' +
     iaPart(formations, root, opts.defaut).trimEnd() + '\n\n' +
     '-- ═════════════════════════════ SCÉNARIOS DES PLACEMENTS ═════════════════════════════\n' +
@@ -93,10 +98,13 @@ if (process.argv[1]?.replace(/\\/g, '/').endsWith('fightlog/combat.ts')) {
     return i > 0 ? process.argv[i + 1] : undefined
   }
   const { reg, scenarios, formations } = compileAll(process.cwd(), { depuis: arg('--depuis'), mortsMax: arg('--morts-max') ? Number(arg('--morts-max')) : undefined })
-  const retouches = retoucher(scenarios)
+  const sansScenarios = process.argv.includes('--sans-scenarios')
+  if (sansScenarios) for (const s of scenarios) s.plans = {}
+  const retouches = sansScenarios ? [] : retoucher(scenarios)
   const out = arg('--sortie') ?? join(process.cwd(), 'tools', 'ankabot', 'ReineCombat.lua')
-  writeFileSync(out, buildCombatScript(scenarios, formations, process.cwd(), { defaut: reg.defaut, loin: LOIN }), 'utf8')
-  for (const s of scenarios) console.log(describeCompiled(s))
+  writeFileSync(out, buildCombatScript(scenarios, formations, process.cwd(), { defaut: reg.defaut, loin: LOIN, cras: crasOf(reg) }), 'utf8')
+  if (sansScenarios) console.log('Sans scénarios (--sans-scenarios) : l’IA du serveur joue tous les tours.')
+  else for (const s of scenarios) console.log(describeCompiled(s))
   for (const l of retouches) console.log(l)
   for (const f of formations) console.log(`${f.nom} : placement ${JSON.stringify(f.placement)}, colonne ${JSON.stringify(f.colonne)}`)
   console.log(`Placement des monstres inconnu : formation « ${reg.defaut ?? '(aucune)'} », tours joués par le serveur, combat à apprendre ensuite.`)

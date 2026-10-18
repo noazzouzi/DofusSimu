@@ -52,6 +52,11 @@ export interface FormationState {
   bombs: Map<number, { owner: number; born: number; blue: boolean }>
   /** Crâs (identifiants de jeu) dans l'ordre de jeu. */
   players: number[]
+  /**
+   * Crâs à protéger (identifiants de jeu) ; absent : tous ceux de `players`. Mode « 4 Crâs + mule » : la mule est dans
+   * `players` (elle a ses Bonbombes et occupe sa case) mais pas ici — sa mort est voulue, elle ne protège personne.
+   */
+  cras?: number[]
   /** Case de la colonne de chaque Crâ (identifiant de jeu) ; absente : sa case au début du tour. */
   anchors: Map<number, number>
   /** Ordre de jeu complet (identifiants de jeu, bombes exclues) : qui joue entre ce Crâ et chaque monstre. */
@@ -209,12 +214,13 @@ export function planFormationTurn(st: FormationState, opts: FormationOptions = {
   me0.spells = me0.spells.map(sp => (sp.spellId === TIR_DE_REPLI && sp.level.castInDiagonal ? { ...sp, level: { ...sp.level, castInDiagonal: false } } : sp))
   const myGid = st.gameIdOf.get(me0.id)!
   const anchor = st.anchors.get(myGid) ?? me0.cell
+  const crasSet = new Set(st.cras ?? st.players)
   const profiles = createSpellProfileIndex(engine)
   const isBomb = (f: Fighter) => f.monsterId === BOMB
   // (case -1 : invisible hors de la carte, Brume — position inconnue)
   const monsters = (s: FightState) => s.fighters.filter(f => f.alive && f.team !== me0.team && !isBomb(f) && f.cell >= 0)
   const wOf = (f: Fighter) => weights[f.monsterId ?? 0] ?? 1
-  const anchorsAll = st.players.map(g => st.anchors.get(g) ?? base.fighters.find(f => st.gameIdOf.get(f.id) === g)?.cell ?? -1).filter(c => c >= 0)
+  const anchorsAll = st.players.filter(g => crasSet.has(g)).map(g => st.anchors.get(g) ?? base.fighters.find(f => st.gameIdOf.get(f.id) === g)?.cell ?? -1).filter(c => c >= 0)
   const nearCra = (cell: number) => Math.min(99, ...anchorsAll.map(a => distance(a, cell)))
 
   // Pas d'invocations (Balise Tactique, Balise de Survie) : consigne du joueur (2026-10-11), elles cachent des monstres
@@ -249,7 +255,7 @@ export function planFormationTurn(st: FormationState, opts: FormationOptions = {
     const to = order.indexOf(g)
     let between = 0
     if (from >= 0 && to >= 0) {
-      const alivePlayers = new Set(base.fighters.filter(f => f.alive && f.kind === 'player').map(f => st.gameIdOf.get(f.id)))
+      const alivePlayers = new Set(base.fighters.filter(f => f.alive && f.kind === 'player').map(f => st.gameIdOf.get(f.id)).filter(g => g !== undefined && crasSet.has(g)))
       for (let k = (from + 1) % order.length; k !== to; k = (k + 1) % order.length) if (alivePlayers.has(order[k])) between++
     }
     urgencyCache.set(g, (u = 0.4 ** between))
@@ -267,7 +273,7 @@ export function planFormationTurn(st: FormationState, opts: FormationOptions = {
     const m = c.fighters[me0.id]
     if (m.cell !== anchor && engine.isCellFree(c, anchor)) m.cell = anchor
     const h = simulateHorizon({ ...bombWorldOf(st, c), order: st.players }, myGid, st.round)
-    const craDeaths = h.deaths.map(d => ({ id: d.id, atEnd: d.atActiveEnd }))
+    const craDeaths = h.deaths.filter(d => crasSet.has(d.id)).map(d => ({ id: d.id, atEnd: d.atActiveEnd }))
     const deathScore = craDeaths.some(d => d.atEnd || d.id === myGid) ? -1e6 : -10000 * craDeaths.length
     const raw = new Map<number, number>()
     for (const e of h.events) {
@@ -294,7 +300,7 @@ export function planFormationTurn(st: FormationState, opts: FormationOptions = {
     for (const f of after.fighters) if (f.alive && isBomb(f) && gone.has(st.gameIdOf.get(f.id) ?? NaN)) f.alive = false
     const threats: PosTerms['threats'] = []
     // (ce que chaque monstre atteint est cherché une fois pour les 4 Crâs : 65 % du calcul d'un plan auparavant)
-    const cras = after.fighters.filter(c => c.alive && c.kind === 'player')
+    const cras = after.fighters.filter(c => c.alive && c.kind === 'player' && crasSet.has(st.gameIdOf.get(c.id) ?? NaN))
     const byCra = threatsOnCras(engine, after, cras)
     for (const cra of cras) for (const t of byCra.get(cra.id) ?? []) threats.push({ cra: st.gameIdOf.get(cra.id)!, monster: st.gameIdOf.get(t.monster) ?? t.monster, spell: t.spell })
     const deathRowAi = queenTargets(after)

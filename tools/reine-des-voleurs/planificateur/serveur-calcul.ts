@@ -16,7 +16,8 @@ import { corners } from '../../fightlog/scenario'
 import { BOMB } from './etat'
 import { measure } from './fidelite'
 import { FORMATION_PLACEMENT_2, describeStep, planFormationTurn, type FStep, type FormationState, type PlayedTurn } from './formation'
-import { chainsOf, spellListOf } from './journal'
+import { chainsOf, keepCurrentFights, spellListOf } from './journal'
+import { crasOf, loadRegistry } from '../scenarios/placements'
 
 /** Attente maximale du journal (ms) par défaut, avant de planifier quand même ou de répondre « aucun ». */
 const ATTENTE_MS = Number(process.env.REINE_ATTENTE_MS ?? 4000)
@@ -30,51 +31,6 @@ const PART: { index: number; count: number } | undefined = workerData?.part && w
 
 const lines: any[] = []
 let version = 0
-/**
- * Oubli des combats passés (mémoire et durée de chaque reconstitution, qui relit tout le journal gardé) : à chaque
- * nouveau combat, chaque personnage ne garde que ses KEEP_BEFORE_ROUND1 lignes d'avant sa dernière manche 1
- * (placement, noms des joueurs) et la suite, plus ses lignes d'identité et de sorts. Session de 2 h du 2026-10-11 :
- * 408 632 lignes, environ 300 Mo par fil.
- */
-const KEEP_BEFORE_ROUND1 = 3000
-const IDENTITY = new Set(['hkk', 'hkg', 'hkh'])
-/** Lignes à garder (voir KEEP_BEFORE_ROUND1) ; `lines` n'est pas modifié. */
-export function keepCurrentFights(lines: readonly any[]): any[] {
-  // Personnage de chaque ligne (celui du dernier en-tête qui la précède) et dernière manche 1 de chacun.
-  const owner: (string | undefined)[] = new Array(lines.length)
-  const lastR1 = new Map<string, number>()
-  let c: string | undefined
-  for (let i = 0; i < lines.length; i++) {
-    const o = lines[i]
-    if (o.k === 'b') c = o.c
-    owner[i] = c
-    if (c && o.k === 'm' && o.n === 'jvi' && o.d?.fxjj === 1) lastR1.set(c, i)
-  }
-  // Première ligne gardée de chacun : KEEP_BEFORE_ROUND1 de ses lignes avant sa dernière manche 1.
-  const from = new Map<string, number>()
-  for (const [name, r1] of lastR1) {
-    let n = 0
-    let first = r1
-    for (let j = r1 - 1; j >= 0 && n < KEEP_BEFORE_ROUND1; j--) {
-      if (owner[j] !== name || lines[j].k === 'b') continue
-      n++
-      first = j
-    }
-    from.set(name, first)
-  }
-  const kept: any[] = []
-  for (let i = 0; i < lines.length; i++) {
-    const o = lines[i]
-    const f = o.k === 'b' || owner[i] === undefined ? undefined : from.get(owner[i]!)
-    if (f !== undefined && i < f && o.k === 'm' && !IDENTITY.has(o.n)) continue
-    // (en-tête dont toutes les lignes sont parties : retiré)
-    if (o.k === 'b' && kept.at(-1)?.k === 'b') kept.pop()
-    kept.push(o)
-  }
-  if (kept.at(-1)?.k === 'b') kept.pop()
-  return kept
-}
-
 function forgetPastFights(): void {
   const kept = keepCurrentFights(lines)
   if (kept.length === lines.length) return
@@ -117,11 +73,26 @@ function rememberSpells(name: string, spells: { spellId: number; grade: number }
   if (PART && PART.index !== 0) return
   try {
     mkdirSync(join(SPELLS_FILE, '..'), { recursive: true })
-    writeFileSync(SPELLS_FILE, JSON.stringify(knownSpells, null, 2) + '\n')
+    // (relu avant d'écrire : le serveur du Féca, lancé en même temps, écrit le même fichier)
+    const disk = existsSync(SPELLS_FILE) ? (JSON.parse(readFileSync(SPELLS_FILE, 'utf8')) as KnownSpells) : {}
+    writeFileSync(SPELLS_FILE, JSON.stringify({ ...disk, [name]: knownSpells[name] }, null, 2) + '\n')
   } catch {
     // Fichier non écrit : la liste reste connue pour ce lancement du serveur.
   }
 }
+
+/**
+ * Les Crâs (cases du placement par défaut, data/reine/placements.json) : un autre personnage du groupe est une mule
+ * (mode « 4 Crâs + mule »), que les plans ne protègent pas.
+ */
+const CRAS: string[] | undefined = (() => {
+  try {
+    const n = Object.keys(crasOf(loadRegistry()))
+    return n.length ? n : undefined
+  } catch {
+    return undefined
+  }
+})()
 
 /** État exact du tour en cours (journal fusionné), recalculé seulement si de nouvelles lignes sont arrivées. */
 function currentTurn(log: string[]): Current {
@@ -146,7 +117,7 @@ function currentTurn(log: string[]): Current {
   let state: [FormationState, PlayedTurn] | undefined
   if (merged.rows.length) {
     try {
-      measure(merged.rows, { fast: true, spellLists, onCurrentTurn: (s, p) => (state = [s, p]) })
+      measure(merged.rows, { fast: true, spellLists, cras: CRAS, onCurrentTurn: (s, p) => (state = [s, p]) })
     } catch (err) {
       log.push(`reconstitution impossible : ${(err as Error).message}`)
     }

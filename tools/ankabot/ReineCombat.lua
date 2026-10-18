@@ -1,4 +1,4 @@
--- ReineCombat.lua — généré le 2026-10-12 07:47 par tools/fightlog/combat.ts. Ne pas éditer : régénérer.
+-- ReineCombat.lua — généré le 2026-10-14 09:49 par tools/fightlog/combat.ts. Ne pas éditer : régénérer.
 -- Script de combat de la Reine des Voleurs, à charger sur le chef (AnkaBot le charge sur les mules) :
 --   1. journal AnkaBot (journal-combats.lua), réglé pour un script qui joue ;
 --   2. IA du serveur de plans (modele-ia.lua) : le MODE AVANCÉ, pour les situations que le scénario ne connaît pas ;
@@ -155,6 +155,7 @@ QUIET_AROUND_MY_TURN = false
 QUIET_MAX_SECONDS = 120                   -- silence levé au plus tard N secondes après son début (sécurité)
 TURN_START, TURN_START_FIELD = "jvj", "fxjr"   -- début de tour : identifiant du combattant
 TURN_END, TURN_END_FIELD = "jup", "fxgo"       -- fin de tour : identifiant du combattant
+FIGHT_END_MESSAGE = "jwh"                      -- fin du combat (le silence s'arrête là, comme à la manche 1)
 -- false : journal coupé, aucun message écouté (test : un script qui joue passe-t-il encore des tours sans le journal ?).
 ENABLED = true
 DIAGNOSTIC = true                         -- affiche les premiers messages reçus et les types découverts
@@ -1165,6 +1166,21 @@ end
 
 -- Silence autour de son tour : tenu à jour sur les débuts et fins de tour ; vrai si le message est à ignorer.
 local function quietFor(name, message)
+  -- Fin du combat, ou manche 1 d'un nouveau combat : le silence s'arrête (combat abandonné ou perdu pendant mon tour,
+  -- 2026-10-12 à 21:48 : le journal manquait sinon la fin de ce combat et le début du suivant ; le serveur de plans,
+  -- qui fusionnait alors deux combats, ne trouvait plus aucun tour, et les tours étaient passés).
+  if name == FIGHT_END_MESSAGE or name == ROUND_MESSAGE then
+    local nouveau = name == FIGHT_END_MESSAGE
+    if not nouveau then
+      local r = nil
+      pcall(function() r = message[ROUND_FIELD] end)
+      nouveau = r == 1
+    end
+    if nouveau then
+      myTurnOn, quietSince, prevOfMe, lastStarter = false, nil, nil, nil
+      return false
+    end
+  end
   if name == TURN_START or name == TURN_END then
     if myFighterId == nil then pcall(function() myFighterId = character:id() end) end
     local id = nil
@@ -1310,6 +1326,10 @@ HISTORY_NAMES = { hkh = true }
 -- Messages écoutés : ceux du serveur de plans seulement (17, au lieu des 17 588 noms possibles).
 ONLY_NAMES = { hkg = true, hkh = true, hkk = true, jnz = true, jqh = true, jsq = true, jsy = true, jtk = true, juh = true, juo = true, jup = true, juq = true, jvi = true, jvj = true, jvu = true, jwh = true, jwi = true }
 
+-- Les Crâs (data/reine/placements.json : cases du placement par défaut) et leur identifiant de jeu : tout autre
+-- personnage du groupe est une mule (mode « 4 Crâs + mule » : placée en MULE_CASE, passe ses tours).
+CRAS = { ["Java-Springboot"] = 900265148709, ["Lamouit"] = 900264624421, ["Lowkey-Jealous"] = 900264689957, ["Kemist-Skyler"] = 900266590501 }
+
 -- ═════════════════════════════ MODE AVANCÉ : IA DU SERVEUR DE PLANS ═════════════════════════════
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 --  IA DE LA REINE DES VOLEURS (serveur de plans). Partie ajoutée au journal ci-dessus par tools/fightlog/ia.ts
@@ -1429,6 +1449,30 @@ CHALLENGE_DELAI_CHEF = { 1000, 2000 }
 
 FORMATIONS = {
   {
+    nom = "Placement 1",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3726, cellule = 132 },  -- Reine des Voleurs
+      { espece = 3746, cellule = 134 },  -- Mâchassin
+      { espece = 3747, cellule = 178 },  -- Terristocrate
+      { espece = 3748, cellule = 208 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
     nom = "Placement 2",
     -- Monstres au début du combat (espèce, case) : la signature du placement.
     monstres = {
@@ -1460,6 +1504,222 @@ FORMATIONS = {
       { espece = 3726, cellule = 134 },  -- Reine des Voleurs
       { espece = 3746, cellule = 178 },  -- Mâchassin
       { espece = 3748, cellule = 208 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
+    nom = "Placement 4",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3747, cellule = 133 },  -- Terristocrate
+      { espece = 3726, cellule = 135 },  -- Reine des Voleurs
+      { espece = 3746, cellule = 178 },  -- Mâchassin
+      { espece = 3748, cellule = 208 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
+    nom = "Placement 5",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3747, cellule = 133 },  -- Terristocrate
+      { espece = 3726, cellule = 163 },  -- Reine des Voleurs
+      { espece = 3746, cellule = 207 },  -- Mâchassin
+      { espece = 3748, cellule = 264 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
+    nom = "Placement 6",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3747, cellule = 132 },  -- Terristocrate
+      { espece = 3746, cellule = 134 },  -- Mâchassin
+      { espece = 3726, cellule = 178 },  -- Reine des Voleurs
+      { espece = 3748, cellule = 208 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
+    nom = "Placement 7",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 132 },  -- Doublure
+      { espece = 3747, cellule = 134 },  -- Terristocrate
+      { espece = 3726, cellule = 192 },  -- Reine des Voleurs
+      { espece = 3746, cellule = 208 },  -- Mâchassin
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
+    nom = "Placement 8",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3747, cellule = 133 },  -- Terristocrate
+      { espece = 3746, cellule = 163 },  -- Mâchassin
+      { espece = 3726, cellule = 207 },  -- Reine des Voleurs
+      { espece = 3748, cellule = 264 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
+    nom = "Placement 9",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 132 },  -- Doublure
+      { espece = 3747, cellule = 134 },  -- Terristocrate
+      { espece = 3746, cellule = 192 },  -- Mâchassin
+      { espece = 3726, cellule = 208 },  -- Reine des Voleurs
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
+    nom = "Placement 10",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 132 },  -- Doublure
+      { espece = 3747, cellule = 134 },  -- Terristocrate
+      { espece = 3746, cellule = 192 },  -- Mâchassin
+      { espece = 3726, cellule = 236 },  -- Reine des Voleurs
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
+    nom = "Placement 11",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 133 },  -- Doublure
+      { espece = 3747, cellule = 163 },  -- Terristocrate
+      { espece = 3746, cellule = 207 },  -- Mâchassin
+      { espece = 3726, cellule = 264 },  -- Reine des Voleurs
+    },
+    -- Case de placement de chaque Crâ (phase de placement).
+    placement = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ : il y revient à la fin de chaque tour.
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+  },
+  {
+    nom = "Placement 12",
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 134 },  -- Doublure
+      { espece = 3747, cellule = 192 },  -- Terristocrate
+      { espece = 3746, cellule = 236 },  -- Mâchassin
+      { espece = 3726, cellule = 292 },  -- Reine des Voleurs
     },
     -- Case de placement de chaque Crâ (phase de placement).
     placement = {
@@ -1577,11 +1837,21 @@ FORMATION_PAR_DEFAUT = "Placement 3"
   -- Abandon (ABANDON_SI_CRA_MORT, ABANDON_SI_REINE_AU_CONTACT). Crâs : joueurs de notre équipe (Team faux, sans espèce
   -- de monstre) ; le plus grand nombre vu vivant dans ce combat sert de référence (remis à zéro au placement).
   local crasVus = 0
+  -- Identifiants des Crâs (CRAS, écrit par la génération de ReineCombat.lua) : la mule n'est pas comptée.
+  local idsCras = nil
+  local function estCraId(id)
+    if idsCras == nil then
+      idsCras = {}
+      for _, x in pairs(CRAS or {}) do if x and x ~= 0 then idsCras[x] = true end end
+    end
+    if next(idsCras) == nil then return true end
+    return idsCras[id] == true
+  end
   local function combatPerdu()
     local cras, reine = {}, nil
     for _, e in ipairs(entites()) do
       local espece = e.CreatureGenericId or 0
-      if e.Team ~= true and espece == 0 and vivant(e) then cras[#cras + 1] = e.CellId end
+      if e.Team ~= true and espece == 0 and vivant(e) and estCraId(e.Id) then cras[#cras + 1] = e.CellId end
       if espece == 3726 and vivant(e) then reine = e.CellId end
     end
     if #cras > crasVus then crasVus = #cras end
@@ -1655,20 +1925,31 @@ FORMATION_PAR_DEFAUT = "Placement 3"
     return FORMATIONS[1]
   end
 
-  -- Formation dont la signature (cases de départ des monstres) correspond au placement des monstres (case → id) ;
-  -- sinon la formation par défaut.
+  -- Formation dont la signature (espèce et case de départ des monstres) correspond au placement des monstres
+  -- (case → id) ; sinon la formation par défaut. Espèce inconnue (entités pas encore données) : la case seule compte.
   local function reconnaitre(defenders)
+    local parId, parCase = {}, {}
+    for _, e in ipairs(entites()) do
+      local espece = e.CreatureGenericId or 0
+      if espece ~= 0 then
+        if e.Id ~= nil then parId[e.Id] = espece end
+        if e.CellId ~= nil then parCase[e.CellId] = espece end
+      end
+    end
     local occupees, n = {}, 0
     for cell, id in pairs(defenders or {}) do
-      if id ~= -1 then occupees[cell] = true n = n + 1 end
+      if id ~= -1 then occupees[cell] = parId[id] or parCase[cell] or 0 n = n + 1 end
     end
     for _, s in ipairs(FORMATIONS) do
       local bons = 0
-      for _, m in ipairs(s.monstres) do if occupees[m.cellule] then bons = bons + 1 end end
+      for _, m in ipairs(s.monstres) do
+        local e = occupees[m.cellule]
+        if e ~= nil and (e == 0 or e == m.espece) then bons = bons + 1 end
+      end
       if bons == #s.monstres and n == #s.monstres then return s end
     end
     local vus = {}
-    for cell in pairs(occupees) do vus[#vus + 1] = tostring(cell) end
+    for cell, e in pairs(occupees) do vus[#vus + 1] = tostring(e) .. "@" .. tostring(cell) end
     table.sort(vus)
     local defaut = formationParDefaut()
     if defaut then
@@ -2426,8 +2707,22 @@ CODES_FORCABLES = { [5] = true, [6] = true, [8] = true, [16] = true }   -- TROP_
 ATTENTE_POSITION = 600    -- ms
 JOURNAL_FICHIER = true    -- journal par personnage et par combat, à côté du script (rejeu_<personnage>_<date>.log)
 -- Cartes où le script attend (move) : la salle de la Reine et la carte du combat, en plus de la carte courante — un script
--- chargé pendant un changement de carte (map:currentMapId() = 0) n'a pas de carte courante.
+-- chargé pendant un changement de carte (map:currentMapId() = 0) n'a pas de carte courante. Une carte du trajet (plus
+-- bas) y fait son action au lieu d'attendre.
 CARTES = { "137101312", "137101316" }
+-- TRAJET dans le donjon (consigne du joueur, 2026-10-12), carte par carte : 137102336, porte de la case 66 ;
+-- 137103360, dialogue avec le PNJ 2447 (une réponse) ; 136056074, dialogue avec le PNJ 2446 (deux réponses) ; salle de la
+-- Reine (137101312), tatouage de Looth, et combat lancé par le chef (map:fight()).
+TATOUAGE = 30486          -- Superbe tatouage temporaire de Looth
+-- MODE « 4 CRÂS + MULE » (consigne du joueur, 2026-10-14) : un personnage du groupe absent de CRAS (écrit par la
+-- génération : les Crâs du registre) est une mule, là pour l'expérience. Placée en MULE_CASE, elle passe ses tours : en
+-- 424, la Bonbombe que le 4e Crâ pose en 409 à son 2e tour la tue (voulu). MULE_COLONNE = 435 : elle rejoint plutôt le
+-- bout de la colonne (5 PM depuis 424), si elle a les PM pour y arriver en un tour. Avec une mule, 5 monstres par vague
+-- et une Reine à 17 000 PV : aucun placement de 4 monstres ne correspond, les Crâs prennent ceux du placement par défaut
+-- et l'IA du serveur joue (le serveur lit les PV réels).
+MULE_CASE = 424
+MULE_COLONNE = nil
+DELAI_DIALOGUE = 1000     -- ms avant chaque réponse à un PNJ
 -- SITUATIONS (branches). Monstres lointains admis ailleurs que sur leur case enregistrée (voir « correspondance » en
 -- tête) ; 0 : plateau exact seulement.
 TOLERANCE_LOIN = 2
@@ -2442,17 +2737,69 @@ SI_AUCUNE_BRANCHE = "avance"
 SI_SERVEUR_ABSENT = "passer"
 TOLERANCE_PROCHE = 2
 
--- Scénarios générés le 2026-10-12 07:47:49 par tools/fightlog/combat.ts (Placement 2 : 1 combat(s) ; Placement 3 : 1 combat(s)).
+-- Scénarios générés le 2026-10-14 09:49:37 par tools/fightlog/combat.ts (Placement 1 : 5 combat(s) ; Placement 2 : 6 combat(s) ; Placement 3 : 5 combat(s) ; Placement 4 : 5 combat(s) ; Placement 5 : 4 combat(s) ; Placement 6 : 9 combat(s) ; Placement 7 : 4 combat(s) ; Placement 8 : 7 combat(s) ; Placement 9 : 5 combat(s) ; Placement 10 : 7 combat(s) ; Placement 11 : 4 combat(s) ; Placement 12 : 4 combat(s)).
 -- Distance (en cases) à partir de laquelle un monstre est loin d'un Crâ, par espèce : hors de portée de son prochain
 -- tour (tools/reine-des-voleurs/scenarios/compilation.ts, LOIN).
 LOIN = { [3726] = 17, [3746] = 14, [3747] = 16, [3748] = 13, [3749] = 14, [3750] = 15 }
 local SCENARIOS = {}
 do
   local S = {
+    nom = "Placement 1",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-12/session-21-25-58.jsonl#10 (2026-10-12 22:01) — defaite, 8 manches, vague 2",
+      [2] = "2026-10-12/session-21-25-58.jsonl#11 (2026-10-12 22:03) — victoire, 15 manches, vague 5",
+      [3] = "2026-10-13/session-15-11-47.jsonl#17 (2026-10-13 17:53) — victoire, 15 manches, vague 5",
+      [4] = "2026-10-13/session-21-20-26.jsonl#7 (2026-10-13 22:04) — victoire, 16 manches, vague 5",
+      [5] = "2026-10-13/session-21-20-26.jsonl#22 (2026-10-13 23:46) — victoire, 14 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3726, cellule = 132 },  -- Reine des Voleurs
+      { espece = 3746, cellule = 134 },  -- Mâchassin
+      { espece = 3747, cellule = 178 },  -- Terristocrate
+      { espece = 3748, cellule = 208 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
+  }
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
     nom = "Placement 2",
     -- Combats appris dont viennent les situations (n° de source).
     sources = {
-      [1] = "2026-10-10/session-21-27-31.jsonl (ReineCombat.lua du 2026-10-11, joué à la main) (2026-10-10 21:27) — interrompu, 4 manches, vague 1",
+      [1] = "2026-10-12/session-21-25-58.jsonl#12 (2026-10-12 22:11) — victoire, 16 manches, vague 5",
+      [2] = "2026-10-13/session-15-11-47.jsonl#18 (2026-10-13 18:02) — defaite, 12 manches, vague 3",
+      [3] = "2026-10-13/session-15-11-47.jsonl#19 (2026-10-13 18:08) — defaite, 15 manches, vague 3",
+      [4] = "2026-10-13/session-15-11-47.jsonl#20 (2026-10-13 18:16) — victoire, 18 manches, vague 5",
+      [5] = "2026-10-13/session-21-20-26.jsonl#8 (2026-10-13 22:15) — victoire, 15 manches, vague 5",
+      [6] = "2026-10-13/session-21-20-26.jsonl#23 (2026-10-13 23:50) — victoire, 16 manches, vague 5",
     },
     carte = 137101316,
     -- Monstres au début du combat (espèce, case) : la signature du placement.
@@ -2488,212 +2835,6 @@ do
   -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
   -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
   -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
-  S.plans["Lowkey-Jealous"] = {}
-  S.plans["Lowkey-Jealous"][1] = {
-    { source = 1, manche = 1, depart = 353, fin = 381, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 326, n = true }, { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3726, c = 234 }, { e = 3746, c = 149 }, { e = 3747, c = 204 }, { e = 3748, c = 193, inv = true }, { e = 3748, c = 248 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 351 } },
-      -- Bonbombe@326(du tour) · Bonbombe@328 · Bonbombe@355 · Reine des Voleurs@234 · Mâchassin@149 · Terristocrate@204 · Doublure@193(invisible) · Doublure@248 · Lamouit@354 · Java-Springboot@327 · Kemist-Skyler@351 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 339, chemin = { 353, 339 }, etapes = { 339 } },
-        { type = "sort", sort = 32466, cellule = 339, depuis = 339, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 204, depuis = 339, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche du Jugement → Terristocrate
-        { type = "sort", sort = 32448, cellule = 204, depuis = 339, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche Tyrannique → Terristocrate
-        { type = "sort", sort = 32437, cellule = 204, depuis = 339, cible = "ennemi", espece = 3747, id = -15 },  -- Œil de Taupe → Terristocrate
-        { type = "deplacer", cellule = 381, chemin = { 339, 353, 367, 381 }, etapes = { 353, 367, 381 } },
-      } },
-  }
-  S.plans["Lowkey-Jealous"][2] = {
-    { source = 1, manche = 2, depart = 381, fin = 381, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324 }, { e = 3725, c = 355 }, { e = 3725, c = 356 }, { e = 3725, c = 382, n = true }, { e = 3726, c = 150 }, { e = 3746, c = 136, l = true }, { e = 3747, c = 178 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@324 · Bonbombe@355 · Bonbombe@356 · Bonbombe@382(du tour) · Reine des Voleurs@150 · Mâchassin@136(loin) · Terristocrate@178 · Lamouit@354 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 352, chemin = { 381, 367, 352 }, etapes = { 352 } },
-        { type = "sort", sort = 32465, cellule = 352, depuis = 352, cible = "soi" },  -- Tirs Éloignés
-        { type = "sort", sort = 32437, cellule = 150, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Œil de Taupe → Reine des Voleurs
-        { type = "sort", sort = 32453, cellule = 150, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche d'Abolition → Reine des Voleurs
-        { type = "sort", sort = 32453, cellule = 150, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche d'Abolition → Reine des Voleurs
-        { type = "sort", sort = 32453, cellule = 150, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche d'Abolition → Reine des Voleurs
-        { type = "sort", sort = 32427, cellule = 150, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Cinglante → Reine des Voleurs
-        { type = "deplacer", cellule = 381, chemin = { 352, 367, 381 }, etapes = { 381 } },
-      } },
-  }
-  S.plans["Lowkey-Jealous"][3] = {
-    { source = 1, manche = 3, depart = 381, fin = 381, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3725, c = 382, n = true }, { e = 3726, c = 231 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328 · Bonbombe@355 · Bonbombe@382(du tour) · Reine des Voleurs@231 · Lamouit@354 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 352, chemin = { 381, 367, 352 }, etapes = { 352 } },
-        { type = "sort", sort = 32466, cellule = 352, depuis = 352, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 231, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32454, cellule = 231, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Œil pour Œil → Reine des Voleurs
-        { type = "sort", sort = 32429, cellule = 231, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Perforante → Reine des Voleurs
-        { type = "deplacer", cellule = 381, chemin = { 352, 367, 381 }, etapes = { 381 } },
-      } },
-  }
-  S.plans["Lowkey-Jealous"][4] = {
-    { source = 1, manche = 4, depart = 381, fin = 381, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 355 }, { e = 3725, c = 356 }, { e = 3725, c = 382, n = true }, { e = 3726, c = 163 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@355 · Bonbombe@356 · Bonbombe@382(du tour) · Reine des Voleurs@163 · Lamouit@354 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 339, chemin = { 381, 367, 353, 339 }, etapes = { 367, 353, 339 } },
-        { type = "sort", sort = 32465, cellule = 339, depuis = 339, cible = "soi" },  -- Tirs Éloignés
-        { type = "sort", sort = 32460, cellule = 163, depuis = 339, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32429, cellule = 177, depuis = 339, cible = "case" },  -- Flèche Perforante
-        { type = "sort", sort = 32437, cellule = 163, depuis = 339, cible = "case" },  -- Œil de Taupe
-        { type = "deplacer", cellule = 381, chemin = { 339, 353, 367, 381 }, etapes = { 353, 367, 381 } },
-      } },
-  }
-  S.plans["Kemist-Skyler"] = {}
-  S.plans["Kemist-Skyler"][1] = {
-    { source = 1, manche = 1, depart = 351, fin = 408, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324, n = true }, { e = 3725, c = 326 }, { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3726, c = 234 }, { e = 3746, c = 203 }, { e = 3747, c = 204 }, { e = 3748, c = 193, inv = true }, { e = 3748, c = 248 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 } },
-      -- Bonbombe@324(du tour) · Bonbombe@326 · Bonbombe@328 · Bonbombe@355 · Reine des Voleurs@234 · Mâchassin@203 · Terristocrate@204 · Doublure@193(invisible) · Doublure@248 · Lamouit@354 · Lowkey-Jealous@381 · Java-Springboot@327 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 366, chemin = { 351, 366 }, etapes = { 366 } },
-        { type = "sort", sort = 32466, cellule = 366, depuis = 366, cible = "soi" },  -- Tirs Puissants
-        { type = "deplacer", cellule = 352, chemin = { 366, 352 }, etapes = { 352 } },
-        { type = "sort", sort = 32454, cellule = 217, depuis = 352, cible = "case" },  -- Œil pour Œil
-        { type = "sort", sort = 32453, cellule = 217, depuis = 352, cible = "case" },  -- Flèche d'Abolition
-        { type = "sort", sort = 32453, cellule = 217, depuis = 352, cible = "case" },  -- Flèche d'Abolition
-        { type = "sort", sort = 32439, cellule = 231, depuis = 352, cible = "case" },  -- Flèche Ralentissante
-        { type = "deplacer", cellule = 408, chemin = { 352, 366, 380, 394, 408 }, etapes = { 366, 380, 394, 408 } },
-      } },
-  }
-  S.plans["Kemist-Skyler"][2] = {
-    { source = 1, manche = 2, depart = 408, fin = 408, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324 }, { e = 3725, c = 355 }, { e = 3725, c = 356 }, { e = 3725, c = 382 }, { e = 3725, c = 409, n = true }, { e = 3726, c = 150 }, { e = 3746, c = 178 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 } },
-      -- Bonbombe@324 · Bonbombe@355 · Bonbombe@356 · Bonbombe@382 · Bonbombe@409(du tour) · Reine des Voleurs@150 · Mâchassin@178 · Lamouit@354 · Lowkey-Jealous@381 · Java-Springboot@327 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 379, chemin = { 408, 394, 379 }, etapes = { 379 } },
-        { type = "sort", sort = 32465, cellule = 379, depuis = 379, cible = "soi" },  -- Tirs Éloignés
-        { type = "deplacer", cellule = 366, chemin = { 379, 366 }, etapes = { 366 } },
-        { type = "sort", sort = 32437, cellule = 163, depuis = 366, cible = "case" },  -- Œil de Taupe
-        { type = "sort", sort = 32445, cellule = 163, depuis = 366, cible = "case" },  -- Flèche Explosive
-        { type = "sort", sort = 32445, cellule = 163, depuis = 366, cible = "case" },  -- Flèche Explosive
-        { type = "deplacer", cellule = 408, chemin = { 366, 380, 394, 408 }, etapes = { 380, 394, 408 } },
-      } },
-  }
-  S.plans["Kemist-Skyler"][3] = {
-    { source = 1, manche = 3, depart = 408, fin = 408, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3725, c = 382 }, { e = 3725, c = 409, n = true }, { e = 3726, c = 190 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 } },
-      -- Bonbombe@328 · Bonbombe@355 · Bonbombe@382 · Bonbombe@409(du tour) · Reine des Voleurs@190 · Lamouit@354 · Lowkey-Jealous@381 · Java-Springboot@327 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 379, chemin = { 408, 394, 379 }, etapes = { 379 } },
-        { type = "sort", sort = 32466, cellule = 379, depuis = 379, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 190, depuis = 379, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "deplacer", cellule = 366, chemin = { 379, 366 }, etapes = { 366 } },
-        { type = "sort", sort = 32446, cellule = 190, depuis = 366, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Dévorante → Reine des Voleurs
-        { type = "sort", sort = 32429, cellule = 190, depuis = 366, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Perforante → Reine des Voleurs
-        { type = "deplacer", cellule = 408, chemin = { 366, 380, 394, 408 }, etapes = { 380, 394, 408 } },
-      } },
-  }
-  S.plans["Java-Springboot"] = {}
-  S.plans["Java-Springboot"][1] = {
-    { source = 1, manche = 1, depart = 327, fin = 327, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328, n = true }, { e = 3726, c = 234 }, { e = 3746, c = 149 }, { e = 3747, c = 178 }, { e = 3748, c = 193, inv = true }, { e = 3748, c = 194 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 353 }, { e = 0, id = 900266590501, c = 351 } },
-      -- Bonbombe@328(du tour) · Reine des Voleurs@234 · Mâchassin@149 · Terristocrate@178 · Doublure@193(invisible) · Doublure@194 · Lamouit@354 · Lowkey-Jealous@353 · Kemist-Skyler@351 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32466, cellule = 327, depuis = 327, cible = "soi" },  -- Tirs Puissants
-        { type = "deplacer", cellule = 356, chemin = { 327, 342, 356 }, etapes = { 356 } },
-        { type = "sort", sort = 32460, cellule = 194, depuis = 356, cible = "ennemi", espece = 3748, id = -17 },  -- Flèche du Jugement → Doublure
-        { type = "sort", sort = 32460, cellule = 234, depuis = 356, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32454, cellule = 234, depuis = 356, cible = "ennemi", espece = 3726, id = -13 },  -- Œil pour Œil → Reine des Voleurs
-        { type = "deplacer", cellule = 327, chemin = { 356, 342, 327 }, etapes = { 327 } },
-      } },
-  }
-  S.plans["Java-Springboot"][2] = {
-    { source = 1, manche = 2, depart = 327, fin = 327, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324 }, { e = 3725, c = 326 }, { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3725, c = 356, n = true }, { e = 3726, c = 258 }, { e = 3746, c = 217 }, { e = 3747, c = 204 }, { e = 3748, c = 193 }, { e = 3748, c = 234 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@324 · Bonbombe@326 · Bonbombe@328 · Bonbombe@355 · Bonbombe@356(du tour) · Reine des Voleurs@258 · Mâchassin@217 · Terristocrate@204 · Doublure@193 · Doublure@234 · Lamouit@354 · Lowkey-Jealous@381 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 298, chemin = { 327, 313, 298 }, etapes = { 298 } },
-        { type = "sort", sort = 32426, cellule = 258, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Recul → Reine des Voleurs
-        { type = "sort", sort = 32429, cellule = 231, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Perforante → Reine des Voleurs
-        { type = "sort", sort = 32437, cellule = 190, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Œil de Taupe → Reine des Voleurs
-        { type = "sort", sort = 32453, cellule = 190, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche d'Abolition → Reine des Voleurs
-        { type = "deplacer", cellule = 327, chemin = { 298, 313, 327 }, etapes = { 327 } },
-      } },
-  }
-  S.plans["Java-Springboot"][3] = {
-    { source = 1, manche = 3, depart = 327, fin = 327, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328, n = true }, { e = 3725, c = 356 }, { e = 3726, c = 231 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328(du tour) · Bonbombe@356 · Reine des Voleurs@231 · Lamouit@354 · Lowkey-Jealous@381 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 298, chemin = { 327, 313, 298 }, etapes = { 298 } },
-        { type = "sort", sort = 32466, cellule = 298, depuis = 298, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 231, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32454, cellule = 231, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Œil pour Œil → Reine des Voleurs
-        { type = "sort", sort = 32453, cellule = 231, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche d'Abolition → Reine des Voleurs
-        { type = "sort", sort = 32453, cellule = 231, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche d'Abolition → Reine des Voleurs
-        { type = "deplacer", cellule = 327, chemin = { 298, 313, 327 }, etapes = { 327 } },
-      } },
-  }
-  S.plans["Java-Springboot"][4] = {
-    { source = 1, manche = 4, depart = 327, fin = 327, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3725, c = 356, n = true }, { e = 3725, c = 382 }, { e = 3725, c = 409 }, { e = 3726, c = 231, inv = true }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328 · Bonbombe@355 · Bonbombe@356(du tour) · Bonbombe@382 · Bonbombe@409 · Reine des Voleurs@231(invisible) · Lamouit@354 · Lowkey-Jealous@381 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 298, chemin = { 327, 313, 298 }, etapes = { 298 } },
-        { type = "sort", sort = 32429, cellule = 231, depuis = 298, cible = "case" },  -- Flèche Perforante
-        { type = "sort", sort = 32426, cellule = 190, depuis = 298, cible = "case" },  -- Flèche de Recul
-        { type = "sort", sort = 32460, cellule = 163, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "deplacer", cellule = 327, chemin = { 298, 313, 327 }, etapes = { 327 } },
-      } },
-  }
-  S.plans["Lamouit"] = {}
-  S.plans["Lamouit"][1] = {
-    { source = 1, manche = 1, depart = 354, fin = 354, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 355, n = true }, { e = 3726, c = 234 }, { e = 3746, c = 149 }, { e = 3747, c = 178 }, { e = 3748, c = 193, inv = true }, { e = 3748, c = 275 }, { e = 0, id = 900264689957, c = 353 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 351 } },
-      -- Bonbombe@328 · Bonbombe@355(du tour) · Reine des Voleurs@234 · Mâchassin@149 · Terristocrate@178 · Doublure@193(invisible) · Doublure@275 · Lowkey-Jealous@353 · Java-Springboot@327 · Kemist-Skyler@351 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 383, chemin = { 354, 369, 383 }, etapes = { 383 } },
-        { type = "sort", sort = 32466, cellule = 383, depuis = 383, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 275, depuis = 383, cible = "ennemi", espece = 3748, id = -17 },  -- Flèche du Jugement → Doublure
-        { type = "sort", sort = 32426, cellule = 275, depuis = 383, cible = "ennemi", espece = 3748, id = -17 },  -- Flèche de Recul → Doublure
-        { type = "sort", sort = 32453, cellule = 248, depuis = 383, cible = "ennemi", espece = 3748, id = -17 },  -- Flèche d'Abolition → Doublure
-        { type = "sort", sort = 32453, cellule = 248, depuis = 383, cible = "ennemi", espece = 3748, id = -17 },  -- Flèche d'Abolition → Doublure
-        { type = "deplacer", cellule = 354, chemin = { 383, 369, 354 }, etapes = { 354 } },
-      } },
-  }
-  S.plans["Lamouit"][2] = {
-    { source = 1, manche = 2, depart = 354, fin = 354, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324 }, { e = 3725, c = 355, n = true }, { e = 3725, c = 356 }, { e = 3726, c = 190 }, { e = 3746, c = 177 }, { e = 3747, c = 163 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@324 · Bonbombe@355(du tour) · Bonbombe@356 · Reine des Voleurs@190 · Mâchassin@177 · Terristocrate@163 · Lowkey-Jealous@381 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 325, chemin = { 354, 340, 325 }, etapes = { 325 } },
-        { type = "sort", sort = 32448, cellule = 190, depuis = 325, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Tyrannique → Reine des Voleurs
-        { type = "deplacer", cellule = 312, chemin = { 325, 312 }, etapes = { 312 } },
-        { type = "sort", sort = 32450, cellule = 190, depuis = 312, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Fulminante → Reine des Voleurs
-        { type = "sort", sort = 32429, cellule = 190, depuis = 312, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Perforante → Reine des Voleurs
-        { type = "deplacer", cellule = 354, chemin = { 312, 326, 340, 354 }, etapes = { 326, 340, 354 } },
-      } },
-  }
-  S.plans["Lamouit"][3] = {
-    { source = 1, manche = 3, depart = 354, fin = 354, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 355, n = true }, { e = 3726, c = 231 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328 · Bonbombe@355(du tour) · Reine des Voleurs@231 · Lowkey-Jealous@381 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 325, chemin = { 354, 340, 325 }, etapes = { 325 } },
-        { type = "sort", sort = 32466, cellule = 325, depuis = 325, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 231, depuis = 325, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32454, cellule = 231, depuis = 325, cible = "ennemi", espece = 3726, id = -13 },  -- Œil pour Œil → Reine des Voleurs
-        { type = "sort", sort = 32448, cellule = 231, depuis = 325, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Tyrannique → Reine des Voleurs
-        { type = "deplacer", cellule = 354, chemin = { 325, 340, 354 }, etapes = { 354 } },
-      } },
-  }
-  S.plans["Lamouit"][4] = {
-    { source = 1, manche = 4, depart = 354, fin = 354, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 355, n = true }, { e = 3725, c = 356 }, { e = 3726, c = 163 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@355(du tour) · Bonbombe@356 · Reine des Voleurs@163 · Lowkey-Jealous@381 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 325, chemin = { 354, 340, 325 }, etapes = { 325 } },
-        { type = "deplacer", cellule = 312, chemin = { 325, 312 }, etapes = { 312 } },
-        { type = "sort", sort = 32460, cellule = 163, depuis = 312, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32445, cellule = 190, depuis = 312, cible = "case" },  -- Flèche Explosive
-        { type = "sort", sort = 32445, cellule = 190, depuis = 312, cible = "case" },  -- Flèche Explosive
-        { type = "deplacer", cellule = 354, chemin = { 312, 326, 340, 354 }, etapes = { 326, 340, 354 } },
-      } },
-  }
   SCENARIOS[#SCENARIOS + 1] = S
 end
 do
@@ -2701,7 +2842,11 @@ do
     nom = "Placement 3",
     -- Combats appris dont viennent les situations (n° de source).
     sources = {
-      [1] = "2026-10-11/session-00-27-27.jsonl (ReineCombat.lua du 2026-10-11, joué à la main) (2026-10-11 00:27) — interrompu, 6 manches, vague 1",
+      [1] = "2026-10-13/session-15-11-47.jsonl#1 (2026-10-13 15:12) — defaite, 9 manches, vague 3",
+      [2] = "2026-10-13/session-15-11-47.jsonl#2 (2026-10-13 15:17) — victoire, 15 manches, vague 5",
+      [3] = "2026-10-13/session-15-11-47.jsonl#21 (2026-10-13 18:27) — victoire, 18 manches, vague 5",
+      [4] = "2026-10-13/session-21-20-26.jsonl#9 (2026-10-13 22:26) — victoire, 15 manches, vague 5",
+      [5] = "2026-10-13/session-21-20-26.jsonl#24 (2026-10-13 23:56) — victoire, 16 manches, vague 5",
     },
     carte = 137101316,
     -- Monstres au début du combat (espèce, case) : la signature du placement.
@@ -2737,257 +2882,433 @@ do
   -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
   -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
   -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
-  S.plans["Lowkey-Jealous"] = {}
-  S.plans["Lowkey-Jealous"][1] = {
-    { source = 1, manche = 1, depart = 353, fin = 381, pa = 0, pm = 2, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 326, n = true }, { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3726, c = 190 }, { e = 3746, c = 192 }, { e = 3747, c = 174 }, { e = 3748, c = 193, inv = true }, { e = 3748, c = 262 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 351 } },
-      -- Bonbombe@326(du tour) · Bonbombe@328 · Bonbombe@355 · Reine des Voleurs@190 · Mâchassin@192 · Terristocrate@174 · Doublure@193(invisible) · Doublure@262 · Lamouit@354 · Java-Springboot@327 · Kemist-Skyler@351 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32466, cellule = 353, depuis = 353, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 174, depuis = 353, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche du Jugement → Terristocrate
-        { type = "sort", sort = 32446, cellule = 174, depuis = 353, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche Dévorante → Terristocrate
-        { type = "sort", sort = 32448, cellule = 174, depuis = 353, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche Tyrannique → Terristocrate
-        { type = "deplacer", cellule = 381, chemin = { 353, 367, 381 }, etapes = { 367, 381 } },
-      } },
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
+    nom = "Placement 4",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-13/session-15-11-47.jsonl#3 (2026-10-13 15:26) — victoire, 17 manches, vague 5",
+      [2] = "2026-10-13/session-15-11-47.jsonl#22 (2026-10-13 18:37) — victoire, 19 manches, vague 5",
+      [3] = "2026-10-13/session-21-20-26.jsonl#10 (2026-10-13 22:36) — defaite, 8 manches, vague 2",
+      [4] = "2026-10-13/session-21-20-26.jsonl#11 (2026-10-13 22:41) — victoire, 17 manches, vague 5",
+      [5] = "2026-10-13/session-21-20-26.jsonl#25 (2026-10-14 00:02) — victoire, 14 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3747, cellule = 133 },  -- Terristocrate
+      { espece = 3726, cellule = 135 },  -- Reine des Voleurs
+      { espece = 3746, cellule = 178 },  -- Mâchassin
+      { espece = 3748, cellule = 208 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
   }
-  S.plans["Lowkey-Jealous"][2] = {
-    { source = 1, manche = 2, depart = 381, fin = 381, pa = 0, pm = 0, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324 }, { e = 3725, c = 355 }, { e = 3725, c = 356 }, { e = 3725, c = 382, n = true }, { e = 3726, c = 120 }, { e = 3746, c = 192 }, { e = 3748, c = 193 }, { e = 3748, c = 329 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@324 · Bonbombe@355 · Bonbombe@356 · Bonbombe@382(du tour) · Reine des Voleurs@120 · Mâchassin@192 · Doublure@193 · Doublure@329 · Lamouit@354 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32469, cellule = 381, depuis = 381, cible = "soi" },  -- Acuité Absolue
-        { type = "sort", sort = 32460, cellule = 329, depuis = 381, cible = "ennemi", espece = 3748, id = -17 },  -- Flèche du Jugement → Doublure
-        { type = "sort", sort = 32453, cellule = 329, depuis = 381, cible = "case" },  -- Flèche d'Abolition
-        { type = "sort", sort = 32453, cellule = 329, depuis = 381, cible = "case" },  -- Flèche d'Abolition
-        { type = "sort", sort = 32453, cellule = 329, depuis = 381, cible = "case" },  -- Flèche d'Abolition
-      } },
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
+    nom = "Placement 5",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-12/session-20-59-35.jsonl#1 (2026-10-12 21:07) — victoire, 15 manches, vague 5",
+      [2] = "2026-10-13/session-15-11-47.jsonl#4 (2026-10-13 15:38) — victoire, 15 manches, vague 5",
+      [3] = "2026-10-13/session-15-11-47.jsonl#23 (2026-10-13 18:48) — victoire, 19 manches, vague 5",
+      [4] = "2026-10-13/session-21-20-26.jsonl#12 (2026-10-13 22:51) — victoire, 15 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3747, cellule = 133 },  -- Terristocrate
+      { espece = 3726, cellule = 163 },  -- Reine des Voleurs
+      { espece = 3746, cellule = 207 },  -- Mâchassin
+      { espece = 3748, cellule = 264 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
   }
-  S.plans["Lowkey-Jealous"][3] = {
-    { source = 1, manche = 3, depart = 381, fin = 381, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 382, n = true }, { e = 3725, c = 384 }, { e = 3726, c = 235 }, { e = 3746, c = 192 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328 · Bonbombe@382(du tour) · Bonbombe@384 · Reine des Voleurs@235 · Mâchassin@192 · Lamouit@354 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 397, chemin = { 381, 396, 410, 397 }, etapes = { 410, 397 } },
-        { type = "sort", sort = 32466, cellule = 397, depuis = 397, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 235, depuis = 397, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32448, cellule = 235, depuis = 397, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Tyrannique → Reine des Voleurs
-        { type = "sort", sort = 32446, cellule = 235, depuis = 397, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Dévorante → Reine des Voleurs
-        { type = "deplacer", cellule = 381, chemin = { 397, 410, 396, 381 }, etapes = { 410, 381 } },
-      } },
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
+    nom = "Placement 6",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-12/session-20-59-35.jsonl#2 (2026-10-12 21:14) — defaite, 8 manches, vague 3",
+      [2] = "2026-10-12/session-20-59-35.jsonl#3 (2026-10-12 21:16) — victoire, 17 manches, vague 5",
+      [3] = "2026-10-13/session-15-11-47.jsonl#5 (2026-10-13 15:47) — defaite, 19 manches, vague 5",
+      [4] = "2026-10-13/session-15-11-47.jsonl#6 (2026-10-13 15:58) — defaite, 21 manches, vague 5",
+      [5] = "2026-10-13/session-15-11-47.jsonl#7 (2026-10-13 16:09) — victoire, 16 manches, vague 5",
+      [6] = "2026-10-13/session-15-11-47.jsonl#24 (2026-10-13 18:59) — defaite, 7 manches, vague 2",
+      [7] = "2026-10-13/session-15-11-47.jsonl#25 (2026-10-13 19:02) — victoire, 21 manches, vague 5",
+      [8] = "2026-10-13/session-21-20-26.jsonl#13 (2026-10-13 23:01) — defaite, 8 manches, vague 2",
+      [9] = "2026-10-13/session-21-20-26.jsonl#14 (2026-10-13 23:06) — victoire, 15 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3747, cellule = 132 },  -- Terristocrate
+      { espece = 3746, cellule = 134 },  -- Mâchassin
+      { espece = 3726, cellule = 178 },  -- Reine des Voleurs
+      { espece = 3748, cellule = 208 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
   }
-  S.plans["Lowkey-Jealous"][5] = {
-    { source = 1, manche = 5, depart = 381, fin = 381, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3725, c = 382 }, { e = 3725, c = 409 }, { e = 3725, c = 410, n = true }, { e = 3726, c = 122 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328 · Bonbombe@355 · Bonbombe@382 · Bonbombe@409 · Bonbombe@410(du tour) · Reine des Voleurs@122 · Lamouit@354 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 352, chemin = { 381, 367, 352 }, etapes = { 352 } },
-        { type = "sort", sort = 32466, cellule = 352, depuis = 352, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32465, cellule = 352, depuis = 352, cible = "soi" },  -- Tirs Éloignés
-        { type = "sort", sort = 32460, cellule = 122, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32426, cellule = 122, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Recul → Reine des Voleurs
-        { type = "sort", sort = 32426, cellule = 108, depuis = 352, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Recul → Reine des Voleurs
-        { type = "deplacer", cellule = 381, chemin = { 352, 367, 381 }, etapes = { 381 } },
-      } },
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
+    nom = "Placement 7",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-12/session-21-25-58.jsonl#1 (2026-10-12 21:26) — victoire, 16 manches, vague 5",
+      [2] = "2026-10-13/session-15-11-47.jsonl#8 (2026-10-13 16:20) — victoire, 18 manches, vague 5",
+      [3] = "2026-10-13/session-15-11-47.jsonl#26 (2026-10-13 19:15) — victoire, 19 manches, vague 5",
+      [4] = "2026-10-13/session-21-20-26.jsonl#15 (2026-10-13 23:14) — victoire, 16 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 132 },  -- Doublure
+      { espece = 3747, cellule = 134 },  -- Terristocrate
+      { espece = 3726, cellule = 192 },  -- Reine des Voleurs
+      { espece = 3746, cellule = 208 },  -- Mâchassin
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
   }
-  S.plans["Kemist-Skyler"] = {}
-  S.plans["Kemist-Skyler"][1] = {
-    { source = 1, manche = 1, depart = 351, fin = 408, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324, n = true }, { e = 3725, c = 326 }, { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3726, c = 190 }, { e = 3746, c = 192 }, { e = 3747, c = 174 }, { e = 3748, c = 193, inv = true }, { e = 3748, c = 262 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 } },
-      -- Bonbombe@324(du tour) · Bonbombe@326 · Bonbombe@328 · Bonbombe@355 · Reine des Voleurs@190 · Mâchassin@192 · Terristocrate@174 · Doublure@193(invisible) · Doublure@262 · Lamouit@354 · Lowkey-Jealous@381 · Java-Springboot@327 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 337, chemin = { 351, 337 }, etapes = { 337 } },
-        { type = "sort", sort = 32466, cellule = 337, depuis = 337, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 174, depuis = 337, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche du Jugement → Terristocrate
-        { type = "sort", sort = 32453, cellule = 174, depuis = 337, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche d'Abolition → Terristocrate
-        { type = "sort", sort = 32453, cellule = 174, depuis = 337, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche d'Abolition → Terristocrate
-        { type = "sort", sort = 32446, cellule = 174, depuis = 337, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche Dévorante → Terristocrate
-        { type = "deplacer", cellule = 408, chemin = { 337, 351, 366, 380, 394, 408 }, etapes = { 380, 394, 408 } },
-      } },
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
+    nom = "Placement 8",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-12/session-21-25-58.jsonl#2 (2026-10-12 21:30) — victoire, 15 manches, vague 5",
+      [2] = "2026-10-13/session-15-11-47.jsonl#9 (2026-10-13 16:30) — defaite, 15 manches, vague 3",
+      [3] = "2026-10-13/session-15-11-47.jsonl#10 (2026-10-13 16:37) — defaite, 23 manches, vague 5",
+      [4] = "2026-10-13/session-15-11-47.jsonl#11 (2026-10-13 16:49) — victoire, 23 manches, vague 5",
+      [5] = "2026-10-13/session-21-20-26.jsonl#1 (2026-10-13 21:20) — victoire, 15 manches, vague 5",
+      [6] = "2026-10-13/session-21-20-26.jsonl#16 (2026-10-13 23:20) — defaite, 4 manches, vague 1",
+      [7] = "2026-10-13/session-21-20-26.jsonl#17 (2026-10-13 23:21) — victoire, 19 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3747, cellule = 133 },  -- Terristocrate
+      { espece = 3746, cellule = 163 },  -- Mâchassin
+      { espece = 3726, cellule = 207 },  -- Reine des Voleurs
+      { espece = 3748, cellule = 264 },  -- Doublure
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
   }
-  S.plans["Kemist-Skyler"][2] = {
-    { source = 1, manche = 2, depart = 408, fin = 408, pa = 0, pm = 2, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324 }, { e = 3725, c = 355 }, { e = 3725, c = 356 }, { e = 3725, c = 382 }, { e = 3725, c = 409, n = true }, { e = 3726, c = 120 }, { e = 3746, c = 247 }, { e = 3748, c = 193 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 } },
-      -- Bonbombe@324 · Bonbombe@355 · Bonbombe@356 · Bonbombe@382 · Bonbombe@409(du tour) · Reine des Voleurs@120 · Mâchassin@247 · Doublure@193 · Lamouit@354 · Lowkey-Jealous@381 · Java-Springboot@327 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32465, cellule = 408, depuis = 408, cible = "soi" },  -- Tirs Éloignés
-        { type = "sort", sort = 32469, cellule = 408, depuis = 408, cible = "soi" },  -- Acuité Absolue
-        { type = "sort", sort = 32460, cellule = 247, depuis = 408, cible = "ennemi", espece = 3746, id = -14 },  -- Flèche du Jugement → Mâchassin
-        { type = "deplacer", cellule = 423, chemin = { 408, 423 }, etapes = { 423 } },
-        { type = "sort", sort = 32429, cellule = 247, depuis = 423, cible = "ennemi", espece = 3746, id = -14 },  -- Flèche Perforante → Mâchassin
-        { type = "deplacer", cellule = 408, chemin = { 423, 408 }, etapes = { 408 } },
-      } },
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
+    nom = "Placement 9",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-12/session-21-25-58.jsonl#3 (2026-10-12 21:35) — victoire, 15 manches, vague 5",
+      [2] = "2026-10-13/session-15-11-47.jsonl#12 (2026-10-13 17:01) — defaite, 16 manches, vague 4",
+      [3] = "2026-10-13/session-15-11-47.jsonl#13 (2026-10-13 17:09) — victoire, 20 manches, vague 5",
+      [4] = "2026-10-13/session-21-20-26.jsonl#2 (2026-10-13 21:26) — victoire, 15 manches, vague 5",
+      [5] = "2026-10-13/session-21-20-26.jsonl#18 (2026-10-13 23:27) — victoire, 16 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 132 },  -- Doublure
+      { espece = 3747, cellule = 134 },  -- Terristocrate
+      { espece = 3746, cellule = 192 },  -- Mâchassin
+      { espece = 3726, cellule = 208 },  -- Reine des Voleurs
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
   }
-  S.plans["Kemist-Skyler"][3] = {
-    { source = 1, manche = 3, depart = 408, fin = 408, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 382 }, { e = 3725, c = 384 }, { e = 3725, c = 409, n = true }, { e = 3726, c = 235 }, { e = 3746, c = 192 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 } },
-      -- Bonbombe@328 · Bonbombe@382 · Bonbombe@384 · Bonbombe@409(du tour) · Reine des Voleurs@235 · Mâchassin@192 · Lamouit@354 · Lowkey-Jealous@381 · Java-Springboot@327 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 424, chemin = { 408, 423, 437, 424 }, etapes = { 437, 424 } },
-        { type = "sort", sort = 32466, cellule = 424, depuis = 424, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 235, depuis = 424, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32442, cellule = 235, depuis = 424, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Rédemption → Reine des Voleurs
-        { type = "sort", sort = 32437, cellule = 262, depuis = 424, cible = "case" },  -- Œil de Taupe
-        { type = "deplacer", cellule = 408, chemin = { 424, 437, 423, 408 }, etapes = { 437, 408 } },
-      } },
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
+    nom = "Placement 10",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-12/session-21-25-58.jsonl#5 (2026-10-12 21:43) — defaite, 15 manches, vague 4",
+      [2] = "2026-10-12/session-21-25-58.jsonl#6 (2026-10-12 21:46) — defaite, 18 manches, vague 4",
+      [3] = "2026-10-12/session-21-25-58.jsonl#7 (2026-10-12 21:49) — victoire, 13 manches, vague 5",
+      [4] = "2026-10-13/session-15-11-47.jsonl#14 (2026-10-13 17:20) — victoire, 17 manches, vague 5",
+      [5] = "2026-10-13/session-21-20-26.jsonl#3 (2026-10-13 21:31) — defaite, 6 manches, vague 2",
+      [6] = "2026-10-13/session-21-20-26.jsonl#4 (2026-10-13 21:35) — victoire, 13 manches, vague 5",
+      [7] = "2026-10-13/session-21-20-26.jsonl#19 (2026-10-13 23:32) — victoire, 15 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 132 },  -- Doublure
+      { espece = 3747, cellule = 134 },  -- Terristocrate
+      { espece = 3746, cellule = 192 },  -- Mâchassin
+      { espece = 3726, cellule = 236 },  -- Reine des Voleurs
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
   }
-  S.plans["Kemist-Skyler"][4] = {
-    { source = 1, manche = 4, depart = 408, fin = 408, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 356 }, { e = 3725, c = 382 }, { e = 3725, c = 409, n = true }, { e = 3726, c = 178, inv = true }, { e = 3746, c = 203 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 } },
-      -- Bonbombe@356 · Bonbombe@382 · Bonbombe@409(du tour) · Reine des Voleurs@178(invisible) · Mâchassin@203 · Lamouit@354 · Lowkey-Jealous@381 · Java-Springboot@327 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 379, chemin = { 408, 394, 379 }, etapes = { 379 } },
-        { type = "sort", sort = 32465, cellule = 379, depuis = 379, cible = "soi" },  -- Tirs Éloignés
-        { type = "sort", sort = 32460, cellule = 203, depuis = 379, cible = "ennemi", espece = 3746, id = -14 },  -- Flèche du Jugement → Mâchassin
-        { type = "sort", sort = 32427, cellule = 203, depuis = 379, cible = "ennemi", espece = 3746, id = -14 },  -- Flèche Cinglante → Mâchassin
-        { type = "sort", sort = 32427, cellule = 203, depuis = 379, cible = "ennemi", espece = 3746, id = -14 },  -- Flèche Cinglante → Mâchassin
-        { type = "sort", sort = 32428, cellule = 203, depuis = 379, cible = "ennemi", espece = 3746, id = -14 },  -- Flèche de Dispersion → Mâchassin
-        { type = "deplacer", cellule = 408, chemin = { 379, 394, 408 }, etapes = { 408 } },
-      } },
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
+    nom = "Placement 11",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-12/session-21-25-58.jsonl#8 (2026-10-12 21:53) — victoire, 14 manches, vague 5",
+      [2] = "2026-10-13/session-15-11-47.jsonl#15 (2026-10-13 17:31) — victoire, 14 manches, vague 5",
+      [3] = "2026-10-13/session-21-20-26.jsonl#5 (2026-10-13 21:44) — victoire, 14 manches, vague 5",
+      [4] = "2026-10-13/session-21-20-26.jsonl#20 (2026-10-13 23:36) — victoire, 15 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 133 },  -- Doublure
+      { espece = 3747, cellule = 163 },  -- Terristocrate
+      { espece = 3746, cellule = 207 },  -- Mâchassin
+      { espece = 3726, cellule = 264 },  -- Reine des Voleurs
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
   }
-  S.plans["Java-Springboot"] = {}
-  S.plans["Java-Springboot"][1] = {
-    { source = 1, manche = 1, depart = 327, fin = 327, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328, n = true }, { e = 3726, c = 190 }, { e = 3746, c = 192 }, { e = 3747, c = 132 }, { e = 3748, c = 193, inv = true }, { e = 3748, c = 194 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 353 }, { e = 0, id = 900266590501, c = 351 } },
-      -- Bonbombe@328(du tour) · Reine des Voleurs@190 · Mâchassin@192 · Terristocrate@132 · Doublure@193(invisible) · Doublure@194 · Lamouit@354 · Lowkey-Jealous@353 · Kemist-Skyler@351 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32466, cellule = 327, depuis = 327, cible = "soi" },  -- Tirs Puissants
-        { type = "deplacer", cellule = 356, chemin = { 327, 342, 356 }, etapes = { 356 } },
-        { type = "sort", sort = 32460, cellule = 194, depuis = 356, cible = "ennemi", espece = 3748, id = -17 },  -- Flèche du Jugement → Doublure
-        { type = "sort", sort = 32446, cellule = 194, depuis = 356, cible = "ennemi", espece = 3748, id = -17 },  -- Flèche Dévorante → Doublure
-        { type = "sort", sort = 32429, cellule = 194, depuis = 356, cible = "ennemi", espece = 3748, id = -17 },  -- Flèche Perforante → Doublure
-        { type = "deplacer", cellule = 327, chemin = { 356, 342, 327 }, etapes = { 327 } },
-      } },
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
+  SCENARIOS[#SCENARIOS + 1] = S
+end
+do
+  local S = {
+    nom = "Placement 12",
+    -- Combats appris dont viennent les situations (n° de source).
+    sources = {
+      [1] = "2026-10-12/session-21-25-58.jsonl#9 (2026-10-12 21:57) — victoire, 15 manches, vague 5",
+      [2] = "2026-10-13/session-15-11-47.jsonl#16 (2026-10-13 17:41) — victoire, 16 manches, vague 5",
+      [3] = "2026-10-13/session-21-20-26.jsonl#6 (2026-10-13 21:54) — victoire, 14 manches, vague 5",
+      [4] = "2026-10-13/session-21-20-26.jsonl#21 (2026-10-13 23:41) — victoire, 14 manches, vague 5",
+    },
+    carte = 137101316,
+    -- Monstres au début du combat (espèce, case) : la signature du placement.
+    monstres = {
+      { espece = 3748, cellule = 134 },  -- Doublure
+      { espece = 3747, cellule = 192 },  -- Terristocrate
+      { espece = 3746, cellule = 236 },  -- Mâchassin
+      { espece = 3726, cellule = 292 },  -- Reine des Voleurs
+    },
+    -- Case de placement de chaque Crâ, et son identifiant de personnage.
+    cases = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 353,
+      ["Kemist-Skyler"] = 351,
+    },
+    -- Case de la colonne de chaque Crâ (il y revient à la fin de chaque tour).
+    colonne = {
+      ["Java-Springboot"] = 327,
+      ["Lamouit"] = 354,
+      ["Lowkey-Jealous"] = 381,
+      ["Kemist-Skyler"] = 408,
+    },
+    ids = {
+      ["Java-Springboot"] = 900265148709,
+      ["Lamouit"] = 900264624421,
+      ["Lowkey-Jealous"] = 900264689957,
+      ["Kemist-Skyler"] = 900266590501,
+    },
+    plans = {},
   }
-  S.plans["Java-Springboot"][2] = {
-    { source = 1, manche = 2, depart = 327, fin = 327, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324 }, { e = 3725, c = 326 }, { e = 3725, c = 328 }, { e = 3725, c = 355 }, { e = 3725, c = 356, n = true }, { e = 3726, c = 201 }, { e = 3746, c = 192 }, { e = 3747, c = 188 }, { e = 3748, c = 193 }, { e = 3748, c = 247 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@324 · Bonbombe@326 · Bonbombe@328 · Bonbombe@355 · Bonbombe@356(du tour) · Reine des Voleurs@201 · Mâchassin@192 · Terristocrate@188 · Doublure@193 · Doublure@247 · Lamouit@354 · Lowkey-Jealous@381 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 298, chemin = { 327, 313, 298 }, etapes = { 298 } },
-        { type = "sort", sort = 32460, cellule = 188, depuis = 298, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche du Jugement → Terristocrate
-        { type = "sort", sort = 32460, cellule = 201, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32426, cellule = 201, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Recul → Reine des Voleurs
-        { type = "deplacer", cellule = 327, chemin = { 298, 313, 327 }, etapes = { 327 } },
-      } },
-  }
-  S.plans["Java-Springboot"][3] = {
-    { source = 1, manche = 3, depart = 327, fin = 327, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328, n = true }, { e = 3725, c = 356 }, { e = 3726, c = 262 }, { e = 3746, c = 192 }, { e = 3748, c = 207 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328(du tour) · Bonbombe@356 · Reine des Voleurs@262 · Mâchassin@192 · Doublure@207 · Lamouit@354 · Lowkey-Jealous@381 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32426, cellule = 356, depuis = 327, cible = "bombe", espece = 3725, id = -22 },  -- Flèche de Recul → Bonbombe
-        { type = "deplacer", cellule = 356, chemin = { 327, 342, 356 }, etapes = { 356 } },
-        { type = "sort", sort = 32466, cellule = 356, depuis = 356, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 262, depuis = 356, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32426, cellule = 262, depuis = 356, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Recul → Reine des Voleurs
-        { type = "deplacer", cellule = 327, chemin = { 356, 342, 327 }, etapes = { 327 } },
-      } },
-  }
-  S.plans["Java-Springboot"][4] = {
-    { source = 1, manche = 4, depart = 327, fin = 327, pa = 0, pm = 0, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 356, n = true }, { e = 3725, c = 382 }, { e = 3725, c = 384 }, { e = 3725, c = 409 }, { e = 3726, c = 178, inv = true }, { e = 3746, c = 207, inv = true }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328 · Bonbombe@356(du tour) · Bonbombe@382 · Bonbombe@384 · Bonbombe@409 · Reine des Voleurs@178(invisible) · Mâchassin@207(invisible) · Lamouit@354 · Lowkey-Jealous@381 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32469, cellule = 327, depuis = 327, cible = "soi" },  -- Acuité Absolue
-        { type = "sort", sort = 32465, cellule = 327, depuis = 327, cible = "soi" },  -- Tirs Éloignés
-        { type = "sort", sort = 32445, cellule = 178, depuis = 327, cible = "case" },  -- Flèche Explosive
-        { type = "sort", sort = 32445, cellule = 178, depuis = 327, cible = "case" },  -- Flèche Explosive
-      } },
-  }
-  S.plans["Java-Springboot"][5] = {
-    { source = 1, manche = 5, depart = 327, fin = 327, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328, n = true }, { e = 3725, c = 356 }, { e = 3725, c = 382 }, { e = 3725, c = 409 }, { e = 3726, c = 230 }, { e = 3746, c = 189 }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328(du tour) · Bonbombe@356 · Bonbombe@382 · Bonbombe@409 · Reine des Voleurs@230 · Mâchassin@189 · Lamouit@354 · Lowkey-Jealous@381 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 298, chemin = { 327, 313, 298 }, etapes = { 298 } },
-        { type = "sort", sort = 32426, cellule = 230, depuis = 298, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Recul → Reine des Voleurs
-        { type = "deplacer", cellule = 284, chemin = { 298, 284 }, etapes = { 284 } },
-        { type = "sort", sort = 32428, cellule = 203, depuis = 284, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Dispersion → Reine des Voleurs
-        { type = "sort", sort = 32429, cellule = 203, depuis = 284, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Perforante → Reine des Voleurs
-        { type = "sort", sort = 32427, cellule = 162, depuis = 284, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Cinglante → Reine des Voleurs
-        { type = "deplacer", cellule = 327, chemin = { 284, 298, 313, 327 }, etapes = { 327 } },
-      } },
-  }
-  S.plans["Java-Springboot"][6] = {
-    { source = 1, manche = 6, depart = 327, fin = 327, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328, n = true }, { e = 3725, c = 409 }, { e = 3725, c = 410 }, { e = 3726, c = 248 }, { e = 3748, c = 119, l = true }, { e = 3748, c = 132, inv = true }, { e = 3748, c = 193, inv = true }, { e = 3748, c = 194, l = true }, { e = 3749, c = 178 }, { e = 3750, c = 121, l = true }, { e = 0, id = 900264624421, c = 354 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328(du tour) · Bonbombe@409 · Bonbombe@410 · Reine des Voleurs@248 · Doublure@119(loin) · Doublure@132(invisible) · Doublure@193(invisible) · Doublure@194(loin) · Bourôliste@178 · Magouille@121(loin) · Lamouit@354 · Lowkey-Jealous@381 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 356, chemin = { 327, 342, 356 }, etapes = { 356 } },
-        { type = "sort", sort = 32466, cellule = 356, depuis = 356, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32460, cellule = 248, depuis = 356, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32427, cellule = 248, depuis = 356, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Cinglante → Reine des Voleurs
-        { type = "sort", sort = 32427, cellule = 248, depuis = 356, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Cinglante → Reine des Voleurs
-        { type = "sort", sort = 32453, cellule = 248, depuis = 356, cible = "case" },  -- Flèche d'Abolition
-        { type = "deplacer", cellule = 327, chemin = { 356, 342, 327 }, etapes = { 327 } },
-      } },
-  }
-  S.plans["Lamouit"] = {}
-  S.plans["Lamouit"][1] = {
-    { source = 1, manche = 1, depart = 354, fin = 354, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 355, n = true }, { e = 3726, c = 190 }, { e = 3746, c = 192 }, { e = 3747, c = 132 }, { e = 3748, c = 193, inv = true }, { e = 3748, c = 262 }, { e = 0, id = 900264689957, c = 353 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 351 } },
-      -- Bonbombe@328 · Bonbombe@355(du tour) · Reine des Voleurs@190 · Mâchassin@192 · Terristocrate@132 · Doublure@193(invisible) · Doublure@262 · Lowkey-Jealous@353 · Java-Springboot@327 · Kemist-Skyler@351 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32466, cellule = 354, depuis = 354, cible = "soi" },  -- Tirs Puissants
-        { type = "deplacer", cellule = 325, chemin = { 354, 340, 325 }, etapes = { 325 } },
-        { type = "sort", sort = 32460, cellule = 190, depuis = 325, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32460, cellule = 132, depuis = 325, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche du Jugement → Terristocrate
-        { type = "deplacer", cellule = 311, chemin = { 325, 311 }, etapes = { 311 } },
-        { type = "sort", sort = 32426, cellule = 132, depuis = 311, cible = "ennemi", espece = 3747, id = -15 },  -- Flèche de Recul → Terristocrate
-        { type = "deplacer", cellule = 354, chemin = { 311, 325, 340, 354 }, etapes = { 354 } },
-      } },
-  }
-  S.plans["Lamouit"][2] = {
-    { source = 1, manche = 2, depart = 354, fin = 354, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 324 }, { e = 3725, c = 355, n = true }, { e = 3725, c = 356 }, { e = 3726, c = 174 }, { e = 3746, c = 192 }, { e = 3748, c = 193 }, { e = 3748, c = 329 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@324 · Bonbombe@355(du tour) · Bonbombe@356 · Reine des Voleurs@174 · Mâchassin@192 · Doublure@193 · Doublure@329 · Lowkey-Jealous@381 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32465, cellule = 354, depuis = 354, cible = "soi" },  -- Tirs Éloignés
-        { type = "sort", sort = 32460, cellule = 174, depuis = 354, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "deplacer", cellule = 325, chemin = { 354, 340, 325 }, etapes = { 325 } },
-        { type = "sort", sort = 32426, cellule = 174, depuis = 325, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Recul → Reine des Voleurs
-        { type = "sort", sort = 32426, cellule = 147, depuis = 325, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Recul → Reine des Voleurs
-        { type = "deplacer", cellule = 354, chemin = { 325, 340, 354 }, etapes = { 354 } },
-      } },
-  }
-  S.plans["Lamouit"][3] = {
-    { source = 1, manche = 3, depart = 354, fin = 354, pa = 0, pm = 4, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 355, n = true }, { e = 3726, c = 235 }, { e = 3746, c = 192 }, { e = 3748, c = 247 }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328 · Bonbombe@355(du tour) · Reine des Voleurs@235 · Mâchassin@192 · Doublure@247 · Lowkey-Jealous@381 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32428, cellule = 326, depuis = 354, cible = "case" },  -- Flèche de Dispersion
-        { type = "deplacer", cellule = 383, chemin = { 354, 369, 383 }, etapes = { 383 } },
-        { type = "sort", sort = 32426, cellule = 247, depuis = 383, cible = "ennemi", espece = 3748, id = -16 },  -- Flèche de Recul → Doublure
-        { type = "sort", sort = 32460, cellule = 235, depuis = 383, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32453, cellule = 235, depuis = 383, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche d'Abolition → Reine des Voleurs
-        { type = "deplacer", cellule = 354, chemin = { 383, 369, 354 }, etapes = { 354 } },
-      } },
-  }
-  S.plans["Lamouit"][4] = {
-    { source = 1, manche = 4, depart = 354, fin = 354, pa = 0, pm = 0, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 355, n = true }, { e = 3725, c = 356 }, { e = 3725, c = 384 }, { e = 3726, c = 178, inv = true }, { e = 3746, c = 207, inv = true }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@355(du tour) · Bonbombe@356 · Bonbombe@384 · Reine des Voleurs@178(invisible) · Mâchassin@207(invisible) · Lowkey-Jealous@381 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "sort", sort = 32466, cellule = 354, depuis = 354, cible = "soi" },  -- Tirs Puissants
-        { type = "sort", sort = 32465, cellule = 354, depuis = 354, cible = "soi" },  -- Tirs Éloignés
-        { type = "sort", sort = 32469, cellule = 354, depuis = 354, cible = "soi" },  -- Acuité Absolue
-        { type = "sort", sort = 32445, cellule = 178, depuis = 354, cible = "case" },  -- Flèche Explosive
-        { type = "sort", sort = 32445, cellule = 178, depuis = 354, cible = "case" },  -- Flèche Explosive
-      } },
-  }
-  S.plans["Lamouit"][5] = {
-    { source = 1, manche = 5, depart = 354, fin = 354, pa = 0, pm = 6, combats = 1, victoires = 0,
-      plateau = { { e = 3725, c = 328 }, { e = 3725, c = 355, n = true }, { e = 3725, c = 382 }, { e = 3725, c = 409 }, { e = 3726, c = 162, inv = true }, { e = 0, id = 900264689957, c = 381 }, { e = 0, id = 900265148709, c = 327 }, { e = 0, id = 900266590501, c = 408 } },
-      -- Bonbombe@328 · Bonbombe@355(du tour) · Bonbombe@382 · Bonbombe@409 · Reine des Voleurs@162(invisible) · Lowkey-Jealous@381 · Java-Springboot@327 · Kemist-Skyler@408 — 1 combat(s), 0 gagné(s), 0 dégâts en moyenne
-      actions = {
-        { type = "deplacer", cellule = 325, chemin = { 354, 340, 325 }, etapes = { 325 } },
-        { type = "deplacer", cellule = 311, chemin = { 325, 311 }, etapes = { 311 } },
-        { type = "sort", sort = 32460, cellule = 162, depuis = 311, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche du Jugement → Reine des Voleurs
-        { type = "sort", sort = 32442, cellule = 162, depuis = 311, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche de Rédemption → Reine des Voleurs
-        { type = "sort", sort = 32429, cellule = 162, depuis = 311, cible = "ennemi", espece = 3726, id = -13 },  -- Flèche Perforante → Reine des Voleurs
-        { type = "deplacer", cellule = 354, chemin = { 311, 325, 340, 354 }, etapes = { 354 } },
-      } },
-  }
+  -- Tours de chaque Crâ (n-ième tour du Crâ = plans[nom][n]) : les situations connues, la meilleure d'abord, chacune avec
+  -- le plateau relevé quand le Crâ a commencé à jouer (e = espèce, ou id pour un Crâ ; c = case ; inv = invisible ; n =
+  -- Bonbombe du tour, qui peut ne pas être encore là ; l = monstre loin, toléré ailleurs s'il y est loin aussi), les PA
+  -- et PM que le tour dépense et ses actions. Le script joue la situation qui correspond au plateau du jeu.
   SCENARIOS[#SCENARIOS + 1] = S
 end
 -- Distance à partir de laquelle un monstre est loin d'un Crâ, par espèce (écrite avec les scénarios ; absente : aucune
@@ -3038,7 +3359,23 @@ local function moi()
   for _, s in ipairs(SCENARIOS) do
     for nom, x in pairs(s.ids or {}) do if x == id then return nom end end
   end
+  for nom, x in pairs(CRAS or {}) do if x == id then return nom end end
   return nil
+end
+
+-- Crâ (dans CRAS, écrit par la génération) ou mule (tout autre personnage du groupe). Sans CRAS : tous des Crâs.
+local function estCra(nom)
+  if CRAS == nil or next(CRAS) == nil then return true end
+  return nom ~= nil and CRAS[nom] ~= nil
+end
+local idsCras = nil
+local function estCraId(id)
+  if idsCras == nil then
+    idsCras = {}
+    for _, x in pairs(CRAS or {}) do if x and x ~= 0 then idsCras[x] = true end end
+  end
+  if next(idsCras) == nil then return true end
+  return idsCras[id] == true
 end
 
 local function journalEcrire()
@@ -3093,7 +3430,8 @@ local function combatPerdu()
   local cras, reine = {}, nil
   for _, e in ipairs(entites()) do
     local espece = e.CreatureGenericId or 0
-    if e.Team ~= true and espece == 0 and vivant(e) then cras[#cras + 1] = e.CellId end
+    -- (la mule n'est pas comptée : sa mort est voulue)
+    if e.Team ~= true and espece == 0 and vivant(e) and estCraId(e.Id) then cras[#cras + 1] = e.CellId end
     if espece == 3726 and vivant(e) then reine = e.CellId end
   end
   if #cras > crasVus then crasVus = #cras end
@@ -3127,22 +3465,51 @@ end
 
 -- ───────────────────────────── scénario : reconnaissance ─────────────────────────────
 
--- Le placement des monstres (case → identifiant, -1 = vide) correspond-il à la signature d'un scénario ? Toutes les
--- cases de la signature doivent porter un monstre, et aucun autre monstre ne doit être ailleurs.
-local function reconnaitre(defenders)
-  local occupees, n = {}, 0
+-- Espèce du monstre de chaque case (case → identifiant, -1 = vide), d'après les entités du combat ; 0 : inconnue.
+local function especesDesCases(defenders)
+  local parId, parCase = {}, {}
+  for _, e in ipairs(entites()) do
+    local espece = e.CreatureGenericId or 0
+    if espece ~= 0 then
+      if e.Id ~= nil then parId[e.Id] = espece end
+      if e.CellId ~= nil then parCase[e.CellId] = espece end
+    end
+  end
+  local out, inconnues = {}, 0
   for cell, id in pairs(defenders or {}) do
-    if id ~= -1 then occupees[cell] = true n = n + 1 end
+    if id ~= -1 then
+      out[cell] = parId[id] or parCase[cell] or 0
+      if out[cell] == 0 then inconnues = inconnues + 1 end
+    end
+  end
+  return out, inconnues
+end
+
+-- Le placement des monstres (case → identifiant, -1 = vide) correspond-il à la signature d'un scénario ? Chaque monstre
+-- de la signature doit être sur sa case (même espèce : plusieurs placements occupent les mêmes cases avec des monstres
+-- permutés), et aucun autre monstre ne doit être ailleurs. Espèce inconnue (entités pas encore données par AnkaBot) :
+-- la case seule compte, le premier placement de ces cases est pris.
+local function reconnaitre(defenders)
+  local occupees, inconnues = especesDesCases(defenders)
+  local n = 0
+  for _ in pairs(occupees) do n = n + 1 end
+  if inconnues > 0 then
+    dire("⚠ [PLACEMENT] espèce inconnue pour " .. inconnues .. " monstre(s) : reconnaissance par les cases seules " ..
+      "(placements aux mêmes cases confondus)", "erreur")
   end
   for _, s in ipairs(SCENARIOS) do
     local bons = 0
-    for _, m in ipairs(s.monstres) do if occupees[m.cellule] then bons = bons + 1 end end
-    dire("[PLACEMENT] " .. s.nom .. " : " .. bons .. "/" .. #s.monstres .. " cases de monstres concordantes (" ..
-      n .. " monstres en jeu)")
-    if bons == #s.monstres and n == #s.monstres then return s end
+    for _, m in ipairs(s.monstres) do
+      local e = occupees[m.cellule]
+      if e ~= nil and (e == 0 or e == m.espece) then bons = bons + 1 end
+    end
+    if bons == #s.monstres and n == #s.monstres then
+      dire("[PLACEMENT] " .. s.nom .. " : les " .. n .. " monstres sur leurs cases")
+      return s
+    end
   end
   local vus = {}
-  for cell in pairs(occupees) do vus[#vus + 1] = tostring(cell) end
+  for cell, e in pairs(occupees) do vus[#vus + 1] = tostring(e) .. "@" .. tostring(cell) end
   table.sort(vus)
   dire("[PLACEMENT] aucun scénario enregistré pour ces monstres (" .. table.concat(vus, ", ") .. ") : mode avancé (SANS_SCENARIO)")
   return nil
@@ -3212,6 +3579,7 @@ local function placer(cible, challengers)
   placeDemandee = cible
   local cibles = {}
   for _, c in pairs((actif and actif.cases) or placementParDefaut or {}) do cibles[c] = true end
+  if MULE_CASE then cibles[MULE_CASE] = true end
   for essai = 1, PLACEMENT.essais do
     local ici = caseDuPlacement()
     if ici == cible then
@@ -3251,6 +3619,13 @@ function fightManagementPosition(challengers, defenders)
     placementParDefaut = nil
     actif = reconnaitre(defenders)
     local nom = moi()
+    if not estCra(nom) then
+      if MULE_CASE then
+        dire("[PLACEMENT] mule (" .. tostring(nom) .. ") → case " .. MULE_CASE, "succes")
+        placer(MULE_CASE, challengers)
+      end
+      return
+    end
     if actif == nil then
       -- Pas de scénario : la formation par défaut du mode avancé (consigne du joueur, 2026-10-11 : le même placement
       -- des Crâs pour tous les placements de monstres) ; le combat se joue en mode avancé (SANS_SCENARIO).
@@ -3263,6 +3638,11 @@ function fightManagementPosition(challengers, defenders)
       return
     end
     local cible = nom and actif.cases[nom]
+    if cible == nil and nom then
+      -- Crâ sans case dans ce scénario : sa case de la formation par défaut (les mêmes cases pour tous les placements).
+      local f = IA_formationParDefaut and IA_formationParDefaut()
+      cible = f and f.placement[nom]
+    end
     dire("[PLACEMENT] scénario « " .. actif.nom .. " » reconnu — " .. tostring(nom) .. " → case " .. tostring(cible), "succes")
     -- Mode avancé (ReineCombat.lua) : la formation de même nom pour l'IA (colonne de chaque Crâ).
     if IA_formation and not IA_formation(actif.nom) then
@@ -3810,10 +4190,42 @@ local function jouerBranche(tour, t0, nom)
     string.format(" — %.1f s", horloge() - t0))
 end
 
+-- Tour de la mule : rien (AnkaBot passe son tour), sauf rejoindre MULE_COLONNE si elle a les PM pour y arriver.
+local function tourDeMule()
+  local ici = maCase()
+  if MULE_COLONNE and ici ~= MULE_COLONNE then
+    local chemin = nil
+    pcall(function() chemin = versListe(fightAction:getShortestPath(ici, MULE_COLONNE, {})) end)
+    if type(chemin) == "table" and #chemin > 0 and chemin[1] ~= ici then table.insert(chemin, 1, ici) end
+    local pas = (type(chemin) == "table" and #chemin > 0) and (#chemin - 1) or 99
+    if pas <= mesPM() then
+      pcall(function() fightAction:moveToWardCell(MULE_COLONNE) end)
+      dire("[MULE] " .. ici .. " → " .. maCase() .. " (colonne " .. MULE_COLONNE .. ")")
+    else
+      dire("[MULE] " .. pas .. " PM pour la colonne " .. MULE_COLONNE .. ", " .. mesPM() .. " disponibles : reste en " .. ici)
+    end
+  end
+  dire("[MULE] tour passé")
+end
+
 local function jouerMonTour()
   local aMoi = true
   pcall(function() aMoi = fightCharacter:isItMyTurn() end)
-  if not aMoi then return end
+  if not aMoi then
+    -- isItMyTurn() encore faux au lancement de fightManagement : rendre la main tout de suite fait passer le tour à
+    -- AnkaBot ; on attend qu'il devienne vrai, comme l'IA (ATTENTE_MON_TOUR). Noté : tours finis en 0,1 à 0,4 s le
+    -- 2026-10-12 à 21:46, cause pas encore établie.
+    local attendu, max = 0, ATTENTE_MON_TOUR or 1500
+    while not aMoi and attendu < max do
+      pcall(function() global:delay(50) end)
+      attendu = attendu + 50
+      pcall(function() aMoi = fightCharacter:isItMyTurn() end)
+    end
+    noter(string.format("[horloge %.3f] fightManagement lancé avec isItMyTurn() faux : %s après %d ms", horloge(),
+      aMoi and "devenu vrai" or "toujours faux", attendu))
+    if not aMoi then return end
+  end
+  if not estCra(moi()) then return tourDeMule() end
   local t0 = horloge()
   local perdu = combatPerdu()
   if perdu then return abandonner(perdu) end
@@ -3879,10 +4291,61 @@ local function attendre()
   pcall(function() global:delay(2000) end)
 end
 
+-- Dialogue avec un PNJ : conversation (action 3), puis `reponses` fois la première réponse (npc:reply(-1) : un nombre
+-- négatif est l'index de la réponse).
+local function dialogue(pnj, reponses)
+  return function()
+    local ok, err = pcall(function()
+      npc:npc(pnj, 3)
+      for _ = 1, reponses do
+        global:delay(DELAI_DIALOGUE)
+        npc:reply(-1)
+      end
+    end)
+    if ok then dire("[TRAJET] PNJ " .. pnj .. " : " .. reponses .. " réponse(s)")
+    else dire("⛔ [TRAJET] PNJ " .. pnj .. " : " .. tostring(err), "erreur") end
+  end
+end
+
+-- Salle de la Reine (version du joueur, 2026-10-13) : le tatouage de Looth à chaque passage, par chaque Crâ, puis le
+-- chef lance le combat (map:fight()). PAS de map:forceFight() : il attend un combat en bloquant le script et restait en
+-- attente pendant le combat ; les tours des Crâs finissaient alors au bout de 0,1 à 0,8 s, l'IA encore en train de
+-- demander son plan (2026-10-12 à 21:46 et 22:01).
+local function salleDeLaReine()
+  global:inviteTeam()
+  inventory:useItem(30486)
+  inventory:useItem(34360)
+  global:printSuccess("Tatouage utilisé")
+  if global:isBoss() then
+    global:delay(500)
+    map:fight()
+  end
+end
+
+function entrerdonjon()
+  inventory:useItem(30486)
+  inventory:useItem(34360)
+  global:printSuccess("Tatouage utilisé")
+  npc:npc(2446, 3)
+  npc:reply(-1)
+  npc:reply(-1)
+end
+
+local TRAJET = {
+  { map = "137102336", door = "66" },
+  { map = "137103360", custom = dialogue(2447, 1) },
+  { map = "136056074", custom = entrerdonjon },
+  { map = "137101312", custom = salleDeLaReine },
+}
+
 function move()
   local carte = nil
   pcall(function() carte = map:currentMapId() end)
   local out, vues = {}, {}
+  for _, e in ipairs(TRAJET) do
+    vues[e.map] = true
+    out[#out + 1] = e
+  end
   local function ajouter(c)
     if c and c ~= "0" and c ~= "nil" and not vues[c] then
       vues[c] = true

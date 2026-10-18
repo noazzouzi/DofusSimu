@@ -66,7 +66,7 @@ const maxHpFromCarac = (c: Map<number, number>) => (c.get(0) ?? 0) + (c.get(11) 
 // ───────────────────────────── combat réel : état courant ─────────────────────────────
 
 /** État du combat réel, mis à jour événement par événement (identifiants de la reconstitution). */
-class Truth {
+export class Truth {
   cell = new Map<number, number>()
   hp = new Map<number, number>()
   max = new Map<number, number>()
@@ -101,8 +101,10 @@ class Truth {
       const c = this.carac.get(x.fighter) ?? new Map<number, number>()
       for (const [id, v] of x.values) {
         // PV de base (0) et vitalité (11) : PV et PV max suivent (sort 6722 à l'arrivée d'une vague : −1650 vitalité).
-        if ((id === 0 || id === 11) && c.has(id) && this.hp.has(x.fighter)) {
-          const d = v - c.get(id)!
+        // (valeur absente avant : 0 — vitalité donnée juste après une invocation, Malamibe du Ventre de la Baleine : 1 PV
+        // à l'invocation puis +2 000 par personnage, combat du 2026-10-14)
+        if ((id === 0 || id === 11) && this.hp.has(x.fighter)) {
+          const d = v - (c.get(id) ?? 0)
           this.hp.set(x.fighter, this.hp.get(x.fighter)! + d)
           this.max.set(x.fighter, (this.max.get(x.fighter) ?? 0) + d)
         }
@@ -404,6 +406,8 @@ export interface MeasureOptions {
   onCurrentTurn?: (state: FormationState, played: PlayedTurn) => void
   /** Sans mesures (ni fourchettes de dégâts, ni IA des monstres, ni explosions) : recalage seul, pour le serveur. */
   fast?: boolean
+  /** Noms des Crâs : un autre joueur du groupe (mule qui passe ses tours) n'est pas un Crâ à protéger (FormationState.cras). */
+  cras?: string[]
   /**
    * Sorts de chaque Crâ (par nom), d'après sa liste du jeu (journal.ts, spellListOf : variantes équipées comprises) ;
    * pour un journal lu dans un fichier, celle de son personnage est prise d'office. Sans liste : sorts lancés pendant le
@@ -654,7 +658,8 @@ export function measure(source: string | Row[], opts: MeasureOptions = {}): Fide
         }
       }
       for (const y of ev.slice(firstStep, end)) if (y.t === 'damage' && y.amount > 0 && F[y.target].team === 1 && !isBombR(y.target)) played.damage += y.amount
-      return [{ engine: sim.engine, fight, active: ef.id, round, gameIdOf, bombs, players, anchors: new Map(), order: [...order], hidden: hiddenNow }, played]
+      const cras = opts.cras?.length ? players.filter(g => opts.cras!.includes(F.find(f => f.gameId === g)?.name ?? '')) : undefined
+      return [{ engine: sim.engine, fight, active: ef.id, round, gameIdOf, bombs, players, cras, anchors: new Map(), order: [...order], hidden: hiddenNow }, played]
     }
     if (real.kind === 'player' && opts.onCraTurn) {
       const firstCast = steps.find(k => ev[k].t === 'cast') ?? end

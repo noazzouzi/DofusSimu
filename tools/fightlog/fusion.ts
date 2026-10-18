@@ -29,7 +29,8 @@ export function playerNames(rows: Row[]): Map<number, string> {
   return out
 }
 
-interface Cut { prologue: Row[]; segs: Segment[]; rounds: Map<number, Row[]>; end?: Row }
+/** `roundNext` : pour chaque début de manche, le tour qui le suit dans ce journal. */
+interface Cut { prologue: Row[]; segs: Segment[]; rounds: Map<number, Row[]>; roundNext: Map<number, string>; end?: Row }
 
 /**
  * Découpage d'un journal en tours. Les débuts de manche (jvi, avec les messages qui le suivent jusqu'au premier tour :
@@ -42,6 +43,7 @@ function segments(rows: Row[]): Cut {
   const prologue: Row[] = []
   const segs: Segment[] = []
   const rounds = new Map<number, Row[]>()
+  const roundNext = new Map<number, string>()
   let end: Row | undefined
   let round = 0
   let block: Row[] | null = null
@@ -62,6 +64,7 @@ function segments(rows: Row[]): Cut {
       continue
     }
     if (r.k === 'm' && r.n === MSG.turnStart && typeof r.d?.fxjr === 'number') {
+      const afterRound = block !== null && rounds.get(round) === block
       block = null
       // Même combattant que le tour précédent : début de tour en double (deux instances du script), pas un nouveau tour
       // (entre deux tours d'un combattant, d'autres jouent toujours, hors du silence de ce journal).
@@ -78,6 +81,7 @@ function segments(rows: Row[]): Cut {
       const occ = (seen.get(base) ?? 0) + 1
       seen.set(base, occ)
       if (segs.length) segs[segs.length - 1].next = `${base}:${occ}`
+      if (afterRound) roundNext.set(round, `${base}:${occ}`)
       segs.push({ key: `${base}:${occ}`, fighter: r.d.fxjr, rows: [r], round })
       continue
     }
@@ -85,7 +89,7 @@ function segments(rows: Row[]): Cut {
     else if (segs.length) segs[segs.length - 1].rows.push(r)
     else prologue.push(r)
   }
-  return { prologue, segs, rounds, end }
+  return { prologue, segs, rounds, roundNext, end }
 }
 
 /** Écart toléré entre les débuts (manche 1) d'un même combat vus par deux journaux, en ms d'horloge des scripts. */
@@ -238,11 +242,14 @@ export function mergeStreams(streams: Stream[], prefer: string[] = [], opts: Mer
       }
     }
     if (!pick) return
-    // Débuts de manche remis à leur place, avant le premier tour de chaque manche : le plus complet des journaux.
+    // Débuts de manche remis à leur place, avant le premier tour de chaque manche : le plus complet des journaux qui ont
+    // vu ce tour juste après (un journal qui s'est tu au début de la manche a pu y accrocher des messages arrivés après
+    // son silence : 2026-10-13 à 17:19, 900 dégâts de fin du tour de Java comptés deux fois), sinon le plus complet.
     while (round < g.round) {
       round++
-      const blocks = cut.map(c => c.rounds.get(round)).filter((b): b is Row[] => !!b)
-      const best = blocks.reduce<Row[] | undefined>((a, b) => (!a || b.length > a.length ? b : a), undefined)
+      const blocks = cut.map(c => ({ rows: c.rounds.get(round), ok: c.roundNext.get(round) === g.key })).filter((b): b is { rows: Row[]; ok: boolean } => !!b.rows)
+      const longest = (l: { rows: Row[] }[]) => l.reduce<Row[] | undefined>((a, b) => (!a || b.rows.length > a.length ? b.rows : a), undefined)
+      const best = longest(blocks.filter(b => b.ok)) ?? longest(blocks)
       rows.push(...(best ?? [{ k: 'm', n: MSG.round, d: { fxjj: round }, at: pick.rows[0]?.at ?? '' }]))
     }
     sources[from] = (sources[from] ?? 0) + 1

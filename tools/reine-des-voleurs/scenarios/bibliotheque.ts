@@ -29,6 +29,14 @@ export interface FightRecord {
   issue: Issue
   /** Cases de départ des Crâs (phase de placement). */
   cases: Record<string, number>
+  /** Monstres au début du combat (espèce, case) : son placement. */
+  monstres?: { espece: number; cellule: number }[]
+  /** Modificateur de dimension du combat (nom du registre data/reine/modificateurs.json). */
+  modificateur?: string
+  /** Sorts lancés au début du combat, avant le premier tour (le modificateur s'en déduit). */
+  sortsDebut?: number[]
+  /** Mode « 4 Crâs + mule » : la ou les mules du combat (ni leurs tours ni leur mort ne sont appris). */
+  mules?: string[]
   /** Tours de Crâ du combat. */
   tours: number
   verification: string
@@ -164,7 +172,7 @@ export function planOf(b: LibraryBranch, names: Map<number, string> = new Map())
  * Ajoute un combat (scénario extrait d'un journal) à la bibliothèque de son placement. Un combat déjà appris (même
  * identifiant : session relue) est remplacé. Rend le nombre de tours et de branches nouvelles.
  */
-export function addFight(lib: Library, id: string, sc: Scenario): { tours: number; nouvelles: number; remplace: boolean } {
+export function addFight(lib: Library, id: string, sc: Scenario, modificateur?: string): { tours: number; nouvelles: number; remplace: boolean } {
   const remplace = removeFight(lib, id)
   const index = new Map(lib.branches.map(b => [`${situationKey(b)}#${actionsKey(b.actions)}`, b]))
   let tours = 0
@@ -189,10 +197,44 @@ export function addFight(lib: Library, id: string, sc: Scenario): { tours: numbe
       x.joue.push({ combat: id, degats: t.degats ?? 0, morts: t.morts ?? [] })
     })
   }
-  lib.combats.push({ id, debut: sc.debut, issue: sc.issue ?? { fin: 'interrompu', manches: sc.manches, vagues: 1, morts: [] }, cases: sc.cases, tours, verification: sc.verification })
+  lib.combats.push({ id, debut: sc.debut, issue: sc.issue ?? { fin: 'interrompu', manches: sc.manches, vagues: 1, morts: [] }, cases: sc.cases,
+    monstres: monstersOf(sc.monstres), modificateur, sortsDebut: sc.sortsDebut, tours, verification: sc.verification })
+  sortLibrary(lib)
+  return { tours, nouvelles, remplace }
+}
+
+/** Monstres de départ d'un combat (espèce, case), par case. */
+export function monstersOf(monstres: { espece: number; cellule: number }[]): { espece: number; cellule: number }[] {
+  return monstres.map(m => ({ espece: m.espece, cellule: m.cellule })).sort((a, b) => a.cellule - b.cellule)
+}
+
+function sortLibrary(lib: Library): void {
   lib.combats.sort((a, b) => (a.debut ?? a.id).localeCompare(b.debut ?? b.id) || a.id.localeCompare(b.id))
   lib.branches.sort((a, b) => a.perso.localeCompare(b.perso) || a.tour - b.tour || situationKey(a).localeCompare(situationKey(b)))
-  return { tours, nouvelles, remplace }
+}
+
+/** Déplace un combat et ses tours d'une bibliothèque à une autre (combat rangé dans le mauvais placement). */
+export function moveFight(from: Library, to: Library, id: string): boolean {
+  const record = from.combats.find(c => c.id === id)
+  if (!record) return false
+  removeFight(to, id)
+  const index = new Map(to.branches.map(b => [`${situationKey(b)}#${actionsKey(b.actions)}`, b]))
+  for (const b of from.branches) {
+    const joue = b.joue.filter(o => o.combat === id)
+    if (!joue.length) continue
+    const key = `${situationKey(b)}#${actionsKey(b.actions)}`
+    let x = index.get(key)
+    if (!x) {
+      x = { ...b, joue: [] }
+      index.set(key, x)
+      to.branches.push(x)
+    }
+    x.joue.push(...joue)
+  }
+  removeFight(from, id)
+  to.combats.push(record)
+  sortLibrary(to)
+  return true
 }
 
 /** Retire un combat (et les branches que lui seul avait jouées). Rend vrai s'il y était. */
