@@ -117,8 +117,22 @@ CODES_FORCABLES = { [5] = true, [6] = true, [8] = true, [16] = true }   -- TROP_
 ATTENTE_POSITION = 600    -- ms
 JOURNAL_FICHIER = true    -- journal par personnage et par combat, à côté du script (rejeu_<personnage>_<date>.log)
 -- Cartes où le script attend (move) : la salle de la Reine et la carte du combat, en plus de la carte courante — un script
--- chargé pendant un changement de carte (map:currentMapId() = 0) n'a pas de carte courante.
+-- chargé pendant un changement de carte (map:currentMapId() = 0) n'a pas de carte courante. Une carte du trajet (plus
+-- bas) y fait son action au lieu d'attendre.
 CARTES = { "137101312", "137101316" }
+-- TRAJET dans le donjon (consigne du joueur, 2026-10-12), carte par carte : 137102336, porte de la case 66 ;
+-- 137103360, dialogue avec le PNJ 2447 (une réponse) ; 136056074, dialogue avec le PNJ 2446 (deux réponses) ; salle de la
+-- Reine (137101312), tatouage de Looth, et combat lancé par le chef (map:fight()).
+TATOUAGE = 30486          -- Superbe tatouage temporaire de Looth
+-- MODE « 4 CRÂS + MULE » (consigne du joueur, 2026-10-14) : un personnage du groupe absent de CRAS (écrit par la
+-- génération : les Crâs du registre) est une mule, là pour l'expérience. Placée en MULE_CASE, elle passe ses tours : en
+-- 424, la Bonbombe que le 4e Crâ pose en 409 à son 2e tour la tue (voulu). MULE_COLONNE = 435 : elle rejoint plutôt le
+-- bout de la colonne (5 PM depuis 424), si elle a les PM pour y arriver en un tour. Avec une mule, 5 monstres par vague
+-- et une Reine à 17 000 PV : aucun placement de 4 monstres ne correspond, les Crâs prennent ceux du placement par défaut
+-- et l'IA du serveur joue (le serveur lit les PV réels).
+MULE_CASE = 424
+MULE_COLONNE = nil
+DELAI_DIALOGUE = 1000     -- ms avant chaque réponse à un PNJ
 -- SITUATIONS (branches). Monstres lointains admis ailleurs que sur leur case enregistrée (voir « correspondance » en
 -- tête) ; 0 : plateau exact seulement.
 TOLERANCE_LOIN = 2
@@ -182,7 +196,23 @@ local function moi()
   for _, s in ipairs(SCENARIOS) do
     for nom, x in pairs(s.ids or {}) do if x == id then return nom end end
   end
+  for nom, x in pairs(CRAS or {}) do if x == id then return nom end end
   return nil
+end
+
+-- Crâ (dans CRAS, écrit par la génération) ou mule (tout autre personnage du groupe). Sans CRAS : tous des Crâs.
+local function estCra(nom)
+  if CRAS == nil or next(CRAS) == nil then return true end
+  return nom ~= nil and CRAS[nom] ~= nil
+end
+local idsCras = nil
+local function estCraId(id)
+  if idsCras == nil then
+    idsCras = {}
+    for _, x in pairs(CRAS or {}) do if x and x ~= 0 then idsCras[x] = true end end
+  end
+  if next(idsCras) == nil then return true end
+  return idsCras[id] == true
 end
 
 local function journalEcrire()
@@ -237,7 +267,8 @@ local function combatPerdu()
   local cras, reine = {}, nil
   for _, e in ipairs(entites()) do
     local espece = e.CreatureGenericId or 0
-    if e.Team ~= true and espece == 0 and vivant(e) then cras[#cras + 1] = e.CellId end
+    -- (la mule n'est pas comptée : sa mort est voulue)
+    if e.Team ~= true and espece == 0 and vivant(e) and estCraId(e.Id) then cras[#cras + 1] = e.CellId end
     if espece == 3726 and vivant(e) then reine = e.CellId end
   end
   if #cras > crasVus then crasVus = #cras end
@@ -271,22 +302,51 @@ end
 
 -- ───────────────────────────── scénario : reconnaissance ─────────────────────────────
 
--- Le placement des monstres (case → identifiant, -1 = vide) correspond-il à la signature d'un scénario ? Toutes les
--- cases de la signature doivent porter un monstre, et aucun autre monstre ne doit être ailleurs.
-local function reconnaitre(defenders)
-  local occupees, n = {}, 0
+-- Espèce du monstre de chaque case (case → identifiant, -1 = vide), d'après les entités du combat ; 0 : inconnue.
+local function especesDesCases(defenders)
+  local parId, parCase = {}, {}
+  for _, e in ipairs(entites()) do
+    local espece = e.CreatureGenericId or 0
+    if espece ~= 0 then
+      if e.Id ~= nil then parId[e.Id] = espece end
+      if e.CellId ~= nil then parCase[e.CellId] = espece end
+    end
+  end
+  local out, inconnues = {}, 0
   for cell, id in pairs(defenders or {}) do
-    if id ~= -1 then occupees[cell] = true n = n + 1 end
+    if id ~= -1 then
+      out[cell] = parId[id] or parCase[cell] or 0
+      if out[cell] == 0 then inconnues = inconnues + 1 end
+    end
+  end
+  return out, inconnues
+end
+
+-- Le placement des monstres (case → identifiant, -1 = vide) correspond-il à la signature d'un scénario ? Chaque monstre
+-- de la signature doit être sur sa case (même espèce : plusieurs placements occupent les mêmes cases avec des monstres
+-- permutés), et aucun autre monstre ne doit être ailleurs. Espèce inconnue (entités pas encore données par AnkaBot) :
+-- la case seule compte, le premier placement de ces cases est pris.
+local function reconnaitre(defenders)
+  local occupees, inconnues = especesDesCases(defenders)
+  local n = 0
+  for _ in pairs(occupees) do n = n + 1 end
+  if inconnues > 0 then
+    dire("⚠ [PLACEMENT] espèce inconnue pour " .. inconnues .. " monstre(s) : reconnaissance par les cases seules " ..
+      "(placements aux mêmes cases confondus)", "erreur")
   end
   for _, s in ipairs(SCENARIOS) do
     local bons = 0
-    for _, m in ipairs(s.monstres) do if occupees[m.cellule] then bons = bons + 1 end end
-    dire("[PLACEMENT] " .. s.nom .. " : " .. bons .. "/" .. #s.monstres .. " cases de monstres concordantes (" ..
-      n .. " monstres en jeu)")
-    if bons == #s.monstres and n == #s.monstres then return s end
+    for _, m in ipairs(s.monstres) do
+      local e = occupees[m.cellule]
+      if e ~= nil and (e == 0 or e == m.espece) then bons = bons + 1 end
+    end
+    if bons == #s.monstres and n == #s.monstres then
+      dire("[PLACEMENT] " .. s.nom .. " : les " .. n .. " monstres sur leurs cases")
+      return s
+    end
   end
   local vus = {}
-  for cell in pairs(occupees) do vus[#vus + 1] = tostring(cell) end
+  for cell, e in pairs(occupees) do vus[#vus + 1] = tostring(e) .. "@" .. tostring(cell) end
   table.sort(vus)
   dire("[PLACEMENT] aucun scénario enregistré pour ces monstres (" .. table.concat(vus, ", ") .. ") : mode avancé (SANS_SCENARIO)")
   return nil
@@ -356,6 +416,7 @@ local function placer(cible, challengers)
   placeDemandee = cible
   local cibles = {}
   for _, c in pairs((actif and actif.cases) or placementParDefaut or {}) do cibles[c] = true end
+  if MULE_CASE then cibles[MULE_CASE] = true end
   for essai = 1, PLACEMENT.essais do
     local ici = caseDuPlacement()
     if ici == cible then
@@ -395,6 +456,13 @@ function fightManagementPosition(challengers, defenders)
     placementParDefaut = nil
     actif = reconnaitre(defenders)
     local nom = moi()
+    if not estCra(nom) then
+      if MULE_CASE then
+        dire("[PLACEMENT] mule (" .. tostring(nom) .. ") → case " .. MULE_CASE, "succes")
+        placer(MULE_CASE, challengers)
+      end
+      return
+    end
     if actif == nil then
       -- Pas de scénario : la formation par défaut du mode avancé (consigne du joueur, 2026-10-11 : le même placement
       -- des Crâs pour tous les placements de monstres) ; le combat se joue en mode avancé (SANS_SCENARIO).
@@ -407,6 +475,11 @@ function fightManagementPosition(challengers, defenders)
       return
     end
     local cible = nom and actif.cases[nom]
+    if cible == nil and nom then
+      -- Crâ sans case dans ce scénario : sa case de la formation par défaut (les mêmes cases pour tous les placements).
+      local f = IA_formationParDefaut and IA_formationParDefaut()
+      cible = f and f.placement[nom]
+    end
     dire("[PLACEMENT] scénario « " .. actif.nom .. " » reconnu — " .. tostring(nom) .. " → case " .. tostring(cible), "succes")
     -- Mode avancé (ReineCombat.lua) : la formation de même nom pour l'IA (colonne de chaque Crâ).
     if IA_formation and not IA_formation(actif.nom) then
@@ -954,10 +1027,42 @@ local function jouerBranche(tour, t0, nom)
     string.format(" — %.1f s", horloge() - t0))
 end
 
+-- Tour de la mule : rien (AnkaBot passe son tour), sauf rejoindre MULE_COLONNE si elle a les PM pour y arriver.
+local function tourDeMule()
+  local ici = maCase()
+  if MULE_COLONNE and ici ~= MULE_COLONNE then
+    local chemin = nil
+    pcall(function() chemin = versListe(fightAction:getShortestPath(ici, MULE_COLONNE, {})) end)
+    if type(chemin) == "table" and #chemin > 0 and chemin[1] ~= ici then table.insert(chemin, 1, ici) end
+    local pas = (type(chemin) == "table" and #chemin > 0) and (#chemin - 1) or 99
+    if pas <= mesPM() then
+      pcall(function() fightAction:moveToWardCell(MULE_COLONNE) end)
+      dire("[MULE] " .. ici .. " → " .. maCase() .. " (colonne " .. MULE_COLONNE .. ")")
+    else
+      dire("[MULE] " .. pas .. " PM pour la colonne " .. MULE_COLONNE .. ", " .. mesPM() .. " disponibles : reste en " .. ici)
+    end
+  end
+  dire("[MULE] tour passé")
+end
+
 local function jouerMonTour()
   local aMoi = true
   pcall(function() aMoi = fightCharacter:isItMyTurn() end)
-  if not aMoi then return end
+  if not aMoi then
+    -- isItMyTurn() encore faux au lancement de fightManagement : rendre la main tout de suite fait passer le tour à
+    -- AnkaBot ; on attend qu'il devienne vrai, comme l'IA (ATTENTE_MON_TOUR). Noté : tours finis en 0,1 à 0,4 s le
+    -- 2026-10-12 à 21:46, cause pas encore établie.
+    local attendu, max = 0, ATTENTE_MON_TOUR or 1500
+    while not aMoi and attendu < max do
+      pcall(function() global:delay(50) end)
+      attendu = attendu + 50
+      pcall(function() aMoi = fightCharacter:isItMyTurn() end)
+    end
+    noter(string.format("[horloge %.3f] fightManagement lancé avec isItMyTurn() faux : %s après %d ms", horloge(),
+      aMoi and "devenu vrai" or "toujours faux", attendu))
+    if not aMoi then return end
+  end
+  if not estCra(moi()) then return tourDeMule() end
   local t0 = horloge()
   local perdu = combatPerdu()
   if perdu then return abandonner(perdu) end
@@ -1023,10 +1128,50 @@ local function attendre()
   pcall(function() global:delay(2000) end)
 end
 
+-- Dialogue avec un PNJ : conversation (action 3), puis `reponses` fois la première réponse (npc:reply(-1) : un nombre
+-- négatif est l'index de la réponse).
+local function dialogue(pnj, reponses)
+  return function()
+    local ok, err = pcall(function()
+      npc:npc(pnj, 3)
+      for _ = 1, reponses do
+        global:delay(DELAI_DIALOGUE)
+        npc:reply(-1)
+      end
+    end)
+    if ok then dire("[TRAJET] PNJ " .. pnj .. " : " .. reponses .. " réponse(s)")
+    else dire("⛔ [TRAJET] PNJ " .. pnj .. " : " .. tostring(err), "erreur") end
+  end
+end
+
+-- Salle de la Reine (version du joueur, 2026-10-13) : le tatouage de Looth à chaque passage, par chaque Crâ, puis le
+-- chef lance le combat (map:fight()). PAS de map:forceFight() : il attend un combat en bloquant le script et restait en
+-- attente pendant le combat ; les tours des Crâs finissaient alors au bout de 0,1 à 0,8 s, l'IA encore en train de
+-- demander son plan (2026-10-12 à 21:46 et 22:01).
+local function salleDeLaReine()
+  global:inviteTeam()
+  inventory:useItem(TATOUAGE)
+  global:printSuccess("Tatouage utilisé")
+  if global:isBoss() then
+    map:fight()
+  end
+end
+
+local TRAJET = {
+  { map = "137102336", door = "66" },
+  { map = "137103360", custom = dialogue(2447, 1) },
+  { map = "136056074", custom = dialogue(2446, 2) },
+  { map = "137101312", custom = salleDeLaReine },
+}
+
 function move()
   local carte = nil
   pcall(function() carte = map:currentMapId() end)
   local out, vues = {}, {}
+  for _, e in ipairs(TRAJET) do
+    vues[e.map] = true
+    out[#out + 1] = e
+  end
   local function ajouter(c)
     if c and c ~= "0" and c ~= "nil" and not vues[c] then
       vues[c] = true

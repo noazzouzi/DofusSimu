@@ -100,6 +100,14 @@ export interface Scenario {
   issue?: Issue
   /** Heure du début du combat (lot du journal qui porte la manche 1), si connue. */
   debut?: string
+  /**
+   * Sorts lancés au début du combat, avant le premier tour : passifs des Crâs, mécaniques du donjon et modificateur de
+   * dimension (tools/reine-des-voleurs/scenarios/modificateurs.ts).
+   */
+  sortsDebut?: number[]
+  /** Sorts du début du combat lancés par chaque joueur (par nom), et par les monstres : le modificateur s'en déduit. */
+  sortsDebutJoueurs?: Record<string, number[]>
+  sortsDebutMonstres?: number[]
 }
 
 const BOMB = 3725
@@ -129,6 +137,21 @@ export function scenarioFromRows(name: string, rows: Row[], source: string, opts
   const fight: Row[] = rows.slice(from, to).filter(r => r.k === 'm')
   const byGame = new Map(res.fighters.map(f => [f.gameId, f]))
   const ev = res.replay.events
+  const firstTurn = ev.findIndex(e => e.t === 'turnStart')
+  const debut = ev.slice(0, firstTurn < 0 ? ev.length : firstTurn).flatMap(e => (e.t === 'cast' ? [e] : []))
+  const sortsDebut = [...new Set(debut.map(e => e.spellId))].sort((a, b) => a - b)
+  const sortsDebutJoueurs: Record<string, number[]> = {}
+  const monstres = new Set<number>()
+  for (const e of debut) {
+    const f = res.fighters[e.fighter]
+    if (f?.kind !== 'player') {
+      if (f?.team === 1) monstres.add(e.spellId)
+      continue
+    }
+    const l = (sortsDebutJoueurs[f.name] ??= [])
+    if (!l.includes(e.spellId)) l.push(e.spellId)
+  }
+  const sortsDebutMonstres = [...monstres].sort((a, b) => a - b)
   const start = (ev[0] as { t: 'fightStart'; fighters: { id: number; cell: number }[] }).fighters
   const players = res.fighters.filter(f => f.kind === 'player')
   const playerIds = new Set(players.map(f => f.gameId))
@@ -298,6 +321,9 @@ export function scenarioFromRows(name: string, rows: Row[], source: string, opts
     verification: `${res.checks.sync.ok}/${res.checks.sync.ok + res.checks.sync.bad} vérifications justes contre les synchronisations du serveur`,
     issue,
     debut: firstRow?.at || undefined,
+    sortsDebut,
+    sortsDebutJoueurs,
+    sortsDebutMonstres,
   }
 }
 

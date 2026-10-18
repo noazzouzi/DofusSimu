@@ -57,4 +57,29 @@ describe('reconstitution d’un combat réel (journal AnkaBot)', () => {
     const replay = parseReplay(JSON.parse(JSON.stringify(res.replay)))
     expect(replay.warnings ?? []).toEqual([])
   })
+
+  it('Reine cachée par le serveur, Crâ tué sans dégâts annoncés : aucun écart avec les synchronisations', () => {
+    const CRA = 900264689957
+    // Synchronisation qui cache la Reine elle-même : case −1, caractéristiques vides (combat du 2026-10-12 à 19:16).
+    const cachee = { gcaw: -13, gcax: { gblc: -1 }, gcay: { gcar: { gcac: { gdeq: {} }, gcad: { gdns: 1 }, gcai: { gbzm: { gbyz: 3726, gbyx: 1, gbyy: 220 } } } } }
+    const rows: Row[] = [
+      m('jvi', { fxjj: 1 }),
+      m('juo', { fxgj: [fighter(CRA, 354, 0, { hp: 3000, name: 'Lowkey-Jealous' }), fighter(-13, 133, 1, { hp: 15000 })] }),
+      // La Reine devient invisible, le serveur la téléporte en −1 : elle se déplace ensuite sans être vue.
+      m('jvj', { fxjr: -13 }),
+      act(150, -13, { fwvk: { fwmb: 0, fwmc: -13 } }),
+      act(4, -13, { fwvp: { fwob: -1, fwoc: -13 } }),
+      m('jup', { fxgo: -13 }),
+      m('juo', { fxgj: [fighter(CRA, 354, 0, { hp: 3000, name: 'Lowkey-Jealous' }), cachee] }),
+      m('jvi', { fxjj: 2 }),
+      // Crâ tué d'un coup par une Bonbombe : mort sans dégâts annoncés.
+      m('jvj', { fxjr: -13 }),
+      act(103, -13, { fwuz: { fwrl: CRA } }),
+      m('jup', { fxgo: -13 }),
+      m('juo', { fxgj: [fighter(CRA, 354, 0, { hp: 3000, loss: -3000, name: 'Lowkey-Jealous' }), fighter(-13, 274, 1, { hp: 15000 })] }),
+    ]
+    const res = rebuild(rows)
+    expect(res.checks.mismatches).toEqual([])
+    expect(res.checks.sync.ok).toBe(14)
+  })
 })

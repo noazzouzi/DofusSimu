@@ -213,11 +213,21 @@ CHALLENGE_DELAI_CHEF = { 1000, 2000 }
   -- Abandon (ABANDON_SI_CRA_MORT, ABANDON_SI_REINE_AU_CONTACT). Crâs : joueurs de notre équipe (Team faux, sans espèce
   -- de monstre) ; le plus grand nombre vu vivant dans ce combat sert de référence (remis à zéro au placement).
   local crasVus = 0
+  -- Identifiants des Crâs (CRAS, écrit par la génération de ReineCombat.lua) : la mule n'est pas comptée.
+  local idsCras = nil
+  local function estCraId(id)
+    if idsCras == nil then
+      idsCras = {}
+      for _, x in pairs(CRAS or {}) do if x and x ~= 0 then idsCras[x] = true end end
+    end
+    if next(idsCras) == nil then return true end
+    return idsCras[id] == true
+  end
   local function combatPerdu()
     local cras, reine = {}, nil
     for _, e in ipairs(entites()) do
       local espece = e.CreatureGenericId or 0
-      if e.Team ~= true and espece == 0 and vivant(e) then cras[#cras + 1] = e.CellId end
+      if e.Team ~= true and espece == 0 and vivant(e) and estCraId(e.Id) then cras[#cras + 1] = e.CellId end
       if espece == 3726 and vivant(e) then reine = e.CellId end
     end
     if #cras > crasVus then crasVus = #cras end
@@ -291,20 +301,31 @@ CHALLENGE_DELAI_CHEF = { 1000, 2000 }
     return FORMATIONS[1]
   end
 
-  -- Formation dont la signature (cases de départ des monstres) correspond au placement des monstres (case → id) ;
-  -- sinon la formation par défaut.
+  -- Formation dont la signature (espèce et case de départ des monstres) correspond au placement des monstres
+  -- (case → id) ; sinon la formation par défaut. Espèce inconnue (entités pas encore données) : la case seule compte.
   local function reconnaitre(defenders)
+    local parId, parCase = {}, {}
+    for _, e in ipairs(entites()) do
+      local espece = e.CreatureGenericId or 0
+      if espece ~= 0 then
+        if e.Id ~= nil then parId[e.Id] = espece end
+        if e.CellId ~= nil then parCase[e.CellId] = espece end
+      end
+    end
     local occupees, n = {}, 0
     for cell, id in pairs(defenders or {}) do
-      if id ~= -1 then occupees[cell] = true n = n + 1 end
+      if id ~= -1 then occupees[cell] = parId[id] or parCase[cell] or 0 n = n + 1 end
     end
     for _, s in ipairs(FORMATIONS) do
       local bons = 0
-      for _, m in ipairs(s.monstres) do if occupees[m.cellule] then bons = bons + 1 end end
+      for _, m in ipairs(s.monstres) do
+        local e = occupees[m.cellule]
+        if e ~= nil and (e == 0 or e == m.espece) then bons = bons + 1 end
+      end
       if bons == #s.monstres and n == #s.monstres then return s end
     end
     local vus = {}
-    for cell in pairs(occupees) do vus[#vus + 1] = tostring(cell) end
+    for cell, e in pairs(occupees) do vus[#vus + 1] = tostring(e) .. "@" .. tostring(cell) end
     table.sort(vus)
     local defaut = formationParDefaut()
     if defaut then

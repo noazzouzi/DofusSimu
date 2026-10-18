@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "notes": [
+    "Modificateurs de dimension de la Reine des Voleurs : chacun se reconnaît aux sorts lancés au début de la manche 1, avant le premier tour, hors « communs » (passifs des Crâs, Péché Mignon, Doublage). Relevés le 2026-10-12 sur les combats du 2026-10-09 au 2026-10-12. Noms inconnus (sorts absents de data/dofusdb) : nommés par leurs sorts, à renommer.",
+    "Une deuxième couche (23441 lancé par les Crâs, 23450 et 23442 par les monstres) a été vue le 2026-10-11 de 14:37 à 16:11, en plus d'un des modificateurs ci-dessous : si elle revient, l'apprentissage crée un modificateur « Auto » qui la contient.",
+    "Un ensemble de sorts inconnu crée un modificateur « Auto <sorts> » à l'apprentissage : le renommer (et le décrire dans « effets »)."
+  ],
+  "communs": [4693,4776,4777,5952,8395,21977,26005,32462,32480],
+  "modificateurs": [
+    {"nom":"4612+4676","sorts":[4612,4676],"effets":"4676 lancé par les Crâs (non décodé) ; 4612 par les monstres : « dommages subis ×0 % » (à confirmer)"},
+    {"nom":"4615","sorts":[4615],"effets":"lancé par les monstres ; non décodé (sort déclenché)"},
+    {"nom":"4655+4667","sorts":[4655,4667],"effets":"4655 lancé par les Crâs : +25 % dommages finaux ; 4667 par les monstres : +50 % vitalité"},
+    {"nom":"4871","sorts":[4871],"effets":"lancé par les Crâs ; non décodé (sort déclenché)"},
+    {"nom":"4874","sorts":[4874],"effets":"lancé par les monstres : soignés de 50 % des dommages infligés"},
+    {"nom":"4876","sorts":[4876],"effets":"lancé par les monstres ; non décodé (sort déclenché)"},
+    {"nom":"4877","sorts":[4877],"effets":"lancé par les Crâs ; non décodé (sort déclenché)"},
+    {"nom":"5164","sorts":[5164],"effets":"lancé par les monstres ; non décodé (sort déclenché)"},
+    {"nom":"5165","sorts":[5165],"effets":"lancé par les monstres ; non décodé (sort déclenché)"},
+    {"nom":"5166","sorts":[5166],"effets":"lancé par les monstres ; non décodé (sort déclenché)"}
+  ]
+}

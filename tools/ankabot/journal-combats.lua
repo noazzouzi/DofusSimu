@@ -144,11 +144,45 @@ FIGHT_SNAPSHOTS = true                    -- photos de l'état en combat (à cha
 -- script reste ainsi libre pour fightManagement. Les journaux des autres personnages couvrent ces tours.
 QUIET_AROUND_MY_TURN = false
 QUIET_MAX_SECONDS = 120                   -- silence levé au plus tard N secondes après son début (sécurité)
+-- Silence seulement pendant son propre tour, pas pendant celui du combattant qui le précède : personnage seul (Féca du
+-- Roc des Salbatroces, tools/feca/script.ts), aucun autre journal ne couvrirait ce tour (une Malamibe invoquée par le
+-- dernier monstre serait perdue). Son script envoie alors lui-même l'état du combat avec chaque demande de plan.
+QUIET_FROM_MY_TURN = false
+-- Envois reportés autour de son tour : du début du tour du combattant qui le précède jusqu'à la fin du sien, le journal
+-- enregistre sans rien envoyer (ni début de manche, ni début de tour, ni lancer « urgents ») ; son script envoie le lot
+-- au début de fightManagement (JOURNAL_FLUSH_NOW). Personnage seul (Féca) : le journal suit le tour qui précède le sien
+-- (Malamibe invoquée, relances), mais une requête HTTP au changement de tour occupe le script quand AnkaBot lance
+-- fightManagement (2026-10-17 : 5 tours du Féca finis en 0 à 0,5 s ; 2026-10-10 : tours passés, journal occupé).
+DEFER_SENDS_NEAR_MY_TURN = false
+DEFER_MAX_SECONDS = 60                    -- report levé au plus tard N secondes après son début (sécurité)
+-- Envois reportés pendant tout le combat : aucune requête HTTP depuis un message reçu (début de manche, début de tour,
+-- lancer « urgents » compris) ; le lot part quand le script le demande (JOURNAL_FLUSH_NOW, au début de son tour), à la
+-- fin du combat, ou au-delà de DEFER_MAX_LINES lignes. Féca seul : son prédécesseur est inconnu en manche 1, et le début
+-- de la manche 2 (envoi « urgent ») tombait sur le début de son tour, passé en 0,1 s (2026-10-17, 15:58 et 15:59).
+DEFER_SENDS_IN_FIGHT = false
+DEFER_MAX_LINES = 3000
+-- Messages du silence mis en file au lieu d'être perdus, traités ensuite : au début de fightManagement
+-- (JOURNAL_FLUSH_NOW) ou au premier message après le silence. Pendant le silence, le journal ne fait que les ranger : le
+-- script reste libre quand AnkaBot lance fightManagement. Féca seul : silence dès le tour qui précède le sien, comme la
+-- Reine, sans perdre ce tour (Malamibe invoquée, relances) ni le sien (2026-10-17 : tours passés en 0,1 s sans que
+-- fightManagement ait commencé ; le journal traitait la fin du tour du dernier monstre et le début de manche).
+QUIET_QUEUE = false
+QUIET_QUEUE_MAX = 3000
+-- Ordre de jeu (liste des combattants, id en <entrée>.<id>) : le combattant qui précède le personnage, connu dès la
+-- manche 1 (avant : seulement à partir de son 2e tour).
+TURN_LIST_MESSAGE, TURN_LIST_FIELD, TURN_LIST_ENTRY, TURN_LIST_ID = "jvu", "fxlo", "fxkv", "fxld"
 TURN_START, TURN_START_FIELD = "jvj", "fxjr"   -- début de tour : identifiant du combattant
 TURN_END, TURN_END_FIELD = "jup", "fxgo"       -- fin de tour : identifiant du combattant
+-- Fonction(nom, message) appelée à chaque message reçu, avant tout traitement du journal (script qui joue) ; nil : aucune.
+JOURNAL_ON_MESSAGE = nil
+TURN_WAIT_FIELD = "fxjq"                       -- début de tour : durée accordée par le jeu (dixièmes de seconde)
+FIGHT_END_MESSAGE = "jwh"                      -- fin du combat (le silence s'arrête là, comme à la manche 1)
 -- false : journal coupé, aucun message écouté (test : un script qui joue passe-t-il encore des tours sans le journal ?).
 ENABLED = true
-DIAGNOSTIC = true                         -- affiche les premiers messages reçus et les types découverts
+-- Personnages journalisés (nom → true) ; nil : tous. Les autres (mules du groupe, qui chargent le même script) n'écoutent
+-- rien : le serveur du Féca ne garde que son journal.
+JOURNAL_PERSONNAGES = nil
+DIAGNOSTIC = true                        -- affiche les premiers messages reçus et les types découverts
 DIAGNOSTIC_NAMES = 30                     -- nombre de noms de messages différents affichés en diagnostic
 DIAGNOSTIC_TYPES = 40                     -- nombre de types découverts affichés en diagnostic
 
@@ -205,7 +239,13 @@ local inMessage, parallel = false, 0
 -- Silence autour de son tour (QUIET_AROUND_MY_TURN) : identifiant du personnage, combattant qui joue juste avant lui,
 -- dernier combattant à avoir commencé son tour, début du silence (horloge), messages comptés sans être écrits.
 local myFighterId, prevOfMe, lastStarter, quietSince, quietCount, myTurnOn = nil, nil, nil, nil, 0, false
-local entityKeys = nil
+-- Son dernier tour, gardé pendant le silence (aucun envoi) et écrit ensuite (événement « myTurn ») : début, durée
+-- accordée par le jeu, fin. Sert aux tours sautés (2026-10-17 : tours du Féca finis en moins d'une demi-seconde).
+local myTurnStart, myTurnWait, myTurnEnd = nil, nil, nil
+local myTurnNames = {}                         -- messages reçus pendant ce tour (noms seulement, 40 au plus)
+local deferSince = nil                         -- envois reportés depuis (DEFER_SENDS_NEAR_MY_TURN)
+local listPrev = nil                           -- combattant qui le précède d'après l'ordre de jeu (TURN_LIST_MESSAGE)
+local quietQueue = {}                          -- messages du silence en attente (QUIET_QUEUE) : { nom, message, ms }local entityKeys = nil
 
 -- ───────────────────────────── JSON (Lua pur, compatible MoonSharp) ─────────────────────────────
 
@@ -283,9 +323,9 @@ local function unixTime()
 end
 
 -- Début d'une ligne numérotée : {"k":<k>,"i":<n°>,"ms":<horloge>
-local function head(k)
+local function head(k, atMs)
   seq = seq + 1
-  return '{"k":"' .. k .. '","i":' .. seq .. ',"ms":' .. nowMs()
+  return '{"k":"' .. k .. '","i":' .. seq .. ',"ms":' .. (atMs or nowMs())
 end
 
 -- Identifiant de cette instance du script (unique : heure, horloge et adresse d'une table propre à cet état Lua).
@@ -375,9 +415,15 @@ local function flush()
   end
 end
 
--- Envoi : tous les FLUSH_EVERY lignes, ou dès qu'une ligne urgente arrive, ou FLUSH_SECONDS après le dernier envoi.
+-- Envoi : tous les FLUSH_EVERY lignes, ou dès qu'une ligne urgente arrive, ou FLUSH_SECONDS après le dernier envoi
+-- (rien pendant un report autour de son tour).
 local function push(line, urgent)
   buffer[#buffer + 1] = line
+  if DEFER_SENDS_IN_FIGHT and wasInFight and #buffer < DEFER_MAX_LINES then return end
+  if deferSince ~= nil then
+    if clock() - deferSince < DEFER_MAX_SECONDS then return end
+    deferSince = nil
+  end
   if #buffer >= FLUSH_EVERY or urgent then
     flush()
     return
@@ -912,7 +958,8 @@ local function startFight(why)
   sinceSnapshot = 0
   event("fightStart", ',"why":' .. jsonString(why))
   snapshot("start")
-  flush()
+  -- (DEFER_SENDS_IN_FIGHT : pas d'envoi au début de la manche 1, qui est aussi celui du premier tour)
+  if not DEFER_SENDS_IN_FIGHT then flush() end
   global:printSuccess("[journal] combat n°" .. fightIndex .. " (" .. why .. ")")
 end
 
@@ -920,7 +967,7 @@ local function endFight(why)
   wasInFight = false
   event("fightEnd", ',"why":' .. jsonString(why))
   writeCounts("fightEnd")
-  flush()
+  if not (DEFER_SENDS_IN_FIGHT and why == "nouvelle manche 1") then flush() end
   untilTailFlush = FLUSH_AFTER_FIGHT
   global:printSuccess("[journal] combat n°" .. fightIndex .. " terminé (" .. why .. ") — " .. received ..
     " messages reçus, " .. (sent + saved) .. " lignes écrites" .. (dropped > 0 and (", " .. dropped .. " perdues") or "") ..
@@ -1156,23 +1203,63 @@ end
 
 -- Silence autour de son tour : tenu à jour sur les débuts et fins de tour ; vrai si le message est à ignorer.
 local function quietFor(name, message)
+  if name == TURN_LIST_MESSAGE then
+    if myFighterId == nil then pcall(function() myFighterId = character:id() end) end
+    pcall(function()
+      local items, n = collectionItems(getField(message, TURN_LIST_FIELD), true)
+      if not items or myFighterId == nil then return end
+      local ids = {}
+      for j = 1, n do
+        local okx, id = pcall(function() return getField(getField(items[j], TURN_LIST_ENTRY), TURN_LIST_ID) end)
+        if okx and id ~= nil then ids[#ids + 1] = id end
+      end
+      for j = 1, #ids do
+        if ids[j] == myFighterId and #ids > 1 then listPrev = ids[(j - 2) % #ids + 1] end
+      end
+      if listPrev ~= nil and not myTurnOn then prevOfMe = listPrev end
+    end)
+  end
+  -- Fin du combat, ou manche 1 d'un nouveau combat : le silence s'arrête (combat abandonné ou perdu pendant mon tour,
+  -- 2026-10-12 à 21:48 : le journal manquait sinon la fin de ce combat et le début du suivant ; le serveur de plans,
+  -- qui fusionnait alors deux combats, ne trouvait plus aucun tour, et les tours étaient passés).
+  if name == FIGHT_END_MESSAGE or name == ROUND_MESSAGE then
+    local nouveau = name == FIGHT_END_MESSAGE
+    if not nouveau then
+      local r = nil
+      pcall(function() r = message[ROUND_FIELD] end)
+      nouveau = r == 1
+    end
+    if nouveau then
+      myTurnOn, quietSince, prevOfMe, lastStarter = false, nil, nil, nil
+      deferSince = nil
+      return false
+    end
+  end
   if name == TURN_START or name == TURN_END then
     if myFighterId == nil then pcall(function() myFighterId = character:id() end) end
     local id = nil
     pcall(function() id = message[name == TURN_START and TURN_START_FIELD or TURN_END_FIELD] end)
     if name == TURN_START and id ~= nil then
       if id == myFighterId then
-        prevOfMe = lastStarter
+        prevOfMe = listPrev or lastStarter
         myTurnOn = true
         quietSince = quietSince or clock()
+        myTurnStart, myTurnWait, myTurnEnd, myTurnNames = clock(), nil, nil, {}
+        pcall(function() myTurnWait = message[TURN_WAIT_FIELD] end)
+        if DEFER_SENDS_NEAR_MY_TURN then deferSince = deferSince or clock() end
       elseif myTurnOn then
         myTurnOn, quietSince = false, nil      -- mon tour est fini (fin de tour non reçue)
-      elseif prevOfMe ~= nil and id == prevOfMe and quietSince == nil then
+        myTurnEnd = myTurnEnd or clock()
+        deferSince = nil
+      elseif prevOfMe ~= nil and id == prevOfMe and quietSince == nil and not QUIET_FROM_MY_TURN then
         -- (pas d'envoi ici : une requête bloquante juste avant son tour ; le reste part à la fin du silence)
         quietSince = clock()
       end
+      if DEFER_SENDS_NEAR_MY_TURN and prevOfMe ~= nil and id == prevOfMe and not myTurnOn then deferSince = deferSince or clock() end
       lastStarter = id
     elseif name == TURN_END and id ~= nil and id == myFighterId and quietSince ~= nil then
+      myTurnEnd = clock()
+      deferSince = nil
       quietCount = quietCount + 1
       myTurnOn, quietSince = false, nil
       return true
@@ -1180,22 +1267,53 @@ local function quietFor(name, message)
   end
   if quietSince ~= nil and clock() - quietSince > QUIET_MAX_SECONDS then myTurnOn, quietSince = false, nil end
   if quietSince ~= nil then
+    if myTurnStart ~= nil and myTurnEnd == nil and #myTurnNames < 40 then myTurnNames[#myTurnNames + 1] = name end
     quietCount = quietCount + 1
     return true
   end
   return false
 end
 
+local record
+
+-- Messages du silence en attente, dans l'ordre d'arrivée, avec leur heure (QUIET_QUEUE).
+local function drainQuiet()
+  if #quietQueue == 0 then return end
+  local q = quietQueue
+  quietQueue = {}
+  for _, it in ipairs(q) do record(it[1], it[2], it[3]) end
+end
+
+-- Envoi tout de suite, report compris (et file du silence traitée) : appelé par le script au début de son tour
+-- (fightManagement), quand AnkaBot lui a donné la main.
+JOURNAL_FLUSH_NOW = function()
+  pcall(drainQuiet)
+  pcall(flush)
+end
+
 local function onMessage(name, message)
-  if inMessage then
-    parallel = parallel + 1
-    return
-  end
+  -- (script qui joue : il voit chaque message à son arrivée, silence compris — tours passés du Féca, 2026-10-18)
+  if JOURNAL_ON_MESSAGE then pcall(JOURNAL_ON_MESSAGE, name, message) end
+  -- (silence d'abord : un message du silence est mis en file même pendant le traitement de la file)
   if QUIET_AROUND_MY_TURN and quietFor(name, message) then
+    if QUIET_QUEUE and #quietQueue < QUIET_QUEUE_MAX then
+      quietQueue[#quietQueue + 1] = { name, message, nowMs() }
+      return
+    end
     received = received + 1
     counts[name] = (counts[name] or 0) + 1
     return
   end
+  if inMessage then
+    parallel = parallel + 1
+    return
+  end
+  if #quietQueue > 0 then pcall(drainQuiet) end
+  record(name, message)
+end
+
+-- Enregistrement d'un message (heure d'arrivée `atMs` s'il sort de la file du silence).
+record = function(name, message, atMs)
   inMessage = true
   workUntil = clock() + (wasInFight and WORK_FIGHT_MS or WORK_IDLE_MS) / 1000
   if danger ~= nil then
@@ -1210,10 +1328,16 @@ local function onMessage(name, message)
   if received == 1 or received % INSTANCE_CHECK_EVERY == 0 then checkInstance() end
   local first = counts[name] == 1
   local ok, err = pcall(function()
+    if myTurnStart ~= nil and myTurnEnd ~= nil then
+      event("myTurn", ',"wait":' .. (type(myTurnWait) == "number" and jsonNumber(myTurnWait) or 'null') ..
+        ',"seconds":' .. jsonNumber(math.floor((myTurnEnd - myTurnStart) * 1000 + 0.5) / 1000) ..
+        ',"names":' .. jsonString(table.concat(myTurnNames, ",")))
+      myTurnStart, myTurnWait, myTurnEnd = nil, nil, nil
+    end
     if not perfDone then measure(message) end
     watchFight(name, message)
     local data, pend = toJson(message, "m:" .. name)
-    local h = head("m")
+    local h = head("m", atMs)
     local i = seq
     push(h .. ',"f":' .. (wasInFight and fightIndex or 0) .. ',"n":' .. jsonString(name) .. ',"d":' .. data .. '}',
       URGENT_MESSAGES[name] == true)
@@ -1236,8 +1360,12 @@ local function onMessage(name, message)
     if first then queueHistory(name) end
   end)
   if not ok then report(name, tostring(err)) end
-  local okW, errW = pcall(backgroundWork)
-  if not okW then report("travail de fond", tostring(errW)) end
+  if deferSince == nil and not (DEFER_SENDS_IN_FIGHT and wasInFight) then
+    local okW, errW = pcall(backgroundWork)
+    if not okW then report("travail de fond", tostring(errW)) end
+  end
+  -- (combat fini : le lot reporté part tout de suite, plus de tour à protéger)
+  if DEFER_SENDS_IN_FIGHT and name == FIGHT_END_MESSAGE then pcall(flush) end
   inMessage = false
 end
 
@@ -1252,6 +1380,14 @@ function messagesRegistering()
   if ENABLED == false then
     global:printMessage("[journal] coupé (ENABLED = false) : aucun message écouté")
     return
+  end
+  if JOURNAL_PERSONNAGES then
+    local n = nil
+    pcall(function() n = character:name() end)
+    if type(n) == "string" and n ~= "" and not JOURNAL_PERSONNAGES[n] then
+      global:printMessage("[journal] " .. n .. " absent de JOURNAL_PERSONNAGES (mule) : aucun message écouté")
+      return
+    end
   end
   local start = clock()
   local known = loadSchemas()

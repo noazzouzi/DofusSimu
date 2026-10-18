@@ -4,17 +4,18 @@
  * tour par situation), correspondance plateau du jeu ↔ situation, couverture ; sur des combats synthétiques au format
  * du journal AnkaBot (les journaux réels ne sont pas versionnés).
  */
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import { distance } from '../src/map/geometry'
 import { luaScenarios, type TurnPlan } from '../tools/fightlog/scenario'
-import { fightsOfFile, learn } from '../tools/reine-des-voleurs/scenarios/apprendre'
-import { addFight, decodeEntry, emptyLibrary, encodeEntry, loadLibrary, type Library } from '../tools/reine-des-voleurs/scenarios/bibliotheque'
+import { fightsOfFile, learn, reclassify } from '../tools/reine-des-voleurs/scenarios/apprendre'
+import { addFight, decodeEntry, emptyLibrary, encodeEntry, libraryPath, loadLibrary, type Library } from '../tools/reine-des-voleurs/scenarios/bibliotheque'
 import { boardOf, chooseBranch, compilePlacement, coverage, LOIN, markFar, matchPlan } from '../tools/reine-des-voleurs/scenarios/compilation'
-import { loadRegistry, recognize, saveRegistry, signature, type Registry } from '../tools/reine-des-voleurs/scenarios/placements'
-import { ALPHA, BETA, typicalFight, writeSession } from './helpers/reine-synthetique'
+import { casesOf, colonneOf, loadRegistry, recognize, saveRegistry, signature, type Registry } from '../tools/reine-des-voleurs/scenarios/placements'
+import { saveModifiers } from '../tools/reine-des-voleurs/scenarios/modificateurs'
+import { ALPHA, BETA, MULE_ID, QUEEN_ID, typicalFight, writeSession } from './helpers/reine-synthetique'
 
 const tmp = mkdtempSync(join(tmpdir(), 'reine-scenarios-'))
 afterAll(() => rmSync(tmp, { recursive: true, force: true }))
@@ -75,8 +76,11 @@ describe('apprentissage et bibliothèque', () => {
     expect(r1.nouveaux).toEqual(['Auto 133-135'])
     const reg = loadRegistry(root)
     expect(reg.personnages).toEqual({ Alpha: ALPHA, Beta: BETA })
-    const p = recognize(reg, [{ cellule: 135 }, { cellule: 133 }])!
-    expect(p).toMatchObject({ nom: 'Auto 133-135', auto: true, cases: { Alpha: 354, Beta: 381 }, colonne: { Alpha: 354, Beta: 381 } })
+    const p = recognize(reg, [{ espece: 3746, cellule: 135 }, { espece: 3726, cellule: 133 }])!
+    // Monstres seulement : les Crâs gardent les cases du placement par défaut, pas celles où le combat les a trouvés.
+    expect(p).toMatchObject({ nom: 'Auto 133-135', auto: true })
+    expect(p.cases).toBeUndefined()
+    expect(p.colonne).toBeUndefined()
     const lib1 = loadLibrary(p.nom, root)
     expect(lib1.combats).toHaveLength(2)
     const occ1 = lib1.branches.reduce((n, b) => n + b.joue.length, 0)
@@ -91,7 +95,7 @@ describe('apprentissage et bibliothèque', () => {
     expect(lib2.branches.reduce((n, b) => n + b.joue.length, 0)).toBe(occ1)
   })
 
-  it('placement déclaré : reconnu par les cases des monstres, quel que soit leur ordre', () => {
+  it('placement déclaré : reconnu par l’espèce et la case des monstres, quel que soit leur ordre', () => {
     const root = freshRoot('declare')
     const reg: Registry = { version: 1, carte: 137101316, defaut: 'Placement A', personnages: {}, placements: [
       { nom: 'Placement A', monstres: [{ espece: 3746, cellule: 135 }, { espece: 3726, cellule: 133 }], cases: { Alpha: 354, Beta: 381 }, colonne: { Alpha: 354, Beta: 381 } },
@@ -100,9 +104,95 @@ describe('apprentissage et bibliothèque', () => {
     writeSession(join(root, 'logs'), 'session-10-00-00', [typicalFight()])
     const r = learn([join(root, 'logs')], { root })
     expect(r.nouveaux).toEqual([])
-    expect(r.lignes.join('\n')).toContain('Placement A — victoire')
+    expect(r.lignes.join('\n')).toContain('Placement A, modificateur Aucun — victoire')
     expect(loadLibrary('Placement A', root).combats).toHaveLength(1)
-    expect(signature(reg.placements[0].monstres)).toBe('133-135')
+    expect(signature(reg.placements[0].monstres)).toBe('3726@133 3746@135')
+  })
+
+  it('mêmes cases, monstres permutés : placements distincts ; reclasser range les combats appris avant la correction', () => {
+    const root = freshRoot('reclasser')
+    const logs = join(root, 'data', 'fightlogs')
+    writeSession(logs, 'session-10-00-00', [typicalFight()])   // Reine en 133, Mâchassin en 135
+    const permute: Registry = { version: 1, carte: 137101316, personnages: {}, placements: [
+      { nom: 'Placement B', monstres: [{ espece: 3746, cellule: 133 }, { espece: 3726, cellule: 135 }] },
+    ] }
+    saveRegistry(permute, root)
+    expect(learn([logs], { root }).nouveaux).toEqual(['Auto 133-135'])
+    const avant = loadLibrary('Auto 133-135', root)
+    const occ = avant.branches.reduce((n, b) => n + b.joue.length, 0)
+    // Fiche d'avant le 2026-10-12, sans monstres : relus dans le journal.
+    for (const c of avant.combats) delete c.monstres
+    writeFileSync(libraryPath('Auto 133-135', root), JSON.stringify(avant))
+
+    const corrige: Registry = { ...permute, placements: [...permute.placements,
+      { nom: 'Placement A', monstres: [{ espece: 3726, cellule: 133 }, { espece: 3746, cellule: 135 }] }] }
+    saveRegistry(corrige, root)
+    expect(recognize(corrige, [{ espece: 3726, cellule: 133 }, { espece: 3746, cellule: 135 }])!.nom).toBe('Placement A')
+    expect(recognize(corrige, [{ espece: 3726, cellule: 135 }, { espece: 3746, cellule: 133 }])!.nom).toBe('Placement B')
+    const r = reclassify({ root })
+    expect(r).toMatchObject({ deplaces: 1, laisses: 0, supprimes: ['Auto 133-135'] })
+    expect(existsSync(libraryPath('Auto 133-135', root))).toBe(false)
+    const a = loadLibrary('Placement A', root)
+    expect(a.combats.map(c => c.monstres)).toEqual([[{ espece: 3726, cellule: 133 }, { espece: 3746, cellule: 135 }]])
+    expect(a.branches.reduce((n, b) => n + b.joue.length, 0)).toBe(occ)
+    expect(reclassify({ root }).deplaces).toBe(0)
+  })
+
+  it('modificateur reconnu aux sorts du début du combat (hors communs), inconnu : ajouté ; combats d’avant le nouveau départ ignorés', () => {
+    const root = freshRoot('modificateur')
+    const logs = join(root, 'data', 'fightlogs')
+    writeSession(logs, 'session-10-00-00', [
+      // 4655 lancé par les deux Crâs (modificateur) ; 17307 par Alpha seul (équipement, consommable) : ne compte pas.
+      { ...typicalFight(), debut: [{ who: ALPHA, spell: 5952 }, { who: ALPHA, spell: 4655 }, { who: BETA, spell: 4655 }, { who: ALPHA, spell: 17307 }, { who: QUEEN_ID, spell: 4667 }] },
+      { ...typicalFight({ queen2: 175 }), debut: [{ who: ALPHA, spell: 5952 }, { who: QUEEN_ID, spell: 9999 }] },
+    ])
+    saveModifiers({ version: 1, communs: [5952], modificateurs: [{ nom: 'Vitalité', sorts: [4655, 4667] }] }, root)
+    const r = learn([logs], { root })
+    expect(r.appris).toBe(2)
+    expect(r.nouveauxModificateurs).toEqual(['Auto 9999'])
+    const lib = loadLibrary('Auto 133-135', root)
+    expect(lib.combats.map(c => c.modificateur).sort()).toEqual(['Auto 9999', 'Vitalité'])
+    expect(lib.combats.find(c => c.modificateur === 'Vitalité')!.sortsDebut).toEqual([4655, 4667, 5952, 17307])
+    expect(r.lignes.join('\n')).toContain('modificateur Vitalité')
+
+    // Nouveau départ après ces combats (commencés à 10:00 UTC) : rien de plus n'est appris.
+    const reg = loadRegistry(root)
+    saveRegistry({ ...reg, depuis: '2026-10-12T12:00:00Z' }, root)
+    const r2 = learn([logs], { root })
+    expect(r2).toMatchObject({ appris: 0, anterieurs: 2 })
+  })
+
+  it('mode 4 Crâs + mule : la mule n’est ni apprise ni comptée parmi les morts ; son placement inconnu est marqué', () => {
+    const root = freshRoot('mule')
+    const logs = join(root, 'data', 'fightlogs')
+    saveRegistry({ version: 1, carte: 137101316, defaut: 'Placement A', personnages: {}, placements: [
+      { nom: 'Placement A', monstres: [{ espece: 3726, cellule: 140 }, { espece: 3746, cellule: 142 }], cases: { Alpha: 354, Beta: 381 }, colonne: { Alpha: 354, Beta: 381 } },
+    ] }, root)
+    const spec = { ...typicalFight(), mule: 424 }
+    spec.rounds[1] = { ...spec.rounds[1], deaths: [MULE_ID] }
+    writeSession(logs, 'session-10-00-00', [spec])
+    const r = learn([logs], { root })
+    expect(r.appris).toBe(1)
+    expect(r.lignes.join('\n')).toContain('avec mule (Mule)')
+    const reg = loadRegistry(root)
+    expect(reg.personnages).toEqual({ Alpha: ALPHA, Beta: BETA })
+    expect(reg.placements.find(p => p.nom === 'Auto 133-135')).toMatchObject({ auto: true, mule: true })
+    const lib = loadLibrary('Auto 133-135', root)
+    expect(lib.combats[0]).toMatchObject({ mules: ['Mule'], issue: { fin: 'victoire', morts: [] } })
+    expect(new Set(lib.branches.map(b => b.perso))).toEqual(new Set(['Alpha', 'Beta']))
+    expect(lib.branches.every(b => b.joue.every(o => o.morts.length === 0))).toBe(true)
+  })
+
+  it('cases et colonne : celles du placement par défaut, remplacées Crâ par Crâ', () => {
+    const reg: Registry = { version: 1, carte: 137101316, defaut: 'Placement A', personnages: {}, placements: [
+      { nom: 'Placement A', monstres: [{ espece: 3726, cellule: 133 }], cases: { Alpha: 354, Beta: 381 }, colonne: { Alpha: 354, Beta: 408 } },
+      { nom: 'Auto 140', auto: true, monstres: [{ espece: 3726, cellule: 140 }] },
+      { nom: 'Placement B', monstres: [{ espece: 3726, cellule: 150 }], cases: { Beta: 353 }, colonne: {} },
+    ] }
+    expect(casesOf(reg, reg.placements[1])).toEqual({ Alpha: 354, Beta: 381 })
+    expect(colonneOf(reg, reg.placements[1])).toEqual({ Alpha: 354, Beta: 408 })
+    expect(casesOf(reg, reg.placements[2])).toEqual({ Alpha: 354, Beta: 353 })
+    expect(colonneOf(reg, reg.placements[2])).toEqual({ Alpha: 354, Beta: 408 })
   })
 
   it('jetons du plateau : aller-retour', () => {

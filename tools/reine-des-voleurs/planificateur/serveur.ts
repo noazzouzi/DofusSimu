@@ -50,6 +50,14 @@ export interface PlanServerOptions {
   port?: number
   logsDir?: string
   quiet?: boolean
+  /** Fil de calcul (défaut : serveur-calcul.ts, la Reine) ; même protocole : tools/ventre-de-la-baleine/calcul.ts. */
+  worker?: URL
+  /** Nombre de fils de calcul (défaut : REINE_FILS, sinon 6 au plus, la moitié des cœurs). */
+  threads?: number
+  /** Lignes affichées au démarrage. */
+  banner?: string[]
+  /** Données de plus pour les fils de calcul (serveur du Féca : `joueurs`, personnages joués ; les autres sont des mules). */
+  workerData?: Record<string, unknown>
 }
 
 /** Fils de calcul (au moins 1). */
@@ -78,8 +86,9 @@ export function startPlanServer(opts: PlanServerOptions = {}) {
   }
   // Dossier des journaux (comme le récepteur) : le calcul y garde la dernière liste de sorts connue de chaque Crâ.
   const logsDir = opts.logsDir ?? process.env.FIGHTLOG_DIR ?? join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'data', 'fightlogs')
-  const workers = Array.from({ length: FILS }, (_, index) => {
-    const w = new Worker(new URL('./serveur-calcul.ts', import.meta.url), { execArgv: ['--import', 'tsx'], workerData: { logsDir, part: { index, count: FILS } } })
+  const fils = Math.max(1, opts.threads ?? FILS)
+  const workers = Array.from({ length: fils }, (_, index) => {
+    const w = new Worker(opts.worker ?? new URL('./serveur-calcul.ts', import.meta.url), { execArgv: ['--import', 'tsx'], workerData: { ...opts.workerData, logsDir, part: { index, count: fils } } })
     w.unref()
     return w
   })
@@ -129,7 +138,17 @@ export function startPlanServer(opts: PlanServerOptions = {}) {
     const note = (a: Answer) => Number(a.text.split(/\s/)[1])
     return plans.reduce((best, a) => (note(a) > note(best) ? a : best))
   }
+  /** Demandes de placement (POST /placement) : le premier fil répond. */
+  const placements = new Map<number, ServerResponse>()
   const onAnswer = (m: { type: string; id: number } & Answer) => {
+    if (m.type === 'placement') {
+      const res = placements.get(m.id)
+      if (!res) return
+      placements.delete(m.id)
+      for (const l of m.log ?? []) log(l)
+      reply(res, m.text)
+      return
+    }
     if (m.type !== 'plan') return
     const p = pending.get(m.id)
     if (!p) return
@@ -171,6 +190,17 @@ export function startPlanServer(opts: PlanServerOptions = {}) {
     // Plus la liste des sorts du personnage (ligne « h » d'historique : reçue à la connexion, avant le journal).
     onBatch: ({ header, lines }) => ask({ type: 'batch', header, lines: lines.filter(o => KEEP.has(o.k) || (o.k === 'h' && o.n === SPELL_LIST)) }),
     route: (req: IncomingMessage, res: ServerResponse) => {
+      // Placement (script du Ventre de la Baleine) : case de placement du personnage, calculée par le premier fil.
+      if (req.method === 'POST' && req.url?.startsWith('/placement')) {
+        const chunks: Buffer[] = []
+        req.on('data', c => chunks.push(c))
+        req.on('end', () => {
+          const id = nextId++
+          placements.set(id, res)
+          workers[0].postMessage({ type: 'placement', id, who: characterOf(req.url ?? ''), q: parseBody(Buffer.concat(chunks).toString('utf8')) })
+        })
+        return true
+      }
       if (req.method !== 'POST' || !req.url?.startsWith('/plan')) return false
       const chunks: Buffer[] = []
       req.on('data', c => chunks.push(c))
@@ -187,7 +217,8 @@ export function startPlanServer(opts: PlanServerOptions = {}) {
         // manche 2 : plan prêt en 7,5 s mais jeté par la demande « dernière » de 6 s, recalculé, script parti à 14 s.
         // Manche dans la signature : un plan fini mais jamais lu, tour coupé, n'est pas servi au tour suivant sur la même
         // case avec les mêmes PA/PM — 18:41, Lowkey a joué en manches 8, 10 et 16 le plan de la manche d'avant.)
-        const sig = [q.manche ?? '', q.case, q.pa, q.pm, q.refus ?? ''].join('|')
+        // (plan rapide du Féca dans la signature : le plan complet demandé ensuite, au même état, n'est pas le plan rapide)
+        const sig = [q.manche ?? '', q.case, q.pa, q.pm, q.refus ?? '', q.rapide ?? ''].join('|')
         const longue = Math.min(3000, Math.max(0, Number(q.longue) || 0))
         const j = jobs.get(who)
         if (j?.sig === sig) {
@@ -216,9 +247,9 @@ export function startPlanServer(opts: PlanServerOptions = {}) {
       })
       return true
     },
-    banner: [
+    banner: opts.banner ?? [
       'Serveur de plans de la Reine des Voleurs : POST /plan (tools/ankabot/ReineIA.lua, à charger sur le chef du groupe).',
-      `Calcul sur ${FILS} fil(s) (REINE_FILS). Laisser cette fenêtre ouverte pendant les combats. Ctrl+C pour arrêter.`,
+      `Calcul sur ${fils} fil(s) (REINE_FILS). Laisser cette fenêtre ouverte pendant les combats. Ctrl+C pour arrêter.`,
     ],
   })
   plansFile = receiver.file.replace(/session-([^\\/]+)\.jsonl$/, 'plans-$1.jsonl')

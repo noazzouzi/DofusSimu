@@ -51,7 +51,7 @@ export function luaFormations(list: FormationDef[]): string {
 /** Messages dont le serveur de plans a besoin (reconstitution rejeu.ts, sorts du personnage, modificateurs privés). */
 export const SERVER_MESSAGES = [...new Set([...Object.values(MSG), ...PROTO.privateMods, PROTO.spellList])].sort()
 
-const HEAD_NOTE = `-- PAS de DEVELOPER_MULTI_THREADING : essayé le 2026-10-10, il fait tourner deux fils dans la même machine Lua\n` +
+export const HEAD_NOTE = `-- PAS de DEVELOPER_MULTI_THREADING : essayé le 2026-10-10, il fait tourner deux fils dans la même machine Lua\n` +
   `-- (erreurs « attempt to index a function value » sur des variables locales, 3 journaux sur 4 arrêtés).\n\n`
 
 /**

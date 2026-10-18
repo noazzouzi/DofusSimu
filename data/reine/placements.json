@@ -2,13 +2,25 @@
   "version": 1,
   "carte": 137101316,
   "defaut": "Placement 3",
+  "depuis": "2026-10-12T20:59:00Z",
   "notes": [
-    "Placements de la Reine des Voleurs (carte 137101316) : monstres au début du combat (signature reconnue par le script pendant la phase de placement), case de placement et case de la colonne de chaque Crâ.",
-    "Ajouter un placement : un objet de plus dans « placements » (nom, monstres ; cases et colonne facultatives : sinon celles du placement par défaut). Un combat appris sur un placement inconnu en crée un « Auto … » : le renommer.",
-    "Placement 2 et Placement 3 : relevés dans les combats du 2026-10-10 à 21:27 et du 2026-10-11 à 00:27 (ReineCombat.lua du 2026-10-11)."
+    "Placements de la Reine des Voleurs (carte 137101316) : monstres au début du combat (espèce et case : la signature reconnue par le script pendant la phase de placement), case de placement et case de la colonne de chaque Crâ.",
+    "Les 12 placements du donjon, numérotés comme sur les images de placements fournies par le joueur (2026-10-12) ; chaque combat appris jusque-là correspond à l’un d’eux. Plusieurs placements occupent les mêmes cases avec des monstres permutés (1, 3 et 6 ; 2 et 4 ; 5, 8 et 11 ; 7 et 9) : l’espèce compte autant que la case.",
+    "Les Crâs se placent partout comme au placement par défaut (consigne du joueur, 2026-10-11) : seul celui-ci porte « cases » et « colonne ». Un autre placement peut en déclarer, Crâ par Crâ (les Crâs absents gardent leur case du placement par défaut).",
+    "Un combat appris sur un placement absent du registre en crée un « Auto … » (monstres seulement) ; après une correction du registre : npm run reine:scenarios -- reclasser.",
+    "Nouveau départ le 2026-10-12T18:14:53Z (« depuis ») : bibliothèques précédentes archivées dans data/reine/archives/2026-10-12/scenarios ; seuls les combats commencés depuis sont appris (joués par l’algorithme seul : npm run reine:algorithme), chacun avec son placement et son modificateur de dimension. Reporté au 2026-10-12T20:59:00Z : les combats de 21:46 et 22:01 (heure de Paris) avaient des tours passés par AnkaBot (map:forceFight() du trajet), pas le jeu de l’algorithme."
   ],
   "personnages": {"Java-Springboot":900265148709,"Lamouit":900264624421,"Lowkey-Jealous":900264689957,"Kemist-Skyler":900266590501},
   "placements": [
+    {
+      "nom": "Placement 1",
+      "monstres": [
+        {"espece":3726,"cellule":132,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":134,"nom":"Mâchassin"},
+        {"espece":3747,"cellule":178,"nom":"Terristocrate"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"}
+      ]
+    },
     {
       "nom": "Placement 2",
       "monstres": [
@@ -16,9 +28,7 @@
         {"espece":3746,"cellule":135,"nom":"Mâchassin"},
         {"espece":3747,"cellule":178,"nom":"Terristocrate"},
         {"espece":3748,"cellule":208,"nom":"Doublure"}
-      ],
-      "cases": {"Java-Springboot":327,"Lamouit":354,"Lowkey-Jealous":353,"Kemist-Skyler":351},
-      "colonne": {"Java-Springboot":327,"Lamouit":354,"Lowkey-Jealous":381,"Kemist-Skyler":408}
+      ]
     },
     {
       "nom": "Placement 3",
@@ -30,6 +40,231 @@
       ],
       "cases": {"Java-Springboot":327,"Lamouit":354,"Lowkey-Jealous":353,"Kemist-Skyler":351},
       "colonne": {"Java-Springboot":327,"Lamouit":354,"Lowkey-Jealous":381,"Kemist-Skyler":408}
+    },
+    {
+      "nom": "Placement 4",
+      "monstres": [
+        {"espece":3747,"cellule":133,"nom":"Terristocrate"},
+        {"espece":3726,"cellule":135,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":178,"nom":"Mâchassin"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"}
+      ]
+    },
+    {
+      "nom": "Placement 5",
+      "monstres": [
+        {"espece":3747,"cellule":133,"nom":"Terristocrate"},
+        {"espece":3726,"cellule":163,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":207,"nom":"Mâchassin"},
+        {"espece":3748,"cellule":264,"nom":"Doublure"}
+      ]
+    },
+    {
+      "nom": "Placement 6",
+      "monstres": [
+        {"espece":3747,"cellule":132,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":134,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":178,"nom":"Reine des Voleurs"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"}
+      ]
+    },
+    {
+      "nom": "Placement 7",
+      "monstres": [
+        {"espece":3748,"cellule":132,"nom":"Doublure"},
+        {"espece":3747,"cellule":134,"nom":"Terristocrate"},
+        {"espece":3726,"cellule":192,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":208,"nom":"Mâchassin"}
+      ]
+    },
+    {
+      "nom": "Placement 8",
+      "monstres": [
+        {"espece":3747,"cellule":133,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":163,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":207,"nom":"Reine des Voleurs"},
+        {"espece":3748,"cellule":264,"nom":"Doublure"}
+      ]
+    },
+    {
+      "nom": "Placement 9",
+      "monstres": [
+        {"espece":3748,"cellule":132,"nom":"Doublure"},
+        {"espece":3747,"cellule":134,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":192,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":208,"nom":"Reine des Voleurs"}
+      ]
+    },
+    {
+      "nom": "Placement 10",
+      "monstres": [
+        {"espece":3748,"cellule":132,"nom":"Doublure"},
+        {"espece":3747,"cellule":134,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":192,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":236,"nom":"Reine des Voleurs"}
+      ]
+    },
+    {
+      "nom": "Placement 11",
+      "monstres": [
+        {"espece":3748,"cellule":133,"nom":"Doublure"},
+        {"espece":3747,"cellule":163,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":207,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":264,"nom":"Reine des Voleurs"}
+      ]
+    },
+    {
+      "nom": "Placement 12",
+      "monstres": [
+        {"espece":3748,"cellule":134,"nom":"Doublure"},
+        {"espece":3747,"cellule":192,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":236,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":292,"nom":"Reine des Voleurs"}
+      ]
+    },
+    {
+      "nom": "Placement 1 (mule)",
+      "mule": true,
+      "notes": "Placement 1 et un Bourôliste en 264 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3726,"cellule":132,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":134,"nom":"Mâchassin"},
+        {"espece":3747,"cellule":178,"nom":"Terristocrate"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"},
+        {"espece":3749,"cellule":264,"nom":"Bourôliste"}
+      ]
+    },
+    {
+      "nom": "Placement 2 (mule)",
+      "mule": true,
+      "notes": "Placement 2 et un Bourôliste en 264 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3726,"cellule":133,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":135,"nom":"Mâchassin"},
+        {"espece":3747,"cellule":178,"nom":"Terristocrate"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"},
+        {"espece":3749,"cellule":264,"nom":"Bourôliste"}
+      ]
+    },
+    {
+      "nom": "Placement 3 (mule)",
+      "mule": true,
+      "notes": "Placement 3 et un Bourôliste en 264 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3747,"cellule":132,"nom":"Terristocrate"},
+        {"espece":3726,"cellule":134,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":178,"nom":"Mâchassin"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"},
+        {"espece":3749,"cellule":264,"nom":"Bourôliste"}
+      ]
+    },
+    {
+      "nom": "Placement 4 (mule)",
+      "mule": true,
+      "notes": "Placement 4 et un Bourôliste en 264 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3747,"cellule":133,"nom":"Terristocrate"},
+        {"espece":3726,"cellule":135,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":178,"nom":"Mâchassin"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"},
+        {"espece":3749,"cellule":264,"nom":"Bourôliste"}
+      ]
+    },
+    {
+      "nom": "Placement 5 (mule)",
+      "mule": true,
+      "notes": "Placement 5 et un Bourôliste en 132 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3749,"cellule":132,"nom":"Bourôliste"},
+        {"espece":3747,"cellule":133,"nom":"Terristocrate"},
+        {"espece":3726,"cellule":163,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":207,"nom":"Mâchassin"},
+        {"espece":3748,"cellule":264,"nom":"Doublure"}
+      ]
+    },
+    {
+      "nom": "Placement 6 (mule)",
+      "mule": true,
+      "notes": "Placement 6 et un Bourôliste en 264 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3747,"cellule":132,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":134,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":178,"nom":"Reine des Voleurs"},
+        {"espece":3748,"cellule":208,"nom":"Doublure"},
+        {"espece":3749,"cellule":264,"nom":"Bourôliste"}
+      ]
+    },
+    {
+      "nom": "Placement 7 (mule)",
+      "mule": true,
+      "notes": "Placement 7 et un Bourôliste en 264 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3748,"cellule":132,"nom":"Doublure"},
+        {"espece":3747,"cellule":134,"nom":"Terristocrate"},
+        {"espece":3726,"cellule":192,"nom":"Reine des Voleurs"},
+        {"espece":3746,"cellule":208,"nom":"Mâchassin"},
+        {"espece":3749,"cellule":264,"nom":"Bourôliste"}
+      ]
+    },
+    {
+      "nom": "Placement 8 (mule)",
+      "mule": true,
+      "notes": "Placement 8 et un Bourôliste en 132 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3749,"cellule":132,"nom":"Bourôliste"},
+        {"espece":3747,"cellule":133,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":163,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":207,"nom":"Reine des Voleurs"},
+        {"espece":3748,"cellule":264,"nom":"Doublure"}
+      ]
+    },
+    {
+      "nom": "Placement 9 (mule)",
+      "mule": true,
+      "notes": "Placement 9 et un Bourôliste en 264 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3748,"cellule":132,"nom":"Doublure"},
+        {"espece":3747,"cellule":134,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":192,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":208,"nom":"Reine des Voleurs"},
+        {"espece":3749,"cellule":264,"nom":"Bourôliste"}
+      ]
+    },
+    {
+      "nom": "Placement 10 (mule)",
+      "mule": true,
+      "notes": "Placement 10 et un Bourôliste en 292 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3748,"cellule":132,"nom":"Doublure"},
+        {"espece":3747,"cellule":134,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":192,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":236,"nom":"Reine des Voleurs"},
+        {"espece":3749,"cellule":292,"nom":"Bourôliste"}
+      ]
+    },
+    {
+      "nom": "Placement 11 (mule)",
+      "mule": true,
+      "notes": "Placement 11 et un Bourôliste en 132 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3749,"cellule":132,"nom":"Bourôliste"},
+        {"espece":3748,"cellule":133,"nom":"Doublure"},
+        {"espece":3747,"cellule":163,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":207,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":264,"nom":"Reine des Voleurs"}
+      ]
+    },
+    {
+      "nom": "Placement 12 (mule)",
+      "mule": true,
+      "notes": "Placement 12 et un Bourôliste en 132 (5 monstres : groupe de 5 personnages)",
+      "monstres": [
+        {"espece":3749,"cellule":132,"nom":"Bourôliste"},
+        {"espece":3748,"cellule":134,"nom":"Doublure"},
+        {"espece":3747,"cellule":192,"nom":"Terristocrate"},
+        {"espece":3746,"cellule":236,"nom":"Mâchassin"},
+        {"espece":3726,"cellule":292,"nom":"Reine des Voleurs"}
+      ]
     }
   ]
 }

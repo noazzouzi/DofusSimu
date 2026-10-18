@@ -183,7 +183,12 @@ async function main() {
   )
   dungeons.sort((a, b) => a.id - b.id)
   await writeFile(join(CACHE_DIR, 'dungeons.json'), JSON.stringify(dungeons))
-  const selected = ONLY_DUNGEONS.length ? dungeons.filter((d) => ONLY_DUNGEONS.includes(d.id)) : dungeons
+  // --map seul : ces cartes seulement (sans --dungeon, toutes les salles de tous les donjons étaient réécrites)
+  const selected = ONLY_DUNGEONS.length
+    ? dungeons.filter((d) => ONLY_DUNGEONS.includes(d.id))
+    : EXTRA_MAPS.length
+      ? []
+      : dungeons
   const mapToDungeons = new Map()
   const mapRoom = new Map()
   for (const d of dungeons) {

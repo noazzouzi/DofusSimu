@@ -1,11 +1,15 @@
 // Registre des placements de la Reine des Voleurs (data/reine/placements.json) : pour chaque placement des monstres
-// (leurs cases au début du combat, la signature que le script reconnaît pendant la phase de placement), la case de
-// placement de chaque Crâ et sa case de la colonne (il y revient à la fin de chacun de ses tours).
+// (l'espèce et la case de chacun au début du combat, la signature que le script reconnaît pendant la phase de
+// placement), la case de placement de chaque Crâ et sa case de la colonne (il y revient à la fin de chacun de ses tours).
+// Les cases seules ne suffisent pas : plusieurs placements occupent les mêmes cases avec des monstres permutés
+// (Placements 1, 3 et 6 ; 2 et 4 ; 5, 8 et 11 ; 7 et 9).
 //
 // Un placement s'ajoute à la main dans le fichier (monstres, et au besoin cases et colonne : sans elles, celles du
 // placement par défaut), ou tout seul : un combat appris (apprendre.ts) dont les monstres ne correspondent à aucun
-// placement connu en crée un, nommé « Auto <cases des monstres> », avec les cases où les Crâs ont commencé et fini leurs
-// tours. Il suffit alors de le renommer.
+// placement connu en crée un, nommé « Auto <cases des monstres> », sans cases ni colonne : les Crâs se placent comme au
+// placement par défaut, quel que soit le placement des monstres (consigne du joueur, 2026-10-11). Les cases où les Crâs
+// ont commencé le combat appris ne sont pas reprises : quand le placement échoue, ce sont celles où le jeu les a mis.
+// Il suffit alors de le renommer.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 
@@ -13,14 +17,16 @@ export interface PlacementMonster { espece: number; cellule: number; nom?: strin
 
 export interface PlacementDef {
   nom: string
-  /** Monstres au début du combat : la signature du placement (les cases seules sont comparées, comme en jeu). */
+  /** Monstres au début du combat : la signature du placement (espèce et case de chacun). */
   monstres: PlacementMonster[]
-  /** Case de placement de chaque Crâ (nom du personnage → case) ; absente : celle du placement par défaut. */
+  /** Case de placement de chaque Crâ (nom du personnage → case) ; Crâ absent : sa case du placement par défaut. */
   cases?: Record<string, number>
-  /** Case de la colonne de chaque Crâ ; absente : celle du placement par défaut. */
+  /** Case de la colonne de chaque Crâ ; Crâ absent : sa case du placement par défaut. */
   colonne?: Record<string, number>
   /** Créé par l'apprentissage (placement de monstres rencontré en combat, pas encore déclaré). */
   auto?: boolean
+  /** Mode « 4 Crâs + mule » (un 5e personnage qui passe ses tours : 5 monstres par vague). */
+  mule?: boolean
   notes?: string
 }
 
@@ -29,6 +35,8 @@ export interface Registry {
   carte: number
   /** Placement dont les cases des Crâs servent aux placements de monstres inconnus (FORMATION_PAR_DEFAUT du script). */
   defaut?: string
+  /** Combats appris à partir de cette heure (ISO, UTC) seulement : nouveau départ des bibliothèques. */
+  depuis?: string
   /** Identifiant de jeu de chaque personnage (repli du script quand character:name() ne répond pas). */
   personnages: Record<string, number>
   placements: PlacementDef[]
@@ -58,13 +66,17 @@ export function checkRegistry(reg: Registry): void {
     if (names.has(p.nom)) throw new Error(`${PLACEMENTS_FILE} : placement « ${p.nom} » en double`)
     names.add(p.nom)
     if (!Array.isArray(p.monstres) || !p.monstres.length) throw new Error(`${PLACEMENTS_FILE} : « ${p.nom} » sans monstres`)
-    for (const m of p.monstres) if (!Number.isInteger(m.cellule)) throw new Error(`${PLACEMENTS_FILE} : « ${p.nom} », case de monstre invalide`)
+    for (const m of p.monstres) {
+      if (!Number.isInteger(m.cellule)) throw new Error(`${PLACEMENTS_FILE} : « ${p.nom} », case de monstre invalide`)
+      if (!Number.isInteger(m.espece)) throw new Error(`${PLACEMENTS_FILE} : « ${p.nom} », espèce de monstre invalide`)
+    }
     const sig = signature(p.monstres)
     const other = sigs.get(sig)
-    if (other) throw new Error(`${PLACEMENTS_FILE} : « ${p.nom} » et « ${other} » ont les mêmes cases de monstres (${sig})`)
+    if (other) throw new Error(`${PLACEMENTS_FILE} : « ${p.nom} » et « ${other} » ont les mêmes monstres sur les mêmes cases (${sig})`)
     sigs.set(sig, p.nom)
   }
   if (reg.defaut && !names.has(reg.defaut)) throw new Error(`${PLACEMENTS_FILE} : placement par défaut « ${reg.defaut} » inconnu`)
+  if (reg.depuis && Number.isNaN(Date.parse(reg.depuis))) throw new Error(`${PLACEMENTS_FILE} : « depuis » n'est pas une date (${reg.depuis})`)
 }
 
 /** Registre écrit lisiblement (un monstre par ligne). */
@@ -80,12 +92,14 @@ export function formatRegistry(reg: Registry): string {
   const j = (x: unknown) => JSON.stringify(x)
   const out: string[] = ['{', `  "version": ${reg.version},`, `  "carte": ${reg.carte},`]
   if (reg.defaut) out.push(`  "defaut": ${j(reg.defaut)},`)
+  if (reg.depuis) out.push(`  "depuis": ${j(reg.depuis)},`)
   if (reg.notes?.length) out.push(`  "notes": [\n${reg.notes.map(n => `    ${j(n)}`).join(',\n')}\n  ],`)
   out.push(`  "personnages": ${j(reg.personnages)},`)
   out.push('  "placements": [')
   reg.placements.forEach((p, i) => {
     const lines = [`      "nom": ${j(p.nom)}`]
     if (p.auto) lines.push('      "auto": true')
+    if (p.mule) lines.push('      "mule": true')
     if (p.notes) lines.push(`      "notes": ${j(p.notes)}`)
     lines.push(`      "monstres": [\n${p.monstres.map(m => `        ${j(m)}`).join(',\n')}\n      ]`)
     if (p.cases) lines.push(`      "cases": ${j(p.cases)}`)
@@ -96,13 +110,18 @@ export function formatRegistry(reg: Registry): string {
   return out.join('\n') + '\n'
 }
 
-/** Signature d'un placement : cases des monstres, triées (le script ne compare que les cases). */
-export function signature(monstres: { cellule: number }[]): string {
+/** Signature d'un placement : espèce et case de chaque monstre, par case (« 3747@132 3726@134 … »). */
+export function signature(monstres: { espece: number; cellule: number }[]): string {
+  return [...monstres].sort((a, b) => a.cellule - b.cellule || a.espece - b.espece).map(m => `${m.espece}@${m.cellule}`).join(' ')
+}
+
+/** Cases des monstres, triées (« 132-134-178-208 ») : communes à plusieurs placements. */
+export function cellules(monstres: { cellule: number }[]): string {
   return monstres.map(m => m.cellule).sort((a, b) => a - b).join('-')
 }
 
-/** Placement dont les monstres occupent exactement ces cases. */
-export function recognize(reg: Registry, monstres: { cellule: number }[]): PlacementDef | undefined {
+/** Placement dont les monstres sont exactement ceux-ci, sur ces cases. */
+export function recognize(reg: Registry, monstres: { espece: number; cellule: number }[]): PlacementDef | undefined {
   const sig = signature(monstres)
   return reg.placements.find(p => signature(p.monstres) === sig)
 }
@@ -111,14 +130,22 @@ export function defaultPlacement(reg: Registry): PlacementDef | undefined {
   return reg.placements.find(p => p.nom === reg.defaut) ?? reg.placements.find(p => p.cases && p.colonne)
 }
 
-/** Cases de placement des Crâs d'un placement (les siennes, sinon celles du placement par défaut). */
-export function casesOf(reg: Registry, p: PlacementDef): Record<string, number> {
-  return p.cases ?? defaultPlacement(reg)?.cases ?? {}
+/**
+ * Les Crâs (noms des cases du placement par défaut) et leur identifiant de jeu, s'il est connu. Tout autre personnage du
+ * groupe est une mule (mode « 4 Crâs + mule »).
+ */
+export function crasOf(reg: Registry): Record<string, number | undefined> {
+  return Object.fromEntries(Object.keys(defaultPlacement(reg)?.cases ?? {}).map(n => [n, reg.personnages[n]]))
 }
 
-/** Colonne des Crâs d'un placement (la sienne, sinon celle du placement par défaut). */
+/** Cases de placement des Crâs d'un placement : celles du placement par défaut, remplacées Crâ par Crâ par les siennes. */
+export function casesOf(reg: Registry, p: PlacementDef): Record<string, number> {
+  return { ...defaultPlacement(reg)?.cases, ...p.cases }
+}
+
+/** Colonne des Crâs d'un placement : celle du placement par défaut, remplacée Crâ par Crâ par la sienne. */
 export function colonneOf(reg: Registry, p: PlacementDef): Record<string, number> {
-  return p.colonne ?? defaultPlacement(reg)?.colonne ?? {}
+  return { ...defaultPlacement(reg)?.colonne, ...p.colonne }
 }
 
 /** Nom de fichier d'un placement : « Placement 2 » → « placement-2 ». */
@@ -134,16 +161,13 @@ export function slug(nom: string): string {
 }
 
 /**
- * Placement créé pour des monstres inconnus : leurs cases, les cases de départ des Crâs du combat, et pour colonne la
- * case où chaque Crâ a le plus souvent fini ses tours.
+ * Placement créé pour des monstres inconnus : leurs espèces et leurs cases seulement ; les Crâs y gardent les cases et
+ * la colonne du placement par défaut. Nom : « Auto <cases> », suivi d'un numéro si un autre placement inconnu occupe
+ * déjà ces cases (`noms` : noms déjà pris).
  */
-export function autoPlacement(monstres: PlacementMonster[], cases: Record<string, number>, fins: Record<string, number[]>): PlacementDef {
-  const colonne: Record<string, number> = {}
-  for (const [who, list] of Object.entries(fins)) {
-    const n = new Map<number, number>()
-    for (const c of list) if (c >= 0) n.set(c, (n.get(c) ?? 0) + 1)
-    const best = [...n].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0]
-    if (best) colonne[who] = best[0]
-  }
-  return { nom: `Auto ${signature(monstres)}`, auto: true, monstres: [...monstres].sort((a, b) => a.cellule - b.cellule), cases: { ...cases }, colonne }
+export function autoPlacement(monstres: PlacementMonster[], noms: string[] = []): PlacementDef {
+  const base = `Auto ${cellules(monstres)}`
+  let nom = base
+  for (let k = 2; noms.includes(nom); k++) nom = `${base} (${k})`
+  return { nom, auto: true, monstres: [...monstres].sort((a, b) => a.cellule - b.cellule) }
 }
