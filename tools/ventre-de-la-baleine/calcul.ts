@@ -3,6 +3,8 @@
 // placement (placement.ts), sans bloquer le fil principal qui reçoit les journaux.
 // Aussi celui du Féca contre les Krobes (tools/feca/serveur.ts) : planificateur choisi par la race du personnage
 // (tools/feca/planificateur.ts pour un Féca) ; personnage seul, l'état envoyé par son script recale celui du journal.
+// Et celui du Sacrieur de la Tanière du Meulou (tools/meulou/serveur.ts, workerData.donjon = 'meulou') : planificateur
+// tools/meulou/planificateur.ts, placement tools/meulou/placement.ts.
 //
 // Messages reçus : { type: 'batch', header, lines } ; { type: 'plan', id, who, q } ; { type: 'placement', id, who, q } ;
 // { type: 'force', id }. Messages envoyés : { type: 'plan' | 'placement', id, text, log?, record? }.
@@ -23,6 +25,9 @@ import { ELEMENTS_TUEUSES, FECA, PLAN_RAPIDE } from '../feca/feca'
 import { caseTueuse, ordreDesMules } from '../feca/placement'
 import { planTourFeca } from '../feca/planificateur'
 import { appliquerVariantes, lireVariantes } from '../feca/variantes'
+import { SACRI } from '../meulou/meulou'
+import { caseSacrieur, ordreDesMules as ordreMulesMeulou } from '../meulou/placement'
+import { planTourSacri } from '../meulou/planificateur'
 import { appliquerEtatDirect, etatCombat, lireEtatDirect, type EtatCombat } from './etat'
 import { moteurDuTour } from './moteur'
 import { placementBaleine } from './placement'
@@ -40,6 +45,8 @@ const PART: { index: number; count: number } | undefined = workerData?.part && w
 const JOUEURS_SERVIS: string[] | undefined = Array.isArray(workerData?.joueurs) ? workerData.joueurs : undefined
 /** Tueuses (serveur du Féca, TUEUSES) : placées avec les mules, elles les tuent puis vont mourir (planTourBaleine, tueuse). */
 const TUEUSES_SERVIES: string[] = Array.isArray(workerData?.tueuses) ? workerData.tueuses : []
+/** Serveur du Meulou (tools/meulou/serveur.ts) : Sacrieur et mules, placement de la Tanière du Meulou. */
+const MEULOU_DONJON = workerData?.donjon === 'meulou'
 
 const lines: any[] = []
 let version = 0
@@ -206,7 +213,9 @@ async function handlePlan(who: string, q: Record<string, string>, id?: number): 
   const mo = moteurDuTour(st, mine, { ap: isNaN(want.ap) ? undefined : want.ap, mp: isNaN(want.mp) ? undefined : want.mp,
     cell: isNaN(want.cell) ? undefined : want.cell, spells: cur.spells, obstacles })
   const feca = st.res.fighters[mine]?.breedId === FECA
+  const sacri = MEULOU_DONJON && st.res.fighters[mine]?.breedId === SACRI
   const res = feca ? planTourFeca(st, mo, rapide ? { forbid, ...PLAN_RAPIDE } : { forbid, partition: PART })
+    : sacri ? planTourSacri(st, mo, rapide ? { forbid, shootCells: 2, beam: 8, finishers: 8 } : { forbid, partition: PART })
     : planTourBaleine(st, mo, { forbid, partition: rapide ? undefined : PART, joueurs: JOUEURS_SERVIS, tueuse: TUEUSES_SERVIES.includes(who),
       elements: TUEUSES_SERVIES.includes(who) ? ELEMENTS_TUEUSES : undefined })
   const plan = res.plans[0]
@@ -272,6 +281,7 @@ async function handlePlacement(who: string, q: Record<string, string>): Promise<
   const key = `${mapId}|${q.monstres ?? ''}|${[...cells].sort((a, b) => a - b).join(',')}`
   let known = placements.get(key)
   if (known && Date.now() - known.at >= PLACEMENT_MS) known = undefined
+  if (MEULOU_DONJON) return placeMeulou(who, { key, known, map, monsters, cells, mule: q.mule === '1', log })
   if (known && known.cells[who] !== undefined) {
     known.given[who] = known.cells[who]
     log.push(`placement de ${who} : ${known.cells[who]} (répartition déjà calculée : ${known.log})`)
@@ -311,6 +321,42 @@ async function handlePlacement(who: string, q: Record<string, string>): Promise<
   log.push(`placement (carte ${mapId}, ordre ${timeline.map(x => (x === 'monstre' ? 'M' : x.slice(4))).join(' ')}) : ${summary}`)
   if (cell === undefined) return { text: `aucun ${who} absent de l'ordre de jeu`, log }
   const all = { ...given, ...res.cells }
+  placements.set(key, { at: Date.now(), cells: all, given: { ...given, [who]: cell }, log: summary })
+  return { text: `case ${cell} ${Object.values(all).join(',')}`, log }
+}
+
+/**
+ * Placement de la Tanière du Meulou (tools/meulou/placement.ts) : le Sacrieur au plus près des monstres, calculé d'abord
+ * (et gardé pour lui) ; chaque mule, la première case libre de l'ordre des mules (loin du Meulou dans la salle du boss,
+ * sinon près du Sacrieur).
+ */
+function placeMeulou(who: string, c: {
+  key: string; known?: { at: number; cells: Record<string, number>; given: Record<string, number>; log: string }; map: MapData
+  monsters: { monsterId: number; cell: number }[]; cells: number[]; mule: boolean; log: string[]
+}): { text: string; log: string[] } {
+  const { key, known, map, monsters, cells, mule, log } = c
+  if (!monsters.length || !cells.length) return { text: 'aucun monstres ou cases de placement manquants', log }
+  const all: Record<string, number> = { ...known?.cells }
+  const given = { ...known?.given }
+  const sacriName = JOUEURS_SERVIS?.[0] ?? who
+  let summary = known?.log ?? ''
+  if (all[sacriName] === undefined) {
+    const r = caseSacrieur(map, monsters, cells)
+    if (r.cell !== undefined) all[sacriName] = r.cell
+    summary = r.note
+  }
+  let cell: number | undefined
+  if (!mule && who === sacriName) cell = all[sacriName]
+  else if (all[who] !== undefined) cell = all[who]
+  else {
+    const { ordre, note } = ordreMulesMeulou(monsters, cells, all[sacriName])
+    const taken = new Set(Object.values(all))
+    cell = ordre.find(x => !taken.has(x))
+    summary = `${summary} ; ${note}`
+  }
+  log.push(`placement de ${mule ? 'la mule ' : ''}${who} : ${cell ?? 'aucune case'} (${summary})`)
+  if (cell === undefined) return { text: 'aucun plus de case libre', log }
+  all[who] = cell
   placements.set(key, { at: Date.now(), cells: all, given: { ...given, [who]: cell }, log: summary })
   return { text: `case ${cell} ${Object.values(all).join(',')}`, log }
 }

@@ -218,4 +218,24 @@ describe('Crâ tueuse (serveur du Féca : tue les mules, puis va mourir chez les
       expect([...els]).toEqual([3])
     }
   }, 120_000)
+
+  it('Malamibe à tuer ce tour : elle vise la marge, pas un seul sort prévu juste assez', () => {
+    // Alpha (tueuse), plus de mule ; Malamibe à son 3e tour au prochain (2 tours joués), Alpha dernière avant elle.
+    // 2026-10-18 à 23:37 : Malamibe à 757 PV, une Flèche d'Expiation prévue mortelle, 611 portés, 6 PA gardés.
+    const MALA = -6
+    ESPECE[MALA] = 3822
+    const cases = { [ALPHA]: 342, [VERM]: 300, [MALA]: 409 }
+    const st = etatCombat([...debut({ cases, ordre: [ALPHA, VERM, MALA] }), m('jvj', { fxjr: ALPHA })], { mapId: CARTE })
+    st.malamibe = { id: MALA, summonRound: 1, turnsPlayed: 2 }
+    const plan = (hp: number) => {
+      const mo = moteurDuTour(st, st.current!, { ap: 12, mp: 6, spells: sorts() })
+      for (const f of mo.fight.fighters) if (f.monsterId === 3822) Object.assign(f, { hp, maxHp: hp, baseMaxHp: hp })
+      return planTourBaleine(st, mo, { joueurs: ['Alpha'], tueuse: true, elements: [3] }).plans[0]
+    }
+    const prevu = (p: ReturnType<typeof plan>) => Number(p.notes.find(n => n.startsWith('Malamibe à tuer'))?.match(/, (\d+) dommages prévus/)?.[1])
+    // (ici, un sort d'attaque Eau en fait ≈ 174 prévus : un seul « suffit » pour 150 PV)
+    const p = plan(150)
+    expect(prevu(p)).toBeGreaterThanOrEqual(1.6 * 150)
+    expect(p.steps.filter(x => x.kind === 'cast' && data.spell(x.spell)!.levels.at(-1)!.range > 0).length).toBeGreaterThanOrEqual(2)
+  }, 120_000)
 })

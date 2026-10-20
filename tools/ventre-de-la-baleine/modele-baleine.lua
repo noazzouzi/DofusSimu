@@ -43,6 +43,8 @@ SONDE_MAX_MS = 8000       -- après l'attente : temps laissé au calcul du plan 
 JOUEURS = nil
 -- Mules : à chacun de leurs tours, vers le Krobe le plus proche, pour s'y faire tuer (false : elles restent en place).
 MULES_AVANCENT = false
+-- Mules : case de placement demandée au serveur (false : elles gardent celle que le jeu leur donne, sans serveur).
+PLACEMENT_MULES = true
 -- Tueuses (nom → true) : jouées par le serveur, mais placées avec les mules (elles les tuent, puis vont mourir).
 TUEUSES = nil
 -- Joués à la main (nom → true) : le script ne place pas ces personnages et ne joue pas leurs tours. Il garde la main
@@ -383,13 +385,19 @@ LANCEUR = "tools/ankabot/lancer_serveur_baleine.cmd"
     local m0 = manche()
     dire("[MAIN] " .. nom .. " : place-toi puis mets-toi prêt (le script attend le début du combat)", "succes")
     local pourquoi = "délai"
+    -- isItMyTurn() reste vrai depuis la fin du combat précédent (2026-10-19, Meulou : main rendue au bout de 0,26 s aux
+    -- combats 2 à 5, Sacrieur jamais placé) : seul son passage de faux à vrai dit que le combat a commencé. La manche
+    -- d'AnkaBot n'y sert plus (elle peut être remise à zéro dès le placement). Si le personnage joue le premier, la main
+    -- reste gardée pendant son premier tour, joué à la main de toute façon.
+    local vuFaux = false
     while (maintenant() - t0) * 1000 < A_LA_MAIN_MAX_MS do
       pause(250)
       -- (VERIFIER_MON_TOUR = false : isItMyTurn() jamais appelé, même ici)
       local ok, v = false, nil
       if VERIFIER_MON_TOUR then ok, v = pcall(function() return fightCharacter:isItMyTurn() end) end
-      if ok and v == true then pourquoi = "mon tour" break end
-      if manche() ~= m0 then pourquoi = "manche" break end
+      if ok and v ~= true then vuFaux = true end
+      if ok and v == true and vuFaux then pourquoi = "mon tour" break end
+      if not VERIFIER_MON_TOUR and manche() ~= m0 then pourquoi = "manche" break end
     end
     noter(string.format("[PLACEMENT] à la main : case %s ; début vu (%s) après %d ms, manche AnkaBot %s → %s", tostring(maCase()),
       pourquoi, math.floor((maintenant() - t0) * 1000), tostring(m0), tostring(manche())))
@@ -436,6 +444,10 @@ LANCEUR = "tools/ankabot/lancer_serveur_baleine.cmd"
       local nom = moi()
       if nom == nil then return end
       if aLaMain(nom) then return placementALaMain(nom) end
+      if estMule(nom) and not PLACEMENT_MULES then
+        noter("[PLACEMENT] mule " .. nom .. " : case du jeu gardée (" .. tostring(maCase()) .. ")")
+        return
+      end
       -- (mule : après le Féca, dont la case est gardée)
       pause(ATTENTE_PLACEMENT + (placeeAvecLesMules(nom) and 1500 or 0))
       local cible, raison, corps, cibles = demanderPlacement(nom, challengers, defenders)

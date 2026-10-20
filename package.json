@@ -31,7 +31,12 @@
     "feca:script": "tsx tools/feca/script.ts",
     "feca:main": "tsx tools/feca/script.ts --main Kaskyzo",
     "feca:rejouer": "tsx tools/feca/rejouer.ts",
-    "feca:tours": "tsx tools/feca/tours.ts"
+    "feca:tours": "tsx tools/feca/tours.ts",
+    "meulou:script": "tsx tools/meulou/script.ts",
+    "meulou:main": "tsx tools/meulou/script.ts",
+    "meulou:serveur": "tsx tools/meulou/serveur.ts",
+    "meulou:bilan": "tsx tools/meulou/bilan.ts",
+    "meulou:rejouer": "tsx tools/meulou/rejouer.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
