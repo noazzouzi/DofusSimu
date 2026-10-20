@@ -56,6 +56,11 @@ const ALL_ELEMENTS = ['Feu', 'Eau', 'Air', 'Terre']
 
 const W = {
   malamibe: 1, malamibeKill: 1500, urgent: 3, mustKill: 60000,
+  // Malamibe à tuer ce tour : sûrement tuée au-delà de `killMargin` × ses PV (jets moyens du moteur, comme chez le Féca),
+  // MARGE_MULE_TUEUSE pour une tueuse (coups de Kyanna-Lee à 0,59-0,94 fois la prévision). 2026-10-18 : Malamibe ratée
+  // de 146 PV à 23:37 (757 PV, une Flèche d'Expiation à 611) et à 23:35 (543 PV) : un seul sort, 6 PA gardés, la
+  // prévision la donnant morte. Jusqu'à la marge, chaque dommage compte (`urgent`) : elle y met tous ses PA.
+  killMargin: 1.25,
   element: 1500, elementMissing: 5000, elementWasted: 150,
   pesanteur: 2500,
   // Jugement : dommages évités sur les 2 tours de l'effet (−300 de Puissance : Bacterrib de 1 600 à 900 par tour, combat
@@ -196,6 +201,7 @@ export function planTourBaleine(st: EtatCombat, mo: Moteur, opts: PlanOptions = 
   const malaHp = malamibe ? malamibe.hp : 0
   const urgent = !!malamibe && (st.malamibe?.turnsPlayed ?? 0) >= 2
   const lastBeforeM = !!malamibe && crasBefore(malamibe).length === 0
+  const malaTarget = (opts.tueuse ? MARGE_MULE_TUEUSE : W.killMargin) * malaHp
 
   const baseHp = new Map(base.fighters.map(f => [f.id, f.alive ? f.hp : 0]))
   const basePower = new Map(baseEnemies.map(f => [f.id, f.stats.power]))
@@ -213,7 +219,7 @@ export function planTourBaleine(st: EtatCombat, mo: Moteur, opts: PlanOptions = 
   const attacks = usable.filter(sp => !buffs.includes(sp) && elementsOk(sp))
 
   // ── Note des sorts lancés (sans la case de fin) ──
-  function castTerms(s: FightState, elems: Set<string>): { score: number; guide: number; parts: Record<string, number> } {
+  function castTerms(s: FightState, elems: Set<string>): { score: number; guide: number; parts: Record<string, number>; mala: number } {
     let mala = 0
     let friendly = 0
     let jugement = 0
@@ -252,9 +258,11 @@ export function planTourBaleine(st: EtatCombat, mo: Moteur, opts: PlanOptions = 
     let malaScore = 0
     if (malamibe) {
       const got = Math.min(mala, malaHp)
-      malaScore = W.malamibe * got * (urgent ? W.urgent : opts.tueuse ? W.tueuseKrobes : 1) + (got >= malaHp ? W.malamibeKill : 0)
-      // Dernier Crâ avant l'échéance : elle doit mourir, sinon toute l'équipe meurt.
-      if (urgent && lastBeforeM && got < malaHp) malaScore -= W.mustKill
+      if (urgent) {
+        malaScore = W.malamibe * W.urgent * Math.min(mala, malaTarget) + (mala >= malaTarget ? W.malamibeKill : 0)
+        // Dernier Crâ avant l'échéance : elle doit mourir, sinon toute l'équipe meurt.
+        if (lastBeforeM && got < malaHp) malaScore -= W.mustKill
+      } else malaScore = W.malamibe * got * (opts.tueuse ? W.tueuseKrobes : 1) + (got >= malaHp ? W.malamibeKill : 0)
     }
     let elem = 0
     let elemGuide = 0
@@ -278,7 +286,7 @@ export function planTourBaleine(st: EtatCombat, mo: Moteur, opts: PlanOptions = 
     }
     const parts = { malamibe: Math.round(malaScore), elements: elem, jugement: Math.round(jugement), pesanteur: pes, friendly: Math.round(friendly), mules: Math.round(mules) }
     const score = malaScore + elem + jugement + pes + friendly + mules
-    return { score, guide: score + elemGuide, parts }
+    return { score, guide: score + elemGuide, parts, mala }
   }
 
   // ── Note de la case de fin (positions de tous après le tour) ──
@@ -627,9 +635,13 @@ export function planTourBaleine(st: EtatCombat, mo: Moteur, opts: PlanOptions = 
     const key = best.node.steps.map(x => (x.kind === 'move' ? `>${x.path.at(-1)}` : `${x.spell}@${x.cell}`)).join(' ')
     if (done.has(key)) continue
     done.add(key)
+    // (Malamibe à tuer ce tour : dommages prévus et marge visée, comme chez le Féca)
+    const malaNote = malamibe && urgent
+      ? [`Malamibe à tuer ce tour (${Math.round(malaHp)} PV, ${Math.round(castTerms(best.node.fight, best.node.elems).mala)} dommages prévus, marge visée ${Math.round(malaTarget)})`]
+      : []
     plans.push({
       steps: best.node.steps, endCell: best.node.fight.fighters[me0.id].cell, score: Math.round(best.total),
-      parts: { ...best.node.parts, ...best.end.parts }, notes: [...best.node.notes, ...best.end.notes],
+      parts: { ...best.node.parts, ...best.end.parts }, notes: [...malaNote, ...best.node.notes, ...best.end.notes],
     })
   }
   plans.sort((a, b) => b.score - a.score)

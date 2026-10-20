@@ -24,14 +24,16 @@ export const CARTES_SALBATROCES = [
 /**
  * Trajet jusqu'au Roc des Salbatroces et circuit de combats (donnés par le joueur, 2026-10-18), après le modèle (ses
  * `TRAJET = nil` et `CIRCUIT = nil` sont ainsi remplacés) : cartes jusqu'à 54176040, d'où chaque personnage passe au Roc
- * par l'élément interactif 538666, puis circuit de combats en boucle, les combats lancés comme la Reine (map:fight()
- * dans un custom) ; mule perdue : l'action du TRAJET pour sa carte, sinon vers la carte du chef (mule_lost).
+ * par l'élément interactif 538666, puis circuit de combats en boucle, les combats lancés par AnkaBot (fight = true, qui
+ * applique MIN_MONSTERS et MAX_MONSTERS) ; mule perdue : l'action du TRAJET pour sa carte, sinon vers la carte du chef
+ * (mule_lost).
  */
 const TRAJET_ROC = `
 -- ─────────────────────────── trajet jusqu'au Roc des Salbatroces ───────────────────────────
 -- (donné par le joueur, 2026-10-18) De 54176040, chaque personnage passe au Roc (élément 538666). Combats lancés par
--- map:fight() dans un custom, comme ReineCombat.lua, et non par fight = true. (Tours du Féca fermés de l'après-midi :
--- causés par le mode MITM d'AnkaBot ouvert pendant les combats, trouvé par le joueur.)
+-- fight = true : map:fight() dans un custom (comme ReineCombat.lua, essayé le 2026-10-18) attaque n'importe quel
+-- groupe, sans MIN_MONSTERS ni MAX_MONSTERS (113 combats à 3 monstres et 27 à 6-7 en une soirée). (Tours du Féca fermés
+-- de l'après-midi : causés par le mode MITM d'AnkaBot ouvert pendant les combats, trouvé par le joueur.)
 
 -- Vers le Roc, pour tous les personnages : élément interactif 538666 de la carte 54176040 (trouvé par le joueur,
 -- 2026-10-18). Ni map:moveToward(140510209) ni le voyage automatique rejoué (message jok) n'ont fait bouger le personnage.
@@ -39,12 +41,6 @@ function allerRoc()
   local ok, err = pcall(function() map:useById(538666, -1) end)
   if ok then global:printSuccess("[TRAJET] vers le Roc des Salbatroces (élément 538666)")
   else global:printError("[TRAJET] élément 538666 : " .. tostring(err)) end
-end
-
--- Étape du circuit : un combat lancé comme la Reine (map:fight()) ; s'il n'en commence aucun, AnkaBot suit le path de
--- l'étape (pas d'attente ici : le joueur, 2026-10-18).
-local function combattre()
-  pcall(function() map:fight() end)
 end
 
 TRAJET = {
@@ -88,23 +84,24 @@ MAX_MONSTERS = 5
 ANKABOT_TIMEOUT = 10
 
 -- Circuit de combats au Roc (donné par le joueur, 2026-10-18), parcouru en boucle : une carte qui revient prend l'action
--- de son passage suivant (140509441 : right, puis top, puis bottom).
+-- de son passage suivant (140509441 : right, puis top, puis bottom). fight = true : AnkaBot attaque un groupe qui respecte
+-- MIN_MONSTERS et MAX_MONSTERS, sinon suit le path de l'étape.
 CIRCUIT = {
-  { map = "140510209", custom = combattre, path = "left" },
-  { map = "140509185", custom = combattre, path = "top" },
-  { map = "140509441", custom = combattre, path = "right" },
-  { map = "140510465", custom = combattre, path = "right" },
-  { map = "140511489", custom = combattre, path = "left" },
-  { map = "140510465", custom = combattre, path = "left" },
-  { map = "140509441", custom = combattre, path = "top" },
-  { map = "140509443", custom = combattre, path = "right" },
-  { map = "140510467", custom = combattre, path = "top" },
-  { map = "140510469", custom = combattre, path = "bottom" },
-  { map = "140510467", custom = combattre, path = "left" },
-  { map = "140509443", custom = combattre, path = "bottom" },
-  { map = "140509441", custom = combattre, path = "bottom" },
-  { map = "140509185", custom = combattre, path = "right" },
-  { map = "140510209", custom = combattre, path = "left" },
+  { map = "140510209", fight = true, path = "left" },
+  { map = "140509185", fight = true, path = "top" },
+  { map = "140509441", fight = true, path = "right" },
+  { map = "140510465", fight = true, path = "right" },
+  { map = "140511489", fight = true, path = "left" },
+  { map = "140510465", fight = true, path = "left" },
+  { map = "140509441", fight = true, path = "top" },
+  { map = "140509443", fight = true, path = "right" },
+  { map = "140510467", fight = true, path = "top" },
+  { map = "140510469", fight = true, path = "bottom" },
+  { map = "140510467", fight = true, path = "left" },
+  { map = "140509443", fight = true, path = "bottom" },
+  { map = "140509441", fight = true, path = "bottom" },
+  { map = "140509185", fight = true, path = "right" },
+  { map = "140510209", fight = true, path = "left" },
 }
 `
 
